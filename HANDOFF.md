@@ -2,11 +2,11 @@
 
 **Date:** 2026-04-05
 **Branch:** master
-**Phase:** Compound complete — file upload service cycle done
+**Phase:** Compound complete — multi-tenant API gateway cycle done
 
 ## Current State
 
-Three projects completed in this session: distributed task scheduler, URL health monitor, and file upload service with processing pipeline. All three are committed to master with solution docs. The file upload service cycle included a full multi-agent review with 14 findings (2 P1, 9 P2, 3 P3), all resolved before committing.
+Four projects completed: distributed task scheduler, URL health monitor, file upload service, and multi-tenant API gateway. All committed to master with solution docs. The gateway cycle found 4 P1 + 10 P2 + 5 P3 issues; all P1 and P2 fixed. Key wins: admin auth, sqlite3 fd leak fix, streaming socket leak, SSRF upgrade.
 
 ## Key Artifacts
 
@@ -15,15 +15,16 @@ Three projects completed in this session: distributed task scheduler, URL health
 | Solution (task scheduler) | docs/solutions/2026-04-05-distributed-task-scheduler.md |
 | Solution (url health monitor) | docs/solutions/2026-04-05-url-health-monitor.md |
 | Solution (file upload service) | docs/solutions/2026-04-05-file-upload-service.md |
+| Solution (api gateway) | docs/solutions/2026-04-05-multi-tenant-api-gateway.md |
 
-## Three Questions (file upload service)
+## Three Questions (api gateway)
 
-1. **Hardest decision?** Whether to use os.listdir() for download path or store file_ext in DB — chose DB storage to eliminate race condition
-2. **What was rejected?** Storing the full file path (too brittle if UPLOAD_DIR moves), using content-type for extension guessing (unreliable)
-3. **Least confident about?** PIL decompression bomb limit of 50M pixels — may be too generous for some deployment contexts
+1. **Hardest decision?** Per-tenant alias namespace (2 DB reads/request) vs. global aliases (collision-prone). Chose per-tenant.
+2. **What was rejected?** Async metrics queue, key-scoped service access, global aliases
+3. **Least confident about?** DNS rebinding — registration-time IP check can be bypassed if DNS TTL expires and IP changes to a private address. Production needs proxy-time re-check.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. Three Flask+SQLite projects are complete in /workspace: task_scheduler/, url_health_monitor/, and file_upload_service/. All cycles are done with solution docs in docs/solutions/. Ready for the next compound engineering cycle.
+Read HANDOFF.md for context. Four Flask+SQLite projects complete in /workspace. All cycles done with solution docs in docs/solutions/. Ready for the next compound engineering cycle.
 ```
