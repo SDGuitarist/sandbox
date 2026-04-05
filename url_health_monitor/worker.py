@@ -171,7 +171,7 @@ def _process_one_job() -> bool:
             SELECT u.id, u.url, u.timeout_seconds, u.failure_threshold
             FROM check_jobs j
             JOIN monitored_urls u ON u.id = j.url_id
-            WHERE j.id = ?
+            WHERE j.id = ? AND u.current_status != 'deleted'
             """,
             (job_id,),
         ).fetchone()
@@ -197,23 +197,27 @@ def _process_one_job() -> bool:
 
         start_ms = int(time.time() * 1000)
         try:
-            resp = requests.get(url, timeout=timeout_seconds, allow_redirects=True)
-            response_time_ms = int(time.time() * 1000) - start_ms
+            # allow_redirects=False prevents SSRF bypass via open redirects:
+            # a redirect to http://127.0.0.1 would bypass registration-time checks.
+            resp = requests.get(url, timeout=timeout_seconds, allow_redirects=False)
+            response_time_ms = max(0, int(time.time() * 1000) - start_ms)
             http_status_code = resp.status_code
-            # Treat non-2xx as an error for health monitoring purposes
+            # Treat non-2xx (including 3xx redirects) as an error
             if not resp.ok:
-                error_message = f"HTTP {resp.status_code}"
+                error_message = f"HTTP {resp.status_code}"[:500]
             log.info("Checked %s → %d in %dms", url, http_status_code, response_time_ms)
         except Timeout:
-            response_time_ms = int(time.time() * 1000) - start_ms
+            response_time_ms = max(0, int(time.time() * 1000) - start_ms)
             error_message = f"Timeout after {timeout_seconds}s"
             log.warning("Timeout checking %s", url)
         except SSLError as e:
-            error_message = f"SSL error: {e}"
-            log.warning("SSL error checking %s: %s", url, e)
+            response_time_ms = max(0, int(time.time() * 1000) - start_ms)
+            error_message = f"SSL error: {type(e).__name__}: {str(e)}"[:500]
+            log.warning("SSL error checking %s: %s", url, type(e).__name__)
         except RequestException as e:
-            error_message = f"Request error: {e}"
-            log.warning("Request error checking %s: %s", url, e)
+            response_time_ms = max(0, int(time.time() * 1000) - start_ms)
+            error_message = f"Request error: {type(e).__name__}: {str(e)}"[:500]
+            log.warning("Request error checking %s: %s", url, type(e).__name__)
 
         checked_at = _now_str()
         job_status = "failed" if error_message else "completed"

@@ -63,12 +63,24 @@ def _enqueue_due_urls():
             url_id = row["id"]
             try:
                 conn.execute("BEGIN IMMEDIATE")
-                conn.execute(
-                    "INSERT INTO check_jobs (url_id, status) VALUES (?, 'pending')",
-                    (url_id,),
+                # Re-check the NOT EXISTS guard INSIDE the lock to prevent duplicate
+                # jobs when multiple scheduler processes race on the same URL.
+                cur = conn.execute(
+                    """
+                    INSERT INTO check_jobs (url_id, status)
+                    SELECT ?, 'pending'
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM check_jobs
+                        WHERE url_id = ? AND status IN ('pending', 'running')
+                    )
+                    """,
+                    (url_id, url_id),
                 )
                 conn.execute("COMMIT")
-                log.info("Enqueued check_job for url_id=%d", url_id)
+                if cur.rowcount:
+                    log.info("Enqueued check_job for url_id=%d", url_id)
+                else:
+                    log.debug("Skipped url_id=%d — job already pending/running", url_id)
             except sqlite3.OperationalError as e:
                 log.warning("DB locked for url_id=%d, will retry: %s", url_id, e)
                 try:

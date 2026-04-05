@@ -44,3 +44,7 @@ CREATE TABLE IF NOT EXISTS check_results (
 -- Efficient recent-results query for status update
 CREATE INDEX IF NOT EXISTS idx_check_results_url_checked
     ON check_results(url_id, checked_at);
+
+-- Efficient scheduler NOT EXISTS and worker-fetch queries
+CREATE INDEX IF NOT EXISTS idx_check_jobs_url_status
+    ON check_jobs(url_id, status);

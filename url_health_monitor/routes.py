@@ -8,7 +8,9 @@ Endpoints:
   DELETE /urls/<id>     — soft-delete a monitored URL
   GET    /alerts        — return URLs with current_status='degraded'
 """
-import json
+import ipaddress
+import socket
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from flask import Blueprint, request, jsonify
 from db import get_connection
@@ -17,6 +19,9 @@ bp = Blueprint("health_monitor", __name__)
 
 MAX_NAME_LEN = 255
 MAX_URL_LEN = 2048
+MAX_CHECK_INTERVAL = 86400   # 1 day
+MAX_FAILURE_THRESHOLD = 100
+MAX_TIMEOUT_SECONDS = 30
 
 
 def _is_valid_url(url: str) -> bool:
@@ -25,6 +30,29 @@ def _is_valid_url(url: str) -> bool:
         return parsed.scheme in ("http", "https") and bool(parsed.netloc)
     except Exception:
         return False
+
+
+def _is_safe_host(hostname: str) -> bool:
+    """
+    Resolve hostname and reject private/loopback/link-local/reserved addresses.
+    Prevents SSRF attacks targeting internal network services.
+    """
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        return False  # unresolvable — reject
+    for _, _, _, _, sockaddr in infos:
+        try:
+            ip = ipaddress.ip_address(sockaddr[0])
+        except ValueError:
+            return False
+        if ip.is_loopback or ip.is_private or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            return False
+    return bool(infos)  # reject if no addresses resolved
+
+
+def _now_str() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 # ---------------------------------------------------------------------------
@@ -45,6 +73,11 @@ def register_url():
     if not _is_valid_url(url):
         return jsonify({"error": "url must be a valid http or https URL"}), 400
 
+    # SSRF protection: reject private/loopback/link-local hosts
+    hostname = urlparse(url).hostname or ""
+    if not _is_safe_host(hostname):
+        return jsonify({"error": "url resolves to a private or reserved address"}), 400
+
     name = data.get("name", "")
     if not isinstance(name, str) or not name.strip():
         return jsonify({"error": "name is required"}), 400
@@ -53,16 +86,16 @@ def register_url():
         return jsonify({"error": f"name must be {MAX_NAME_LEN} characters or fewer"}), 400
 
     check_interval = data.get("check_interval_seconds", 300)
-    if not isinstance(check_interval, int) or check_interval < 10:
-        return jsonify({"error": "check_interval_seconds must be an integer >= 10"}), 400
+    if not isinstance(check_interval, int) or not (10 <= check_interval <= MAX_CHECK_INTERVAL):
+        return jsonify({"error": f"check_interval_seconds must be between 10 and {MAX_CHECK_INTERVAL}"}), 400
 
     failure_threshold = data.get("failure_threshold", 1)
-    if not isinstance(failure_threshold, int) or failure_threshold < 1:
-        return jsonify({"error": "failure_threshold must be an integer >= 1"}), 400
+    if not isinstance(failure_threshold, int) or not (1 <= failure_threshold <= MAX_FAILURE_THRESHOLD):
+        return jsonify({"error": f"failure_threshold must be between 1 and {MAX_FAILURE_THRESHOLD}"}), 400
 
     timeout_seconds = data.get("timeout_seconds", 10)
-    if not isinstance(timeout_seconds, int) or timeout_seconds < 1:
-        return jsonify({"error": "timeout_seconds must be an integer >= 1"}), 400
+    if not isinstance(timeout_seconds, int) or not (1 <= timeout_seconds <= MAX_TIMEOUT_SECONDS):
+        return jsonify({"error": f"timeout_seconds must be between 1 and {MAX_TIMEOUT_SECONDS}"}), 400
 
     with get_connection() as conn:
         cur = conn.execute(
@@ -115,7 +148,7 @@ def get_url(url_id):
             """
             SELECT id, url, name, check_interval_seconds, failure_threshold,
                    timeout_seconds, current_status, last_checked_at, created_at
-            FROM monitored_urls WHERE id = ?
+            FROM monitored_urls WHERE id = ? AND current_status != 'deleted'
             """,
             (url_id,),
         ).fetchone()
@@ -128,7 +161,7 @@ def get_url(url_id):
                    error_message, checked_at
             FROM check_results
             WHERE url_id = ?
-            ORDER BY checked_at DESC LIMIT 10
+            ORDER BY checked_at DESC, id DESC LIMIT 10
             """,
             (url_id,),
         ).fetchall()
@@ -144,6 +177,7 @@ def get_url(url_id):
 # ---------------------------------------------------------------------------
 @bp.route("/urls/<int:url_id>", methods=["DELETE"])
 def delete_url(url_id):
+    now = _now_str()
     with get_connection() as conn:
         cur = conn.execute(
             "UPDATE monitored_urls SET current_status = 'deleted' WHERE id = ? AND current_status != 'deleted'",
@@ -151,8 +185,13 @@ def delete_url(url_id):
         )
         if cur.rowcount == 0:
             return jsonify({"error": "not found or already deleted"}), 404
+        # Cancel any pending/running jobs for this URL so they don't execute after deletion
+        conn.execute(
+            "UPDATE check_jobs SET status='failed', completed_at=? WHERE url_id=? AND status IN ('pending','running')",
+            (now, url_id),
+        )
         conn.commit()
-    return jsonify({"id": url_id, "current_status": "deleted"})
+    return jsonify({"id": url_id, "current_status": "deleted"}), 200
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +209,7 @@ def alerts():
             LEFT JOIN check_results cr ON cr.id = (
                 SELECT id FROM check_results
                 WHERE url_id = u.id
-                ORDER BY checked_at DESC LIMIT 1
+                ORDER BY checked_at DESC, id DESC LIMIT 1
             )
             WHERE u.current_status = 'degraded'
             ORDER BY u.id
