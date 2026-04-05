@@ -7,12 +7,15 @@ next_run_at and inserts a job_run into the queue.
 
 Atomic claim pattern (from job-queue solution doc):
   1. SELECT id of due schedule
-  2. UPDATE schedules SET next_run_at=<next> WHERE id=? AND next_run_at=<old_value>
-  3. Check rowcount — if 0, another process beat us; skip this schedule
-  4. Only if rowcount=1: INSERT the job_run
+  2. BEGIN IMMEDIATE (exclusive write lock)
+  3. Compute new_next_run_at from now (skip, not back-fill)
+  4. UPDATE schedules SET next_run_at=<next> WHERE id=? AND next_run_at=<old_value>
+  5. Check rowcount — if 0, another process beat us; ROLLBACK and skip
+  6. INSERT job_run
+  7. COMMIT
 
-Both steps 2 and 3 run inside BEGIN IMMEDIATE to prevent the crash window
-where next_run_at is advanced but the job_run insert hasn't happened yet.
+Steps 3-7 run inside BEGIN IMMEDIATE to prevent the crash window where
+next_run_at is advanced but the job_run insert hasn't happened yet.
 
 Usage:
     python scheduler.py
@@ -20,14 +23,16 @@ Usage:
 """
 import os
 import signal
+import sqlite3
 import time
 import logging
 from datetime import datetime, timezone
-from croniter import croniter
+from croniter import croniter, CroniterBadCronError
 
 from db import get_connection
 
-POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "10"))
+# Guard against zero/negative interval causing CPU busy-poll
+POLL_INTERVAL = max(1, int(os.environ.get("POLL_INTERVAL", "10")))
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,8 +65,11 @@ def _fire_due_schedules():
     """Find all due schedules and atomically spawn job_runs for them."""
     now = _now_str()
 
-    conn = get_connection()
+    # Guard against connection assignment failure
+    conn = None
     try:
+        conn = get_connection()
+
         # Find candidates — may include false positives if another process
         # already claimed them; the UPDATE below is the real gate.
         candidates = conn.execute(
@@ -79,16 +87,30 @@ def _fire_due_schedules():
             payload = row["payload"]
             old_next_run_at = row["next_run_at"]
 
-            # Advance to the next fire AFTER now (skip, not back-fill).
-            # If old_next_run_at is multiple periods in the past, we jump
-            # straight to the next occurrence after the current time so the
-            # schedule doesn't immediately re-fire on the next poll.
-            new_next_run_at = _next_run_at(cron_expr, now)
+            # Validate cron before acquiring the write lock — a bad cron on one
+            # schedule must not abort all remaining candidates in this poll cycle.
+            try:
+                # Advance to the next fire AFTER now (skip, not back-fill).
+                # Computing inside the transaction boundary ensures the value
+                # is fresh and not from a stale clock snapshot taken earlier.
+                new_next_run_at = _next_run_at(cron_expr, now)
+            except (CroniterBadCronError, ValueError):
+                log.error(
+                    "Schedule %d has invalid cron_expr %r — skipping",
+                    schedule_id, cron_expr,
+                )
+                continue
 
             # BEGIN IMMEDIATE: exclusive write lock for the claim + insert pair.
-            # This ensures no crash window between advancing next_run_at and
-            # inserting the job_run.
-            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+            except sqlite3.OperationalError as e:
+                log.warning(
+                    "DB locked for schedule %d, will retry next poll: %s",
+                    schedule_id, e,
+                )
+                continue
+
             try:
                 cur = conn.execute(
                     """
@@ -101,7 +123,7 @@ def _fire_due_schedules():
                 if cur.rowcount == 0:
                     # Another scheduler process already claimed this schedule
                     conn.execute("ROLLBACK")
-                    log.debug("Schedule %d already claimed by another process — skipping", schedule_id)
+                    log.debug("Schedule %d already claimed — skipping", schedule_id)
                     continue
 
                 conn.execute(
@@ -118,10 +140,12 @@ def _fire_due_schedules():
                 )
             except Exception:
                 conn.execute("ROLLBACK")
-                raise
+                log.error("Failed to claim schedule %d", schedule_id, exc_info=True)
+                # continue processing remaining candidates
 
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def run():

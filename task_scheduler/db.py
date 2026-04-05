@@ -34,9 +34,18 @@ def get_connection() -> sqlite3.Connection:
 
 def init_db():
     """Create tables if they don't exist. Safe to call multiple times."""
-    with get_connection() as conn:
+    try:
         with open(SCHEMA_PATH) as f:
-            conn.executescript(f.read())
+            schema = f.read()
+    except FileNotFoundError:
+        raise RuntimeError(f"Schema file not found: {SCHEMA_PATH}")
+
+    conn = get_connection()
+    try:
+        conn.executescript(schema)
+    finally:
+        conn.close()
+
     print(f"Database initialized at {DB_PATH}")
 
 
