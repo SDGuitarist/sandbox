@@ -1,3 +1,29 @@
+# Review Context — url-health-monitor
+
+## Risk Chain
+
+**Brainstorm risk:** Whether `requests` library is available and outbound HTTP from the container will succeed.
+
+**Plan mitigation:** Verified before plan finalized — requests installed, httpbin.org returned 200.
+
+**Work finding:** HTTP library worked fine. The real risk was SSRF — not mentioned in the brainstorm at all.
+
+**Review resolution:** 4 P1, 7 P2, 5 P3 findings. Key: (1) SSRF via private/loopback URL registration — fixed with _is_safe_host() at registration + allow_redirects=False; (2) SSRF redirect bypass — closed with allow_redirects=False; (3) Soft-delete bypass — pending jobs still ran after delete, fixed with job cancellation in same transaction; (4) No upper bounds on timeout/threshold/interval — DoS vector, fixed with max guards. All fixed.
+
+## Files to Scrutinize
+
+| File | What changed | Risk area |
+|------|-------------|-----------|
+| url_health_monitor/routes.py | Created — 5 endpoints with SSRF protection | SSRF, input validation, soft-delete |
+| url_health_monitor/worker.py | Created — atomic claim, HTTP check, status update | allow_redirects, error handling, status logic |
+| url_health_monitor/scheduler.py | Created — interval-based job enqueuing | Race condition, NOT EXISTS inside lock |
+
+## Plan Reference
+
+`docs/plans/2026-04-05-feat-url-health-monitor-plan.md`
+
+---
+
 # Review Context — distributed-task-scheduler
 
 ## Risk Chain

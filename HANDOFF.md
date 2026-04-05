@@ -1,4 +1,4 @@
-# HANDOFF — distributed-task-scheduler
+# HANDOFF — url-health-monitor
 
 **Date:** 2026-04-05
 **Branch:** master
@@ -6,48 +6,49 @@
 
 ## Current State
 
-Full compound engineering cycle completed. Flask + SQLite distributed task scheduler in `task_scheduler/` with 5 endpoints and a standalone scheduler process. 20 review findings identified (5 P1, 9 P2, 6 P3) and all fixed. 20-test suite passes. Atomic claim uses BEGIN IMMEDIATE with next_run_at computed inside the transaction; per-schedule error isolation prevents one bad schedule from killing the poll loop.
+Full compound engineering cycle completed. Flask + SQLite URL health monitor in `url_health_monitor/` with 5 endpoints, a scheduler process, and a worker process. 16 review findings identified (4 P1, 7 P2, 5 P3) and all fixed. Key fixes: SSRF protection (registration-time IP block + allow_redirects=False), scheduler race condition (NOT EXISTS inside BEGIN IMMEDIATE), soft-delete job cancellation, upper bounds on all resource inputs.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-04-05-distributed-task-scheduler.md |
-| Plan | docs/plans/2026-04-05-feat-distributed-task-scheduler-plan.md |
-| Review | (inline multi-agent review — no review summary file) |
-| Solution | docs/solutions/2026-04-05-distributed-task-scheduler.md |
+| Brainstorm | docs/brainstorms/2026-04-05-url-health-monitor.md |
+| Plan | docs/plans/2026-04-05-feat-url-health-monitor-plan.md |
+| Review | (inline multi-agent review) |
+| Solution | docs/solutions/2026-04-05-url-health-monitor.md |
 
 ## Review Fixes Pending
 
-None — all 20 findings fixed and verified.
+None — all 16 findings fixed and verified.
 
 ## Deferred Items
 
-- `GET /job_runs/<id>` endpoint for full result access (result is truncated to 500 chars in dashboard and recent_runs)
-- Worker implementation that actually claims and processes `job_runs` (scheduler spawns them, but nothing consumes them yet)
-- Job completion/failure endpoint to update `job_runs.status` to completed/failed
-- Authentication for the management API (no auth currently)
-- Metrics endpoint (queue depth, fire rate, error rate)
-- Docker Compose file to run Flask + scheduler together
+- `GET /job_runs/<id>` for full check result detail
+- Authentication for the management API
+- Pagination on `GET /urls` and check results
+- Configurable alert thresholds (e.g., "alert if avg response > 500ms")
+- Actual HTTP method support beyond GET (HEAD for lightweight checks)
+- Prune old check_results (no auto-pruning currently)
+- Docker Compose to start Flask + scheduler + worker together
 
 ## Three Questions
 
-1. **Hardest decision?** Atomic claim mechanism — compute next_run_at INSIDE BEGIN IMMEDIATE (correct, fresh clock) vs outside (stale clock, potential duplicate fires). Correctness wins.
-2. **What was rejected?** Embedded Flask thread (multi-worker duplicate fires), APScheduler (opaque, fights our schema), back-filling missed runs (floods queue after downtime).
-3. **Least confident about?** Whether SUBSTR(result, 1, 500) truncation in dashboard/recent_runs is the right UX tradeoff, or if a separate /job_runs/<id> endpoint is needed for full result access.
+1. **Hardest decision?** SSRF protection design — registration-time IP block alone is insufficient; redirect bypass requires allow_redirects=False in the worker too. Both layers are required.
+2. **What was rejected?** Background Flask thread (duplicate checks), timer-loop without queue (no history/retry), dynamic degraded query (O(N) on every alert request).
+3. **Least confident about?** The status transition logic asymmetry — one success immediately flips degraded→healthy, but degradation requires failure_threshold consecutive failures. This is a product decision that should be documented for operators.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is task_scheduler, a Flask + SQLite distributed
-task scheduler. Cycle 1 is complete — 5 endpoints, standalone scheduler process,
-20 review findings fixed, 20 tests pass. Next work: implement a job worker that
-claims and processes job_runs (GET /job_runs/claim + POST /job_runs/<id>/complete),
-or add auth, or wire up Docker Compose for the two-process deployment.
+Read HANDOFF.md for context. This is url-health-monitor, a Flask + SQLite URL
+health monitoring service. Cycle 1 is complete — 5 endpoints, scheduler, worker,
+SSRF protection, 16 review findings fixed. Next work: add auth, pagination,
+configurable alert thresholds, or Docker Compose for three-process deployment.
 ```
 
 ## Prior Projects
 
+- `task_scheduler/` — Flask + SQLite distributed task scheduler, Cycle 1 complete
 - `api-key-manager/` — Flask API key manager, Cycle 1 complete
 - `webhook-delivery/` — Flask webhook delivery system, Cycle 1 complete
 - `job-queue/` — Flask job queue, Cycle 1 complete
