@@ -12,22 +12,58 @@ Endpoints:
 import json
 import mimetypes
 import os
+import unicodedata
 
-from flask import Blueprint, request, jsonify, send_file, abort
+from flask import Blueprint, request, jsonify, send_file, abort, url_for
 from werkzeug.utils import secure_filename
 
 from db import get_connection, generate_file_id, get_file_upload_dir, is_valid_file_id, UPLOAD_DIR
 
 bp = Blueprint("file_upload", __name__)
 
-ALLOWED_EXTENSIONS = None  # Accept any file type
 MAX_FILENAME_LEN = 255
+
+# Extensions that must never be stored/executed on the server
+BLOCKED_EXTENSIONS = {
+    ".php", ".php3", ".php4", ".php5", ".phtml",
+    ".py", ".pyc", ".pyo",
+    ".rb", ".pl", ".cgi",
+    ".sh", ".bash", ".zsh", ".fish",
+    ".exe", ".dll", ".so", ".dylib",
+    ".js", ".jsx", ".ts", ".tsx",  # server-side script risk
+    ".htaccess", ".htpasswd",
+}
 
 
 def _validate_file_id(file_id: str):
     """Return 400 response if file_id is not a valid UUID."""
     if not is_valid_file_id(file_id):
         abort(400, description="Invalid file ID format")
+
+
+def _sanitize_filename(raw: str) -> str:
+    """
+    NFKC-normalize, strip null bytes, enforce length, then secure_filename.
+    Returns 'upload' if result is empty.
+    """
+    # NFKC normalization prevents unicode homoglyph tricks
+    name = unicodedata.normalize("NFKC", raw)
+    # Strip null bytes
+    name = name.replace("\x00", "")
+    # Truncate before secure_filename (which may further shorten it)
+    name = name[:MAX_FILENAME_LEN]
+    name = secure_filename(name)
+    return name if name else "upload"
+
+
+def _result_path_is_safe(result_path: str) -> bool:
+    """Verify result_path is within UPLOAD_DIR before serving."""
+    try:
+        real = os.path.realpath(result_path)
+        upload_real = os.path.realpath(UPLOAD_DIR)
+        return real.startswith(upload_real + os.sep) or real == upload_real
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -43,14 +79,16 @@ def upload_file():
         return jsonify({"error": "no file selected"}), 400
 
     # Sanitize filename — used for display only, NOT for path construction
-    original_filename = secure_filename(f.filename)
-    if not original_filename:
-        original_filename = "upload"
+    original_filename = _sanitize_filename(f.filename)
 
     # Determine content type and extension
     content_type = f.content_type or "application/octet-stream"
     _, ext = os.path.splitext(original_filename)
     ext = ext.lower() if ext else ""
+
+    # Reject blocked extensions
+    if ext in BLOCKED_EXTENSIONS:
+        return jsonify({"error": f"file type not allowed: {ext}"}), 422
 
     # Generate UUID file_id and create its directory
     file_id = generate_file_id()
@@ -66,10 +104,10 @@ def upload_file():
     with get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO files (id, original_filename, content_type, size_bytes, upload_dir_path)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO files (id, original_filename, content_type, size_bytes, file_ext, upload_dir_path)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (file_id, original_filename, content_type, size_bytes, file_dir),
+            (file_id, original_filename, content_type, size_bytes, save_ext, file_dir),
         )
         # Enqueue one processing job per type
         conn.execute(
@@ -82,13 +120,16 @@ def upload_file():
         )
         conn.commit()
 
-    return jsonify({
+    response = jsonify({
         "file_id": file_id,
         "original_filename": original_filename,
         "content_type": content_type,
         "size_bytes": size_bytes,
         "status": "uploaded",
-    }), 202
+    })
+    response.status_code = 202
+    response.headers["Location"] = url_for("file_upload.get_file", file_id=file_id)
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -143,23 +184,24 @@ def download_file(file_id):
     _validate_file_id(file_id)
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT original_filename, content_type, upload_dir_path FROM files WHERE id = ?",
+            "SELECT original_filename, content_type, file_ext, upload_dir_path FROM files WHERE id = ?",
             (file_id,),
         ).fetchone()
     if row is None:
         return jsonify({"error": "not found"}), 404
 
-    # Path constructed from DB value (uuid-named dir) + known extension
-    file_dir = row["upload_dir_path"]
-    # Find the original file — it's named original.<ext>
-    for fname in os.listdir(file_dir):
-        if fname.startswith("original"):
-            return send_file(
-                os.path.join(file_dir, fname),
-                download_name=row["original_filename"],
-                as_attachment=True,
-            )
-    return jsonify({"error": "file not found on disk"}), 404
+    # Deterministic path using stored extension — no os.listdir needed
+    file_dir = get_file_upload_dir(file_id)
+    file_path = os.path.join(file_dir, f"original{row['file_ext']}")
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "file not found on disk"}), 404
+
+    return send_file(
+        file_path,
+        download_name=row["original_filename"],
+        as_attachment=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +232,8 @@ def get_thumbnail(file_id):
             return jsonify({"error": "thumbnail not yet available", "status": "processing"}), 202
 
     thumb_path = result["result_path"]
+    if not thumb_path or not _result_path_is_safe(thumb_path):
+        return jsonify({"error": "thumbnail path invalid"}), 500
     if not os.path.exists(thumb_path):
         return jsonify({"error": "thumbnail file missing"}), 404
     return send_file(thumb_path, mimetype="image/jpeg")
@@ -214,6 +258,16 @@ def get_metadata(file_id):
         ).fetchone()
 
         if result is None:
+            # Check if job permanently failed
+            job = conn.execute(
+                "SELECT status, attempt_count, max_attempts FROM processing_jobs WHERE file_id = ? AND job_type = 'metadata'",
+                (file_id,),
+            ).fetchone()
+            if job and job["status"] == "failed" and job["attempt_count"] >= job["max_attempts"]:
+                return jsonify({"error": "metadata extraction failed"}), 422
             return jsonify({"error": "metadata not yet available", "status": "processing"}), 202
 
-    return jsonify(json.loads(result["result_json"]))
+    try:
+        return jsonify(json.loads(result["result_json"]))
+    except (json.JSONDecodeError, TypeError):
+        return jsonify({"error": "metadata corrupted"}), 500

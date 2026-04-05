@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS files (
     original_filename TEXT NOT NULL,            -- sanitized display name only
     content_type     TEXT NOT NULL DEFAULT 'application/octet-stream',
     size_bytes       INTEGER NOT NULL,
+    file_ext         TEXT NOT NULL DEFAULT '.bin', -- stored extension for deterministic path
     upload_dir_path  TEXT NOT NULL,             -- absolute path to upload_dir/<id>/
     status           TEXT NOT NULL DEFAULT 'uploaded'
                          CHECK(status IN ('uploaded', 'processing', 'done', 'failed')),
@@ -42,7 +43,8 @@ CREATE TABLE IF NOT EXISTS file_results (
     result_type TEXT NOT NULL CHECK(result_type IN ('thumbnail', 'metadata')),
     result_path TEXT,    -- filesystem path (for thumbnail)
     result_json TEXT,    -- JSON string (for metadata)
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(file_id, result_type)
 );
 
 CREATE INDEX IF NOT EXISTS idx_file_results_file_type

@@ -18,11 +18,15 @@ import os
 import signal
 import sqlite3
 import time
+import unicodedata
 import uuid
 import logging
 from datetime import datetime, timezone
 
-from db import get_connection, get_file_upload_dir
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = 50_000_000  # decompression bomb guard (~7000x7000 px)
+
+from db import get_connection, get_file_upload_dir, is_valid_file_id, UPLOAD_DIR
 
 POLL_INTERVAL = max(1, int(os.environ.get("POLL_INTERVAL", "2")))
 WORKER_ID = os.environ.get("WORKER_ID") or str(uuid.uuid4())
@@ -59,9 +63,9 @@ def _process_thumbnail(file_dir: str, file_id: str) -> dict:
     Returns {"result_path": path} on success.
     Raises exception on failure (non-image, corrupt file, etc.)
     """
-    from PIL import Image, UnidentifiedImageError
+    from PIL import UnidentifiedImageError
 
-    # Find original file
+    # Find original file using validated directory from DB
     original = None
     for fname in os.listdir(file_dir):
         if fname.startswith("original"):
@@ -70,13 +74,14 @@ def _process_thumbnail(file_dir: str, file_id: str) -> dict:
     if original is None:
         raise FileNotFoundError("Original file not found in upload directory")
 
-    img = Image.open(original)  # raises UnidentifiedImageError for non-images
-    img.thumbnail(THUMBNAIL_SIZE)
-    # Convert palette/RGBA modes to RGB for JPEG output
-    if img.mode not in ("RGB", "L"):
-        img = img.convert("RGB")
-    thumb_path = os.path.join(file_dir, "thumbnail.jpg")
-    img.save(thumb_path, "JPEG", quality=85)
+    with Image.open(original) as img:  # context manager prevents FD leak
+        # Convert to RGB before thumbnail — avoids mode issues with palette/RGBA/P modes
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        img.thumbnail(THUMBNAIL_SIZE)
+        thumb_path = os.path.join(file_dir, "thumbnail.jpg")
+        img.save(thumb_path, "JPEG", quality=85)
+
     log.info("Thumbnail saved: %s", thumb_path)
     return {"result_path": thumb_path}
 
@@ -110,14 +115,14 @@ def _process_metadata(file_dir: str, file_id: str, original_filename: str, conte
 
         # Try Pillow for image dimensions
         try:
-            from PIL import Image, UnidentifiedImageError
-            img = Image.open(original)
-            meta["image"] = {
-                "width": img.width,
-                "height": img.height,
-                "mode": img.mode,
-                "format": img.format,
-            }
+            from PIL import UnidentifiedImageError
+            with Image.open(original) as img:
+                meta["image"] = {
+                    "width": img.width,
+                    "height": img.height,
+                    "mode": img.mode,
+                    "format": img.format,
+                }
         except Exception:
             pass
 
@@ -148,9 +153,9 @@ def _recover_stale_jobs(conn):
         UPDATE processing_jobs
         SET status = 'pending', claimed_at = NULL, worker_id = NULL
         WHERE status = 'running'
-          AND claimed_at <= datetime('now', ? || ' seconds')
+          AND (strftime('%s', 'now') - strftime('%s', claimed_at)) > ?
         """,
-        (f"-{JOB_TIMEOUT_SECONDS}",),
+        (JOB_TIMEOUT_SECONDS,),
     )
     conn.commit()
 
@@ -168,6 +173,7 @@ def _update_file_status(conn, file_id: str):
     ).fetchall()
 
     if not jobs:
+        log.warning("_update_file_status: no jobs found for file_id=%s", file_id)
         return
 
     if any(j["status"] == "failed" and j["attempt_count"] >= j["max_attempts"] for j in jobs):
@@ -238,7 +244,7 @@ def _process_one_job() -> bool:
         job = conn.execute(
             """
             SELECT j.id, j.file_id, j.job_type, j.attempt_count, j.max_attempts,
-                   f.original_filename, f.content_type, f.size_bytes, f.upload_dir_path
+                   f.original_filename, f.content_type, f.size_bytes
             FROM processing_jobs j
             JOIN files f ON f.id = j.file_id
             WHERE j.id = ?
@@ -252,7 +258,8 @@ def _process_one_job() -> bool:
 
         file_id = job["file_id"]
         job_type = job["job_type"]
-        file_dir = job["upload_dir_path"]
+        # Always derive path from validated UUID — never trust raw DB path
+        file_dir = get_file_upload_dir(file_id)
         attempt = job["attempt_count"] + 1
 
         log.info("Processing job %d: type=%s file_id=%s attempt=%d", job_id, job_type, file_id, attempt)
@@ -300,7 +307,7 @@ def _process_one_job() -> bool:
             result_json = result.get("result_json")
             conn.execute(
                 """
-                INSERT INTO file_results (file_id, result_type, result_path, result_json)
+                INSERT OR REPLACE INTO file_results (file_id, result_type, result_path, result_json)
                 VALUES (?, ?, ?, ?)
                 """,
                 (file_id, job_type, result_path, result_json),
