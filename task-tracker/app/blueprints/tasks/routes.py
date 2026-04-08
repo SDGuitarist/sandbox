@@ -116,9 +116,9 @@ def update_task_route(task_id):
     errors = []
     if not title:
         errors.append('Title is required.')
-    if status and status not in TASK_STATUSES:
+    if not status or status not in TASK_STATUSES:
         errors.append('Invalid status value.')
-    if priority and priority not in TASK_PRIORITIES:
+    if not priority or priority not in TASK_PRIORITIES:
         errors.append('Invalid priority value.')
 
     if errors:
@@ -154,27 +154,24 @@ def delete_task_route(task_id):
 
 @tasks_bp.route('/tasks/<int:task_id>/comments', methods=['POST'])
 def add_comment(task_id):
-    with get_db() as db:
+    content = request.form.get('content', '').strip()
+
+    with get_db(immediate=True) as db:
         task = get_task(db, task_id)
         if task is None:
             abort(404)
         project = get_project(db, task['project_id'])
-        if project is None:
-            abort(404)
 
-    content = request.form.get('content', '').strip()
-    if not content:
-        flash('Comment cannot be empty.', 'error')
-        with get_db() as db:
+        if not content:
+            flash('Comment cannot be empty.', 'error')
             comments = get_comments_for_task(db, task_id)
-        return render_template('tasks/detail.html',
-            task=task,
-            project=project,
-            comments=comments,
-            STATUS_LABELS=STATUS_LABELS,
-            PRIORITY_LABELS=PRIORITY_LABELS
-        )
+            return render_template('tasks/detail.html',
+                task=task,
+                project=project,
+                comments=comments,
+                STATUS_LABELS=STATUS_LABELS,
+                PRIORITY_LABELS=PRIORITY_LABELS
+            )
 
-    with get_db(immediate=True) as db:
         create_comment(db, task_id, content)
     return redirect(url_for('tasks.show_task', task_id=task_id))

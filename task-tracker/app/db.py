@@ -4,9 +4,6 @@ from contextlib import contextmanager
 
 from flask import current_app
 
-DB_NAME = 'task_tracker.db'
-
-
 @contextmanager
 def get_db(immediate=False):
     db_path = current_app.config['DB_PATH']
