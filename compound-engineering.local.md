@@ -1,27 +1,35 @@
-# Review Context — Service Mesh Dashboard
+# Review Context — Sandbox (Flask Swarm Acid Test)
 
 ## Risk Chain
 
-**Brainstorm risk:** "SSRF DNS rebinding gap — register with public DNS that later resolves to 127.0.0.1 after validation. Document the gap; use allow_redirects=False in worker as second defense line."
+**Brainstorm risk:** "Whether Python imports between blueprints will cause
+mismatches that CSS class/ID matching in JS didn't. In JS, agents just need to
+agree on string names. In Python, agents need to agree on import paths, function
+signatures, AND the app factory's blueprint registration order."
 
-**Plan mitigation:** Two-layer SSRF: IP check at registration + allow_redirects=False in worker. Verify-first test confirms both layers. DNS rebinding documented in ssrf.py module docstring.
+**Plan mitigation:** Prescriptive code blocks for all `__init__.py` files,
+exact blueprint variable names, deferred imports inside `create_app()` to
+prevent circular imports. Template Render Context section (150+ lines) defining
+exact `render_template()` keyword arguments.
 
-**Work risk (from Feed-Forward):** Events FK semantics — whether to CASCADE or SET NULL when a service is deleted.
+**Work risk (from Feed-Forward):** Context manager usage gap — spec said
+`@contextmanager` but didn't show `with` syntax. All 3 agents made the same
+bare-assignment mistake.
 
-**Review resolution:** 1 P1 + 3 P2 + 3 P3. Key fixes: P1-001 (events table missing FK — added ON DELETE SET NULL, not CASCADE), P2-002 (auth middleware needs immediate=True to close TOCTOU on key validation), P2-003 (3xx should be degraded not healthy with allow_redirects=False), P2-004 (complete_job needs AND status='running' guard). All fixed.
-
-Discovered during P1 fix: ON DELETE CASCADE (as suggested by reviewer) deletes the service.deleted audit event itself. Changed to ON DELETE SET NULL to preserve audit records.
+**Review resolution:** 0 interface mismatches. All 7 checkpoints passed.
+Context manager fix applied post-assembly (zero-risk — changed acquisition
+pattern, not queries). Codex review found validation + input preservation
+issues, fixed in commit 3ad4c20.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| dashboard/schema.sql | events.service_id changed to ON DELETE SET NULL | FK cascade semantics |
-| dashboard/auth.py | immediate=True added to get_db call | TOCTOU on key validation |
-| dashboard/worker.py | 3xx threshold changed to < 300 | Health status classification |
-| dashboard/jobs.py | complete_job guard AND status='running' added | Double-complete prevention |
-| dashboard/ssrf.py | is_link_local check moved before is_private | SSRF check ordering |
+| task-tracker/app/db.py | get_db() context manager | Connection lifecycle |
+| task-tracker/app/__init__.py | Blueprint registration order | Circular imports |
+| task-tracker/app/blueprints/*/routes.py | with get_db() usage (post-fix) | Context manager pattern |
+| task-tracker/app/templates/layout.html | Flash messages, block definitions | Silent Jinja2 mismatches |
 
 ## Plan Reference
 
-`docs/plans/2026-04-05-feat-service-mesh-dashboard-plan.md`
+`docs/plans/2026-04-07-feat-flask-swarm-acid-test-plan.md`
