@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block title %}Projects - Task Tracker{% endblock %}
+
+{% block content %}
+<h1>Projects</h1>
+
+<a href="{{ url_for('projects.new_project') }}">New Project</a>
+
+{% if projects %}
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Description</th>
+      <th>Created</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in projects %}
+    <tr>
+      <td><a href="{{ url_for('projects.show_project', project_id=p.id) }}">{{ p.name }}</a></td>
+      <td>{{ p.description }}</td>
+      <td>{{ p.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No projects yet.</p>
+{% endif %}
+{% endblock %}

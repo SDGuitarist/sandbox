@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ project.name }} - Task Tracker{% endblock %}
+
+{% block content %}
+<h1>{{ project.name }}</h1>
+<p>{{ project.description }}</p>
+<p>Created: {{ project.created_at }} | Updated: {{ project.updated_at }}</p>
+
+<a href="{{ url_for('projects.edit_project', project_id=project.id) }}">Edit Project</a>
+
+<form method="post" action="{{ url_for('projects.delete_project_route', project_id=project.id) }}">
+  <button type="submit">Delete Project</button>
+</form>
+
+<h2>Tasks</h2>
+<a href="{{ url_for('tasks.new_task', project_id=project.id) }}">New Task</a>
+
+{% if tasks %}
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Status</th>
+      <th>Priority</th>
+      <th>Created</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in tasks %}
+    <tr>
+      <td><a href="{{ url_for('tasks.show_task', task_id=t.id) }}">{{ t.title }}</a></td>
+      <td>{{ STATUS_LABELS[t.status] }}</td>
+      <td>{{ t.priority }}</td>
+      <td>{{ t.created_at }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No tasks yet.</p>
+{% endif %}
+{% endblock %}

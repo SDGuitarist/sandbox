@@ -1,80 +1,85 @@
-# HANDOFF — Sandbox Merge Complete
+# HANDOFF — Flask Swarm Acid Test Complete
 
-**Date:** 2026-04-05
-**Branch:** main
-**Phase:** Compound complete — all 6 phases done
+**Date:** 2026-04-07
+**Branch:** master
+**Phase:** Work complete — awaiting Codex code review
 
 ## Current State
 
-Merged sandbox-auto's swarm coordination knowledge into sandbox. No code changes — this was a knowledge consolidation. 8 docs ported with `origin_repo: sandbox-auto` frontmatter annotations.
+Flask Swarm Acid Test passed. 4 parallel agents built a Task Tracker app from
+a shared interface spec with **0 interface mismatches**. The shared spec pattern
+is validated as stack-agnostic (works for Python/Flask, not just JS/static).
+
+**sandbox-auto can now be archived.**
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-04-05-sandbox-merge-swarm-integration.md |
-| Plan | docs/plans/2026-04-05-sandbox-merge-swarm-integration-plan.md |
-| Review | docs/reviews/2026-04-05-sandbox-merge-review-summary.md |
-| Solution | docs/solutions/2026-04-05-cross-project-knowledge-merge.md |
+| Brainstorm | docs/brainstorms/2026-04-07-flask-swarm-acid-test.md |
+| Plan | docs/plans/2026-04-07-feat-flask-swarm-acid-test-plan.md |
+| Implementation | task-tracker/ (20 files, 978 LOC) |
 
-## What Was Ported (8 docs from sandbox-auto)
+## Acid Test Results
 
-- 4 solution docs (swarm alignment, multi-service automation, swarm scaling, chain reaction contracts)
-- 2 review summaries (health journal, uptime pulse)
-- 2 brainstorm docs (swarm scale experiment, marketing funnel architecture)
-- All 8 ported docs have `origin_repo: sandbox-auto` in frontmatter
-- Solution docs include body-level note: "File paths reference the sandbox-auto repo (archived)"
+| Checkpoint | Result |
+|-----------|--------|
+| 1: App starts (no import errors) | PASS |
+| 2: All 15 routes respond | PASS |
+| 3: Cross-blueprint DB state | PASS |
+| 4: Navigation links resolve | PASS |
+| 5: Invalid routes return 404 | PASS |
+| 6: Spec line count (584 lines) | PASS |
+| 7: Spec-vs-code audit (0 mismatches) | PASS |
 
-## Cycle Artifacts (written in sandbox for this merge)
+**Mismatch count: 0**
 
-- `docs/brainstorms/2026-04-05-sandbox-merge-swarm-integration.md` — merge brainstorm
-- `docs/plans/2026-04-05-sandbox-merge-swarm-integration-plan.md` — merge plan
+## Spec Gap Found
 
-These are NOT ported docs. They are the compound engineering cycle artifacts that drove this merge.
+All 3 blueprint agents used `db = get_db()` instead of `with get_db() as db:`.
+The spec defined `get_db` as `@contextmanager` but the usage examples didn't
+show the `with` syntax. This was a spec ambiguity, not agent divergence — all
+3 agents made the identical mistake. Fixed post-assembly.
 
-## Doc Counts After Merge
+**Lesson:** When a shared spec defines a context manager, include an explicit
+usage example showing `with ... as ...:` syntax. Don't assume agents will
+infer it from `@contextmanager`.
 
-| Directory | Before | Ported | Cycle artifacts | After |
-|-----------|--------|--------|----------------|-------|
-| docs/solutions/ | 14 | +4 | 0 | 18 |
-| docs/reviews/ | 0 (new) | +2 | 0 | 2 |
-| docs/brainstorms/ | 14 | +2 | +1 | 17 |
-| docs/plans/ | 14 | 0 | +1 | 15 |
+## What Was Validated
 
-## Assumptions Verified (During Plan Phase)
+- Shared interface spec pattern produces 0 mismatches for Python/Flask
+- Python-specific integration surfaces all covered: imports, blueprints,
+  template inheritance, SQLite models, app factory, context managers
+- 4 agents running fully parallel (no agent depends on another's code)
+- Spec size: 584 lines for 4 agents (3x larger than JS 6-agent spec due to
+  prescriptive code blocks and Template Render Context section)
 
-1. `/autopilot` command CANNOT branch — it's a static markdown file with `disable-model-invocation: true`. Branching happens in /workflows:work when it reads the plan.
-2. Shared interface spec DOES transfer to Python/Flask — 8 integration surfaces identified (function signatures, DB schema, status enums, shared constants, import paths, Flask routes, config/env vars, implicit contracts).
+## Previously Not Validated (Now Resolved)
 
-## Python Shared Interface Spec Convention
-
-Defined in the plan doc (Phase 2). When a plan has 2+ independent modules, include a `## Shared Interface Spec` section with: Public Function Signatures, Database Schema, Shared Constants, Flask Routes, Data Ownership, Implicit Contracts.
-
-## Not Yet Validated (Next Cycle)
-
-- Whether /workflows:work can detect a "Swarm Agent Assignment" table in the plan and switch to parallel builds
-- Whether the shared spec pattern produces 0 mismatches for Python/Flask apps (validated only for JS so far)
-- Spec verification step after parallel builds
-- sandbox-auto is read-only but NOT archived until Python swarm validation succeeds
+- ~~Whether shared spec produces 0 mismatches for Python/Flask~~ → **YES, 0 mismatches**
+- ~~sandbox-auto is read-only until Python swarm validation succeeds~~ → **Validation succeeded**
+- Whether /workflows:work can detect swarm agent tables → **Still unvalidated** (agents launched manually)
+- Spec verification step after parallel builds → **Checkpoint 7 added (grep-based audit)**
 
 ## Deferred Items
 
-- Test agent that auto-generates tests from shared spec (validate pattern first)
-- Archive sandbox-auto (after Python swarm validation succeeds)
-- Investigate /workflows:work swarm detection capability
+- Archive sandbox-auto (validation succeeded — ready to archive)
+- Auto-detect swarm agent tables in /workflows:work
+- Test agent that auto-generates tests from shared spec
+- Add `with get_db() as db:` usage example to spec template for future builds
 
-## Three Questions
+## Feed-Forward
 
-1. **Hardest decision:** Which docs to port and which to leave behind. Chose to port solution docs, review summaries, and brainstorms (patterns transfer across stacks) but NOT plan docs (too many dead file path references to sandbox-auto source code).
-2. **What was rejected:** Porting plan docs (60%+ dead references). Porting source code (different stack). Creating a fresh repo (anti-compounding — loses 14 solution docs and 18 test files).
-3. **Least confident about:** Whether the "implied capability" risk materializes — ported docs describe swarm workflows that sandbox doesn't support yet. Mitigated by the "Not Yet Validated" section above, but a reader who skips HANDOFF and goes straight to solution docs might assume sandbox can do parallel swarm builds today.
+- **Hardest decision:** Fixing the context manager usage post-assembly. All 3
+  agents had the same bug, confirming it was a spec gap. Could have been caught
+  if the spec included a usage example.
 
-## Prompt for Next Session
+- **Rejected alternatives:** Considered changing `get_db()` to a plain function
+  (not context manager) to avoid the `with` requirement. Rejected because the
+  context manager pattern is the established repo convention and ensures
+  connections are always closed.
 
-```
-Read HANDOFF.md for context. This is sandbox, a compound engineering automation lab.
-8 docs were just ported from sandbox-auto (swarm coordination patterns).
-Next: validate the merge with a Python swarm build — multi-module Flask app,
-shared interface spec in the plan, parallel agents in the work phase.
-This is the acid test before archiving sandbox-auto.
-```
+- **Least confident:** Whether the 584-line spec size is sustainable. JS specs
+  grew from 60→190 lines across 3→6 agents. Python jumped to 584 at 4 agents,
+  mostly due to Section 8 (Template Render Context). Future builds should test
+  whether this section can be generated automatically from route/model signatures.

@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block title %}{% if task %}Edit Task{% else %}New Task{% endif %} - Task Tracker{% endblock %}
+{% block content %}
+<nav>
+  <a href="{{ url_for('dashboard.index') }}">Home</a> &raquo;
+  <a href="{{ url_for('projects.list_projects') }}">Projects</a> &raquo;
+  <a href="{{ url_for('projects.show_project', project_id=project.id) }}">{{ project.name }}</a> &raquo;
+  {% if task %}Edit Task{% else %}New Task{% endif %}
+</nav>
+
+<h1>{% if task %}Edit Task{% else %}New Task{% endif %}</h1>
+<p>Project: {{ project.name }}</p>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    {% for message in messages %}
+      <p style="color: red;">{{ message }}</p>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form action="{{ action_url }}" method="post">
+  <div>
+    <label for="title">Title</label><br>
+    <input type="text" id="title" name="title" value="{{ task.title if task else '' }}" required>
+  </div>
+
+  <div>
+    <label for="description">Description</label><br>
+    <textarea id="description" name="description" rows="6" cols="50">{{ task.description if task else '' }}</textarea>
+  </div>
+
+  {% if task %}
+  <div>
+    <label for="status">Status</label><br>
+    <select id="status" name="status">
+      {% for s in TASK_STATUSES %}
+        <option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ STATUS_LABELS[s] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div>
+    <label for="priority">Priority</label><br>
+    <select id="priority" name="priority">
+      {% for p in TASK_PRIORITIES %}
+        <option value="{{ p }}" {% if task and task.priority == p %}selected{% endif %}>{{ PRIORITY_LABELS[p] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <button type="submit">{% if task %}Update Task{% else %}Create Task{% endif %}</button>
+</form>
+{% endblock %}

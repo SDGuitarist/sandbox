@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - Task Tracker{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<section class="stats-summary">
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.total_projects }}</span>
+        <span class="stat-label">Projects</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.total_tasks }}</span>
+        <span class="stat-label">Total Tasks</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.tasks_by_status.todo }}</span>
+        <span class="stat-label">To Do</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.tasks_by_status.in_progress }}</span>
+        <span class="stat-label">In Progress</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.tasks_by_status.done }}</span>
+        <span class="stat-label">Done</span>
+    </div>
+</section>
+
+<section class="projects-list">
+    <h2>Projects</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Project</th>
+                <th>Tasks</th>
+                <th>Done</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in stats.projects %}
+            <tr>
+                <td><a href="{{ url_for('projects.show_project', project_id=p.id) }}">{{ p.name }}</a></td>
+                <td>{{ p.task_count }}</td>
+                <td>{{ p.done_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="recent-tasks">
+    <h2>Recent Tasks</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Status</th>
+                <th>Project</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in stats.recent_tasks %}
+            <tr>
+                <td><a href="{{ url_for('tasks.show_task', task_id=t.id) }}">{{ t.title }}</a></td>
+                <td><span class="status-badge status-{{ t.status }}">{{ STATUS_LABELS[t.status] }}</span></td>
+                <td>{{ t.project_name }}</td>
+                <td>{{ t.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}
