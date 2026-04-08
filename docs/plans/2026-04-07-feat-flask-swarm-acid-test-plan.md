@@ -14,8 +14,8 @@ feed_forward:
 ## Enhancement Summary
 
 **Deepened on:** 2026-04-07
-**Revised on:** 2026-04-07 (Codex Plan Review findings applied)
-**Sections enhanced:** 6
+**Revised on:** 2026-04-07 (Codex Plan Review + Claude Code rev-4 fixes applied)
+**Sections enhanced:** 6 (+ comment removal, get_db contract, routing reconciliation, verification upgrade)
 **Research agents used:** architecture-strategist, security-sentinel, code-simplicity-reviewer, best-practices-researcher, solution-doc-searcher, Context7 Flask docs
 
 ### Deepening Improvements
@@ -125,8 +125,6 @@ spec and follows it exactly. No agent reads another agent's code.
 | `create_task` | `create_task(conn, project_id, title, description, priority)` | `int` (new id) | Tasks |
 | `update_task` | `update_task(conn, task_id, title, description, status, priority)` | `None` (sets `updated_at`) | Tasks |
 | `delete_task` | `delete_task(conn, task_id)` | `None` | Tasks |
-| `get_comments_for_task` | `get_comments_for_task(conn, task_id)` | `list[sqlite3.Row]` | Tasks |
-| `create_comment` | `create_comment(conn, task_id, content)` | `int` (new id) | Tasks |
 | `get_dashboard_stats` | `get_dashboard_stats(conn)` | `dict` (see below) | Dashboard |
 
 `get_dashboard_stats` returns:
@@ -159,6 +157,31 @@ GROUP BY p.id, p.name ORDER BY p.name
 All model functions receive a `conn` parameter (the sqlite3.Connection from
 `get_db()`). They do NOT call `get_db()` themselves.
 
+#### get_db() Usage Contract
+
+`get_db()` is a context manager. **Never** assign it directly (`conn = get_db()` is wrong). Always use `with`:
+
+**Read-only operations** (GET routes):
+```python
+with get_db() as conn:
+    project = get_project(conn, project_id)
+```
+
+**Write operations** (POST routes — create, update, delete):
+```python
+with get_db(immediate=True) as conn:
+    create_project(conn, name, description)
+```
+
+`immediate=True` acquires a `BEGIN IMMEDIATE` lock, preventing concurrent write conflicts in SQLite. Every POST handler must use `immediate=True`. Every GET handler uses the default `immediate=False`.
+
+**Anti-pattern (will break):**
+```python
+# WRONG — get_db() returns a context manager, not a connection
+conn = get_db()
+project = get_project(conn, project_id)
+```
+
 ### 2. Database Schema
 
 ```sql
@@ -185,17 +208,10 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
 );
 
-CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
-);
 ```
 
-**FK semantics:** `ON DELETE CASCADE` on both `tasks.project_id` and
-`comments.task_id`. Deleting a project cascades to its tasks, which cascades
-to their comments.
+**FK semantics:** `ON DELETE CASCADE` on `tasks.project_id`. Deleting a project
+cascades to its tasks.
 
 **Status enum values:** `'todo'`, `'in_progress'`, `'done'` (enforced by CHECK constraint).
 
@@ -216,24 +232,45 @@ to their comments.
 | Method | Path | Blueprint | Handler | Returns |
 |--------|------|-----------|---------|---------|
 | GET | `/` | dashboard | `index()` | Renders `dashboard/index.html` with stats |
-| GET | `/projects` | projects | `list_projects()` | Renders `projects/list.html` |
+| GET | `/projects/` | projects | `list_projects()` | Renders `projects/list.html` |
 | GET | `/projects/<int:project_id>` | projects | `show_project(project_id)` | Renders `projects/detail.html` with tasks |
 | GET | `/projects/new` | projects | `new_project()` | Renders `projects/form.html` (empty) |
-| POST | `/projects` | projects | `create_project_route()` | Redirects to `/projects/<id>` |
+| POST | `/projects/` | projects | `create_project_route()` | Redirects to `/projects/<id>` |
 | GET | `/projects/<int:project_id>/edit` | projects | `edit_project(project_id)` | Renders `projects/form.html` (filled) |
 | POST | `/projects/<int:project_id>` | projects | `update_project_route(project_id)` | Redirects to `/projects/<id>` |
-| POST | `/projects/<int:project_id>/delete` | projects | `delete_project_route(project_id)` | Redirects to `/projects` |
-| GET | `/tasks/<int:task_id>` | tasks | `show_task(task_id)` | Renders `tasks/detail.html` with comments |
+| POST | `/projects/<int:project_id>/delete` | projects | `delete_project_route(project_id)` | Redirects to `/projects/` |
+| GET | `/tasks/<int:task_id>` | tasks | `show_task(task_id)` | Renders `tasks/detail.html` |
 | GET | `/projects/<int:project_id>/tasks/new` | tasks | `new_task(project_id)` | Renders `tasks/form.html` (empty) |
 | POST | `/projects/<int:project_id>/tasks` | tasks | `create_task_route(project_id)` | Redirects to `/tasks/<id>` |
 | GET | `/tasks/<int:task_id>/edit` | tasks | `edit_task(task_id)` | Renders `tasks/form.html` (filled) |
 | POST | `/tasks/<int:task_id>` | tasks | `update_task_route(task_id)` | Redirects to `/tasks/<id>` |
 | POST | `/tasks/<int:task_id>/delete` | tasks | `delete_task_route(task_id)` | Redirects to project detail |
-| POST | `/tasks/<int:task_id>/comments` | tasks | `add_comment(task_id)` | Redirects to `/tasks/<id>` |
 
 **Route ownership:** Tasks blueprint owns `/tasks/*` routes AND the nested
 `/projects/<pid>/tasks/new` and `/projects/<pid>/tasks` (POST) routes for
 creating tasks within a project. This avoids cross-blueprint route conflicts.
+
+**Routing contract:**
+- **Projects blueprint** is registered with `url_prefix='/projects'`. All
+  project routes use **relative** route rules (e.g., `@projects_bp.route('/')`
+  resolves to `/projects/`). Flask's trailing-slash behavior: `@bp.route('/')`
+  with `url_prefix='/projects'` makes the canonical URL `/projects/` (trailing
+  slash). Flask auto-redirects `GET /projects` → `/projects/` with a 308.
+  `url_for('projects.list_projects')` returns `/projects/`.
+- **Tasks blueprint** has no `url_prefix`. All task routes use **absolute** rules
+  (e.g., `@tasks_bp.route('/tasks/<int:task_id>')`).
+- **Dashboard blueprint** has no `url_prefix`. Single absolute route `'/'`.
+
+**Projects route-rule examples** (relative, because `url_prefix='/projects'`):
+```python
+@projects_bp.route('/')                                    # → /projects/ (canonical)
+@projects_bp.route('/<int:project_id>')                    # → /projects/<id>
+@projects_bp.route('/new')                                 # → /projects/new
+@projects_bp.route('/', methods=['POST'])                  # → POST /projects/
+@projects_bp.route('/<int:project_id>/edit')               # → /projects/<id>/edit
+@projects_bp.route('/<int:project_id>', methods=['POST'])  # → POST /projects/<id>
+@projects_bp.route('/<int:project_id>/delete', methods=['POST'])  # → POST /projects/<id>/delete
+```
 
 ### 5. Data Ownership
 
@@ -241,7 +278,6 @@ creating tasks within a project. This avoids cross-blueprint route conflicts.
 |-------|----------------------|---------|
 | `projects` | Projects blueprint | Dashboard, Tasks (to show project name) |
 | `tasks` | Tasks blueprint | Dashboard (stats + recent), Projects (task list on detail) |
-| `comments` | Tasks blueprint | (only shown in task detail view) |
 
 **Rule:** Only the writer calls `create_*`, `update_*`, `delete_*` model
 functions for its table. Readers only call `get_*` functions.
@@ -286,7 +322,7 @@ functions for its table. Readers only call `get_*` functions.
 
 **url_for patterns:**
 - `url_for('dashboard.index')` → `/`
-- `url_for('projects.list_projects')` → `/projects`
+- `url_for('projects.list_projects')` → `/projects/`
 - `url_for('projects.show_project', project_id=p.id)` → `/projects/<id>`
 - `url_for('tasks.show_task', task_id=t.id)` → `/tasks/<id>`
 - `url_for('tasks.new_task', project_id=p.id)` → `/projects/<id>/tasks/new`
@@ -300,8 +336,8 @@ functions for its table. Readers only call `get_*` functions.
   operation. Read-only operations use `get_db()` (default `immediate=False`).
 - **404 handling:** If `get_project()` or `get_task()` returns `None`, the
   route handler calls `abort(404)`.
-- **Authentication:** Out of scope. No auth, no users, no sessions. Comments
-  are anonymous. This is intentional for the acid test.
+- **Authentication:** Out of scope. No auth, no users, no sessions.
+  This is intentional for the acid test.
 - **Input validation:** All required fields (name, title, content) must be
   stripped of whitespace and rejected if empty. Use `request.form.get('field', '').strip()`.
   Return the form with an error message (via `flash()`) if validation fails.
@@ -324,7 +360,7 @@ functions for its table. Readers only call `get_*` functions.
 - **Form field `name` attributes:** Must match the parameter names in model
   functions. Projects form: `name="name"`, `name="description"`. Tasks form:
   `name="title"`, `name="description"`, `name="status"`, `name="priority"`.
-  Comments form: `name="content"`. Never use prefixed names like `project_name`.
+  Never use prefixed names like `project_name`.
 - **XSS template rules:** All HTML attributes with template variables MUST use
   double quotes. Never use `|safe`, `Markup()`, or `{% autoescape false %}`.
   For multi-line text, use CSS `white-space: pre-wrap` instead of `<br>|safe`.
@@ -427,7 +463,6 @@ Conditional title: `{% if project %}Edit Project{% else %}New Project{% endif %}
 return render_template('tasks/detail.html',
     task=task,           # sqlite3.Row from get_task()
     project=project,     # sqlite3.Row from get_project(conn, task.project_id)
-    comments=comments,   # list[sqlite3.Row] from get_comments_for_task()
     STATUS_LABELS=STATUS_LABELS,
     PRIORITY_LABELS=PRIORITY_LABELS
 )
@@ -437,9 +472,6 @@ Template accesses: `task.id`, `task.title`, `task.description`, `task.status`,
 `task.priority`, `task.created_at`, `task.updated_at`.
 `project.id`, `project.name` (for breadcrumb/link back).
 `STATUS_LABELS[task.status]`, `PRIORITY_LABELS[task.priority]`.
-Loop over `comments` — each row: `c.id`, `c.content`, `c.created_at`.
-Comment form: `action="{{ url_for('tasks.add_comment', task_id=task.id) }}"`,
-field `name="content"`.
 
 #### tasks/form.html (Agent 3)
 
@@ -567,7 +599,7 @@ from app.blueprints.dashboard import routes  # noqa: E402, F401
 |---|-------|-------|-------------------|
 | 1 | Core + Models | `run.py`, `requirements.txt`, `app/__init__.py`, `app/db.py`, `app/models.py`, `app/schema.sql` | All sections (implements shared infrastructure) |
 | 2 | Projects | `app/blueprints/projects/__init__.py`, `app/blueprints/projects/routes.py`, `app/templates/projects/list.html`, `app/templates/projects/detail.html`, `app/templates/projects/form.html` | Routes (projects rows), Data Ownership, Template Blocks, Function Signatures (project + task getters) |
-| 3 | Tasks | `app/blueprints/tasks/__init__.py`, `app/blueprints/tasks/routes.py`, `app/templates/tasks/detail.html`, `app/templates/tasks/form.html` | Routes (tasks rows), Data Ownership, Template Blocks, Function Signatures (task + comment functions), Shared Constants (statuses, priorities) |
+| 3 | Tasks | `app/blueprints/tasks/__init__.py`, `app/blueprints/tasks/routes.py`, `app/templates/tasks/detail.html`, `app/templates/tasks/form.html` | Routes (tasks rows), Data Ownership, Template Blocks, Function Signatures (task functions), Shared Constants (statuses, priorities) |
 | 4 | Dashboard + Layout | `app/blueprints/dashboard/__init__.py`, `app/blueprints/dashboard/routes.py`, `app/templates/layout.html`, `app/templates/dashboard/index.html`, `app/static/style.css` | Routes (dashboard row), Template Blocks (defines layout), Function Signatures (get_dashboard_stats), Shared Constants (STATUS_LABELS) |
 
 All agents depend ONLY on the Shared Interface Spec. No agent depends on
@@ -630,9 +662,11 @@ Adapted from DevDash (see brainstorm):
   This is the first test of the Feed-Forward risk (Python imports).
 - [ ] **Checkpoint 2: All routes respond** — curl every endpoint from the
   routes table (Section 4), verify no 500 errors. All GET routes return 200.
-- [ ] **Checkpoint 3: Shared DB state works** — POST to `/projects` to create
+- [ ] **Checkpoint 3: Shared DB state works** — POST to `/projects/` to create
   a project, verify it appears on dashboard (`GET /`). POST to
   `/projects/1/tasks` to create a task, verify task count updates on dashboard.
+  Note: `GET /projects` will 308-redirect to `/projects/` — this is expected
+  Flask behavior, not a mismatch.
 - [ ] **Checkpoint 4: Navigation works** — Click through: Dashboard → Projects
   → Project Detail → New Task → Task Detail → back to Dashboard. All
   `url_for()` links resolve correctly.
@@ -648,49 +682,133 @@ This checkpoint directly addresses the Feed-Forward risk. Do NOT rely on
 templates, wrong block names, wrong render context) will not crash the app
 but will produce blank sections or wrong data.
 
-**7a. Blueprint variable names and import paths:**
-```bash
-# Verify exact variable names in each blueprint __init__.py
-grep -n "Blueprint(" task-tracker/app/blueprints/*/\_\_init\_\_.py
-# Expected: projects_bp, tasks_bp, dashboard_bp (exact names)
+Run all checks from the `task-tracker/` directory. Every check has an exact
+expected output — PASS/FAIL is automated, not "grep then human cross-reference."
 
-# Verify imports in __init__.py match spec
-grep -n "from app.blueprints" task-tracker/app/__init__.py
-# Expected: from app.blueprints.dashboard import dashboard_bp (etc.)
+**7a. Blueprint variable names (exact names, not just "Blueprint( appears"):**
+```bash
+# Check: projects_bp exists
+grep -c "^projects_bp = Blueprint('projects'" app/blueprints/projects/__init__.py
+# PASS if output = 1
+
+# Check: tasks_bp exists
+grep -c "^tasks_bp = Blueprint('tasks'" app/blueprints/tasks/__init__.py
+# PASS if output = 1
+
+# Check: dashboard_bp exists
+grep -c "^dashboard_bp = Blueprint('dashboard'" app/blueprints/dashboard/__init__.py
+# PASS if output = 1
+
+# Check: app/__init__.py imports exact variable names
+grep -c "from app.blueprints.dashboard import dashboard_bp" app/__init__.py
+# PASS if output = 1
+grep -c "from app.blueprints.projects import projects_bp" app/__init__.py
+# PASS if output = 1
+grep -c "from app.blueprints.tasks import tasks_bp" app/__init__.py
+# PASS if output = 1
+
+# Check: projects registered with url_prefix='/projects'
+grep -c "register_blueprint(projects_bp, url_prefix='/projects')" app/__init__.py
+# PASS if output = 1
 ```
 
-**7b. Template inheritance and block names:**
+**7b. Template inheritance and allowed block names:**
 ```bash
-# Verify all templates extend layout.html
-grep -rn "extends" task-tracker/app/templates/**/*.html
-# Expected: {% extends "layout.html" %} in every file except layout.html
+# Check: all 6 page templates extend layout.html
+grep -r 'extends "layout.html"' app/templates/ --include="*.html" | grep -v layout.html | wc -l
+# PASS if output = 6
 
-# Verify block names match spec (title, content only)
-grep -rn "block " task-tracker/app/templates/**/*.html
-# Expected: only "block title" and "block content" (no invented blocks)
+# Check: all 6 page templates define block content
+grep -r "block content" app/templates/ --include="*.html" | grep -v layout.html | wc -l
+# PASS if output >= 6
+
+# Check: layout.html defines block title and block content
+grep -c "block title" app/templates/layout.html
+# PASS if output >= 1
+grep -c "block content" app/templates/layout.html
+# PASS if output >= 1
+
+# Check: NO invented block names (only title and content allowed)
+grep -oP "block \w+" app/templates/**/*.html | grep -v "block title" | grep -v "block content" | wc -l
+# PASS if output = 0
+
+# Check: layout.html includes flash-message loop with categories
+grep -c "get_flashed_messages(with_categories=true)" app/templates/layout.html
+# PASS if output >= 1
+
+# Check: no page template calls get_flashed_messages (layout handles it)
+grep -r "get_flashed_messages" app/templates/ --include="*.html" | grep -v layout.html | wc -l
+# PASS if output = 0
 ```
 
-**7c. Render context variable names:**
+**7c. Render-context producer checks (exact render_template signatures):**
 ```bash
-# Verify every render_template call uses exact variable names from Section 8
-grep -rn "render_template" task-tracker/app/blueprints/*/routes.py
-# Cross-reference each call against Section 8 of the spec
-# Check: stats, projects, project, tasks, task, comments, action_url
-# Check: STATUS_LABELS, TASK_STATUSES, TASK_PRIORITIES, PRIORITY_LABELS
+# Check: dashboard passes stats= and STATUS_LABELS=
+grep -c "render_template('dashboard/index.html'" app/blueprints/dashboard/routes.py
+# PASS if output = 1
+grep "render_template('dashboard/index.html'" app/blueprints/dashboard/routes.py | grep -c "stats="
+# PASS if output = 1
+grep "render_template('dashboard/index.html'" app/blueprints/dashboard/routes.py | grep -c "STATUS_LABELS="
+# PASS if output = 1
+
+# Check: projects/list passes projects=
+grep -c "render_template('projects/list.html'.*projects=" app/blueprints/projects/routes.py
+# PASS if output = 1
+
+# Check: projects/detail passes project= and tasks= and STATUS_LABELS=
+grep -c "render_template('projects/detail.html'" app/blueprints/projects/routes.py
+# PASS if output = 1
+grep "render_template('projects/detail.html'" app/blueprints/projects/routes.py | grep -c "project=.*tasks=.*STATUS_LABELS="
+# PASS if output = 1
+
+# Check: projects/form passes project= and action_url= (2 calls: new + edit)
+grep -c "render_template('projects/form.html'.*project=.*action_url=" app/blueprints/projects/routes.py
+# PASS if output = 2
+
+# Check: tasks/detail passes task=, project=, STATUS_LABELS=, PRIORITY_LABELS=
+grep -c "render_template('tasks/detail.html'" app/blueprints/tasks/routes.py
+# PASS if output = 1
+grep "render_template('tasks/detail.html'" app/blueprints/tasks/routes.py | grep -c "task=.*project=.*STATUS_LABELS=.*PRIORITY_LABELS="
+# PASS if output = 1
+
+# Check: tasks/form passes task=, project=, action_url= (2 calls: new + edit)
+grep -c "render_template('tasks/form.html'.*task=.*project=.*action_url=" app/blueprints/tasks/routes.py
+# PASS if output = 2
 ```
 
-**7d. run.py app discovery:**
+**7d. get_db() usage (no bare assignment, always context manager):**
 ```bash
-# Verify run.py exposes module-level app object
-grep -n "^app = " task-tracker/run.py
-# Expected: app = create_app()
+# Check: no route file uses conn = get_db() (anti-pattern)
+grep -r "conn = get_db()" app/blueprints/ --include="*.py" | wc -l
+# PASS if output = 0
 
-# Verify flask can discover the app
-cd task-tracker && flask --app run routes
-# Expected: lists all routes from Section 4 without errors
+# Check: all route files use "with get_db" pattern
+grep -r "with get_db" app/blueprints/ --include="*.py" | wc -l
+# PASS if output >= 1 per blueprint (expect >= 3 total)
+
+# Check: PRAGMA foreign_keys enabled in db.py
+grep -c "foreign_keys" app/db.py
+# PASS if output >= 1
 ```
 
-**Mismatch counting:** Each check in 7a-7d that does not match the spec
+**7e. run.py app discovery:**
+```bash
+# Check: run.py exposes module-level app object
+grep -c "^app = create_app()" run.py
+# PASS if output = 1
+
+# Check: flask can discover the app and list routes
+flask --app run routes 2>&1 | head -1
+# PASS if output shows route listing, not an error
+```
+
+**Residual manual risk:** Consumer-side template variable usage (whether
+templates reference `{{ stats.total_projects }}` vs `{{ data.total_projects }}`)
+cannot be verified by grep — it requires rendering each page and confirming the
+expected data appears. This is the only remaining manual verification step. All
+other checks are automated with exact PASS/FAIL criteria.
+
+**Mismatch counting:** Each check that does not match its expected output
 counts as one mismatch. Record total mismatch count.
 
 **Pass:** All 7 checkpoints green, mismatch count = 0 → pattern is

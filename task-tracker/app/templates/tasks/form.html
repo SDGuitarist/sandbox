@@ -1,23 +1,16 @@
 {% extends "layout.html" %}
-{% block title %}{% if task %}Edit Task{% else %}New Task{% endif %} - Task Tracker{% endblock %}
+{% set editing = task and task.id is defined and task.id %}
+{% block title %}{% if editing %}Edit Task{% else %}New Task{% endif %} - Task Tracker{% endblock %}
 {% block content %}
 <nav>
   <a href="{{ url_for('dashboard.index') }}">Home</a> &raquo;
   <a href="{{ url_for('projects.list_projects') }}">Projects</a> &raquo;
   <a href="{{ url_for('projects.show_project', project_id=project.id) }}">{{ project.name }}</a> &raquo;
-  {% if task %}Edit Task{% else %}New Task{% endif %}
+  {% if editing %}Edit Task{% else %}New Task{% endif %}
 </nav>
 
-<h1>{% if task %}Edit Task{% else %}New Task{% endif %}</h1>
+<h1>{% if editing %}Edit Task{% else %}New Task{% endif %}</h1>
 <p>Project: {{ project.name }}</p>
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    {% for message in messages %}
-      <p style="color: red;">{{ message }}</p>
-    {% endfor %}
-  {% endif %}
-{% endwith %}
 
 <form action="{{ action_url }}" method="post">
   <div>
@@ -30,7 +23,7 @@
     <textarea id="description" name="description" rows="6" cols="50">{{ task.description if task else '' }}</textarea>
   </div>
 
-  {% if task %}
+  {% if editing %}
   <div>
     <label for="status">Status</label><br>
     <select id="status" name="status">
@@ -50,6 +43,6 @@
     </select>
   </div>
 
-  <button type="submit">{% if task %}Update Task{% else %}Create Task{% endif %}</button>
+  <button type="submit">{% if editing %}Update Task{% else %}Create Task{% endif %}</button>
 </form>
 {% endblock %}

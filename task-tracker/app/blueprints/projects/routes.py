@@ -50,7 +50,11 @@ def create_project_route():
 
     if not name:
         flash('Project name is required.', 'error')
-        return redirect(url_for('projects.new_project'))
+        return render_template(
+            'projects/form.html',
+            project={'name': name, 'description': description},
+            action_url=url_for('projects.create_project_route'),
+        )
 
     with get_db(immediate=True) as db:
         project_id = create_project(db, name, description)
@@ -77,7 +81,11 @@ def update_project_route(project_id):
 
     if not name:
         flash('Project name is required.', 'error')
-        return redirect(url_for('projects.edit_project', project_id=project_id))
+        return render_template(
+            'projects/form.html',
+            project={'id': project_id, 'name': name, 'description': description},
+            action_url=url_for('projects.update_project_route', project_id=project_id),
+        )
 
     with get_db(immediate=True) as db:
         project = get_project(db, project_id)
