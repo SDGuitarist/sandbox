@@ -176,3 +176,29 @@ More review surface total, just distributed differently.
   assigns these to one agent, but if prescriptive code blocks are identical
   across agents, accidental touches could cause merge conflicts. Need to
   validate with a real swarm build using worktrees.
+
+## Refinement Findings
+
+**Gaps found:** 5
+
+1. **Chain Reaction Inter-Service Contracts -- Spec Contract Checker missing data ownership verification** -- The Spec Contract Checker (step 9) checks imports, route signatures, CSS classes, and function signatures, but does not mention verifying data ownership assignments. The Chain Reaction build showed that data ownership ambiguity (two services writing to the same table) was the #1 source of bugs at inter-service boundaries. The checker should grep for data ownership table entries in the spec and verify each table has exactly one writer in the assembled code.
+   - Source: `docs/solutions/2026-03-30-chain-reaction-inter-service-contracts.md`
+   - Relevance: Without data ownership checks, the contract checker has a blind spot for the most common swarm assembly bug class. The brainstorm lists what the checker verifies but omits the pattern that caused the most bugs in prior builds.
+
+2. **Flask Swarm Acid Test -- Spec ambiguity produces identical mistakes that verification cannot catch** -- The brainstorm positions verification agents as a safety net for spec gaps, but the acid test revealed that when the spec is ambiguous (e.g., context manager usage), ALL agents make the identical wrong choice. A Spec Contract Checker comparing code against spec finds 0 mismatches because every agent matched the ambiguous spec perfectly. The real gap was in the spec, not the code. The brainstorm refinement agent or plan deepening step should include a check for ambiguous spec patterns (functions without usage examples, return types without consumption patterns).
+   - Source: `docs/solutions/2026-04-07-flask-swarm-acid-test.md`
+   - Relevance: The brainstorm says "verification agents are a safety net, not a replacement for spec quality" but does not address the case where verification passes AND the spec is wrong. This is a blind spot in the pipeline between steps 5 (Deepen Plan) and 9 (Contract Check).
+
+3. **Swarm Scale Shared Spec -- Security risks are found in review, not verification** -- Across all prior swarm builds, security issues (XSS, SSRF) were consistently found during review, never during planning or static verification. The brainstorm removes the Codex review layer (key decision: "No Codex handoffs") and compensates with deeper planning and post-build verification agents. But none of the 4 verification agents (steps 9-11) are designed to catch security issues. The review at step 12 is the only security checkpoint, and it runs later in the pipeline than Codex would have. The brainstorm should acknowledge this gap and consider whether the Spec Contract Checker or Smoke Test Runner should include a basic security checklist (innerHTML usage, allow_redirects, SSRF patterns).
+   - Source: `docs/solutions/2026-03-30-swarm-scale-shared-spec.md`
+   - Relevance: The brainstorm claims "more review surface total, just distributed differently" but the distribution has no security-focused agent before step 12. Every prior swarm build found its security bugs in review. Pushing security checks earlier (into verification agents) would match the "prevention over detection" philosophy the brainstorm already endorses.
+
+4. **Cross-Project Knowledge Merge -- Validate infrastructure assumptions before planning** -- The brainstorm assumes git worktrees work for swarm isolation (key decision 6) and that Claude Code supports `isolation: "worktree"` on agent spawning, but the Feed-Forward flags worktree merges as the least confident area. The cross-project knowledge merge solution doc learned that verifying infrastructure assumptions BEFORE planning (the 5-minute check of autopilot.md) saved a plan rewrite. The brainstorm should note whether worktree-based swarm isolation has been tested at all, or whether this is an unverified assumption entering the plan phase.
+   - Source: `docs/solutions/2026-04-05-cross-project-knowledge-merge.md`
+   - Relevance: The brainstorm states "Claude Code already supports isolation: worktree" but this has never been used in a sandbox build. If this assumption is wrong, the entire swarm work phase (step 7) and assembly phase (step 8) need redesign. A 5-minute verification before planning would confirm or kill this assumption.
+
+5. **Flask Swarm Acid Test -- Python specs are 3x larger and may exceed context windows** -- The acid test found Python/Flask specs are 584 lines for 4 agents (vs ~190 lines for 6 JS agents). The brainstorm's plan deepening step (step 5) aims to "auto-generate prescriptive code blocks," which would increase spec size further. If a 6-agent Python swarm build produces a ~900-line spec, the spec itself may exceed agent context budget, causing agents to skip sections. The brainstorm does not address spec size limits or how the autopilot handles specs that approach context pressure.
+   - Source: `docs/solutions/2026-04-07-flask-swarm-acid-test.md`
+   - Relevance: The autopilot pipeline targets fully unattended builds. If a spec grows past agent context limits during plan deepening, agents will silently drop contract points. The brainstorm should set a spec size budget or define a fallback (sub-specs, per-agent spec slices) for the plan phase.
+
+STATUS: PASS
