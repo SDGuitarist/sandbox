@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+
+{% block title %}Dashboard - Task Tracker{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="summary-cards">
+    <div class="card">
+        <h2>{{ stats.total_tasks }}</h2>
+        <p>Total Tasks</p>
+    </div>
+    <div class="card">
+        <h2>{{ stats.completed_tasks }}</h2>
+        <p>Completed</p>
+    </div>
+    <div class="card">
+        <h2>{{ stats.pending_tasks }}</h2>
+        <p>Pending</p>
+    </div>
+</div>
+
+<h2>Projects</h2>
+
+{% if stats.projects %}
+<div class="project-list">
+    {% for p in stats.projects %}
+    <div class="project-item">
+        <div class="project-header">
+            <span class="color-dot" style="background-color: {{ p.color }}"></span>
+            <a href="{{ url_for('projects.show_project', project_id=p.id) }}">{{ p.name }}</a>
+            <span class="task-count">{{ p.completed_count }} / {{ p.task_count }}</span>
+        </div>
+        <div class="progress-track">
+            <div class="progress-fill" style="width: {{ (p.completed_count / p.task_count * 100) if p.task_count > 0 else 0 }}%; background-color: {{ p.color }}"></div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>No projects yet.</p>
+{% endif %}
+
+<a href="{{ url_for('projects.new_project') }}" class="btn">New Project</a>
+{% endblock %}
