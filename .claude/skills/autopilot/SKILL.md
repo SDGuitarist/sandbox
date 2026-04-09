@@ -35,16 +35,22 @@ Execute these steps in order. Do not stop between steps.
 
 Run `/ralph-loop:ralph-loop "finish all slash commands" --completion-promise "DONE"`
 
-### Step 2: Compound Start
+### Step 2: Compound Start + Capture Lessons
 
 Run `/compound-start $ARGUMENTS`
 
+The solution-doc-searcher agent will return relevant lessons from prior builds.
+**Capture these findings** -- they feed into Step 3. Note which solution docs
+were found and their key lessons (e.g., "CSRF missing in Flask builds,"
+"scalar returns need usage examples," "data ownership required in spec").
+
 ### Step 3: Expand Brief + Roadmap
 
-Before brainstorming, expand the user's app description into a structured
-brief. This prevents the brainstorm workflow from asking interactive questions.
+Expand the user's app description into a structured brief, informed by the
+solution doc findings from Step 2. This prevents the brainstorm workflow from
+asking interactive questions and ensures past lessons are baked in from the start.
 
-Generate the following from `$ARGUMENTS` and write it to a variable (do not
+Generate the following from `$ARGUMENTS` + solution doc findings (do not
 create a file -- pass it inline to Step 4):
 
 ```
@@ -69,16 +75,32 @@ create a file -- pass it inline to Step 4):
 
 **Phase 3 (if needed):**
 - [nice-to-have 1]
+
+## Lessons Applied from Prior Builds
+
+[For each relevant solution doc found in Step 2, list what it taught
+and how it influences this brief. Examples:]
+- CSRF protection required on all POST forms (from: autopilot-swarm-orchestration)
+- Scalar-return functions need usage examples in spec (from: task-tracker-categories)
+- Data ownership table required in spec (from: chain-reaction-contracts)
+- SECRET_KEY must read from environment (from: autopilot-swarm-orchestration)
 ```
 
 Make all decisions yourself. Do not ask the user. Pick the simplest, most
-focused interpretation of the app description.
+focused interpretation of the app description. If a solution doc lesson
+applies, include it in core features or roadmap constraints -- don't just
+list it, act on it.
 
 ### Step 4: Brainstorm
 
 Run `/workflows:brainstorm` with the expanded brief from Step 3 appended to
 `$ARGUMENTS`. If the brainstorm workflow asks clarifying questions, pick the
 simplest option and continue. Do not wait for user input.
+
+**Feed-Forward check:** After the brainstorm doc is written, verify it ends
+with a `## Feed-Forward` section containing all three questions (hardest
+decision, rejected alternatives, least confident). If missing, append the
+section before proceeding.
 
 ### Step 5: Brainstorm Refinement
 
@@ -88,6 +110,13 @@ just created in `docs/brainstorms/`. Read its output and check for STATUS: PASS.
 ### Step 6: Plan
 
 Run `/workflows:plan $ARGUMENTS`
+
+**Feed-Forward check:** After the plan doc is written, verify:
+1. YAML frontmatter contains `feed_forward:` with `risk:` and `verify_first:`
+2. Doc ends with `## Feed-Forward` section (three questions)
+3. The plan addresses the brainstorm's "least confident" item
+
+If any are missing, add them before proceeding.
 
 ### Step 7: Deepen Plan
 
@@ -280,6 +309,10 @@ Then follow the **Shared Tail** below.
 
 Run `/workflows:review`
 
+The review agents should scrutinize any areas flagged in the plan's
+Feed-Forward "least confident" item. After review completes, verify that
+review findings reference the Feed-Forward risk if applicable.
+
 ### Resolve TODOs
 
 Run `/compound-engineering:resolve_todo_parallel`
@@ -287,6 +320,16 @@ Run `/compound-engineering:resolve_todo_parallel`
 ### Compound + Learnings
 
 Run `/workflows:compound`
+
+**Feed-Forward chain closure:** The solution doc MUST include a
+`## Risk Resolution` section that traces:
+1. What was flagged as a risk (from brainstorm/plan Feed-Forward)
+2. What actually happened during implementation
+3. What was learned (the delta between expectation and reality)
+
+If the compound workflow doesn't produce this section, add it before
+running update-learnings.
+
 Run `/update-learnings`
 
 ### Done
