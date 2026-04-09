@@ -67,13 +67,18 @@ skills can spawn background agents in worktrees.
 - Test agent that auto-generates tests from shared spec
 - End-to-end integration testing (Phase 5)
 
-## Three Questions
+## Feed-Forward
 
-1. **Hardest decision:** Not using `disable-model-invocation` despite the plan
-   recommending it. Confirmed by existing skill patterns that this is correct.
-2. **What was rejected:** Nothing beyond plan's rejected alternatives.
-3. **Least confident about:** Whether the swarm path's sequential merge + circuit
-   breaker flow handles all edge cases in practice. Needs end-to-end testing.
+- **Hardest decision:** Not using `disable-model-invocation` despite the plan
+  recommending it. Confirmed by existing skill patterns that this is correct.
+- **Rejected alternatives:** Nothing beyond plan's rejected alternatives.
+  Considered testing all 6 agents but the 3 verification agents need a real
+  assembled codebase, so deferred to first real swarm run.
+- **Least confident:** Whether the swarm path's sequential merge + circuit
+  breaker flow handles all edge cases in practice. The brainstorm-refinement
+  agent surfaced 5 gaps (data ownership checks, spec ambiguity blind spots,
+  security gap pre-review, spec size limits) that may need addressing before
+  a production swarm run succeeds cleanly.
 
 ## Prompt for Next Session
 
