@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+
+{% block title %}403 - Forbidden{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <h1>403</h1>
+    <p>{{ message }}</p>
+    <a href="{{ url_for('views.dashboard') }}" class="btn">Back to Dashboard</a>
+</div>
+{% endblock %}
