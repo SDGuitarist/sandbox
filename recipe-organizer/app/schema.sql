@@ -32,3 +32,5 @@ CREATE INDEX IF NOT EXISTS idx_recipes_title
     ON recipes(title);
 CREATE INDEX IF NOT EXISTS idx_ingredients_name
     ON ingredients(name);
+CREATE INDEX IF NOT EXISTS idx_recipes_created_at
+    ON recipes(created_at DESC);

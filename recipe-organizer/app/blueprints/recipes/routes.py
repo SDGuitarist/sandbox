@@ -123,6 +123,9 @@ def create():
     ingredient_ids = request.form.getlist("ingredient_id")
     quantities = request.form.getlist("quantity")
     units = request.form.getlist("unit")
+    if not (len(ingredient_ids) == len(quantities) == len(units)):
+        flash("Ingredient data is malformed.", "error")
+        return rerender()
     ingredients_data = []
     seen_ids = set()
     for ing_id, qty, unit in zip(ingredient_ids, quantities, units):
@@ -270,6 +273,9 @@ def edit(recipe_id):
     ingredient_ids = request.form.getlist("ingredient_id")
     quantities = request.form.getlist("quantity")
     units = request.form.getlist("unit")
+    if not (len(ingredient_ids) == len(quantities) == len(units)):
+        flash("Ingredient data is malformed.", "error")
+        return rerender()
     ingredients_data = []
     seen_ids = set()
     for ing_id, qty, unit in zip(ingredient_ids, quantities, units):
