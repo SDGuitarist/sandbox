@@ -9,13 +9,13 @@
 </div>
 
 <div class="controls">
-    <form method="get" action="{{ url_for('bookmarks.list_bookmarks') }}" class="search-form">
+    <form method="get" action="{{ url_for('bookmarks.index') }}" class="search-form">
         <input type="text" name="q" value="{{ query }}" placeholder="Search bookmarks...">
         <input type="hidden" name="sort" value="{{ sort_order }}">
         <button type="submit" class="btn">Search</button>
     </form>
 
-    <form method="get" action="{{ url_for('bookmarks.list_bookmarks') }}" class="sort-form">
+    <form method="get" action="{{ url_for('bookmarks.index') }}" class="sort-form">
         <input type="hidden" name="q" value="{{ query }}">
         <label for="sort">Sort by:</label>
         <select name="sort" id="sort" onchange="this.form.submit()">
@@ -29,7 +29,7 @@
 {% if tag_filter %}
     <div class="active-filter">
         Filtered by tag: <span class="tag">{{ tag_filter }}</span>
-        <a href="{{ url_for('bookmarks.list_bookmarks') }}" class="clear-filter">Clear filter</a>
+        <a href="{{ url_for('bookmarks.index') }}" class="clear-filter">Clear filter</a>
     </div>
 {% endif %}
 
@@ -38,7 +38,7 @@
         {% for bookmark in bookmarks %}
             <li class="bookmark-item">
                 <div class="bookmark-title">
-                    <a href="{{ url_for('bookmarks.detail', id=bookmark['id']) }}">{{ bookmark['title'] }}</a>
+                    <a href="{{ url_for('bookmarks.show_bookmark', id=bookmark['id']) }}">{{ bookmark['title'] }}</a>
                 </div>
                 <div class="bookmark-url">
                     <a href="{{ bookmark['url'] }}" target="_blank" rel="noopener">{{ bookmark['url'][:80] }}{% if bookmark['url']|length > 80 %}...{% endif %}</a>
