@@ -1,58 +1,82 @@
 # HANDOFF — Sandbox
 
-**Date:** 2026-04-07
+**Date:** 2026-04-08
 **Branch:** master
-**Phase:** Compound complete — all 6 phases done for Flask Swarm Acid Test
+**Phase:** Work — ready to implement swarm-enabled autopilot
 
 ## Current State
 
-Flask Swarm Acid Test passed: 4 parallel agents built a Task Tracker Flask app
-from a shared interface spec with 0 interface mismatches. Pattern validated as
-stack-agnostic (JS and Python). sandbox-auto is ready to archive. Solution doc
-written, learnings propagated.
+Brainstorm and deepened plan complete for swarm-enabled autopilot with assembly
+verification. 8 research/review agents ran during deepening. Plan scored 9/10
+across all criteria. Ready for implementation.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-04-07-flask-swarm-acid-test.md |
-| Plan | docs/plans/2026-04-07-feat-flask-swarm-acid-test-plan.md |
-| Implementation | task-tracker/ (20 files, ~978 LOC) |
-| Solution | docs/solutions/2026-04-07-flask-swarm-acid-test.md |
+| Brainstorm | docs/brainstorms/2026-04-08-swarm-autopilot-assembly-verification.md |
+| Plan | docs/plans/2026-04-08-feat-swarm-autopilot-assembly-verification-plan.md |
 
-## Key Findings
+## What to Build
 
-- **0 interface mismatches** across 4 agents, 20 files, 15 routes
-- **1 spec gap found:** `@contextmanager` usage — all 3 agents used bare
-  assignment instead of `with` syntax. Fixed post-assembly.
-- **Spec size:** 584 lines (3x larger than JS due to Template Render Context)
-- **Prescriptive code blocks** for integration surfaces eliminated circular
-  import risk entirely
+6 new project-level agents + 1 new skill, replacing the static `/autopilot`
+command. See plan for full details.
+
+### Files to Create
+- `.claude/agents/brainstorm-refinement.md`
+- `.claude/agents/swarm-planner.md`
+- `.claude/agents/spec-contract-checker.md`
+- `.claude/agents/smoke-test-runner.md`
+- `.claude/agents/test-suite-runner.md`
+- `.claude/agents/assembly-fix.md`
+- `.claude/skills/autopilot/SKILL.md`
+
+### Files to Delete
+- `.claude/commands/autopilot.md` (replaced by skill)
+
+### 5 Implementation Phases
+1. Foundation (agents + skill skeleton, solo path first)
+2. Pre-build agents (brainstorm refinement + swarm planner)
+3. Swarm execution (parallel agents + git worktree assembly)
+4. Post-build verification agents (contract checker, smoke test, test suite, fix)
+5. Integration (wire everything, end-to-end test)
+
+## Feed-Forward Risk
+
+**From plan:** Whether the skill format supports spawning background agents,
+waiting for all to complete, then reading their output to branch. This is the
+first thing to verify in Phase 1.
+
+**Recommended:** Start Phase 1 with a worktree spike test — spawn one background
+agent in a worktree, wait, read output — before creating any agent files.
+Hard-gate Phase 2 on this.
+
+**Also:** Add a circuit breaker after step 9 (Spec Contract Checker) — if
+unfixable mismatches exist, abort before smoke testing.
 
 ## Deferred Items
 
+- Auto-generate prescriptive spec code blocks during plan deepening
+- Auto-detect swarm suitability in `/workflows:plan`
 - Archive sandbox-auto (validation succeeded — ready)
-- Auto-detect swarm agent tables in /workflows:work
-- Auto-generate Section 8 (Template Render Context) from route signatures
 - Test agent that auto-generates tests from shared spec
 
 ## Three Questions
 
-1. **Hardest decision:** Whether to fix the context manager gap by changing
-   `get_db()` to a plain function or by fixing the usage in routes. Chose to
-   fix routes — `@contextmanager` is the established convention.
-2. **What was rejected:** Auto-generating Section 8 from route signatures
-   (adds a generation step that could itself introduce mismatches — validate
-   the manual pattern first, automate later).
-3. **Least confident about:** Whether 584-line spec size is sustainable for
-   6+ agent Python builds. If it grows linearly, a 6-agent build needs ~876
-   lines — approaching error-source territory.
+1. **Hardest decision:** Whether skills can orchestrate background agents with
+   worktrees and branching. Chose skills over Python scripts to stay in-process.
+2. **What was rejected:** Combining verification agents into one (user wants one
+   agent per job). Lean specs (prevention > detection). Two separate commands.
+3. **Least confident about:** Skill orchestration — can a SKILL.md spawn
+   background agents, wait, read output, and branch? First spike test in Phase 1.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md for context. This is sandbox, a compound engineering automation lab.
-Flask acid test passed — shared spec pattern is stack-agnostic (0 mismatches).
-Next: archive sandbox-auto, or tackle a deferred item (auto-generate Section 8,
-auto-detect swarm tables in /workflows:work).
+Phase: Work. Plan is at docs/plans/2026-04-08-feat-swarm-autopilot-assembly-verification-plan.md.
+Start with Phase 1: worktree spike test first (verify skill can spawn background
+agents), then create 6 agent files + 1 skill file. Wire solo path first.
+Key files: .claude/commands/autopilot.md (current, to be replaced),
+~/.claude/agents/session-kickoff.md (agent format reference).
 ```
