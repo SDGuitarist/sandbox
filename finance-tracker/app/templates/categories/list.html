@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}Categories - Finance Tracker{% endblock %}
+
+{% block content %}
+<h1>Categories</h1>
+
+<a href="{{ url_for('categories.create') }}" class="btn">New Category</a>
+
+{% if categories|length == 0 %}
+    <div class="empty-state">No custom categories yet. Create one to organize your spending!</div>
+{% else %}
+    <table class="category-list">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cat in categories %}
+                <tr>
+                    <td>
+                        <span class="color-dot" style="background: {{ cat.color }}"></span>
+                        {{ cat.name }}
+                    </td>
+                    <td>{{ cat.created_at }}</td>
+                    <td>
+                        <a href="{{ url_for('categories.edit', category_id=cat.id) }}" class="btn btn-secondary">Edit</a>
+                        {% if cat.id != 1 %}
+                            <form method="POST" action="{{ url_for('categories.delete', category_id=cat.id) }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button onclick="return confirm('Delete this category? Transactions will be moved to Uncategorized.')" class="btn-danger">Delete</button></form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+{% endblock %}

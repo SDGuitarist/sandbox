@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block title %}Budgets - Finance Tracker{% endblock %}
+
+{% block content %}
+<h1>Manage Budgets</h1>
+
+<div class="month-selector">
+    <label for="month-select">Month:</label>
+    <select id="month-select" onchange="window.location.href='{{ url_for('views.budgets_manage') }}?month=' + this.value">
+        {% for month in months %}
+            <option value="{{ month }}" {% if month == year_month %}selected{% endif %}>{{ month }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="year_month" value="{{ year_month }}">
+
+    <table class="budget-table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Budget Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cat in categories %}
+                <tr>
+                    <td>
+                        <span class="color-dot" style="background: {{ cat.color }}"></span>
+                        {{ cat.name }}
+                    </td>
+                    <td>
+                        <input type="number" name="budget_{{ cat.id }}" step="0.01" min="0"
+                            value="{{ '%.2f'|format(budgets_map.get(cat.id).amount / 100) if budgets_map.get(cat.id) else '' }}"
+                            placeholder="No budget">
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="form-actions">
+        <button type="submit" class="btn">Save Budgets</button>
+    </div>
+</form>
+{% endblock %}
