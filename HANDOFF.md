@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-09
 **Branch:** master
-**Phase:** Phase 5 Integration -- Solo PASS, Swarm PASS
+**Phase:** Review + Compound -- Phase 5 complete, ready to close out
 
 ## Current State
 
@@ -84,11 +84,23 @@ examples in the spec showing the correct variable naming pattern.
   Currently manual. Auto-detection would need heuristics (file count,
   concern boundaries) that could misfire.
 
+## Permissions Finding
+
+Git operations in the main session (git checkout -b, git merge --no-ff,
+git branch -D) still prompt for permission even with dangerouslySkipPermissions
+in project settings. This is because the assembly steps run in the main
+session context. Swarm agents with mode: "bypassPermissions" were fine.
+Need to add specific git commands to allowed permissions for fully unattended runs.
+
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is sandbox, a compound engineering
-automation lab. Phase 5 is complete (solo + swarm paths both passed).
-Next: decide whether to start Phase 6 (production hardening) or archive
-sandbox-auto and document the full autopilot skill as a solution doc.
+Read HANDOFF.md for context. This is sandbox, a compound engineering automation lab.
+Phase 5 complete -- both solo and swarm autopilot paths passed end-to-end.
+Run /workflows:review on the full swarm-enabled autopilot implementation
+(agents + skill). Key commits: dac64f9..ceb2db5. Plan:
+docs/plans/2026-04-08-feat-swarm-autopilot-assembly-verification-plan.md
+Then run /workflows:compound to capture the solution doc.
+Feed-Forward risk to scrutinize: git permission prompts broke unattended promise,
+spec ambiguity on scalar returns caused 1 post-assembly fix.
 ```
