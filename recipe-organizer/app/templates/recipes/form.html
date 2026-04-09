@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ "Edit Recipe" if is_edit else "New Recipe" }}{% endblock %}
+
+{% block content %}
+<h1>{{ "Edit Recipe" if is_edit else "New Recipe" }}</h1>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" required maxlength="200" value="{{ recipe.title if is_edit and recipe else '' }}">
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" maxlength="2000">{{ recipe.description if is_edit and recipe and recipe.description else '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="instructions">Instructions</label>
+        <textarea id="instructions" name="instructions" required maxlength="10000">{{ recipe.instructions if is_edit and recipe else '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="servings">Servings</label>
+        <input type="number" id="servings" name="servings" required min="1" value="{{ recipe.servings if is_edit and recipe else '' }}">
+    </div>
+
+    <div class="form-group">
+        <label for="prep_time_min">Prep Time (minutes)</label>
+        <input type="number" id="prep_time_min" name="prep_time_min" min="0" value="{{ recipe.prep_time_min if is_edit and recipe and recipe.prep_time_min is not none else '' }}">
+    </div>
+
+    <div class="form-group">
+        <label for="cook_time_min">Cook Time (minutes)</label>
+        <input type="number" id="cook_time_min" name="cook_time_min" min="0" value="{{ recipe.cook_time_min if is_edit and recipe and recipe.cook_time_min is not none else '' }}">
+    </div>
+
+    <h2>Ingredients</h2>
+    <div id="ingredient-rows">
+        {% if selected_ingredients %}
+            {% for item in selected_ingredients %}
+            <div class="ingredient-row">
+                <select name="ingredient_id">
+                    <option value="">-- Select --</option>
+                    {% for ing in all_ingredients %}
+                    <option value="{{ ing.id }}" {% if ing.id == item.ingredient_id %}selected{% endif %}>{{ ing.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="quantity" step="0.1" min="0.1" value="{{ item.quantity }}">
+                <input type="text" name="unit" maxlength="50" placeholder="e.g., cups" value="{{ item.unit }}">
+                <button type="button" class="btn-remove-row">Remove</button>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="ingredient-row">
+                <select name="ingredient_id">
+                    <option value="">-- Select --</option>
+                    {% for ing in all_ingredients %}
+                    <option value="{{ ing.id }}">{{ ing.name }}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="quantity" step="0.1" min="0.1">
+                <input type="text" name="unit" maxlength="50" placeholder="e.g., cups">
+                <button type="button" class="btn-remove-row">Remove</button>
+            </div>
+        {% endif %}
+    </div>
+    <button type="button" id="add-ingredient-btn" class="btn btn-secondary">Add Ingredient</button>
+
+    <div class="form-actions">
+        <button type="submit" class="btn">{{ "Update Recipe" if is_edit else "Create Recipe" }}</button>
+    </div>
+</form>
+
+<script>
+document.getElementById('add-ingredient-btn').addEventListener('click', function() {
+    var container = document.getElementById('ingredient-rows');
+    var rows = container.querySelectorAll('.ingredient-row');
+    var clone = rows[0].cloneNode(true);
+    clone.querySelector('select').value = '';
+    clone.querySelector('input[name="quantity"]').value = '';
+    clone.querySelector('input[name="unit"]').value = '';
+    container.appendChild(clone);
+});
+document.getElementById('ingredient-rows').addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-remove-row')) {
+        var rows = this.querySelectorAll('.ingredient-row');
+        if (rows.length > 1) e.target.closest('.ingredient-row').remove();
+    }
+});
+</script>
+{% endblock %}
