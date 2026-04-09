@@ -10,11 +10,13 @@
 <p>Created: {{ project.created_at }}</p>
 <a href="{{ url_for('projects.edit_project', project_id=project.id) }}">Edit Project</a>
 <form method="post" action="{{ url_for('projects.delete_project_route', project_id=project.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit">Delete Project</button>
 </form>
 
 <h2>Tasks</h2>
 <form method="post" action="{{ url_for('tasks.create_task_route', project_id=project.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="text" name="title" placeholder="New task..." required>
     <input type="hidden" name="description" value="">
     <button type="submit">Add Task</button>
@@ -24,6 +26,7 @@
     {% for t in tasks %}
     <li>
         <form method="post" action="{{ url_for('tasks.toggle_task_route', task_id=t.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit">{% if t.completed %}&#9745;{% else %}&#9744;{% endif %}</button>
         </form>
         {{ t.title }}
@@ -36,6 +39,7 @@
         {% endif %}
         <a href="{{ url_for('tasks.edit_task', task_id=t.id) }}">Edit</a>
         <form method="post" action="{{ url_for('tasks.delete_task_route', task_id=t.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit">Delete</button>
         </form>
     </li>

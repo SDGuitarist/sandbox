@@ -7,6 +7,7 @@
 <p>Project: <a href="{{ url_for('projects.show_project', project_id=project.id) }}">{{ project.name }}</a></p>
 
 <form action="{{ action_url }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div>
         <label for="title">Title</label>
         <input type="text" id="title" name="title" value="{{ task.title }}" required>

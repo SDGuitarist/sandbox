@@ -1,9 +1,13 @@
+import re
+
 from flask import render_template, request, redirect, url_for, flash, abort
 
 from app.db import get_db
 from app.models import (get_all_projects, get_project, create_project,
                         update_project, delete_project, get_tasks_for_project,
                         DEFAULT_COLOR)
+
+COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 from app.blueprints.projects import projects_bp
 
 
@@ -35,6 +39,8 @@ def new_project():
 def create_project_route():
     name = request.form.get('name', '').strip()
     color = request.form.get('color', '#6366f1').strip()
+    if not COLOR_RE.match(color):
+        color = '#6366f1'
 
     if not name:
         flash('Project name is required', 'error')
@@ -63,6 +69,8 @@ def edit_project(project_id):
 def update_project_route(project_id):
     name = request.form.get('name', '').strip()
     color = request.form.get('color', '#6366f1').strip()
+    if not COLOR_RE.match(color):
+        color = '#6366f1'
 
     if not name:
         flash('Project name is required', 'error')
