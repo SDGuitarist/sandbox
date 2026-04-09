@@ -80,11 +80,9 @@ def cleanup_orphan_tags(conn: sqlite3.Connection) -> None:
 
 # --- Search ---
 
-def search_bookmarks(conn: sqlite3.Connection, query: str, sort_order: str = 'newest', limit: int = 20, offset: int = 0) -> list[sqlite3.Row]:
+def _build_search_where(query: str) -> tuple[str, list[str]]:
     terms = query.split()
-    if not terms:
-        return get_all_bookmarks(conn, sort_order, limit, offset)
-    where_clauses = []
+    where_clauses: list[str] = []
     params: list[str] = []
     for term in terms:
         escaped = f'%{_escape_like(term)}%'
@@ -94,26 +92,24 @@ def search_bookmarks(conn: sqlite3.Connection, query: str, sort_order: str = 'ne
             " WHERE bt.bookmark_id = b.id AND t.name LIKE ? ESCAPE '\\'))"
         )
         params.extend([escaped, escaped, escaped])
+    return ' AND '.join(where_clauses), params
+
+def search_bookmarks(conn: sqlite3.Connection, query: str, sort_order: str = 'newest', limit: int = 20, offset: int = 0) -> list[sqlite3.Row]:
+    terms = query.split()
+    if not terms:
+        return get_all_bookmarks(conn, sort_order, limit, offset)
+    where_sql, params = _build_search_where(query)
     order = _sort_clause(sort_order)
-    sql = f"SELECT b.* FROM bookmarks b WHERE {' AND '.join(where_clauses)} {order} LIMIT ? OFFSET ?"
-    params.extend([str(limit), str(offset)])
+    sql = f"SELECT b.* FROM bookmarks b WHERE {where_sql} {order} LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
     return conn.execute(sql, params).fetchall()
 
 def search_bookmark_count(conn: sqlite3.Connection, query: str) -> int:
     terms = query.split()
     if not terms:
         return get_bookmark_count(conn)
-    where_clauses = []
-    params: list[str] = []
-    for term in terms:
-        escaped = f'%{_escape_like(term)}%'
-        where_clauses.append(
-            "(b.title LIKE ? ESCAPE '\\' OR b.url LIKE ? ESCAPE '\\'"
-            " OR EXISTS (SELECT 1 FROM bookmark_tags bt JOIN tags t ON bt.tag_id = t.id"
-            " WHERE bt.bookmark_id = b.id AND t.name LIKE ? ESCAPE '\\'))"
-        )
-        params.extend([escaped, escaped, escaped])
-    sql = f"SELECT COUNT(*) FROM bookmarks b WHERE {' AND '.join(where_clauses)}"
+    where_sql, params = _build_search_where(query)
+    sql = f"SELECT COUNT(*) FROM bookmarks b WHERE {where_sql}"
     return conn.execute(sql, params).fetchone()[0]
 
 # --- Bookmarks by Tag ---

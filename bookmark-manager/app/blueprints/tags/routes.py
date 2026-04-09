@@ -7,6 +7,7 @@ from app.db import get_db
 from app.models import (
     ITEMS_PER_PAGE,
     SORT_LABELS,
+    SORT_OPTIONS,
     get_all_tags,
     get_bookmarks_by_tag,
     get_bookmarks_by_tag_count,
@@ -26,6 +27,8 @@ def index():
 def show(name):
     page = request.args.get('page', 1, type=int)
     sort_order = request.args.get('sort', 'newest')
+    if sort_order not in SORT_OPTIONS:
+        sort_order = 'newest'
 
     with get_db() as conn:
         count = get_bookmarks_by_tag_count(conn, name)

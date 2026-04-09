@@ -9,6 +9,7 @@ from app.fetch_title import fetch_page_title
 from app.models import (
     ITEMS_PER_PAGE,
     SORT_LABELS,
+    SORT_OPTIONS,
     create_bookmark,
     delete_bookmark,
     cleanup_orphan_tags,
@@ -44,6 +45,8 @@ def validate_url(url: str) -> str:
 def index():
     page = request.args.get('page', 1, type=int)
     sort_order = request.args.get('sort', 'newest')
+    if sort_order not in SORT_OPTIONS:
+        sort_order = 'newest'
     query = request.args.get('q', '').strip()
 
     with get_db() as conn:
