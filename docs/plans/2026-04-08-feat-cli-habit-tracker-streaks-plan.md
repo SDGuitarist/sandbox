@@ -1,7 +1,7 @@
 ---
 title: "feat: CLI Habit Tracker with Streaks"
 type: feat
-status: active
+status: completed
 date: 2026-04-08
 origin: docs/brainstorms/2026-04-08-cli-habit-tracker-brainstorm.md
 swarm: false
@@ -41,19 +41,19 @@ Storage: `~/.habit_tracker.json` (created on first `add`)
 
 ## Acceptance Criteria
 
-- [ ] `python habit_tracker.py add "Exercise"` creates a habit with integer ID
-- [ ] `python habit_tracker.py log 1` marks habit 1 done for today (idempotent)
-- [ ] `python habit_tracker.py list` shows all habits with today's status and current streak
-- [ ] `python habit_tracker.py delete 1` removes a habit
-- [ ] `python habit_tracker.py stats 1` shows current streak, longest streak, total completions
-- [ ] First `add` on empty/missing file creates `~/.habit_tracker.json` without error
-- [ ] Streak computation is correct: consecutive days backward from today/yesterday
-- [ ] Logging same habit twice on same day is a no-op (deduplicated)
-- [ ] Deleting non-existent ID prints error and exits with code 1
-- [ ] Logging non-existent ID prints error and exits with code 1
-- [ ] Adding empty name prints error and exits with code 1
-- [ ] Listing with no habits prints "No habits yet."
-- [ ] Corrupted JSON file prints error and exits with code 1
+- [x] `python habit_tracker.py add "Exercise"` creates a habit with integer ID
+- [x] `python habit_tracker.py log 1` marks habit 1 done for today (idempotent)
+- [x] `python habit_tracker.py list` shows all habits with today's status and current streak
+- [x] `python habit_tracker.py delete 1` removes a habit
+- [x] `python habit_tracker.py stats 1` shows current streak, longest streak, total completions
+- [x] First `add` on empty/missing file creates `~/.habit_tracker.json` without error
+- [x] Streak computation is correct: consecutive days backward from today/yesterday
+- [x] Logging same habit twice on same day is a no-op (deduplicated)
+- [x] Deleting non-existent ID prints error and exits with code 1
+- [x] Logging non-existent ID prints error and exits with code 1
+- [x] Adding empty name prints error and exits with code 1
+- [x] Listing with no habits prints "No habits yet."
+- [x] Corrupted JSON file prints error and exits with code 1
 
 ## How We Will Know It Worked
 
