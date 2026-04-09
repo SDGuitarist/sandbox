@@ -76,22 +76,7 @@ Read the plan's YAML frontmatter. Check the `swarm:` field.
 
 Run `/workflows:work`
 
-### Step 8s: Review
-
-Run `/workflows:review`
-
-### Step 9s: Resolve TODOs
-
-Run `/compound-engineering:resolve_todo_parallel`
-
-### Step 10s: Compound + Learnings
-
-Run `/workflows:compound`
-Run `/update-learnings`
-
-### Step 11s: Done
-
-Output `<promise>DONE</promise>` -- all phases complete.
+Then follow the **Shared Tail** below.
 
 ---
 
@@ -199,8 +184,9 @@ Use the **spec-contract-checker** agent. Pass the plan path and project root.
 
 Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
 - If PASS: continue to smoke test.
-- If FAIL: check if mismatches are fixable. If unfixable mismatches exist,
-  abort the pipeline and report. Do not proceed to smoke testing.
+- If FAIL: use the **assembly-fix** agent with the contract check report,
+  plan path, and project root (max 1 retry). Re-run spec contract check
+  after fix. If still FAIL, abort the pipeline and report.
 
 ### Step 13w: Smoke Test
 
@@ -243,19 +229,25 @@ On failure (unresolved issues):
 - Remove worktree directories but KEEP branches for inspection
 - Report which branches are preserved and why
 
-### Step 17w: Review
+Then follow the **Shared Tail** below.
+
+---
+
+## Shared Tail (both paths end here)
+
+### Review
 
 Run `/workflows:review`
 
-### Step 18w: Resolve TODOs
+### Resolve TODOs
 
 Run `/compound-engineering:resolve_todo_parallel`
 
-### Step 19w: Compound + Learnings
+### Compound + Learnings
 
 Run `/workflows:compound`
 Run `/update-learnings`
 
-### Step 20w: Done
+### Done
 
 Output `<promise>DONE</promise>` -- all phases complete.
