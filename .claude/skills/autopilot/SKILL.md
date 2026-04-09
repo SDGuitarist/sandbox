@@ -100,8 +100,18 @@ empty. This prevents stale reports from prior runs.
 
 ### Step 10w: Parallel Swarm Work
 
-Read the `## Swarm Agent Assignment` section from the plan. For each agent in
-the assignment table:
+Read the `## Swarm Agent Assignment` section from the plan. Before spawning
+any agents, validate ALL file paths in the assignment table:
+
+- Reject any absolute path (starts with `/`)
+- Reject any path containing `..`
+- Reject any symlink target outside the repo root
+- Every path must be relative to the project root
+
+If any path fails validation, abort with an error listing the invalid paths.
+Do not spawn any agents until all paths pass.
+
+For each agent in the assignment table:
 
 1. Build a prompt that includes:
    - The full shared interface spec from the plan
@@ -127,18 +137,38 @@ the assignment table:
 Spawn ALL agents in a single message (parallel launch). Then wait for all
 agents to complete. You will be notified as each finishes.
 
+### Step 10.5w: Pre-Merge Ownership Gate
+
+Before merging any worktree branch, validate that each agent only touched its
+assigned files. For each worktree branch:
+
+1. Run `git diff --name-only main...[branch]` to get the list of changed files.
+2. Compare against the agent's assigned files from the Swarm Agent Assignment.
+3. If ANY file in the diff is NOT in the agent's assignment, **abort the merge
+   for that branch**. Write the violation to `docs/reports/ownership-violation.md`:
+   ```
+   OWNERSHIP VIOLATION: Agent [role] modified [file] which is not in its assignment.
+   Assigned files: [list]
+   Actual changes: [list]
+   STATUS: FAIL
+   ```
+4. If all agents pass the ownership check, proceed to assembly merge.
+
 ### Step 11w: Assembly Merge
 
-After all swarm agents complete:
+After all swarm agents pass the ownership gate:
 
-1. Create an assembly branch: `swarm-[run-id]-assembly`
-2. For each worktree agent that made changes, merge its branch into the
+1. Record the current branch name: `git branch --show-current` (save as
+   `original-branch` for use in Step 15w).
+2. Create an assembly branch: `git checkout -b swarm-[run-id]-assembly`
+3. For each worktree agent that made changes, merge its branch into the
    assembly branch sequentially using `git merge --no-ff [branch]`
-3. If any merge fails (exit code != 0):
-   - Use the **assembly-fix** agent with the merge conflict output, the plan
-     path, and the project root
+4. If any merge fails (exit code != 0):
+   - Write the merge conflict output to `docs/reports/merge-conflict.md`
+   - Use the **assembly-fix** agent with `docs/reports/merge-conflict.md`,
+     the plan path, and the project root
    - Check its STATUS. If FIXED, continue merging. If FAIL, abort and report.
-4. After all merges succeed, the assembly branch has the combined code.
+5. After all merges succeed, the assembly branch has the combined code.
 
 ### Step 12w: Circuit Breaker -- Spec Contract Check
 
@@ -172,10 +202,10 @@ Read `docs/reports/test-results.md`. Check STATUS.
 ### Step 15w: Merge Assembly to Main
 
 If all verification passed (or failures were fixed), merge the assembly branch
-into the current working branch:
+back into the branch recorded in Step 11w:
 
 ```
-git checkout [original-branch]
+git checkout [original-branch recorded in Step 11w]
 git merge --no-ff swarm-[run-id]-assembly
 ```
 

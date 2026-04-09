@@ -21,14 +21,16 @@ Read:
 
 ## Rules
 
-1. Extract every contract point from the spec: imports, route paths, function signatures, CSS class names, data shapes, file names.
+1. Extract every contract point from the spec: imports, route paths, function signatures, CSS class names, data shapes, file names, and data ownership assignments.
 2. For each contract point, grep the assembled code to verify it exists exactly as specified.
-3. Mark each check as PASS or FAIL.
-4. For FAIL items, attempt an auto-fix using Edit: rename the mismatched identifier to match the spec.
-5. After auto-fix, re-verify the contract point. Mark as FIXED or UNFIXABLE.
-6. Do not change the spec. The spec is the source of truth. Code adapts to spec, never the reverse.
-7. Do not add code that doesn't exist. Only fix naming/signature mismatches in existing code.
-8. If `docs/reports/contract-check.md` already exists, overwrite it entirely.
+3. For data ownership: if the spec defines which module owns writes to a table or resource, verify that only that module performs writes. Grep for INSERT/UPDATE/DELETE or write-method calls and confirm they only appear in the owning module.
+4. Mark each check as PASS or FAIL.
+5. For FAIL items, attempt an auto-fix using Edit: rename the mismatched identifier to match the spec.
+6. After auto-fix, re-verify the contract point. Mark as FIXED or UNFIXABLE.
+7. Do not change the spec. The spec is the source of truth. Code adapts to spec, never the reverse.
+8. Do not add code that doesn't exist. Only fix naming/signature mismatches in existing code.
+9. Data ownership violations are always UNFIXABLE -- moving write logic between modules requires design decisions. Report them for the review phase.
+10. If `docs/reports/contract-check.md` already exists, overwrite it entirely.
 
 ## Output Contract
 
