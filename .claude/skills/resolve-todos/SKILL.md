@@ -2,7 +2,7 @@
 name: resolve-todos
 description: Read all pending todos, prioritize by fix ordering rules, apply fixes incrementally, commit each batch, mark resolved. Use after a review phase creates todos.
 argument-hint: "[optional: filter by priority, e.g. 'p1' or 'p1 p2']"
-allowed-tools: Read, Edit, Write, Glob, Grep, Bash
+allowed-tools: Read Edit Write Glob Grep Bash
 ---
 
 # Resolve Todos

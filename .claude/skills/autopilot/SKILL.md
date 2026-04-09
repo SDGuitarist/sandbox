@@ -2,7 +2,7 @@
 name: autopilot
 description: Full autonomous compound engineering loop with swarm support. Reads plan frontmatter to branch between solo and swarm paths. Use to build apps end-to-end unattended.
 argument-hint: "[app description]"
-allowed-tools: Read, Edit, Write, Glob, Grep, Bash, Agent
+allowed-tools: Read Edit Write Glob Grep Bash Agent
 ---
 
 # Autopilot
