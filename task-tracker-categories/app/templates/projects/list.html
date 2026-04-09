@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+
+{% block title %}Projects - Task Tracker{% endblock %}
+
+{% block content %}
+<h1>Projects</h1>
+<a href="{{ url_for('projects.new_project') }}">New Project</a>
+<ul>
+    {% for p in projects %}
+    <li>
+        <span style="background-color: {{ p.color }}; display: inline-block; width: 12px; height: 12px; border-radius: 50%;"></span>
+        <a href="{{ url_for('projects.show_project', project_id=p.id) }}">{{ p.name }}</a>
+        <small>{{ p.created_at }}</small>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}
