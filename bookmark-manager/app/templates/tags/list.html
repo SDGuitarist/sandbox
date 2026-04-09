@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+
+{% block title %}Tags{% endblock %}
+
+{% block content %}
+<h1>Tags</h1>
+
+{% if tags %}
+    <ul class="tag-list">
+        {% for tag in tags %}
+            <li class="tag-list-item">
+                <a href="{{ url_for('tags.show', name=tag['name']) }}" class="tag tag-large">{{ tag['name'] }}</a>
+                <span class="tag-count">{{ tag['bookmark_count'] }} bookmark{{ 's' if tag['bookmark_count'] != 1 else '' }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <div class="empty-state">
+        <p>No tags yet. Tags are created when you add bookmarks.</p>
+    </div>
+{% endif %}
+{% endblock %}
