@@ -30,7 +30,7 @@
 
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">{% if is_edit %}Update Bookmark{% else %}Add Bookmark{% endif %}</button>
-        <a href="{{ url_for('bookmarks.list_bookmarks') }}" class="btn">Cancel</a>
+        <a href="{{ url_for('bookmarks.index') }}" class="btn">Cancel</a>
     </div>
 </form>
 {% endblock %}
