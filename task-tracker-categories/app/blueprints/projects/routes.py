@@ -43,8 +43,8 @@ def create_project_route():
                                action_url=url_for('projects.create_project_route'))
 
     with get_db(immediate=True) as conn:
-        project = create_project(conn, name, color)
-    return redirect(url_for('projects.show_project', project_id=project.id))
+        project_id = create_project(conn, name, color)
+    return redirect(url_for('projects.show_project', project_id=project_id))
 
 
 @projects_bp.route('/<int:project_id>/edit')
