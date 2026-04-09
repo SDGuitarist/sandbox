@@ -1,29 +1,35 @@
-# Review Context -- Sandbox (CLI Habit Tracker + Autopilot Integration Test)
+# Review Context -- Sandbox (Bookmark Manager Swarm Build)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Whether the stats command adds enough value to justify
-a 5th command, or if streak info in list output is sufficient."
+**Brainstorm risk:** "Auto-fetch page titles via urllib could be slow or fail
+on many sites. Needs a timeout and graceful fallback."
 
-**Plan mitigation:** Included stats -- low cost (~15 lines), exercises streak
-algorithm more thoroughly. Plan noted: "If it feels wrong during implementation,
-drop it and fold streak info into list output only."
+**Plan mitigation:** Simplified to plain urllib with 3s timeout and 100KB read
+limit. Dropped SSRF protection entirely (single-user personal tool). Added
+`verify_first: true` to feed_forward frontmatter.
 
-**Work risk (from Feed-Forward):** Streak edge case when user logs after
-midnight but considers it "yesterday's" habit. Using system local date --
-documented as acceptable in brainstorm.
+**Work risks (from Feed-Forward):**
+1. url_for endpoint name mismatches between templates and routes agents
+   (3 of 17 files affected). Fixed post-assembly.
+2. sort_order not validated in routes -- caused 500 on invalid input.
+   Fixed by adding SORT_OPTIONS check in both route files.
 
-**Review resolution:** 1 P1 finding (date dedup in streak functions), 0 P2,
-1 P3. P1 fixed in commit f9d2972. Learnings researcher confirmed all 4
-todo-app patterns followed correctly. Stats command kept -- simplicity
-reviewer acknowledged it's fine at ~15 lines.
+**Review resolution:** 1 P1, 4 P2, 4 P3 across 4 review agents.
+- P1: sort_order not validated in routes (fixed inline)
+- P2: missing type hints on db/factory, str cast in search, duplicated search WHERE (fixed), unused SORT_OPTIONS (fixed)
+- P3: id param shadowing, route return types, SECRET_KEY regen (deferred)
+- Zero security vulnerabilities. Zero critical issues.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| habit-tracker/habit_tracker.py | New file -- full CLI tool | Streak computation correctness |
+| bookmark-manager/app/models.py | All CRUD, search, tag functions | SQL construction, sort validation |
+| bookmark-manager/app/blueprints/bookmarks/routes.py | 7 route handlers, validate_url | Input validation, transaction boundaries |
+| bookmark-manager/app/templates/bookmarks/list.html | url_for calls, search, pagination | Endpoint name correctness |
+| bookmark-manager/app/__init__.py | CSRF, SECRET_KEY, root redirect | Session security |
 
 ## Plan Reference
 
-`docs/plans/2026-04-08-feat-cli-habit-tracker-streaks-plan.md`
+`docs/plans/2026-04-09-feat-bookmark-manager-plan.md`
