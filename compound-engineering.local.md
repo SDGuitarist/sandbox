@@ -1,35 +1,43 @@
-# Review Context -- Sandbox (Bookmark Manager Swarm Build)
+# Review Context -- Sandbox (Recipe Organizer Swarm Build)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Auto-fetch page titles via urllib could be slow or fail
-on many sites. Needs a timeout and graceful fallback."
+**Brainstorm risk:** "Ingredient linking UX on recipe form -- adding multiple
+ingredients with quantities via plain HTML could be clunky."
 
-**Plan mitigation:** Simplified to plain urllib with 3s timeout and 100KB read
-limit. Dropped SSRF protection entirely (single-user personal tool). Added
-`verify_first: true` to feed_forward frontmatter.
+**Plan mitigation:** Minimal JS (clone/remove rows), parallel arrays via
+getlist(), try/except on parsing, deduplication by ingredient_id.
+Added `verify_first: true` to feed_forward frontmatter.
 
 **Work risks (from Feed-Forward):**
-1. url_for endpoint name mismatches between templates and routes agents
-   (3 of 17 files affected). Fixed post-assembly.
-2. sort_order not validated in routes -- caused 500 on invalid input.
-   Fixed by adding SORT_OPTIONS check in both route files.
+1. form.getlist() parallel array desync via zip() truncation.
+   Fixed post-review: added length equality check before zip().
+2. Missing created_at index causing full table scan on recipe list.
+   Fixed post-review: added idx_recipes_created_at.
 
-**Review resolution:** 1 P1, 4 P2, 4 P3 across 4 review agents.
-- P1: sort_order not validated in routes (fixed inline)
-- P2: missing type hints on db/factory, str cast in search, duplicated search WHERE (fixed), unused SORT_OPTIONS (fixed)
-- P3: id param shadowing, route return types, SECRET_KEY regen (deferred)
-- Zero security vulnerabilities. Zero critical issues.
+**Review resolution:** 2 P1, 5 P2, 5 P3 across 5 review agents.
+- P1: parallel array desync (fixed), missing created_at index (fixed)
+- P2: two-connection race in edit routes, validation duplication, no ingredient_id existence check, correlated subquery, unbounded dropdown
+- P3: type annotations, unit validation, integer upper bounds, delete existence check, executemany
+- Zero critical security vulnerabilities. SQL injection and XSS properly handled.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| bookmark-manager/app/models.py | All CRUD, search, tag functions | SQL construction, sort validation |
-| bookmark-manager/app/blueprints/bookmarks/routes.py | 7 route handlers, validate_url | Input validation, transaction boundaries |
-| bookmark-manager/app/templates/bookmarks/list.html | url_for calls, search, pagination | Endpoint name correctness |
-| bookmark-manager/app/__init__.py | CSRF, SECRET_KEY, root redirect | Session security |
+| recipe-organizer/app/blueprints/recipes/routes.py | 5 routes, validation, ingredient parsing | Form parsing, transaction boundaries |
+| recipe-organizer/app/models.py | 18 model functions, search | SQL construction, batch fetching |
+| recipe-organizer/app/db.py | Context manager, init_db | Transaction semantics |
 
-## Plan Reference
+## Deferred P2/P3 Items
 
-`docs/plans/2026-04-09-feat-bookmark-manager-plan.md`
+- Two-connection race in edit routes (ingredient + recipe)
+- Duplicated validation logic (~80 LOC between create/edit)
+- No ingredient_id existence check before INSERT
+- Correlated subquery in get_all_ingredients
+- Unbounded ingredient dropdown (limit=1000 with subquery)
+- Missing type annotations in models.py
+- No unit length validation in form parsing
+- No integer upper bounds on servings/times
+- Delete without existence check
+- executemany optimization for set_recipe_ingredients

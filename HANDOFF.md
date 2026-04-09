@@ -6,43 +6,49 @@
 
 ## Current State
 
-Built a bookmark manager app (Flask + SQLite, 17 files, 1089 lines) via 3-agent swarm.
-All phases complete including solution doc and learnings propagation. No P1 issues remain.
-Deferred P2/P3: type hints on db/factory, pathlib modernization, id param shadowing.
+Built a recipe organizer app (Flask + SQLite, 24 files, ~1960 lines) via 3-agent swarm.
+All phases complete including solution doc. P1 issues fixed (parallel array desync, missing index).
+Deferred P2/P3: validation duplication, two-connection race, type hints, correlated subquery.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-04-09-bookmark-manager-brainstorm.md |
-| Plan | docs/plans/2026-04-09-feat-bookmark-manager-plan.md |
-| Reports | docs/reports/024/ (ownership-gate, contract-check, smoke-test) |
-| Solution | docs/solutions/2026-04-09-bookmark-manager-swarm-build.md |
+| Brainstorm | docs/brainstorms/2026-04-09-recipe-organizer-brainstorm.md |
+| Plan | docs/plans/2026-04-09-feat-recipe-organizer-plan.md |
+| Reports | docs/reports/025/ (ownership-gate, contract-check, smoke-test, test-results) |
+| Solution | docs/solutions/2026-04-09-recipe-organizer-swarm-build.md |
 
 ## Review Fixes Pending
 
 None critical. Deferred items:
-- P2: Type hints on create_app, get_db, init_db
-- P2: os.path to pathlib in db.py
-- P3: Route handler params named `id` shadow builtin
-- P3: Route handler return type annotations
+- P2: Two-connection race in ingredient + recipe edit routes
+- P2: Duplicated validation logic (~80 LOC between create/edit)
+- P2: No ingredient_id existence check before INSERT
+- P2: Correlated subquery in get_all_ingredients
+- P2: Unbounded ingredient dropdown (limit=1000 with subquery)
+- P3: Missing type annotations in models.py
+- P3: No unit length validation, no integer upper bounds
+- P3: Delete without existence check
+- P3: executemany optimization
 
 ## Deferred Items
 
-- Card view (list only for now)
-- Preferences system (hardcoded defaults)
-- SSRF protection (not needed for personal tool)
-- Import/export browser bookmarks
+- Sort system (intentionally removed as YAGNI)
+- Ingredient detail page (search covers this)
+- FTS5 search (LIKE sufficient for <500 recipes)
+- Security headers (personal app)
+- Rate limiting (personal app)
 
 ## Three Questions
 
-1. **Hardest decision?** Whether to keep SSRF protection. Dropped it -- 9 review agents agreed it's YAGNI for single-user, and it eliminates DNS TOCTOU vulnerability entirely.
-2. **What was rejected?** Full preferences system, card view, SSRF module, FTS5 search.
-3. **Least confident about?** Auto-fetch title via urllib. Works in smoke tests but untested on diverse real URLs.
+1. **Hardest decision?** Whether to keep the sort system. Simplicity review convinced me it's YAGNI -- hardcoded newest-first is sufficient for a personal collection.
+2. **What was rejected?** Sort system, ingredient detail page, default_unit column, FTS5 search, separate batch counts function, HTMX for ingredient rows.
+3. **Least confident about?** Parallel array parsing with getlist() -- confirmed as real risk by security review, fixed with length equality check. The remaining P2 (two-connection race) is low probability for single-user but violates gold standard.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md for context. This is sandbox, a compound engineering automation lab.
-Bookmark manager cycle complete (17 files, 1089 lines, 3-agent swarm). Pick up deferred P2/P3 items or start a new feature brainstorm.
+Recipe organizer cycle complete (24 files, ~1960 lines, 3-agent swarm). Pick up deferred P2/P3 items or start a new feature brainstorm.
 ```
