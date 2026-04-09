@@ -13,14 +13,14 @@ from app.models import (
 )
 
 
-@categories_bp.route("/categories/")
+@categories_bp.route("/")
 def index():
     with get_db() as conn:
         categories = get_all_categories(conn)
     return render_template("categories/list.html", categories=categories)
 
 
-@categories_bp.route("/categories/new", methods=["GET", "POST"])
+@categories_bp.route("/new", methods=["GET", "POST"])
 def create():
     if request.method == "GET":
         return render_template("categories/form.html", category=None, is_edit=False)
@@ -42,7 +42,7 @@ def create():
     return redirect(url_for("categories.index"))
 
 
-@categories_bp.route("/categories/<int:category_id>/edit", methods=["GET", "POST"])
+@categories_bp.route("/<int:category_id>/edit", methods=["GET", "POST"])
 def edit(category_id):
     if request.method == "GET":
         with get_db() as conn:
@@ -82,7 +82,7 @@ def edit(category_id):
     return redirect(url_for("categories.index"))
 
 
-@categories_bp.route("/categories/<int:category_id>/delete", methods=["POST"])
+@categories_bp.route("/<int:category_id>/delete", methods=["POST"])
 def delete(category_id):
     with get_db(immediate=True) as conn:
         ok = delete_category(conn, category_id)

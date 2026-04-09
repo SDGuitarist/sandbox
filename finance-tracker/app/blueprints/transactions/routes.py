@@ -15,7 +15,7 @@ from app.models import (
 from app.utils import dollars_to_cents, validate_year_month
 
 
-@transactions_bp.route("/transactions/")
+@transactions_bp.route("/")
 def index():
     year_month = request.args.get("month")
     if year_month:
@@ -46,7 +46,7 @@ def index():
     )
 
 
-@transactions_bp.route("/transactions/new", methods=["GET", "POST"])
+@transactions_bp.route("/new", methods=["GET", "POST"])
 def create():
     if request.method == "GET":
         with get_db() as conn:
@@ -92,7 +92,7 @@ def create():
     return redirect(url_for("transactions.index"))
 
 
-@transactions_bp.route("/transactions/<int:transaction_id>/edit", methods=["GET", "POST"])
+@transactions_bp.route("/<int:transaction_id>/edit", methods=["GET", "POST"])
 def edit(transaction_id):
     if request.method == "GET":
         with get_db() as conn:
@@ -147,7 +147,7 @@ def edit(transaction_id):
     return redirect(url_for("transactions.index"))
 
 
-@transactions_bp.route("/transactions/<int:transaction_id>/delete", methods=["POST"])
+@transactions_bp.route("/<int:transaction_id>/delete", methods=["POST"])
 def delete(transaction_id):
     with get_db(immediate=True) as conn:
         delete_transaction(conn, transaction_id)
