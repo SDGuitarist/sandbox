@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bookmark Manager{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <a href="{{ url_for('bookmarks.list_bookmarks') }}" class="nav-brand">Bookmark Manager</a>
+            <div class="nav-links">
+                <a href="{{ url_for('bookmarks.list_bookmarks') }}">Bookmarks</a>
+                <a href="{{ url_for('tags.list_tags') }}">Tags</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
