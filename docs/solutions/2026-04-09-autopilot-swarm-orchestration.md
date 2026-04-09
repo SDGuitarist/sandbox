@@ -152,15 +152,29 @@ the agent spawning model.
 
 - **Symptom:** Git commands (checkout, merge, branch -D) in the main session
   triggered interactive permission prompts, blocking automation.
-- **Root cause:** Permissions are split between agent spawn level (bypassed
-  via `mode: "bypassPermissions"`) and main session level (restricted).
-  The skill's `allowed-tools: Bash` does not cover destructive git operations.
-- **Fix:** Not fully resolved. Workaround was manual approval during assembly.
-  Structural fix: run assembly as a bypassed agent, or pre-approve specific
-  git commands in project settings.
-- **Lesson:** When designing multi-agent pipelines, the orchestrator's
-  permission level matters as much as the workers'. Test the full pipeline
-  end-to-end under the intended permission model.
+- **Root cause (initial):** Permissions are split between agent spawn level
+  (bypassed via `mode: "bypassPermissions"`) and main session level (restricted).
+- **Fix attempt 1:** Added git checkout, branch -D/-d, rm, sed to global
+  allowlist. Did not fully resolve.
+- **Fix attempt 2:** Fixed `allowed-tools` YAML syntax (commas -> spaces).
+  Skill now registers properly. Did not fully resolve.
+- **Root cause (final, 2026-04-09):** Claude Code has **security heuristics**
+  that fire ABOVE the permission allowlist. Compound bash commands trigger
+  them regardless of allowlist or dangerouslySkipPermissions:
+  - `cd /path && git ...` -- "Compound commands with cd and git"
+  - `for f in ...; do ... done` -- "Contains expansion"
+  - `python3 -c "...\n#..."` -- "Newline followed by #"
+  - `source .venv/bin/activate` -- "'source' evaluates arguments"
+  - `echo "${var}"` -- "Contains brace with quote character"
+- **Fix (structural, not yet implemented):** Refactor all agents and the
+  skill to use simple, single-purpose bash commands. Use `git -C /path`
+  instead of `cd /path && git`. Write python scripts to temp files instead
+  of inline. Use `.venv/bin/pip` instead of `source activate && pip`.
+- **Lesson:** Permission allowlists and dangerouslySkipPermissions only
+  control the first layer. Claude Code's security heuristics are a separate,
+  non-overridable layer that flags shell metacharacters, compound commands,
+  and code injection patterns. Designing for zero-prompt requires avoiding
+  these patterns entirely.
 
 ## Risk Resolution
 
@@ -183,6 +197,14 @@ the skill format.
 session level was not anticipated in the plan. Git operations in the
 orchestrator are a different permission domain than git operations inside
 spawned agents.
+
+**Deeper unexpected risk (discovered across 5 builds):** Even after fixing
+the allowlist and skill registration, compound bash commands still trigger
+security heuristics. This is a non-overridable layer in Claude Code. The
+only fix is to avoid compound command patterns entirely -- use `git -C`
+instead of `cd && git`, write scripts to files instead of inline, use
+full paths instead of `source activate`. This is the final blocker for
+true zero-prompt automation.
 
 ## Prevention Strategies
 
