@@ -1,3 +1,4 @@
+import re
 from sqlite3 import IntegrityError
 
 from flask import abort, flash, redirect, render_template, request, url_for
@@ -32,6 +33,10 @@ def create():
         flash("Name is required and must be 50 characters or fewer.", "error")
         return render_template("categories/form.html", category=None, is_edit=False)
 
+    if not re.match(r'^#[0-9a-fA-F]{6}$', color):
+        flash("Invalid color format.", "error")
+        return render_template("categories/form.html", category=None, is_edit=False)
+
     try:
         with get_db(immediate=True) as conn:
             cat_id = create_category(conn, name, color)
@@ -56,6 +61,14 @@ def edit(category_id):
 
     if not name or len(name) > 50:
         flash("Name is required and must be 50 characters or fewer.", "error")
+        with get_db() as conn:
+            category = get_category(conn, category_id)
+        if category is None:
+            abort(404)
+        return render_template("categories/form.html", category=category, is_edit=True)
+
+    if not re.match(r'^#[0-9a-fA-F]{6}$', color):
+        flash("Invalid color format.", "error")
         with get_db() as conn:
             category = get_category(conn, category_id)
         if category is None:

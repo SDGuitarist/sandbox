@@ -1,4 +1,6 @@
 import math
+import re
+from datetime import datetime
 
 MAX_AMOUNT_CENTS = 99_999_999  # $999,999.99
 
@@ -28,10 +30,22 @@ def format_dollars(cents):
 
 def validate_year_month(value):
     """Validate 'YYYY-MM' format. Raises ValueError if invalid."""
-    import re
     if not re.match(r'^\d{4}-\d{2}$', value):
         raise ValueError("Invalid month format")
     year, month = int(value[:4]), int(value[5:7])
+    if year < 2000 or year > 2100:
+        raise ValueError("Year out of range")
     if month < 1 or month > 12:
         raise ValueError("Invalid month")
+    return value
+
+
+def validate_date(value):
+    """Validate 'YYYY-MM-DD' format. Raises ValueError if invalid."""
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', value):
+        raise ValueError("Invalid date format")
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Invalid date")
     return value

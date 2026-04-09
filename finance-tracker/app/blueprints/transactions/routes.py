@@ -12,7 +12,7 @@ from app.models import (
     get_transactions,
     update_transaction,
 )
-from app.utils import dollars_to_cents, validate_year_month
+from app.utils import dollars_to_cents, validate_date, validate_year_month
 
 
 @transactions_bp.route("/")
@@ -72,11 +72,35 @@ def create():
         )
 
     description = request.form.get("description", "").strip()
+    if len(description) > 200:
+        flash("Description must be 200 characters or fewer.", "error")
+        with get_db() as conn:
+            categories = get_all_categories(conn)
+        return render_template(
+            "transactions/form.html",
+            transaction=None,
+            categories=categories,
+            is_edit=False,
+        )
+
     transaction_date = request.form.get("transaction_date", "").strip()
     category_id = request.form.get("category_id", type=int)
 
     if not transaction_date or not category_id:
         flash("Date and category are required.", "error")
+        with get_db() as conn:
+            categories = get_all_categories(conn)
+        return render_template(
+            "transactions/form.html",
+            transaction=None,
+            categories=categories,
+            is_edit=False,
+        )
+
+    try:
+        validate_date(transaction_date)
+    except ValueError:
+        flash("Invalid date format.", "error")
         with get_db() as conn:
             categories = get_all_categories(conn)
         return render_template(
@@ -124,11 +148,41 @@ def edit(transaction_id):
         )
 
     description = request.form.get("description", "").strip()
+    if len(description) > 200:
+        flash("Description must be 200 characters or fewer.", "error")
+        with get_db() as conn:
+            transaction = get_transaction(conn, transaction_id)
+            if transaction is None:
+                abort(404)
+            categories = get_all_categories(conn)
+        return render_template(
+            "transactions/form.html",
+            transaction=dict(transaction, amount_dollars="%.2f" % (transaction["amount"] / 100)),
+            categories=categories,
+            is_edit=True,
+        )
+
     transaction_date = request.form.get("transaction_date", "").strip()
     category_id = request.form.get("category_id", type=int)
 
     if not transaction_date or not category_id:
         flash("Date and category are required.", "error")
+        with get_db() as conn:
+            transaction = get_transaction(conn, transaction_id)
+            if transaction is None:
+                abort(404)
+            categories = get_all_categories(conn)
+        return render_template(
+            "transactions/form.html",
+            transaction=dict(transaction, amount_dollars="%.2f" % (transaction["amount"] / 100)),
+            categories=categories,
+            is_edit=True,
+        )
+
+    try:
+        validate_date(transaction_date)
+    except ValueError:
+        flash("Invalid date format.", "error")
         with get_db() as conn:
             transaction = get_transaction(conn, transaction_id)
             if transaction is None:

@@ -27,18 +27,24 @@ def delete_category(conn, category_id):
     return True
 
 
-def get_transactions(conn, year_month=None, category_id=None, limit=ITEMS_PER_PAGE, offset=0):
+def _build_transaction_where(year_month=None, category_id=None, alias=""):
+    prefix = f"{alias}." if alias else ""
     conditions = []
     params = []
     if year_month:
-        conditions.append("t.transaction_date >= ? AND t.transaction_date < ?")
+        conditions.append(f"{prefix}transaction_date >= ? AND {prefix}transaction_date < ?")
         params.extend([f"{year_month}-01", f"{year_month}-32"])
     if category_id:
-        conditions.append("t.category_id = ?")
+        conditions.append(f"{prefix}category_id = ?")
         params.append(category_id)
     where = ""
     if conditions:
         where = "WHERE " + " AND ".join(conditions)
+    return where, params
+
+
+def get_transactions(conn, year_month=None, category_id=None, limit=ITEMS_PER_PAGE, offset=0):
+    where, params = _build_transaction_where(year_month, category_id, alias="t")
     sql = f"""
         SELECT t.*, c.name AS category_name, c.color AS category_color
         FROM transactions t
@@ -52,17 +58,7 @@ def get_transactions(conn, year_month=None, category_id=None, limit=ITEMS_PER_PA
 
 
 def get_transaction_count(conn, year_month=None, category_id=None):
-    conditions = []
-    params = []
-    if year_month:
-        conditions.append("transaction_date >= ? AND transaction_date < ?")
-        params.extend([f"{year_month}-01", f"{year_month}-32"])
-    if category_id:
-        conditions.append("category_id = ?")
-        params.append(category_id)
-    where = ""
-    if conditions:
-        where = "WHERE " + " AND ".join(conditions)
+    where, params = _build_transaction_where(year_month, category_id)
     sql = f"SELECT COUNT(*) FROM transactions {where}"
     return conn.execute(sql, params).fetchone()[0]
 
