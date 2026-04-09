@@ -11,9 +11,10 @@ You are a smoke test runner agent. Your one job is to start the application, hit
 
 ## Inputs
 
-You receive two arguments:
+You receive three arguments:
 1. Path to the plan document (contains the route table)
 2. Path to the project root
+3. Path to the reports directory (e.g., `docs/reports/022/`)
 
 Read:
 1. The plan's route table (paths, methods, expected status codes)
@@ -29,11 +30,11 @@ Read:
 6. Always kill the app process when done, whether tests pass or fail.
 7. Do not modify any source code. This agent only reads and tests.
 8. If the app fails to start, report the error and set STATUS: FAIL immediately.
-9. If `docs/reports/smoke-test.md` already exists, overwrite it entirely.
+9. If the report file already exists, overwrite it entirely.
 
 ## Output Contract
 
-Write report to `docs/reports/smoke-test.md`. Format:
+Write report to `[reports-directory]/smoke-test.md`. Format:
 
 ```markdown
 # Smoke Test Report

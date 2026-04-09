@@ -11,9 +11,10 @@ You are a spec contract checker agent. Your one job is to verify that the assemb
 
 ## Inputs
 
-You receive two arguments:
+You receive three arguments:
 1. Path to the plan document (contains the shared interface spec)
 2. Path to the project root (where the assembled code lives)
+3. Path to the reports directory (e.g., `docs/reports/022/`)
 
 Read:
 1. The plan's shared interface spec section
@@ -30,11 +31,11 @@ Read:
 7. Do not change the spec. The spec is the source of truth. Code adapts to spec, never the reverse.
 8. Do not add code that doesn't exist. Only fix naming/signature mismatches in existing code.
 9. Data ownership violations are always UNFIXABLE -- moving write logic between modules requires design decisions. Report them for the review phase.
-10. If `docs/reports/contract-check.md` already exists, overwrite it entirely.
+10. If the report file already exists, overwrite it entirely.
 
 ## Output Contract
 
-Write report to `docs/reports/contract-check.md`. Format:
+Write report to `[reports-directory]/contract-check.md`. Format:
 
 ```markdown
 # Spec Contract Check Report

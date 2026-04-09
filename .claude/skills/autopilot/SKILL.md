@@ -11,6 +11,22 @@ Run the full compound engineering pipeline unattended. After planning and
 deepening, read the plan's YAML frontmatter. If `swarm: true`, take the swarm
 path (parallel agents + assembly verification). Otherwise, take the solo path.
 
+## Prerequisites
+
+This skill requires unattended execution. Before running, verify:
+
+1. **Run from inside the project directory** (`cd ~/Projects/sandbox`).
+   Project-level skills and settings are only loaded when cwd is the project.
+2. **dangerouslySkipPermissions** must be `true` in `.claude/settings.local.json`.
+   Without this, git operations (checkout, merge, branch -D) will prompt
+   interactively and block the pipeline.
+
+If either condition is not met, abort with:
+```
+ABORT: Autopilot requires unattended permissions. Run from the project
+directory with dangerouslySkipPermissions enabled in settings.local.json.
+```
+
 ## Steps
 
 Execute these steps in order. Do not stop between steps.
@@ -93,10 +109,11 @@ swarm path and output the error. Do not proceed.
 Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
 the `run-id` (e.g., 21 solutions = run `022`). Use this for branch naming.
 
-### Step 9w: Clear Reports Directory
+### Step 9w: Create Reports Directory
 
-Delete all files in `docs/reports/` if the directory exists. Then recreate it
-empty. This prevents stale reports from prior runs.
+Create `docs/reports/<run-id>/` for this run's verification reports. Do NOT
+delete prior run directories -- they serve as audit trail. All report paths
+in subsequent steps use `docs/reports/<run-id>/` instead of `docs/reports/`.
 
 ### Step 10w: Parallel Swarm Work
 
@@ -145,14 +162,20 @@ assigned files. For each worktree branch:
 1. Run `git diff --name-only main...[branch]` to get the list of changed files.
 2. Compare against the agent's assigned files from the Swarm Agent Assignment.
 3. If ANY file in the diff is NOT in the agent's assignment, **abort the merge
-   for that branch**. Write the violation to `docs/reports/ownership-violation.md`:
+   for that branch**. Write the violation to `docs/reports/<run-id>/ownership-violation.md`:
    ```
    OWNERSHIP VIOLATION: Agent [role] modified [file] which is not in its assignment.
    Assigned files: [list]
    Actual changes: [list]
    STATUS: FAIL
    ```
-4. If all agents pass the ownership check, proceed to assembly merge.
+4. If all agents pass the ownership check, write a summary to
+   `docs/reports/<run-id>/ownership-gate.md`:
+   ```
+   OWNERSHIP GATE: All [N] agents passed. Each agent only modified assigned files.
+   STATUS: PASS
+   ```
+5. Proceed to assembly merge.
 
 ### Step 11w: Assembly Merge
 
@@ -164,8 +187,8 @@ After all swarm agents pass the ownership gate:
 3. For each worktree agent that made changes, merge its branch into the
    assembly branch sequentially using `git merge --no-ff [branch]`
 4. If any merge fails (exit code != 0):
-   - Write the merge conflict output to `docs/reports/merge-conflict.md`
-   - Use the **assembly-fix** agent with `docs/reports/merge-conflict.md`,
+   - Write the merge conflict output to `docs/reports/<run-id>/merge-conflict.md`
+   - Use the **assembly-fix** agent with `docs/reports/<run-id>/merge-conflict.md`,
      the plan path, and the project root
    - Check its STATUS. If FIXED, continue merging. If FAIL, abort and report.
 5. After all merges succeed, the assembly branch has the combined code.
@@ -174,7 +197,7 @@ After all swarm agents pass the ownership gate:
 
 Use the **spec-contract-checker** agent. Pass the plan path and project root.
 
-Read `docs/reports/contract-check.md`. Check STATUS.
+Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
 - If PASS: continue to smoke test.
 - If FAIL: check if mismatches are fixable. If unfixable mismatches exist,
   abort the pipeline and report. Do not proceed to smoke testing.
@@ -183,7 +206,7 @@ Read `docs/reports/contract-check.md`. Check STATUS.
 
 Use the **smoke-test-runner** agent. Pass the plan path and project root.
 
-Read `docs/reports/smoke-test.md`. Check STATUS.
+Read `docs/reports/<run-id>/smoke-test.md`. Check STATUS.
 - If PASS: continue to test suite.
 - If FAIL: use the **assembly-fix** agent with the smoke test report, plan
   path, and project root (max 1 retry). Re-run smoke test after fix. If still
@@ -193,7 +216,7 @@ Read `docs/reports/smoke-test.md`. Check STATUS.
 
 Use the **test-suite-runner** agent. Pass the project root.
 
-Read `docs/reports/test-results.md`. Check STATUS.
+Read `docs/reports/<run-id>/test-results.md`. Check STATUS.
 - If PASS: continue to review.
 - If FAIL: use the **assembly-fix** agent with the test report, plan path,
   and project root (max 1 retry). Re-run tests after fix. If still FAIL,
