@@ -55,11 +55,6 @@ h2 {
     margin-bottom: 1rem;
 }
 
-.flash-success {
-    background: #d4edda;
-    color: #155724;
-}
-
 .flash-error {
     background: #f8d7da;
     color: #721c24;
