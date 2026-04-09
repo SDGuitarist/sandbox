@@ -39,20 +39,57 @@ Run `/ralph-loop:ralph-loop "finish all slash commands" --completion-promise "DO
 
 Run `/compound-start $ARGUMENTS`
 
-### Step 3: Brainstorm
+### Step 3: Expand Brief + Roadmap
 
-Run `/workflows:brainstorm $ARGUMENTS`
+Before brainstorming, expand the user's app description into a structured
+brief. This prevents the brainstorm workflow from asking interactive questions.
 
-### Step 4: Brainstorm Refinement
+Generate the following from `$ARGUMENTS` and write it to a variable (do not
+create a file -- pass it inline to Step 4):
+
+```
+## App Brief
+
+**Name:** [inferred from description]
+**Target user:** [single user / team / public -- pick the simplest]
+**Tech stack:** Flask + SQLite + Jinja2 (sandbox standard)
+**Core features:** [3-5 bullet points extracted from description]
+**Explicitly out of scope for MVP:** [list obvious v2 features]
+
+## Roadmap
+
+**Phase 1 (MVP -- this build):**
+- [feature 1]
+- [feature 2]
+- [feature 3]
+
+**Phase 2 (future):**
+- [deferred feature 1]
+- [deferred feature 2]
+
+**Phase 3 (if needed):**
+- [nice-to-have 1]
+```
+
+Make all decisions yourself. Do not ask the user. Pick the simplest, most
+focused interpretation of the app description.
+
+### Step 4: Brainstorm
+
+Run `/workflows:brainstorm` with the expanded brief from Step 3 appended to
+`$ARGUMENTS`. If the brainstorm workflow asks clarifying questions, pick the
+simplest option and continue. Do not wait for user input.
+
+### Step 5: Brainstorm Refinement
 
 Use the **brainstorm-refinement** agent. Pass the path to the brainstorm doc
 just created in `docs/brainstorms/`. Read its output and check for STATUS: PASS.
 
-### Step 5: Plan
+### Step 6: Plan
 
 Run `/workflows:plan $ARGUMENTS`
 
-### Step 6: Deepen Plan
+### Step 7: Deepen Plan
 
 Run `/compound-engineering:deepen-plan`
 
