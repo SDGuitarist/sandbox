@@ -1,0 +1,68 @@
+{% extends "layout.html" %}
+
+{% block title %}Search Recipes{% endblock %}
+
+{% block content %}
+<h1>Search Recipes</h1>
+
+<div class="search-form">
+    <form method="get" action="{{ url_for('search.search') }}">
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by ingredient...">
+        <button type="submit" class="btn">Search</button>
+    </form>
+</div>
+
+{% if query and not recipes %}
+<div class="empty-state">
+    <p>No recipes found matching '{{ query }}'. Try different ingredients.</p>
+</div>
+{% elif not query and not recipes %}
+<div class="empty-state">
+    <p>Enter ingredient names to find matching recipes.</p>
+</div>
+{% endif %}
+
+{% if recipes %}
+<div class="search-results">
+    {% for recipe in recipes %}
+    <div class="recipe-card">
+        <h2><a href="{{ url_for('recipes.detail', recipe_id=recipe.id) }}">{{ recipe.title }}</a></h2>
+        <div class="recipe-meta">
+            <span>Servings: {{ recipe.servings }}</span>
+            <span>Prep: {{ recipe.prep_time_min if recipe.prep_time_min is not none else "N/A" }} min</span>
+            <span>Cook: {{ recipe.cook_time_min if recipe.cook_time_min is not none else "N/A" }} min</span>
+        </div>
+        {% if ingredients_map.get(recipe.id) %}
+        <div class="ingredient-badges">
+            {% for ingredient in ingredients_map[recipe.id] %}
+            <span class="badge">{{ ingredient.name }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('search.search', q=query, page=page - 1) }}" class="page-link">Previous</a>
+    {% else %}
+    <span class="page-link disabled">Previous</span>
+    {% endif %}
+
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="page-current">{{ p }}</span>
+        {% else %}
+        <a href="{{ url_for('search.search', q=query, page=p) }}" class="page-link">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="{{ url_for('search.search', q=query, page=page + 1) }}" class="page-link">Next</a>
+    {% else %}
+    <span class="page-link disabled">Next</span>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

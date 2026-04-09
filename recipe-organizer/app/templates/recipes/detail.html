@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ recipe.title }}{% endblock %}
+
+{% block content %}
+<h1>{{ recipe.title }}</h1>
+
+{% if recipe.description %}
+<p>{{ recipe.description }}</p>
+{% endif %}
+
+<div class="recipe-meta">
+    <span>Servings: {{ recipe.servings }}</span>
+    <span>Prep: {{ recipe.prep_time_min if recipe.prep_time_min is not none else "N/A" }} min</span>
+    <span>Cook: {{ recipe.cook_time_min if recipe.cook_time_min is not none else "N/A" }} min</span>
+</div>
+
+<h2>Instructions</h2>
+<div style="white-space: pre-wrap;">{{ recipe.instructions }}</div>
+
+<h2>Ingredients</h2>
+{% if ingredients %}
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Quantity</th>
+            <th>Unit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ingredient in ingredients %}
+        <tr>
+            <td>{{ ingredient.name }}</td>
+            <td>{{ ingredient.quantity }}</td>
+            <td>{{ ingredient.unit }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No ingredients listed.</p>
+{% endif %}
+
+<div class="form-actions">
+    <a href="{{ url_for('recipes.edit', recipe_id=recipe.id) }}" class="btn">Edit</a>
+    <form method="post" action="{{ url_for('recipes.delete', recipe_id=recipe.id) }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block title %}Ingredients{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Ingredients</h1>
+    <a href="{{ url_for('ingredients.create') }}" class="btn">New Ingredient</a>
+</div>
+
+{% if not ingredients %}
+<div class="empty-state">
+    <p>No ingredients yet. Add some ingredients to get started!</p>
+    <a href="{{ url_for('ingredients.create') }}" class="btn">Add Ingredient</a>
+</div>
+{% else %}
+<div class="ingredient-list">
+    {% for ingredient in ingredients %}
+    <div class="ingredient-item">
+        <a href="{{ url_for('ingredients.edit', ingredient_id=ingredient.id) }}">{{ ingredient.name }}</a>
+        <span class="badge">{{ ingredient.recipe_count }} recipes</span>
+        <form method="post" action="{{ url_for('ingredients.delete', ingredient_id=ingredient.id) }}" style="display: inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-danger btn-small">Delete</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="{{ url_for('ingredients.index', page=page - 1) }}" class="page-link">Previous</a>
+    {% else %}
+    <span class="page-link disabled">Previous</span>
+    {% endif %}
+
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="page-current">{{ p }}</span>
+        {% else %}
+        <a href="{{ url_for('ingredients.index', page=p) }}" class="page-link">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="{{ url_for('ingredients.index', page=page + 1) }}" class="page-link">Next</a>
+    {% else %}
+    <span class="page-link disabled">Next</span>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
