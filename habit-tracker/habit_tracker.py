@@ -51,7 +51,7 @@ def find_habit(habits, habit_id):
 def compute_streak(completions):
     if not completions:
         return 0
-    dates = sorted([date.fromisoformat(d) for d in completions], reverse=True)
+    dates = sorted({date.fromisoformat(d) for d in completions}, reverse=True)
     today = date.today()
     if dates[0] != today and dates[0] != today - timedelta(days=1):
         return 0
@@ -67,7 +67,7 @@ def compute_streak(completions):
 def compute_longest_streak(completions):
     if not completions:
         return 0
-    dates = sorted([date.fromisoformat(d) for d in completions])
+    dates = sorted({date.fromisoformat(d) for d in completions})
     longest = 1
     current = 1
     for i in range(1, len(dates)):
