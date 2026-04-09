@@ -56,4 +56,7 @@ No relevant gaps found. Brainstorm covers known solution patterns.
 STATUS: PASS
 ```
 
-Always end with `STATUS: PASS`. This agent cannot fail -- finding zero gaps is a valid result.
+Status rules:
+- `STATUS: PASS` -- gaps found or no gaps (both valid outcomes)
+- `STATUS: WARN` -- no solution docs found in `docs/solutions/` (empty directory)
+- `STATUS: FAIL` -- brainstorm file cannot be read or path is invalid

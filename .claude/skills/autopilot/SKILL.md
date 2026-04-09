@@ -139,6 +139,10 @@ For each agent in the assignment table:
 Spawn ALL agents in a single message (parallel launch). Then wait for all
 agents to complete. You will be notified as each finishes.
 
+**Timeout:** If any agent has not completed after 10 minutes, report it as
+a failure and proceed with the agents that did complete. Do not wait
+indefinitely.
+
 ### Step 10.5w: Pre-Merge Ownership Gate
 
 Before merging any worktree branch, validate that each agent only touched its
