@@ -6,49 +6,41 @@
 
 ## Current State
 
-Built a recipe organizer app (Flask + SQLite, 24 files, ~1960 lines) via 3-agent swarm.
-All phases complete including solution doc. P1 issues fixed (parallel array desync, missing index).
-Deferred P2/P3: validation duplication, two-connection race, type hints, correlated subquery.
+Built a personal finance tracker app (Flask + SQLite, 23 files, ~1592 lines) via 3-agent swarm.
+All phases complete including solution doc. P1 fixed (transaction_date validation). 4 P2 fixed.
+Deferred P3: repeated render blocks in transaction routes.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-04-09-recipe-organizer-brainstorm.md |
-| Plan | docs/plans/2026-04-09-feat-recipe-organizer-plan.md |
-| Reports | docs/reports/025/ (ownership-gate, contract-check, smoke-test, test-results) |
-| Solution | docs/solutions/2026-04-09-recipe-organizer-swarm-build.md |
+| Brainstorm | docs/brainstorms/2026-04-09-personal-finance-tracker-brainstorm.md |
+| Plan | docs/plans/2026-04-09-feat-personal-finance-tracker-plan.md |
+| Reports | docs/reports/026/ (ownership-gate, contract-check, smoke-test) |
+| Solution | docs/solutions/2026-04-09-personal-finance-tracker-swarm-build.md |
 
 ## Review Fixes Pending
 
-None critical. Deferred items:
-- P2: Two-connection race in ingredient + recipe edit routes
-- P2: Duplicated validation logic (~80 LOC between create/edit)
-- P2: No ingredient_id existence check before INSERT
-- P2: Correlated subquery in get_all_ingredients
-- P2: Unbounded ingredient dropdown (limit=1000 with subquery)
-- P3: Missing type annotations in models.py
-- P3: No unit length validation, no integer upper bounds
-- P3: Delete without existence check
-- P3: executemany optimization
+None critical. Deferred:
+- P3: Repeated fetch-categories-and-render blocks in transaction routes (~40 LOC duplication)
 
 ## Deferred Items
 
-- Sort system (intentionally removed as YAGNI)
-- Ingredient detail page (search covers this)
-- FTS5 search (LIKE sufficient for <500 recipes)
-- Security headers (personal app)
-- Rate limiting (personal app)
+- CSV import/export (Phase 2)
+- Date range filtering (Phase 2)
+- Transaction search (Phase 2)
+- Charts via Chart.js (Phase 3)
+- Recurring transaction templates (Phase 3)
 
 ## Three Questions
 
-1. **Hardest decision?** Whether to keep the sort system. Simplicity review convinced me it's YAGNI -- hardcoded newest-first is sufficient for a personal collection.
-2. **What was rejected?** Sort system, ingredient detail page, default_unit column, FTS5 search, separate batch counts function, HTMX for ingredient rows.
-3. **Least confident about?** Parallel array parsing with getlist() -- confirmed as real risk by security review, fixed with length equality check. The remaining P2 (two-connection race) is low probability for single-user but violates gold standard.
+1. **Hardest decision?** Whether to use ON DELETE SET DEFAULT (uncommon SQLite feature) vs application-level reassignment. Chose DB-level -- simpler and verified working.
+2. **What was rejected?** Per-budget CRUD routes (batch form is simpler), REAL for money (float rounding), income tracking (doubles data model), Chart.js (CSS bars sufficient).
+3. **Least confident about?** Route prefix doubling was a new swarm-specific bug. The spec template should now include "route paths are RELATIVE to blueprint prefix" to prevent this in future builds.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md for context. This is sandbox, a compound engineering automation lab.
-Recipe organizer cycle complete (24 files, ~1960 lines, 3-agent swarm). Pick up deferred P2/P3 items or start a new feature brainstorm.
+Finance tracker cycle complete (23 files, ~1592 lines, 3-agent swarm). Pick up deferred P3 or start a new feature brainstorm.
 ```
