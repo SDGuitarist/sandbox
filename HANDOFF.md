@@ -2,81 +2,84 @@
 
 **Date:** 2026-04-08
 **Branch:** master
-**Phase:** Work — ready to implement swarm-enabled autopilot
+**Phase:** Work — Phases 1-4 implemented, Phase 5 (integration) next
 
 ## Current State
 
-Brainstorm and deepened plan complete for swarm-enabled autopilot with assembly
-verification. 8 research/review agents ran during deepening. Plan scored 9/10
-across all criteria. Ready for implementation.
+Swarm-enabled autopilot is implemented. 6 agents created, skill replaces the
+old static command, solo path wired, swarm path wired. Spike test confirmed
+skills can spawn background agents in worktrees.
+
+## What Was Built
+
+### Phase 1: Foundation (DONE)
+- Spike test: background agent in worktree works (PASS)
+- 6 agent files created in `.claude/agents/`
+- Skill created at `.claude/skills/autopilot/SKILL.md`
+- Old command `.claude/commands/autopilot.md` deleted
+- Commits: `dac64f9`, `039e036`
+
+### Phase 2: Pre-build Agents (DONE)
+- brainstorm-refinement and swarm-planner agents fully implemented in Phase 1
+
+### Phase 3: Swarm Execution (DONE)
+- Swarm path wired in skill: planner -> parallel worktree agents -> assembly
+  merge -> circuit breaker -> smoke test -> test suite -> fix retry -> cleanup
+
+### Phase 4: Post-build Verification Agents (DONE)
+- spec-contract-checker, smoke-test-runner, test-suite-runner, assembly-fix
+  agents fully implemented in Phase 1
+
+### Phase 5: Integration (NEXT)
+- End-to-end test: run `/autopilot` with a solo build
+- End-to-end test: run `/autopilot` with a swarm build (`swarm: true`)
+- Verify all verification agents catch and report issues
 
 ## Key Artifacts
 
-| Phase | Location |
-|-------|----------|
+| Artifact | Location |
+|----------|----------|
 | Brainstorm | docs/brainstorms/2026-04-08-swarm-autopilot-assembly-verification.md |
 | Plan | docs/plans/2026-04-08-feat-swarm-autopilot-assembly-verification-plan.md |
+| Skill | .claude/skills/autopilot/SKILL.md |
+| Agents | .claude/agents/{brainstorm-refinement,swarm-planner,spec-contract-checker,smoke-test-runner,test-suite-runner,assembly-fix}.md |
 
-## What to Build
+## Design Decisions Made During Implementation
 
-6 new project-level agents + 1 new skill, replacing the static `/autopilot`
-command. See plan for full details.
+1. **No `disable-model-invocation`** on the skill. Existing skills (compound-start,
+   post-phase) don't use it. Skills need Claude's interpretation for conditional
+   logic and agent spawning.
+2. **Bash denied in worktree agents** by default. Agents adapted using Write tool.
+   For swarm agents, `mode: "bypassPermissions"` is set explicitly.
+3. **Absolute paths in worktrees** write to main repo, not worktree. Swarm agents
+   use relative paths and commit to their worktree branch, so this is not an issue.
 
-### Files to Create
-- `.claude/agents/brainstorm-refinement.md`
-- `.claude/agents/swarm-planner.md`
-- `.claude/agents/spec-contract-checker.md`
-- `.claude/agents/smoke-test-runner.md`
-- `.claude/agents/test-suite-runner.md`
-- `.claude/agents/assembly-fix.md`
-- `.claude/skills/autopilot/SKILL.md`
+## Feed-Forward Risk Resolution
 
-### Files to Delete
-- `.claude/commands/autopilot.md` (replaced by skill)
-
-### 5 Implementation Phases
-1. Foundation (agents + skill skeleton, solo path first)
-2. Pre-build agents (brainstorm refinement + swarm planner)
-3. Swarm execution (parallel agents + git worktree assembly)
-4. Post-build verification agents (contract checker, smoke test, test suite, fix)
-5. Integration (wire everything, end-to-end test)
-
-## Feed-Forward Risk
-
-**From plan:** Whether the skill format supports spawning background agents,
-waiting for all to complete, then reading their output to branch. This is the
-first thing to verify in Phase 1.
-
-**Recommended:** Start Phase 1 with a worktree spike test — spawn one background
-agent in a worktree, wait, read output — before creating any agent files.
-Hard-gate Phase 2 on this.
-
-**Also:** Add a circuit breaker after step 9 (Spec Contract Checker) — if
-unfixable mismatches exist, abort before smoke testing.
+**Risk:** Whether skills can spawn background agents in worktrees.
+**Result:** CONFIRMED working. Spike test passed. No Python fallback needed.
 
 ## Deferred Items
 
 - Auto-generate prescriptive spec code blocks during plan deepening
 - Auto-detect swarm suitability in `/workflows:plan`
-- Archive sandbox-auto (validation succeeded — ready)
+- Archive sandbox-auto (validation succeeded)
 - Test agent that auto-generates tests from shared spec
+- End-to-end integration testing (Phase 5)
 
 ## Three Questions
 
-1. **Hardest decision:** Whether skills can orchestrate background agents with
-   worktrees and branching. Chose skills over Python scripts to stay in-process.
-2. **What was rejected:** Combining verification agents into one (user wants one
-   agent per job). Lean specs (prevention > detection). Two separate commands.
-3. **Least confident about:** Skill orchestration — can a SKILL.md spawn
-   background agents, wait, read output, and branch? First spike test in Phase 1.
+1. **Hardest decision:** Not using `disable-model-invocation` despite the plan
+   recommending it. Confirmed by existing skill patterns that this is correct.
+2. **What was rejected:** Nothing beyond plan's rejected alternatives.
+3. **Least confident about:** Whether the swarm path's sequential merge + circuit
+   breaker flow handles all edge cases in practice. Needs end-to-end testing.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md for context. This is sandbox, a compound engineering automation lab.
-Phase: Work. Plan is at docs/plans/2026-04-08-feat-swarm-autopilot-assembly-verification-plan.md.
-Start with Phase 1: worktree spike test first (verify skill can spawn background
-agents), then create 6 agent files + 1 skill file. Wire solo path first.
-Key files: .claude/commands/autopilot.md (current, to be replaced),
-~/.claude/agents/session-kickoff.md (agent format reference).
+Phase: Work (Phase 5 integration testing). All agents and skill are implemented.
+Run end-to-end tests: first a solo build, then a swarm build with swarm: true.
+Key files: .claude/skills/autopilot/SKILL.md, .claude/agents/*.md
 ```
