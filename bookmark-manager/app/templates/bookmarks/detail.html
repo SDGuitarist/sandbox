@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ bookmark['title'] }}{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+    <a href="{{ url_for('bookmarks.list_bookmarks') }}" class="back-link">&larr; Back to bookmarks</a>
+
+    <h1>{{ bookmark['title'] }}</h1>
+
+    <div class="detail-field">
+        <label>URL</label>
+        <a href="{{ bookmark['url'] }}" target="_blank" rel="noopener">{{ bookmark['url'] }}</a>
+    </div>
+
+    {% if bookmark['description'] %}
+        <div class="detail-field">
+            <label>Description</label>
+            <p>{{ bookmark['description'] }}</p>
+        </div>
+    {% endif %}
+
+    <div class="detail-field">
+        <label>Tags</label>
+        <div class="bookmark-tags">
+            {% if tags %}
+                {% for tag in tags %}
+                    <a href="{{ url_for('tags.show', name=tag['name']) }}" class="tag">{{ tag['name'] }}</a>
+                {% endfor %}
+            {% else %}
+                <span class="muted">No tags</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="detail-field">
+        <label>Created</label>
+        <span>{{ bookmark['created_at'] }}</span>
+    </div>
+
+    <div class="detail-field">
+        <label>Updated</label>
+        <span>{{ bookmark['updated_at'] }}</span>
+    </div>
+
+    <div class="detail-actions">
+        <a href="{{ url_for('bookmarks.edit_bookmark', id=bookmark['id']) }}" class="btn btn-primary">Edit</a>
+        <form method="post" action="{{ url_for('bookmarks.delete_bookmark_route', id=bookmark['id']) }}" onsubmit="return confirm('Delete this bookmark?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
