@@ -23,7 +23,7 @@
             <td>
                 <a class="btn" href="/edit/{{ contact.id }}">Edit</a>
                 <form method="POST" action="/delete/{{ contact.id }}" style="display:inline;">
-                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button class="btn btn-danger" type="submit">Delete</button>
                 </form>
             </td>

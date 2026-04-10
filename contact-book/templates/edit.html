@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Edit Contact</h1>
 <form class="contact-form" method="POST" action="/edit/{{ contact.id }}">
-    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <label for="name">Name</label>
     <input type="text" id="name" name="name" value="{{ contact.name }}" required>
     <label for="email">Email</label>
