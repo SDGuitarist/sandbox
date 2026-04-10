@@ -166,15 +166,28 @@ the agent spawning model.
   - `python3 -c "...\n#..."` -- "Newline followed by #"
   - `source .venv/bin/activate` -- "'source' evaluates arguments"
   - `echo "${var}"` -- "Contains brace with quote character"
-- **Fix (structural, not yet implemented):** Refactor all agents and the
-  skill to use simple, single-purpose bash commands. Use `git -C /path`
-  instead of `cd /path && git`. Write python scripts to temp files instead
-  of inline. Use `.venv/bin/pip` instead of `source activate && pip`.
-- **Lesson:** Permission allowlists and dangerouslySkipPermissions only
-  control the first layer. Claude Code's security heuristics are a separate,
-  non-overridable layer that flags shell metacharacters, compound commands,
-  and code injection patterns. Designing for zero-prompt requires avoiding
-  these patterns entirely.
+- **Fix attempt 3 (2026-04-09):** Added "Bash Command Rules" blocks to
+  SKILL.md and 3 agent files. Rules: one command per Bash call, `git -C`
+  instead of `cd &&`, full venv paths, Write tool for scripts.
+- **Result of fix 3:** Agents achieved ZERO prompts (rules fully effective
+  in separate agent contexts). Orchestrator still ~5 prompts per run.
+- **Root cause (refined):** Bash Command Rules work for agents because each
+  agent gets a fresh context where the rules are prominent. The orchestrator
+  runs in the main session where the rules are one section in a long skill
+  file and Claude sometimes reverts to natural patterns (heredocs, `cd &&`)
+  under context pressure. Additionally, `git -C <path>` commands don't
+  match allowlist patterns like `Bash(git diff*)` because `-C` changes
+  the prefix.
+- **Current state:** ~5 orchestrator prompts per swarm run is the floor
+  with instruction-based mitigation. Further reduction requires either
+  adding `-C` patterns to the allowlist (`Bash(git -C *)`) or a Claude Code
+  "trust this skill" mechanism.
+- **Lesson:** Instruction-based rules are effective for agents (isolated
+  context, fresh prompt) but only partially effective for orchestrators
+  (long context, competing patterns). The permission system has three
+  layers: allowlist (prefix matching), dangerouslySkipPermissions
+  (project-level override), and security heuristics (non-overridable,
+  pattern-based). True zero-prompt requires satisfying all three.
 
 ## Risk Resolution
 
