@@ -21,8 +21,14 @@ Read:
 
 ## Rules
 
+**Bash Command Rules (MANDATORY -- read before any Bash call):**
+1. `cd /path && command` -- use full paths instead
+2. `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+3. `for x in ...; do ... done` -- use multiple individual Bash calls
+4. `&&` or `;` to chain commands -- one command per Bash call. Always.
+
 1. Auto-detect the test framework. Check in order: pytest, unittest, jest, mocha. Use the first one found.
-2. Install test dependencies if needed (e.g., `pip install pytest` if not installed).
+2. Install test dependencies using the full venv path: `.venv/bin/pip install pytest`. Do not use `source activate`. Do not chain with other commands.
 3. Run the full test suite. Capture all output.
 4. Do not modify any source code or test files. This agent only runs tests.
 5. If no test files exist, report that and set STATUS: PASS with a note.

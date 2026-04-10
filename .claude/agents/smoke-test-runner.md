@@ -22,8 +22,15 @@ Read:
 
 ## Rules
 
-1. Install dependencies first (pip install, npm install, etc. based on the project).
-2. Start the app in the background. Wait up to 60 seconds for it to become responsive.
+**Bash Command Rules (MANDATORY -- read before any Bash call):**
+1. `cd /path && command` -- use full paths instead
+2. `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+3. `for x in ...; do ... done` -- use multiple individual Bash calls
+4. `&&` or `;` to chain commands -- one command per Bash call. Always.
+5. Retry/poll with while/until loops -- use `curl --retry` flags instead
+
+1. Install dependencies using the full venv path: `.venv/bin/pip install -r requirements.txt`. Do not use `source activate`. Do not chain with other commands.
+2. Start the app with `.venv/bin/python app.py &` (or `.venv/bin/flask run &`). Then check readiness in a separate Bash call: `curl --retry 12 --retry-delay 5 --retry-connrefused -s -o /dev/null -w "%{http_code}" http://localhost:5000/`. This retries automatically for ~60 seconds with no loops.
 3. Hit each route from the spec's route table using curl or the appropriate tool.
 4. Check the HTTP status code against the expected value from the spec.
 5. If a route returns HTML, check for key content markers from the spec (e.g., page title, element IDs).

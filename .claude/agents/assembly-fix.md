@@ -23,6 +23,10 @@ Read:
 
 ## Rules
 
+**Bash Command Rules (MANDATORY -- read before any Bash call):**
+1. `cd /path && command` -- use full paths or `git -C` instead
+2. `&&` or `;` to chain commands -- one command per Bash call. Always.
+
 1. Read the error report first. Understand exactly what failed before touching any code.
 2. The plan's spec is the source of truth. Fixes must align with the spec.
 3. Make the minimum change needed to fix each error. Do not refactor, improve, or clean up.
