@@ -23,11 +23,13 @@ Read:
 ## Rules
 
 **Bash Command Rules (MANDATORY -- read before any Bash call):**
-1. `cd /path && command` -- use full paths instead
-2. `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
-3. `for x in ...; do ... done` -- use multiple individual Bash calls
-4. `&&` or `;` to chain commands -- one command per Bash call. Always.
-5. Retry/poll with while/until loops -- use `curl --retry` flags instead
+- `cd /path && command` -- use full paths instead
+- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+- `for x in ...; do ... done` -- use multiple individual Bash calls
+- `python3 -c "code"` -- use Write tool to create .py file, then run it
+- `echo "${variable}"` -- use Write tool for variable content
+- `&&` or `;` to chain commands -- one command per Bash call. Always.
+- Retry/poll with while/until loops -- use `curl --retry` flags instead
 
 1. Install dependencies using the full venv path: `.venv/bin/pip install -r requirements.txt`. Do not use `source activate`. Do not chain with other commands.
 2. Start the app with `.venv/bin/python app.py &` (or `.venv/bin/flask run &`). Then check readiness in a separate Bash call: `curl --retry 12 --retry-delay 5 --retry-connrefused -s -o /dev/null -w "%{http_code}" http://localhost:5000/`. This retries automatically for ~60 seconds with no loops.

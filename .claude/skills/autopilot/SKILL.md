@@ -27,15 +27,16 @@ ABORT: Autopilot requires unattended permissions. Run from the project
 directory with dangerouslySkipPermissions enabled in settings.local.json.
 ```
 
-## Bash Command Rules (MANDATORY)
+## Bash Command Rules (MANDATORY -- read before any Bash call)
 
 Security heuristics fire on compound commands regardless of permissions. One command per Bash call. Always.
 
 1. `cd /path && command` -- use `git -C /path` or full paths instead
-2. `for x in ...; do ... done` -- use multiple individual Bash calls or Glob tool
-3. `python3 -c "code"` -- use Write tool to create .py file, then run it
-4. `source .venv/bin/activate` -- use full path: `.venv/bin/pip`, `.venv/bin/python`
+2. `source .venv/bin/activate` -- use full path: `.venv/bin/pip`, `.venv/bin/python`
+3. `for x in ...; do ... done` -- use multiple individual Bash calls or Glob tool
+4. `python3 -c "code"` -- use Write tool to create .py file, then run it
 5. `echo "${variable}"` -- use Write tool for variable content
+6. `&&` or `;` to chain commands -- one command per Bash call. Always.
 
 ## Steps
 
