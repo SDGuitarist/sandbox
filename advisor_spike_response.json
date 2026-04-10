@@ -1,0 +1,55 @@
+{
+  "spike_date": "2026-04-09",
+  "approach": "custom_tool_proxy",
+  "spike_result": "PASS — full multi-turn flow works",
+  "summary": {
+    "haiku_called_tool": true,
+    "tool_input_fields_populated": true,
+    "opus_advisor_responded": true,
+    "haiku_incorporated_advice": true,
+    "total_latency_ms": 12592,
+    "total_api_calls": 3
+  },
+  "step_1_haiku_initial": {
+    "status": 200,
+    "stop_reason": "tool_use",
+    "latency_ms": 2346,
+    "tool_input": {
+      "email_summary": "Sarah Chen from Creative Agency reached out about potential collaboration on a creative project, referencing the recipient's documentary work and asking for a call to discuss.",
+      "preliminary_classification": "gig_inquiry",
+      "confidence": 0.65,
+      "uncertainty_reason": "The email has elements of a genuine lead (personalized reference to portfolio, specific work mentioned, direct collaboration inquiry) but also contains generic agency language and an unsubscribe link suggesting it could be a mass outreach campaign."
+    },
+    "usage": {"input_tokens": 994, "output_tokens": 214}
+  },
+  "step_2_opus_advisor": {
+    "status": 200,
+    "latency_ms": 8511,
+    "recommendation": "gig_inquiry",
+    "confidence": 0.72,
+    "reasoning": "Personalized references to specific documentary work elevate this above typical marketing spam. Agencies frequently use templated outreach with personalized touches when scouting freelancers — this is still a legitimate lead.",
+    "usage": {"input_tokens": 204, "output_tokens": 233}
+  },
+  "step_3_haiku_final": {
+    "status": 200,
+    "stop_reason": "end_turn",
+    "latency_ms": 1735,
+    "final_classification": "gig_inquiry",
+    "confidence": 0.72,
+    "usage": {"input_tokens": 1450, "output_tokens": 150}
+  },
+  "observations": [
+    "Haiku called consult_advisor immediately on first try — no prompt tuning needed",
+    "Tool input fields are rich: email_summary is concise, uncertainty_reason is detailed and specific",
+    "Opus agreed with Haiku's preliminary (both gig_inquiry) but increased confidence from 0.65 to 0.72",
+    "Haiku adopted Opus confidence and reasoning in final answer",
+    "Escalation is fully observable: stop_reason=tool_use is deterministic signal",
+    "advisor_changed_answer is computable: preliminary vs final classification",
+    "Token counts from separate usage blocks — no provisional fields needed",
+    "Opus latency (8.5s) dominates total time — expected, acceptable for sandbox"
+  ],
+  "previous_spike": {
+    "approach": "advisor_20260301",
+    "result": "FAIL — 400 error, tool type not recognized in Messages API"
+  }
+}
