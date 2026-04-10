@@ -27,6 +27,17 @@ ABORT: Autopilot requires unattended permissions. Run from the project
 directory with dangerouslySkipPermissions enabled in settings.local.json.
 ```
 
+## Bash Command Rules (MANDATORY -- read before any Bash call)
+
+Security heuristics fire on compound commands regardless of permissions. One command per Bash call. Always.
+
+1. `cd /path && command` -- use `git -C /path` or full paths instead
+2. `source .venv/bin/activate` -- use full path: `.venv/bin/pip`, `.venv/bin/python`
+3. `for x in ...; do ... done` -- use multiple individual Bash calls or Glob tool
+4. `python3 -c "code"` -- use Write tool to create .py file, then run it
+5. `echo "${variable}"` -- use Write tool for variable content
+6. `&&` or `;` to chain commands -- one command per Bash call. Always.
+
 ## Steps
 
 Execute these steps in order. Do not stop between steps.
@@ -212,12 +223,13 @@ indefinitely.
 ### Step 10.5w: Pre-Merge Ownership Gate
 
 Before merging any worktree branch, validate that each agent only touched its
-assigned files. For each worktree branch:
+assigned files. For each worktree branch, run these as SEPARATE Bash calls
+(one per branch -- do NOT use a for-loop):
 
-1. Run `git diff --name-only main...[branch]` to get the list of changed files.
-2. Compare against the agent's assigned files from the Swarm Agent Assignment.
+1. Run: `git -C <project-root> diff --name-only main...<branch-name>`
+2. Compare the output against the agent's assigned files using Read tool.
 3. If ANY file in the diff is NOT in the agent's assignment, **abort the merge
-   for that branch**. Write the violation to `docs/reports/<run-id>/ownership-violation.md`:
+   for that branch**. Use Write tool to create `docs/reports/<run-id>/ownership-violation.md`:
    ```
    OWNERSHIP VIOLATION: Agent [role] modified [file] which is not in its assignment.
    Assigned files: [list]
@@ -234,18 +246,19 @@ assigned files. For each worktree branch:
 
 ### Step 11w: Assembly Merge
 
-After all swarm agents pass the ownership gate:
+After all swarm agents pass the ownership gate, run each as a SEPARATE Bash
+call (do NOT chain with && or use for-loops):
 
-1. Record the current branch name: `git branch --show-current` (save as
-   `original-branch` for use in Step 15w).
-2. Create an assembly branch: `git checkout -b swarm-[run-id]-assembly`
-3. For each worktree agent that made changes, merge its branch into the
-   assembly branch sequentially using `git merge --no-ff [branch]`
-4. If any merge fails (exit code != 0):
-   - Write the merge conflict output to `docs/reports/<run-id>/merge-conflict.md`
-   - Use the **assembly-fix** agent with `docs/reports/<run-id>/merge-conflict.md`,
-     the plan path, and the project root
-   - Check its STATUS. If FIXED, continue merging. If FAIL, abort and report.
+1. Run: `git branch --show-current`
+   Save the output as `original-branch` for use in Step 15w.
+2. Run: `git checkout -b swarm-<run-id>-assembly`
+3. For each worktree agent that made changes, run ONE merge at a time
+   (separate Bash call for each -- do NOT use a for-loop):
+   `git merge --no-ff <branch-name>`
+4. If a merge fails (exit code != 0), use Write tool to save the conflict
+   output to `docs/reports/<run-id>/merge-conflict.md`, then invoke the
+   **assembly-fix** agent with the conflict report, plan path, and project root.
+   Check its STATUS. If FIXED, continue merging. If FAIL, abort and report.
 5. After all merges succeed, the assembly branch has the combined code.
 
 ### Step 12w: Circuit Breaker -- Spec Contract Check
@@ -281,23 +294,26 @@ Read `docs/reports/<run-id>/test-results.md`. Check STATUS.
 ### Step 15w: Merge Assembly to Main
 
 If all verification passed (or failures were fixed), merge the assembly branch
-back into the branch recorded in Step 11w:
+back into the branch recorded in Step 11w. Run each as a SEPARATE Bash call:
 
-```
-git checkout [original-branch recorded in Step 11w]
-git merge --no-ff swarm-[run-id]-assembly
-```
+1. Run: `git checkout <original-branch>`
+2. Run: `git merge --no-ff swarm-<run-id>-assembly`
 
 ### Step 16w: Cleanup
 
-On success (all checks passed):
-- Remove worktree directories: `git worktree remove [path]` for each
-- Delete worktree branches: `git branch -D swarm-[run-id]-[role]` for each
-- Delete assembly branch: `git branch -D swarm-[run-id]-assembly`
+On success (all checks passed), run each as a SEPARATE Bash call
+(do NOT use a for-loop -- run each removal as its own Bash call):
 
-On failure (unresolved issues):
-- Remove worktree directories but KEEP branches for inspection
-- Report which branches are preserved and why
+1. `git worktree remove <path>` (one call per worktree)
+2. `git branch -D swarm-<run-id>-<role>` (one call per branch)
+3. `git branch -D swarm-<run-id>-assembly`
+
+On failure (unresolved issues), run each as a SEPARATE Bash call:
+
+1. `git worktree remove <path>` (one call per worktree)
+
+Do NOT delete branches on failure -- they are preserved for inspection.
+Report which branches are kept and why.
 
 Then follow the **Shared Tail** below.
 

@@ -23,6 +23,14 @@ Read:
 
 ## Rules
 
+**Bash Command Rules (MANDATORY -- read before any Bash call):**
+- `cd /path && command` -- use full paths or `git -C` instead
+- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+- `for x in ...; do ... done` -- use multiple individual Bash calls
+- `python3 -c "code"` -- use Write tool to create .py file, then run it
+- `echo "${variable}"` -- use Write tool for variable content
+- `&&` or `;` to chain commands -- one command per Bash call. Always.
+
 1. Read the error report first. Understand exactly what failed before touching any code.
 2. The plan's spec is the source of truth. Fixes must align with the spec.
 3. Make the minimum change needed to fix each error. Do not refactor, improve, or clean up.

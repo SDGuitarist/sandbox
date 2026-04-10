@@ -166,15 +166,29 @@ the agent spawning model.
   - `python3 -c "...\n#..."` -- "Newline followed by #"
   - `source .venv/bin/activate` -- "'source' evaluates arguments"
   - `echo "${var}"` -- "Contains brace with quote character"
-- **Fix (structural, not yet implemented):** Refactor all agents and the
-  skill to use simple, single-purpose bash commands. Use `git -C /path`
-  instead of `cd /path && git`. Write python scripts to temp files instead
-  of inline. Use `.venv/bin/pip` instead of `source activate && pip`.
-- **Lesson:** Permission allowlists and dangerouslySkipPermissions only
-  control the first layer. Claude Code's security heuristics are a separate,
-  non-overridable layer that flags shell metacharacters, compound commands,
-  and code injection patterns. Designing for zero-prompt requires avoiding
-  these patterns entirely.
+- **Fix attempt 3 (2026-04-09):** Added "Bash Command Rules" blocks to
+  SKILL.md and 3 agent files. Rules: one command per Bash call, `git -C`
+  instead of `cd &&`, full venv paths, Write tool for scripts.
+- **Result of fix 3:** Agents achieved ZERO prompts (rules fully effective
+  in separate agent contexts). Orchestrator still ~5 prompts per run.
+- **Root cause (refined):** Bash Command Rules work for agents because each
+  agent gets a fresh context where the rules are prominent. The orchestrator
+  runs in the main session where the rules are one section in a long skill
+  file and Claude sometimes reverts to natural patterns (heredocs, `cd &&`)
+  under context pressure. Additionally, `git -C <path>` commands don't
+  match allowlist patterns like `Bash(git diff*)` because `-C` changes
+  the prefix.
+- **Fix attempt 4 (2026-04-09):** Added `Bash(git -C *)` to global
+  allowlist. This covers all `git -C <path>` commands that the Bash
+  Command Rules generate.
+- **Result: ZERO PERMISSION PROMPTS (build #6, contact-book).** The full
+  swarm pipeline (spawn, ownership gate, merge, contract check, smoke test,
+  test suite, cleanup) ran end-to-end without a single prompt.
+- **Lesson:** Zero-prompt automation requires three layers working together:
+  (1) Instruction rules in skill/agent files telling Claude HOW to write
+  commands, (2) allowlist patterns covering the commands Claude generates
+  (including `git -C`), (3) prescriptive step rewrites that eliminate
+  interpretation. All three are necessary -- none alone is sufficient.
 
 ## Risk Resolution
 

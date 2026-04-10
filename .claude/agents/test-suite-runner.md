@@ -21,9 +21,17 @@ Read:
 
 ## Rules
 
+**Bash Command Rules (MANDATORY -- read before any Bash call):**
+- `cd /path && command` -- use full paths instead
+- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+- `for x in ...; do ... done` -- use multiple individual Bash calls
+- `python3 -c "code"` -- use Write tool to create .py file, then run it
+- `echo "${variable}"` -- use Write tool for variable content
+- `&&` or `;` to chain commands -- one command per Bash call. Always.
+
 1. Auto-detect the test framework. Check in order: pytest, unittest, jest, mocha. Use the first one found.
-2. Install test dependencies if needed (e.g., `pip install pytest` if not installed).
-3. Run the full test suite. Capture all output.
+2. Install test dependencies using the full venv path: `.venv/bin/pip install pytest`. Do not use `source activate`. Do not chain with other commands.
+3. Run the test suite using the full venv path: `.venv/bin/pytest` (or `.venv/bin/python -m pytest`). Run from the project root. Do not chain with other commands. Capture all output.
 4. Do not modify any source code or test files. This agent only runs tests.
 5. If no test files exist, report that and set STATUS: PASS with a note.
 6. If tests fail, include the full failure output so the Assembly Fix Agent can diagnose.
