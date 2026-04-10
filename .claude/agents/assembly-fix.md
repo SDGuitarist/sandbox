@@ -25,7 +25,10 @@ Read:
 
 **Bash Command Rules (MANDATORY -- read before any Bash call):**
 1. `cd /path && command` -- use full paths or `git -C` instead
-2. `&&` or `;` to chain commands -- one command per Bash call. Always.
+2. `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+3. `for x in ...; do ... done` -- use multiple individual Bash calls
+4. `python3 -c "code"` -- use Write tool to create .py file, then run it
+5. `&&` or `;` to chain commands -- one command per Bash call. Always.
 
 1. Read the error report first. Understand exactly what failed before touching any code.
 2. The plan's spec is the source of truth. Fixes must align with the spec.

@@ -225,7 +225,7 @@ Before merging any worktree branch, validate that each agent only touched its
 assigned files. For each worktree branch, run these as SEPARATE Bash calls
 (one per branch -- do NOT use a for-loop):
 
-1. Run: `git diff --name-only main...<branch-name>`
+1. Run: `git -C <project-root> diff --name-only main...<branch-name>`
 2. Compare the output against the agent's assigned files using Read tool.
 3. If ANY file in the diff is NOT in the agent's assignment, **abort the merge
    for that branch**. Use Write tool to create `docs/reports/<run-id>/ownership-violation.md`:
