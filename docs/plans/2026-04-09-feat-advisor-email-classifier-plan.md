@@ -381,7 +381,7 @@ Correct classifications: 18/20 (90%)
 
 Lead safety (HARD CONSTRAINT):
   High-stakes emails: 7
-  Correctly identified: 7/7 (100%) ✓ PASS
+  Correctly identified: 9/9 (100%) ✓ PASS
 
 Escalation accuracy (sandbox targets, n=6 ambiguous):
   Should have escalated: 6
@@ -441,7 +441,7 @@ Minimal -- this is a standalone script with no dependencies from other apps.
 
 - **Lead safety:** 0 missed leads. Every high-stakes email (gig inquiry,
   business opportunity, networking) correctly identified. On a 20-email set,
-  this means 7/7. One miss = experiment fails and prompt needs rework.
+  this means 9/9. One miss = experiment fails and prompt needs rework.
 
 ### Primary metrics (what we're here to learn)
 
@@ -494,7 +494,7 @@ Minimal -- this is a standalone script with no dependencies from other apps.
 
 3. **How will we know it worked?** Phase 0: Haiku calls the `consult_advisor`
    tool on an ambiguous email, full multi-turn completes. Phase 1: summary
-   report shows zero missed leads (7/7 high-stakes), escalation recall meets
+   report shows zero missed leads (9/9 high-stakes), escalation recall meets
    sandbox target >= 0.83 (heuristic gate), and at least one case where the
    advisor changed Haiku's classification.
 
