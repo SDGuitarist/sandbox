@@ -1,7 +1,7 @@
 ---
 title: "refactor: Eliminate compound bash commands from autopilot pipeline"
 type: refactor
-status: active
+status: implemented
 date: 2026-04-09
 swarm: false
 origin: docs/brainstorms/2026-04-09-compound-bash-refactor-brainstorm.md
