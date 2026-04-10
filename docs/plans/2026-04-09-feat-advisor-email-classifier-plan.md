@@ -424,14 +424,14 @@ Minimal -- this is a standalone script with no dependencies from other apps.
 - [x] No prompt tuning needed — Haiku called tool on first attempt
 
 ### Phase 1 (sample mode classifier)
-- [ ] `email_classifier.py` exists at repo root
-- [ ] `python3 email_classifier.py` classifies 20 sample emails and prints summary
-- [ ] Structured JSON results written to `email_classifier_results.jsonl`
-- [ ] Each sample email has `ground_truth` and `should_escalate` labels
-- [ ] Summary report shows: classification accuracy, escalation confusion matrix (TP/FP/FN/TN), escalation recall/precision, lead safety, cost breakdown
-- [ ] Zero missed leads in test set (all high-stakes emails correctly identified)
-- [ ] Config uses frozen dataclass (model strings, max_uses centralized)
-- [ ] `tests/test_email_classifier.py` covers: config creation, sample email loading, result logging, summary calculation
+- [x] `email_classifier.py` exists at repo root
+- [x] `python3 email_classifier.py` classifies 20 sample emails and prints summary
+- [x] Structured JSON results written to `email_classifier_results.jsonl`
+- [x] Each sample email has `ground_truth` and `should_escalate` labels
+- [x] Summary report shows: classification accuracy, escalation confusion matrix (TP/FP/FN/TN), escalation recall/precision, lead safety, cost breakdown
+- [ ] Zero missed leads in test set — **FAILED: 8/9 (sample_20 misclassified as marketing, ground truth genuine_networking)**
+- [x] Config uses frozen dataclass (model strings centralized)
+- [x] `tests/test_email_classifier.py` covers: config creation, sample email loading, result logging, summary calculation (16 tests passing)
 
 ## Success Metrics
 
