@@ -178,16 +178,17 @@ the agent spawning model.
   under context pressure. Additionally, `git -C <path>` commands don't
   match allowlist patterns like `Bash(git diff*)` because `-C` changes
   the prefix.
-- **Current state:** ~5 orchestrator prompts per swarm run is the floor
-  with instruction-based mitigation. Further reduction requires either
-  adding `-C` patterns to the allowlist (`Bash(git -C *)`) or a Claude Code
-  "trust this skill" mechanism.
-- **Lesson:** Instruction-based rules are effective for agents (isolated
-  context, fresh prompt) but only partially effective for orchestrators
-  (long context, competing patterns). The permission system has three
-  layers: allowlist (prefix matching), dangerouslySkipPermissions
-  (project-level override), and security heuristics (non-overridable,
-  pattern-based). True zero-prompt requires satisfying all three.
+- **Fix attempt 4 (2026-04-09):** Added `Bash(git -C *)` to global
+  allowlist. This covers all `git -C <path>` commands that the Bash
+  Command Rules generate.
+- **Result: ZERO PERMISSION PROMPTS (build #6, contact-book).** The full
+  swarm pipeline (spawn, ownership gate, merge, contract check, smoke test,
+  test suite, cleanup) ran end-to-end without a single prompt.
+- **Lesson:** Zero-prompt automation requires three layers working together:
+  (1) Instruction rules in skill/agent files telling Claude HOW to write
+  commands, (2) allowlist patterns covering the commands Claude generates
+  (including `git -C`), (3) prescriptive step rewrites that eliminate
+  interpretation. All three are necessary -- none alone is sufficient.
 
 ## Risk Resolution
 
