@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head><title>Bookmarks</title></head>
+<body>
+    <h1><a href="/">Bookmarks</a></h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}<div>{{ msg }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</body>
+</html>
