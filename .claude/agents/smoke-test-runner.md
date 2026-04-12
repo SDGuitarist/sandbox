@@ -23,23 +23,29 @@ Read:
 ## Rules
 
 **Bash Command Rules (MANDATORY -- read before any Bash call):**
-- `cd /path && command` -- use full paths instead
-- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+- `cd /path && command` -- use full paths or `git -C` instead
+- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python` (Python)
 - `for x in ...; do ... done` -- use multiple individual Bash calls
-- `python3 -c "code"` -- use Write tool to create .py file, then run it
+- `python3 -c "code"` or `node -e "code"` -- use Write tool to create a file, then run it
 - `echo "${variable}"` -- use Write tool for variable content
 - `&&` or `;` to chain commands -- one command per Bash call. Always.
 - Retry/poll with while/until loops -- use `curl --retry` flags instead
 
-1. Install dependencies using the full venv path: `.venv/bin/pip install -r requirements.txt`. Do not use `source activate`. Do not chain with other commands.
-2. Start the app with `.venv/bin/python app.py &` (or `.venv/bin/flask run &`). Then check readiness in a separate Bash call: `curl --retry 12 --retry-delay 5 --retry-connrefused -s -o /dev/null -w "%{http_code}" http://localhost:5000/`. This retries automatically for ~60 seconds with no loops.
-3. Hit each route from the spec's route table using curl or the appropriate tool.
-4. Check the HTTP status code against the expected value from the spec.
-5. If a route returns HTML, check for key content markers from the spec (e.g., page title, element IDs).
-6. Always kill the app process when done, whether tests pass or fail. Use `kill <pid>` where PID was captured from the background start command's output. Run as a single Bash call. Do not use `pkill`, `killall`, or pattern-matching kill commands.
-7. Do not modify any source code. This agent only reads and tests.
-8. If the app fails to start, report the error and set STATUS: FAIL immediately.
-9. If the report file already exists, overwrite it entirely.
+1. **Detect the stack** by checking the project root for `package.json` (Node) or `requirements.txt` (Python). This determines all subsequent commands.
+2. **Install dependencies:**
+   - **Node:** `npm install` (run from project root using full path)
+   - **Python:** `.venv/bin/pip install -r requirements.txt`. Do not use `source activate`.
+   Do not chain with other commands.
+3. **Start the app:**
+   - **Node:** `node [project-root]/server.js &`. Then check readiness in a separate Bash call: `curl --retry 12 --retry-delay 5 --retry-connrefused -s -o /dev/null -w "%{http_code}" http://localhost:3000/`. This retries automatically for ~60 seconds with no loops.
+   - **Python:** `.venv/bin/python app.py &` (or `.venv/bin/flask run &`). Then check readiness in a separate Bash call: `curl --retry 12 --retry-delay 5 --retry-connrefused -s -o /dev/null -w "%{http_code}" http://localhost:5000/`. This retries automatically for ~60 seconds with no loops.
+4. Hit each route from the spec's route table using curl or the appropriate tool.
+5. Check the HTTP status code against the expected value from the spec.
+6. If a route returns HTML, check for key content markers from the spec (e.g., page title, element IDs). If a route returns JSON, verify the response shape matches the spec.
+7. Always kill the app process when done, whether tests pass or fail. Use `kill <pid>` where PID was captured from the background start command's output. Run as a single Bash call. Do not use `pkill`, `killall`, or pattern-matching kill commands.
+8. Do not modify any source code. This agent only reads and tests.
+9. If the app fails to start, report the error and set STATUS: FAIL immediately.
+10. If the report file already exists, overwrite it entirely.
 
 ## Output Contract
 

@@ -25,9 +25,9 @@ Read:
 
 **Bash Command Rules (MANDATORY -- read before any Bash call):**
 - `cd /path && command` -- use full paths or `git -C` instead
-- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python`
+- `source .venv/bin/activate` -- use `.venv/bin/pip`, `.venv/bin/python` (Python)
 - `for x in ...; do ... done` -- use multiple individual Bash calls
-- `python3 -c "code"` -- use Write tool to create .py file, then run it
+- `python3 -c "code"` or `node -e "code"` -- use Write tool to create a file, then run it
 - `echo "${variable}"` -- use Write tool for variable content
 - `&&` or `;` to chain commands -- one command per Bash call. Always.
 

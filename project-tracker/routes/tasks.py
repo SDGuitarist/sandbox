@@ -1,12 +1,13 @@
 """Task routes for the project tracker."""
 
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from app import get_db
 from models.tasks import (
     get_all_tasks, get_task, create_task, update_task, delete_task,
     get_task_members, get_available_members, assign_member, unassign_member,
 )
-from models.categories import get_all_categories
+from models.categories import get_all_categories, get_category
 from models.activity import log_activity
 
 bp = Blueprint('tasks', __name__)
@@ -33,13 +34,19 @@ def create():
         flash('Title is required', 'error')
         return redirect(request.url)
 
-    description = request.form.get('description', '').strip()
+    description = request.form.get('description', '').strip()[:2000]
 
     status = request.form.get('status', 'todo')
     if status not in ('todo', 'in_progress', 'done'):
         status = 'todo'
 
     due_date = request.form.get('due_date', '').strip() or None
+    if due_date:
+        try:
+            datetime.strptime(due_date, '%Y-%m-%d')
+        except ValueError:
+            flash('Invalid date format', 'error')
+            return redirect(request.url)
 
     try:
         category_id = int(request.form.get('category_id', 0))
@@ -48,9 +55,14 @@ def create():
         return redirect(request.url)
 
     db = get_db()
+    if get_category(db, category_id) is None:
+        flash('Invalid category', 'error')
+        return redirect(request.url)
+
     task_id = create_task(db, title, description, status, due_date, category_id)
     log_activity(db, 'task', task_id, 'created', f"Created task '{title}'")
     db.commit()
+    flash('Task created', 'success')
 
     return redirect(url_for('tasks.detail', task_id=task_id))
 
@@ -88,13 +100,19 @@ def edit(task_id):
         flash('Title is required', 'error')
         return redirect(request.url)
 
-    description = request.form.get('description', '').strip()
+    description = request.form.get('description', '').strip()[:2000]
 
     status = request.form.get('status', 'todo')
     if status not in ('todo', 'in_progress', 'done'):
         status = 'todo'
 
     due_date = request.form.get('due_date', '').strip() or None
+    if due_date:
+        try:
+            datetime.strptime(due_date, '%Y-%m-%d')
+        except ValueError:
+            flash('Invalid date format', 'error')
+            return redirect(request.url)
 
     try:
         category_id = int(request.form.get('category_id', 0))
@@ -102,9 +120,14 @@ def edit(task_id):
         flash('Invalid category', 'error')
         return redirect(request.url)
 
+    if get_category(db, category_id) is None:
+        flash('Invalid category', 'error')
+        return redirect(request.url)
+
     update_task(db, task_id, title, description, status, due_date, category_id)
     log_activity(db, 'task', task_id, 'updated', f"Updated task '{title}'")
     db.commit()
+    flash('Task updated', 'success')
 
     return redirect(url_for('tasks.detail', task_id=task_id))
 
@@ -119,6 +142,7 @@ def delete(task_id):
     delete_task(db, task_id)
     log_activity(db, 'task', task_id, 'deleted', f"Deleted task '{title}'")
     db.commit()
+    flash('Task deleted', 'success')
     return redirect(url_for('tasks.list'))
 
 
@@ -134,6 +158,7 @@ def assign(task_id):
         flash('Invalid member', 'error')
         return redirect(url_for('tasks.detail', task_id=task_id))
     assign_member(db, task_id, member_id)
+    log_activity(db, 'task', task_id, 'updated', f"Assigned member to task '{task['title']}'")
     db.commit()
     return redirect(url_for('tasks.detail', task_id=task_id))
 
@@ -150,5 +175,6 @@ def unassign(task_id):
         flash('Invalid member', 'error')
         return redirect(url_for('tasks.detail', task_id=task_id))
     unassign_member(db, task_id, member_id)
+    log_activity(db, 'task', task_id, 'updated', f"Removed member from task '{task['title']}'")
     db.commit()
     return redirect(url_for('tasks.detail', task_id=task_id))

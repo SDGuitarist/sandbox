@@ -35,6 +35,7 @@ def create():
     member_id = create_member(db, name, role)
     log_activity(db, 'member', member_id, 'created', f"Created member '{name}'")
     db.commit()
+    flash('Member added', 'success')
 
     return redirect(url_for('members.list'))
 
@@ -75,6 +76,7 @@ def edit(member_id):
     update_member(db, member_id, name, role)
     log_activity(db, 'member', member_id, 'updated', f"Updated member '{name}'")
     db.commit()
+    flash('Member updated', 'success')
 
     return redirect(url_for('members.detail', member_id=member_id))
 
@@ -90,5 +92,6 @@ def delete(member_id):
     delete_member(db, member_id)
     log_activity(db, 'member', member_id, 'deleted', f"Deleted member '{name}'")
     db.commit()
+    flash('Member deleted', 'success')
 
     return redirect(url_for('members.list'))

@@ -69,7 +69,12 @@ create a file -- pass it inline to Step 4):
 
 **Name:** [inferred from description]
 **Target user:** [single user / team / public -- pick the simplest]
-**Tech stack:** Flask + SQLite + Jinja2 (sandbox standard)
+**Tech stack:** [detect from description or default to Flask + SQLite + Jinja2]
+  - If description mentions "node", "express", "javascript", or "api":
+    Node/Express + SQLite (better-sqlite3) + Jest
+    Spec template: docs/templates/shared-spec-node.md
+  - Otherwise: Flask + SQLite + Jinja2 (sandbox standard)
+    Spec template: docs/templates/shared-spec-flask.md
 **Core features:** [3-5 bullet points extracted from description]
 **Explicitly out of scope for MVP:** [list obvious v2 features]
 

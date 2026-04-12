@@ -45,3 +45,4 @@ CREATE INDEX IF NOT EXISTS idx_tasks_category_id ON tasks(category_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_task_members_member_id ON task_members(member_id);
 CREATE INDEX IF NOT EXISTS idx_activity_log_created_at ON activity_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date_status ON tasks(due_date, status);

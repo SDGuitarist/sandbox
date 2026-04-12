@@ -35,12 +35,3 @@ def update_member(db, member_id, name, role):
 def delete_member(db, member_id):
     """Delete a member. CASCADE removes task_members rows. Does not commit."""
     db.execute('DELETE FROM members WHERE id = ?', (member_id,))
-
-
-def count_tasks_for_member(db, member_id):
-    """Return the number of tasks assigned to a member as a plain int."""
-    row = db.execute(
-        'SELECT COUNT(*) FROM task_members WHERE member_id = ?',
-        (member_id,),
-    ).fetchone()
-    return row[0]

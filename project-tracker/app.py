@@ -19,6 +19,7 @@ def close_db(e=None):
 
 def create_app():
     app = Flask(__name__)
+    # WARNING: dev-only fallback. Set SECRET_KEY env var in production.
     app.secret_key = os.environ.get('SECRET_KEY', 'dev-key-change-in-prod')
     app.teardown_appcontext(close_db)
 

@@ -16,7 +16,7 @@
 
     <div class="form-group">
         <label for="description">Description</label>
-        <textarea class="form-control" id="description" name="description" rows="4">{{ task.description if task else '' }}</textarea>
+        <textarea class="form-control" id="description" name="description" rows="4" maxlength="2000">{{ task.description if task else '' }}</textarea>
     </div>
 
     <div class="form-group">

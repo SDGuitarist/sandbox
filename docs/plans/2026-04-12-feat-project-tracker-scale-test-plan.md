@@ -5,6 +5,7 @@ status: active
 date: 2026-04-12
 swarm: true
 origin: docs/brainstorms/2026-04-12-project-tracker-brainstorm.md
+deepened: 2026-04-12
 feed_forward:
   risk: "Whether the cross-module write pattern (log_activity called from 3 agents) works cleanly, and whether spec readability holds at 700+ lines with 5 agents"
   verify_first: true
@@ -757,6 +758,132 @@ Do NOT call `get_db()` inside `log_activity`. Do NOT commit before `log_activity
 ---
 
 STATUS: PASS
+
+---
+
+## Enhancement Summary (Deepened 2026-04-12)
+
+**Research agents used:** 7 (solutions-reader, kieran-python-reviewer, security-sentinel, architecture-strategist, performance-oracle, data-integrity-guardian, pattern-recognition-specialist)
+**Sections enhanced:** 6 (File List, Schema, Transaction Pattern, Input Validation, Design Decisions, Scaling Notes)
+**Findings:** 28 total (3 blocker/high, 8 medium, 11 low, 6 informational)
+
+### Key Improvements
+
+1. **Missing `__init__.py` files (BLOCKER)** -- `models/` and `routes/` need empty `__init__.py` files or all cross-module imports fail. Add to core agent.
+2. **Template safety rule** -- 5 agents writing templates independently need an explicit "Never use `| safe` or `Markup()`" rule to prevent stored XSS.
+3. **Transaction error handling** -- The write+log+commit block needs explicit `try/except/rollback` or an explicit "do NOT catch exceptions from log_activity" rule.
+
+### Research Insights by Domain
+
+#### Python / Flask (kieran-python-reviewer)
+
+**Blockers:**
+- Add `project-tracker/models/__init__.py` and `project-tracker/routes/__init__.py` to core agent file list (empty files). Without these, `from models.activity import log_activity` fails with `ModuleNotFoundError`.
+- `schema.sql` path is relative -- breaks if app is run from parent directory. Use `Path(__file__).parent / 'schema.sql'` in production; acceptable as-is for sandbox.
+- Unused `contextmanager` import in app factory spec (line 138) -- remove to prevent agents from copying dead code.
+
+**Recommendations:**
+- Add type hints to model function signatures in spec (e.g., `def log_activity(db: sqlite3.Connection, ...) -> None`). Agents copy what the spec shows.
+- Note that `flask-wtf` is used solely for `CSRFProtect`, not WTForms form classes, to prevent agents from creating `FlaskForm` subclasses.
+
+#### Security (security-sentinel)
+
+**High:**
+- SECRET_KEY hardcoded fallback (`'dev-key-change-in-prod'`) teaches bad pattern. For sandbox: acceptable but add to Design Decisions as intentional. For reuse: fail loudly if `SECRET_KEY` not set outside debug mode.
+
+**Medium:**
+- No explicit Jinja2 `| safe` filter ban. Add to Shared Interface Spec: "Never use the `| safe` filter or `Markup()` in any template. Jinja2 autoescapes by default."
+- `description` field has no max length -- add `[:2000]` truncation matching the title/name pattern.
+- No security headers (X-Content-Type-Options, X-Frame-Options, CSP) -- low priority for local app.
+
+**Low:**
+- CSRF failure shows raw 400 page (no custom error handler).
+- `debug=True` is on by default (expected for sandbox).
+- No rate limiting (irrelevant for local app).
+- Invalid `category_id` causes unhandled `IntegrityError` instead of flash message.
+
+#### Architecture (architecture-strategist)
+
+**Positive:**
+- Data ownership model is sound. Cross-module write pattern is the strongest part of the plan.
+- Hard rule validated: max 1 cross-module write function per swarm build.
+
+**Medium:**
+- `log_activity()` exception behavior must be explicit. Add to spec: "Do NOT catch exceptions from `log_activity()`. If it raises, the transaction rolls back. This is intentional."
+- Route table and endpoint registry overlap (~50 lines). Acceptable at 5 agents; consolidate at 7+.
+
+**Scaling notes:**
+- `models/tasks.py` is read dependency for 3/4 non-core agents (star topology). At 8+ agents, consider splitting into query modules.
+- Spec scales to ~8-10 agents before needing per-agent extraction. Feed-Forward already proposes the correct fix.
+- Cross-module write count should remain at 1. If a 2nd appears, reconsider agent boundaries.
+
+#### Performance (performance-oracle)
+
+**P1:**
+- Add composite index: `CREATE INDEX IF NOT EXISTS idx_tasks_due_date_status ON tasks(due_date, status);` -- prevents full table scan on dashboard overdue query.
+
+**P2:**
+- N+1 risk on members list: `count_tasks_for_member(db, member_id)` called per-row. Add `get_all_members_with_task_counts(db)` using LEFT JOIN + GROUP BY.
+- Same risk on categories list. Plan should state list pages use aggregate queries, not per-row lookups.
+
+**P3:**
+- No pagination on any list page. Tasks most likely to grow. Not a blocker for sandbox.
+- Activity log grows unbounded. Add note about retention policy for production use.
+- Dashboard 4-query pattern is acceptable for SQLite (in-process, no network RTT).
+
+#### Data Integrity (data-integrity-guardian)
+
+**P1:**
+- No explicit `try/except/rollback` around write+log+commit. If `log_activity()` raises, route crashes with 500. Add error handling pattern to spec.
+- No schema migration strategy. `CREATE TABLE IF NOT EXISTS` silently skips column additions. Acceptable for sandbox; document as known limitation.
+
+**P2:**
+- `activity_log.entity_id` becomes orphaned on entity deletion (no FK back to polymorphic tables). Document as known limitation.
+- No CHECK constraint on `activity_log.entity_type`. Add `CHECK(entity_type IN ('task', 'category', 'member'))`.
+- Member deletion silently removes task assignments via CASCADE with no audit trail. Consider logging affected count.
+- No duplicate protection on activity log entries (append-only, no dedup).
+
+**P3:**
+- `executescript` is not atomic (each statement commits independently). Safe for IF NOT EXISTS.
+- TOCTOU race on category deletion is safe only because SQLite single-writer. Would break on Postgres.
+
+#### Pattern Recognition (pattern-recognition-specialist)
+
+**Strong adherence:** All 7 prior build lessons correctly applied (scalar returns, endpoint registry, composite PK, route prefix doubling, context manager clarity, CSRF+flash+PRG, spec template compliance).
+
+**New pattern to document:** Cross-module write via shared function (`log_activity`) is genuinely novel. Rules for the pattern:
+1. Function MUST live in the owning module
+2. Function MUST accept `db` as first argument (never call `get_db()` internally)
+3. Caller MUST commit after calling the function
+4. Data ownership table MUST have "Called By" column
+
+**Minor observations:**
+- `list` as route handler name shadows Python built-in (internally consistent across blueprints)
+- `dashboard-activity` agent name breaks single-word naming convention (code-level: no impact)
+
+### Recommended Fix Order (Plan-Level)
+
+| # | Issue | Priority | Why this order | Agent findings |
+|---|-------|----------|---------------|----------------|
+| 1 | Add `__init__.py` files to file list | Blocker | All cross-module imports fail without these | Python, Architecture, Pattern |
+| 2 | Add template safety rule (no `\| safe`) | High | 5 agents writing templates = XSS risk if any one uses it | Security |
+| 3 | Clarify `log_activity()` exception behavior | High | Prevents agents from breaking atomicity with try/except | Architecture, Data Integrity |
+| 4 | Add composite index on tasks(due_date, status) | Medium | Dashboard full table scan on every load | Performance |
+| 5 | Add description/role max length to validation | Medium | Unbounded text fields | Security |
+| 6 | Add CHECK on activity_log.entity_type | Medium | Catches typos at DB level | Data Integrity |
+| 7 | Document SECRET_KEY fallback as intentional | Low | Pattern reuse concern | Security |
+| 8 | Add aggregate query for members list | Low | N+1 prevention | Performance |
+| 9 | Remove unused contextmanager import from spec | Low | Prevents agent copy-paste of dead code | Python |
+| 10 | Document orphaned activity_log entries as known limitation | Low | Data governance awareness | Data Integrity |
+
+### Items NOT Changed (Out of Scope for Sandbox)
+
+- No migration strategy added (sandbox uses fresh DBs)
+- No pagination added (acceptance criteria don't require large datasets)
+- No security headers added (local-only app)
+- No rate limiting added (local-only app)
+- No type hints added to spec (would inflate 728-line spec further)
+- No activity log retention policy (not needed at sandbox scale)
 
 ## Sources
 

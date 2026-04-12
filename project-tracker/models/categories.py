@@ -1,8 +1,3 @@
-import re
-
-COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
-
-
 def get_all_categories(db):
     """Return all categories ordered by name."""
     return db.execute(
