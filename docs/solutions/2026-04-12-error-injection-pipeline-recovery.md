@@ -51,10 +51,19 @@ Read the contract check report. Made 4 edits to routes.py (import line + 3 call 
 
 The verification pipeline is a safety net, not a quality tool. It catches mechanical errors (wrong names, missing imports, type mismatches) but NOT design errors (wrong algorithm, missing edge cases, bad UX). The pipeline works because spec violations are the most common swarm failure mode, and they have unambiguous fixes.
 
+## Review Summary (Post-Fix)
+
+4-agent review (security, architecture, pattern, simplicity) on the post-fix code:
+- **P1: 1** (hardcoded secret key) — won't fix, test harness
+- **P2: 7** (XSS, debug mode, input limits, relative paths, type hints, init_db, style) — won't fix, all production concerns irrelevant to test harness
+- **P3: 8** (cosmetic: PEP 8, imports, blueprint name, HTML boilerplate, unpinned deps, no auth, template inheritance, flash messages) — won't fix
+
+**Zero code changes applied.** All findings are production concerns that don't apply to a pipeline test harness. The assembly-fix agent produced clean, spec-compliant code with no residual error injection artifacts.
+
 ## Stats
 
 - **Agents:** 3 (1 with injected error)
-- **Injected errors:** 6 (1 import line + 3 call sites × 2 = wrong import + wrong usage)
+- **Injected errors:** 6 (1 import line + 3 call sites x 2 = wrong import + wrong usage)
 - **Contract check findings:** 6/6 detected
 - **Assembly-fix attempts:** 1 (succeeded on first try)
 - **Smoke test after fix:** All pass

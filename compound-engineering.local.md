@@ -2,23 +2,22 @@
 
 ## Risk Chain
 
-**Brainstorm risk:** Whether the swarm build pattern translates cleanly from Flask to Node/Express -- first Node swarm build, untested stack switch.
+**Brainstorm risk:** Whether assembly-fix agent can correct a spec violation from a contract-check report alone -- never tested on a real failure in 8 prior builds.
 
-**Plan mitigation:** Created detailed shared interface spec with: explicit prohibition rule against importing db.js in routes, concrete route handler example, mandatory DB injection (throws on missing db), Node-specific patterns (better-sqlite3 sync API, createTestDb with :memory:).
+**Plan mitigation:** Designed a controlled test: minimal app with one agent deliberately given wrong function names. Contract-check report includes file, line, what's wrong, and what spec says.
 
-**Work risk (from Feed-Forward):** Whether req.app.locals.db works correctly when routes are loaded via require() in the app factory.
+**Work risk (from Feed-Forward):** Whether the assembly-fix -> re-check -> smoke-test pipeline works end-to-end when exercised with a real spec violation.
 
-**Review resolution:** 0 P1, 1 P2 (rate limiting - out of scope), 3 P3. Two minor fixes applied. All 45 tests pass. Risk fully resolved.
+**Review resolution:** 1 P1, 7 P2, 8 P3 -- all production concerns irrelevant to a test harness. Zero code changes applied. Assembly-fix produced clean, spec-compliant code with no residual artifacts. Risk fully resolved.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| notes-api/app.js | Express app factory with DB injection | Test isolation via app.locals.db |
-| notes-api/routes/notes.js | 7 route handlers including tag associations | DB access pattern, FK handling |
-| notes-api/routes/tags.js | 6 route handlers including notes-for-tag | BigInt cast, duplicate name handling |
-| notes-api/db.js | createDb/createTestDb factory functions | :memory: for tests, pragmas |
+| error-test-app/routes.py | Assembly-fix corrected 4 lines (import + 3 call sites) | Residual error artifacts |
+| error-test-app/models.py | Correct function names (never changed) | Spec source of truth |
+| error-test-app/app.py | App factory (never changed) | DB init, teardown |
 
 ## Plan Reference
 
-docs/plans/2026-04-12-feat-notes-api-with-tags-plan.md
+docs/plans/2026-04-12-test-error-injection-plan.md
