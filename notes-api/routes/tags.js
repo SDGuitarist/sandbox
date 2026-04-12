@@ -18,7 +18,7 @@ router.post('/', (req, res) => {
   if (name.length > 50) return res.status(400).json({ error: 'Name must be 50 characters or less' });
   try {
     const tagId = createTag(db, name);
-    res.status(201).json({ id: tagId });
+    res.status(201).json({ id: Number(tagId) });
   } catch (err) {
     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ error: 'Tag name already exists' });

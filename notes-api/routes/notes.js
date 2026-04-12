@@ -4,6 +4,7 @@ const {
   getAllNotes, getNoteById, createNote, updateNote, deleteNote,
   getTagsForNote, addTagToNote, removeTagFromNote
 } = require('../models/notes');
+const { getTagById } = require('../models/tags');
 
 router.get('/', (req, res) => {
   const db = req.app.locals.db;
@@ -108,6 +109,8 @@ router.post('/:id/tags', (req, res) => {
 
   const note = getNoteById(db, id);
   if (!note) return res.status(404).json({ error: 'Note not found' });
+
+  if (!getTagById(db, tagId)) return res.status(404).json({ error: 'Tag not found' });
 
   const inserted = addTagToNote(db, id, tagId);
   if (!inserted) return res.status(409).json({ error: 'Tag already assigned to this note' });
