@@ -125,7 +125,7 @@ def count_tasks_by_status(db):
 def count_tasks_by_category(db):
     """Return list of Rows with name, color, count per category."""
     return db.execute(
-        """SELECT c.name, c.color, COUNT(t.id) AS count
+        """SELECT c.id, c.name, c.color, COUNT(t.id) AS count
            FROM categories c
            LEFT JOIN tasks t ON c.id = t.category_id
            GROUP BY c.id
