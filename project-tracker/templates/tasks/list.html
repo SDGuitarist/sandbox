@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Tasks - Project Tracker{% endblock %}
+
+{% block content %}
+<h1>Tasks</h1>
+<a class="btn btn-primary" href="{{ url_for('tasks.new') }}">New Task</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Category</th>
+            <th>Due Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for task in tasks %}
+        <tr>
+            <td><a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a></td>
+            <td><span class="status-badge status-{{ task.status }}">{{ task.status }}</span></td>
+            <td><a href="{{ url_for('categories.detail', category_id=task.category_id) }}">{{ task.category_name }}</a></td>
+            <td>{{ task.due_date or '' }}</td>
+            <td>
+                <a class="btn btn-sm" href="{{ url_for('tasks.edit_form', task_id=task.id) }}">Edit</a>
+                <form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

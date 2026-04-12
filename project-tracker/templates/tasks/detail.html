@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task.title }} - Project Tracker{% endblock %}
+
+{% block content %}
+<h1>{{ task.title }}</h1>
+
+<p><span class="status-badge status-{{ task.status }}">{{ task.status }}</span></p>
+
+{% if task.description %}
+<p>{{ task.description }}</p>
+{% endif %}
+
+<p><strong>Category:</strong> <a href="{{ url_for('categories.detail', category_id=task.category_id) }}">{{ task.category_name }}</a></p>
+
+{% if task.due_date %}
+<p><strong>Due Date:</strong> {{ task.due_date }}</p>
+{% endif %}
+
+<p><strong>Created:</strong> {{ task.created_at }}</p>
+<p><strong>Updated:</strong> {{ task.updated_at }}</p>
+
+<a class="btn btn-primary" href="{{ url_for('tasks.edit_form', task_id=task.id) }}">Edit</a>
+<form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-danger" type="submit">Delete</button>
+</form>
+
+<h2>Assigned Members</h2>
+{% if assigned %}
+<ul>
+    {% for member in assigned %}
+    <li>
+        <a href="{{ url_for('members.detail', member_id=member.id) }}">{{ member.name }}</a>
+        <form method="post" action="{{ url_for('tasks.unassign', task_id=task.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="member_id" value="{{ member.id }}">
+            <button class="btn btn-danger btn-sm" type="submit">Remove</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No members assigned.</p>
+{% endif %}
+
+{% if available %}
+<h3>Add Member</h3>
+<form method="post" action="{{ url_for('tasks.assign', task_id=task.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <select class="form-control" name="member_id">
+            {% for member in available %}
+            <option value="{{ member.id }}">{{ member.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button class="btn btn-primary btn-sm" type="submit">Assign</button>
+</form>
+{% endif %}
+
+<p><a href="{{ url_for('tasks.list') }}">Back to Tasks</a></p>
+{% endblock %}
