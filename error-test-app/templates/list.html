@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>My Bookmarks</h2>
+<form method="POST" action="{{ url_for('main.add') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="url" placeholder="URL" required>
+    <input name="title" placeholder="Title" required>
+    <button type="submit">Add</button>
+</form>
+<ul>
+{% for b in bookmarks %}
+<li>
+    <a href="{{ b.url }}">{{ b.title }}</a>
+    <form method="POST" action="{{ url_for('main.delete', bookmark_id=b.id) }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Delete</button>
+    </form>
+</li>
+{% endfor %}
+</ul>
+{% endblock %}
