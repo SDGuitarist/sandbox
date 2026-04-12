@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}{{ member['name'] }} - Project Tracker{% endblock %}
+
+{% block content %}
+<h1>{{ member['name'] }}</h1>
+<p>Role: {{ member['role'] }}</p>
+
+<a class="btn btn-primary" href="{{ url_for('members.edit_form', member_id=member['id']) }}">Edit</a>
+<form method="post" action="{{ url_for('members.delete', member_id=member['id']) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-danger" type="submit">Delete</button>
+</form>
+
+<h2>Assigned Tasks</h2>
+{% if tasks %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Due Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for task in tasks %}
+        <tr>
+            <td><a href="{{ url_for('tasks.detail', task_id=task['id']) }}">{{ task['title'] }}</a></td>
+            <td>{{ task['status'] }}</td>
+            <td>{{ task['due_date'] or '' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No tasks assigned.</p>
+{% endif %}
+{% endblock %}

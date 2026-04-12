@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Members - Project Tracker{% endblock %}
+
+{% block content %}
+<h1>Members</h1>
+<a class="btn btn-primary" href="{{ url_for('members.new') }}">New Member</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for member in members %}
+        <tr>
+            <td><a href="{{ url_for('members.detail', member_id=member['id']) }}">{{ member['name'] }}</a></td>
+            <td>{{ member['role'] }}</td>
+            <td>
+                <a class="btn btn-primary" href="{{ url_for('members.edit_form', member_id=member['id']) }}">Edit</a>
+                <form method="post" action="{{ url_for('members.delete', member_id=member['id']) }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-danger" type="submit">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
