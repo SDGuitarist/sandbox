@@ -1,11 +1,12 @@
 ---
-title: "Project Tracker -- 5-Agent Swarm Scale Test"
+title: "Project Tracker -- 5-Agent Swarm Scale Test (Complete)"
 date: 2026-04-12
+updated: 2026-04-12
 category: integration-issues
-tags: [flask, swarm, scale-test, cross-module-writes, activity-log, 5-agents]
+tags: [flask, swarm, scale-test, cross-module-writes, activity-log, 5-agents, plan-deepening, code-review, parallel-fixes]
 module: project-tracker
 symptom: "Untested assumption: swarm pattern works at 5+ agent scale"
-root_cause: "Prior builds maxed at 4 agents. Cross-module writes and 700+ line specs were untested."
+root_cause: "Prior builds maxed at 4 agents. Cross-module writes and 700+ line specs were untested. Post-build review found 9 issues from input validation gaps and swarm consistency gaps."
 ---
 
 # Project Tracker -- 5-Agent Swarm Scale Test
@@ -61,6 +62,77 @@ All 3 calling agents followed this pattern correctly because:
 4. Python packages need __init__.py files -- add them to the core agent's file list
 5. SELECT queries used by other agents' templates must include all columns needed for url_for links
 
+## Session 2: Retroactive Quality Phases (2026-04-12)
+
+Build #8 completed the swarm build but skipped plan deepening, code review, and learnings propagation. This session ran them retroactively.
+
+### Plan Deepening Results
+
+7 parallel research agents analyzed the plan:
+- kieran-python-reviewer, security-sentinel, architecture-strategist, performance-oracle, data-integrity-guardian, pattern-recognition-specialist, solutions-reader
+- **28 findings total** across all agents
+- Key insight: plan deepening identified all 9 code issues BEFORE code review confirmed them. Plan deepening is NOT redundant with code review -- it catches design-level gaps that manifest as implementation bugs.
+
+### Code Review Results (6 agents)
+
+| Severity | Count | Examples |
+|----------|-------|---------|
+| P1 | 2 | Due date not validated, missing composite index |
+| P2 | 5 | Category ID unhandled, description unbounded, flash gaps, assign/unassign not logged, SECRET_KEY undocumented |
+| P3 | 2 | Dead COLOR_RE, dead count_tasks_for_member |
+
+**Two root cause themes:**
+1. **Input validation gaps** -- Spec defined validation rules but agents didn't implement all of them (due date, description length, category existence check)
+2. **Swarm consistency gaps** -- Different agents made different UX decisions (flash messages in categories but not tasks/members; assign/unassign not logged)
+
+**What passed cleanly (zero issues):**
+- Cross-module writes (log_activity) -- all 3 agents followed exact pattern
+- Scalar return types -- all create_* returns used correctly
+- Route prefix convention -- no doubling
+- CSRF coverage -- every POST form has csrf_token
+- Data ownership boundaries -- no violations
+- PRAGMA foreign_keys=ON -- set correctly
+
+### Fixes Applied (All 9 in Parallel)
+
+All 9 fixes applied via parallel pr-comment-resolver agents with zero conflicts:
+
+1. **Due date validation** -- Added `datetime.strptime` check in create/edit routes
+2. **Composite index** -- Added `idx_tasks_due_date_status ON tasks(due_date, status)`
+3. **Category existence check** -- Added `get_category(db, category_id)` before insert
+4. **Description cap** -- Added `[:2000]` + `maxlength="2000"` on textarea
+5. **Flash messages** -- Added success flashes to all task and member routes
+6. **Activity log assign/unassign** -- Added log_activity calls to both routes
+7. **SECRET_KEY comment** -- Documented dev-only fallback
+8. **Dead COLOR_RE** -- Removed from models/categories.py (only used in routes/)
+9. **Dead count_tasks_for_member** -- Removed (YAGNI, templates use tasks|length)
+
+### New Prevention Strategies
+
+**For input validation gaps (Problem 1):**
+- Use validation tables in spec, not prose paragraphs (tables are harder to skip)
+- Include per-agent validation checklists in agent assignments
+- Post-assembly grep to verify pattern coverage
+
+**For swarm consistency gaps (Problem 2):**
+- Add "Coordinated Behaviors" section to spec with mandatory reference table
+- Every write operation gets a row in the table showing expected flash + log_activity
+- Post-assembly consistency audit (flash message coverage, activity log coverage)
+
+**For dead code from overspecification (Problem 3):**
+- Pre-swarm checklist: every spec function must be called by at least one route
+- If a constant is used cross-agent, define it in models/ with explicit ownership
+- Post-assembly dead code scanner (grep for defined but unused functions)
+
+## Related Docs
+
+- [flask-swarm-acid-test](2026-04-07-flask-swarm-acid-test.md) -- context manager lesson (this build chose simpler pattern instead)
+- [task-tracker-categories-swarm](2026-04-09-task-tracker-categories-swarm.md) -- scalar return types, prescriptive code blocks
+- [recipe-organizer-swarm-build](2026-04-09-recipe-organizer-swarm-build.md) -- junction tables, composite PK
+- [personal-finance-tracker-swarm-build](2026-04-09-personal-finance-tracker-swarm-build.md) -- plan deepening catching issues pre-build
+- [notes-api-node-express-swarm-build](2026-04-12-notes-api-node-express-swarm-build.md) -- stack-agnostic validation
+- [autopilot-swarm-orchestration](2026-04-09-autopilot-swarm-orchestration.md) -- assembly verification pipeline
+
 ## Stats
 
 - **Agents:** 5 (core, tasks, categories, members, dashboard-activity)
@@ -69,3 +141,7 @@ All 3 calling agents followed this pattern correctly because:
 - **Spec lines:** 728
 - **Post-assembly fixes:** 1 (c.id in count query)
 - **Cross-module writes:** 3 agents calling log_activity() -- all correct
+- **Retroactive review findings:** 9 (2 P1, 5 P2, 2 P3)
+- **Parallel fix agents:** 9 (zero conflicts)
+- **Plan deepening agents:** 7
+- **Code review agents:** 6
