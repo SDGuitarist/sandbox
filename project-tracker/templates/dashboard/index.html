@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Project Tracker{% endblock %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<section>
+    <h2>Task Status</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3>Todo</h3>
+            <p class="status-badge status-todo">{{ status_counts.todo }}</p>
+        </div>
+        <div class="card">
+            <h3>In Progress</h3>
+            <p class="status-badge status-in_progress">{{ status_counts.in_progress }}</p>
+        </div>
+        <div class="card">
+            <h3>Done</h3>
+            <p class="status-badge status-done">{{ status_counts.done }}</p>
+        </div>
+    </div>
+</section>
+
+<section>
+    <h2>Tasks by Category</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Tasks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in category_counts %}
+            <tr>
+                <td>
+                    <span class="color-dot" style="background: {{ row.color }}"></span>
+                    <a href="{{ url_for('categories.detail', category_id=row.id) }}">{{ row.name }}</a>
+                </td>
+                <td>{{ row.count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section>
+    <h2>Overdue Tasks</h2>
+    {% if overdue_tasks %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Due Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in overdue_tasks %}
+            <tr class="overdue">
+                <td><a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a></td>
+                <td>{{ task.due_date }}</td>
+                <td><span class="status-badge status-{{ task.status }}">{{ task.status }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No overdue tasks</p>
+    {% endif %}
+</section>
+
+<section>
+    <h2>Recent Activity</h2>
+    {% if recent_activity %}
+    <ul>
+        {% for entry in recent_activity %}
+        <li>{{ entry.description }} &mdash; {{ entry.created_at }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No activity yet</p>
+    {% endif %}
+</section>
+{% endblock %}
