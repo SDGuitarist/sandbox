@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Categories — Project Tracker{% endblock %}
+
+{% block content %}
+<h1>Categories</h1>
+<a class="btn btn-primary" href="{{ url_for('categories.new') }}">New Category</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Color</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in categories %}
+        <tr>
+            <td>
+                <span class="color-dot" style="background-color: {{ cat['color'] }};"></span>
+                <a href="{{ url_for('categories.detail', category_id=cat['id']) }}">{{ cat['name'] }}</a>
+            </td>
+            <td>{{ cat['color'] }}</td>
+            <td>
+                <a class="btn" href="{{ url_for('categories.edit_form', category_id=cat['id']) }}">Edit</a>
+                <form method="POST" action="{{ url_for('categories.delete', category_id=cat['id']) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

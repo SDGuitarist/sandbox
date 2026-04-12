@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category['name'] }} — Project Tracker{% endblock %}
+
+{% block content %}
+<h1>
+    <span class="color-dot" style="background-color: {{ category['color'] }};"></span>
+    {{ category['name'] }}
+</h1>
+<p>Color: {{ category['color'] }}</p>
+<p>Created: {{ category['created_at'] }}</p>
+
+<a class="btn" href="{{ url_for('categories.edit_form', category_id=category['id']) }}">Edit</a>
+<a class="btn" href="{{ url_for('categories.list') }}">Back to Categories</a>
+
+<h2>Tasks</h2>
+{% if tasks %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Due Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for task in tasks %}
+        <tr>
+            <td><a href="{{ url_for('tasks.detail', task_id=task['id']) }}">{{ task['title'] }}</a></td>
+            <td>{{ task['status'] }}</td>
+            <td>{{ task['due_date'] or '—' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No tasks in this category.</p>
+{% endif %}
+{% endblock %}
