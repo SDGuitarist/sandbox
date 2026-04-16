@@ -3,39 +3,33 @@ from db import get_db, DB_PATH
 VALID_SOURCES = {"meetup", "eventbrite", "facebook", "linkedin"}
 
 
-def get_all_leads(db_path=DB_PATH, limit=100, offset=0):
-    """Return all leads with pagination."""
+def query_leads(source="", q="", db_path=DB_PATH, limit=100, offset=0):
+    """Return leads with composable filters. source and q can be combined."""
+    clauses = []
+    params = []
+
+    if source and source in VALID_SOURCES:
+        clauses.append("source = ?")
+        params.append(source)
+
+    if q:
+        clauses.append("name LIKE ?")
+        params.append(f"%{q}%")
+
+    where = " AND ".join(clauses)
+    where_sql = f"WHERE {where}" if where else ""
+
     with get_db(db_path) as conn:
-        return conn.execute(
-            "SELECT * FROM leads ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
+        rows = conn.execute(
+            f"SELECT * FROM leads {where_sql} ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
+            params + [limit, offset],
         ).fetchall()
+        count = conn.execute(
+            f"SELECT COUNT(*) FROM leads {where_sql}",
+            params,
+        ).fetchone()[0]
 
-
-def get_leads_by_source(source: str, db_path=DB_PATH, limit=100, offset=0):
-    """Return leads filtered by source. Returns empty list for invalid sources."""
-    if source not in VALID_SOURCES:
-        return []
-    with get_db(db_path) as conn:
-        return conn.execute(
-            "SELECT * FROM leads WHERE source = ? ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
-            (source, limit, offset),
-        ).fetchall()
-
-
-def search_leads(query: str, db_path=DB_PATH, limit=100, offset=0):
-    """Search leads by name (prefix match for index friendliness)."""
-    with get_db(db_path) as conn:
-        return conn.execute(
-            "SELECT * FROM leads WHERE name LIKE ? ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
-            (f"%{query}%", limit, offset),
-        ).fetchall()
-
-
-def count_leads(db_path=DB_PATH) -> int:
-    """Total lead count."""
-    with get_db(db_path) as conn:
-        return conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+    return rows, count
 
 
 def delete_lead(lead_id: int, db_path=DB_PATH) -> bool:

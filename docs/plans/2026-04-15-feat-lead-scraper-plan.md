@@ -250,7 +250,6 @@ CREATE TABLE IF NOT EXISTS leads (
     activity    TEXT,
     source      TEXT NOT NULL,
     scraped_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
-    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
     UNIQUE(source, profile_url)
 );
 ```
@@ -455,19 +454,19 @@ Export leads to CSV from the command line (no Flask needed). Immediately usable 
 Flask app on 127.0.0.1:5000 (`debug=False` by default):
 - `GET /` -- Lead list with source filter, search, pagination (LIMIT 100)
 - `GET /leads/export.csv` -- CSV download (respects current filters)
-- `DELETE /leads/<id>` -- Delete a lead (PII compliance)
+- `POST /leads/<id>/delete` -- Delete a lead (PII compliance)
 
 ## Security Requirements
 
 From security-sentinel review:
 
 1. **`debug=False` by default**, controlled by `FLASK_DEBUG` env var. Bind to `127.0.0.1`, never `0.0.0.0`.
-2. **CSV formula injection protection** -- sanitize cells starting with `=`, `-`, `+`, `@` by prefixing with a tab character before writing to CSV.
+2. **CSV formula injection protection** -- sanitize cells starting with `=`, `-`, `+`, `@`, `|` by prefixing with a single-quote before writing to CSV. Implemented in `utils.sanitize_csv_cell()`.
 3. **Filter parameter validation** -- source filter is checked against `VALID_SOURCES` allowlist. Unknown values are ignored (filter is dropped, all leads shown). This prevents SQL injection while keeping UX forgiving -- no 400 errors for a mistyped filter.
 4. **Token masking in logs** -- never log raw exception objects from HTTP requests (may contain tokens in URLs). Mask tokens: `token[:4] + "****"`.
 5. **Profile URL validation** -- reject non-https URLs at ingest time. Prevents stored XSS via `javascript:` URLs.
 6. **`.env.example` hygiene** -- placeholder strings only, never real tokens.
-7. **Lead deletion** -- `DELETE /leads/<id>` for PII compliance (CCPA).
+7. **Lead deletion** -- `POST /leads/<id>/delete` for PII compliance (CCPA).
 8. **No unencrypted secrets in code** -- all tokens via `.env` + `os.getenv()`.
 
 ## Technical Considerations
@@ -582,7 +581,7 @@ Files: `scrapers/meetup.py`, `scrapers/facebook.py`, `scrapers/linkedin.py`, `ap
 - WHEN a user visits `/` THE SYSTEM SHALL display leads with name, source badge, and location with pagination (100 per page)
 - WHEN a user filters by source "meetup" THE SYSTEM SHALL display only Meetup-sourced leads
 - WHEN a user clicks "Export CSV" THE SYSTEM SHALL download a CSV file with all currently filtered leads, with formula-injection-safe cell values
-- WHEN a user deletes a lead via `DELETE /leads/<id>` THE SYSTEM SHALL remove the row from the database
+- WHEN a user deletes a lead via `POST /leads/<id>/delete` THE SYSTEM SHALL remove the row from the database
 
 ### Error Cases
 

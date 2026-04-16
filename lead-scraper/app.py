@@ -8,8 +8,8 @@ from flask import Flask, render_template, request, make_response, redirect, url_
 # Ensure imports work when run from any directory
 sys.path.insert(0, str(Path(__file__).parent))
 
-from db import init_db, DB_PATH
-from models import get_all_leads, get_leads_by_source, search_leads, count_leads, delete_lead, VALID_SOURCES
+from db import init_db
+from models import query_leads, delete_lead, VALID_SOURCES
 from utils import sanitize_csv_cell
 
 
@@ -28,15 +28,11 @@ def create_app():
         per_page = 100
         offset = (page - 1) * per_page
 
-        if q:
-            leads = search_leads(q, limit=per_page, offset=offset)
-        elif source and source in VALID_SOURCES:
-            leads = get_leads_by_source(source, limit=per_page, offset=offset)
-        else:
-            source = ""  # ignore invalid source values
-            leads = get_all_leads(limit=per_page, offset=offset)
+        # Ignore invalid source values
+        if source and source not in VALID_SOURCES:
+            source = ""
 
-        total = count_leads()
+        leads, total = query_leads(source=source, q=q, limit=per_page, offset=offset)
         has_next = offset + per_page < total
 
         return render_template(
@@ -55,12 +51,10 @@ def create_app():
         source = request.args.get("source", "").strip()
         q = request.args.get("q", "").strip()
 
-        if q:
-            leads = search_leads(q, limit=100000)
-        elif source and source in VALID_SOURCES:
-            leads = get_leads_by_source(source, limit=100000)
-        else:
-            leads = get_all_leads(limit=100000)
+        if source and source not in VALID_SOURCES:
+            source = ""
+
+        leads, _ = query_leads(source=source, q=q, limit=100000)
 
         fieldnames = ["id", "name", "bio", "location", "email", "profile_url", "activity", "source", "scraped_at"]
         si = io.StringIO()

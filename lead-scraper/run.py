@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from db import init_db, DB_PATH
 from config import SOURCES, get_apify_token
 from ingest import ingest_leads
-from models import get_all_leads
+from models import query_leads
 from utils import sanitize_csv_cell
 
 
@@ -65,7 +65,7 @@ def cmd_scrape(args):
 
 def cmd_export(args):
     """Export all leads to a CSV file."""
-    leads = get_all_leads(limit=100000)
+    leads, _ = query_leads(limit=100000)
     if not leads:
         print("No leads to export.")
         return
