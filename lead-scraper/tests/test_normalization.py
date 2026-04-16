@@ -21,19 +21,7 @@ def load_fixture(name):
 
 
 def test_eventbrite_normalization():
-    """Each raw Eventbrite item normalizes to the expected NormalizedLead."""
-    raw_items = load_fixture("eventbrite_raw.json")
-    expected = load_fixture("eventbrite_normalized.json")
-
-    result = []
-    for item in raw_items:
-        normalized = eb_normalize(item)
-        if normalized is not None:
-            result.append(normalized)
-
-    assert len(result) == len(expected), f"Expected {len(expected)} leads, got {len(result)}"
-    for i, (got, want) in enumerate(zip(result, expected)):
-        assert got == want, f"Lead {i} mismatch:\n  got:  {got}\n  want: {want}"
+    _run_fixture_test(eb_normalize, "eventbrite_raw.json", "eventbrite_normalized.json", "Eventbrite")
 
 
 def test_normalize_missing_organizer():
@@ -110,18 +98,3 @@ def test_linkedin_missing_names():
 def test_facebook_missing_profile_url():
     raw = {"name": "Someone", "profileUrl": None}
     assert fb_normalize(raw) is None
-
-
-if __name__ == "__main__":
-    test_eventbrite_normalization()
-    test_normalize_missing_organizer()
-    test_normalize_missing_organizer_url()
-    test_normalize_missing_organizer_name()
-    test_normalize_null_location()
-    test_meetup_normalization()
-    test_facebook_normalization()
-    test_linkedin_normalization()
-    test_meetup_missing_profile_url()
-    test_linkedin_missing_names()
-    test_facebook_missing_profile_url()
-    print("All normalization tests passed.")

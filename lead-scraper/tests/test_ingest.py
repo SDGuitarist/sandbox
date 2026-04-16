@@ -115,15 +115,3 @@ def test_ingest_batch_counts():
     assert inserted == 2
     assert skipped == 0
     assert invalid == 2
-
-
-if __name__ == "__main__":
-    test_ingest_valid_lead()
-    test_ingest_rejects_missing_name()
-    test_ingest_rejects_missing_profile_url()
-    test_ingest_rejects_non_https_url()
-    test_ingest_rejects_http_url()
-    test_ingest_dedup_same_source_and_url()
-    test_ingest_allows_same_url_different_source()
-    test_ingest_batch_counts()
-    print("All ingest tests passed.")

@@ -3,7 +3,7 @@
 
 import argparse
 import csv
-import io
+import re
 import sys
 from pathlib import Path
 
@@ -14,13 +14,7 @@ from db import init_db, DB_PATH
 from config import SOURCES, get_apify_token
 from ingest import ingest_leads
 from models import get_all_leads
-
-
-def _sanitize_cell(value):
-    """Prevent CSV formula injection. Prefix dangerous chars with a tab."""
-    if value and isinstance(value, str) and value[0] in ("=", "-", "+", "@"):
-        return "\t" + value
-    return value
+from utils import sanitize_csv_cell
 
 
 def cmd_scrape(args):
@@ -39,8 +33,12 @@ def cmd_scrape(args):
 
         print(f"Scraping {source_name}...", end=" ", flush=True)
         try:
-            # Import the scraper module dynamically
-            scraper = __import__(f"scrapers.{source_name}", fromlist=["scrape"])
+            from scrapers import eventbrite, meetup, facebook, linkedin
+            scraper_map = {"eventbrite": eventbrite, "meetup": meetup, "facebook": facebook, "linkedin": linkedin}
+            scraper = scraper_map.get(source_name)
+            if scraper is None:
+                print(f"Unknown source: {source_name}")
+                continue
             leads = scraper.scrape(args.location, source_config)
             print(f"found {len(leads)} leads.", end=" ", flush=True)
 
@@ -49,8 +47,8 @@ def cmd_scrape(args):
             results.append({"source": source_name, "inserted": inserted, "skipped": skipped, "error": None})
 
         except Exception as e:
-            # Mask any tokens that might appear in the error message
-            error_msg = str(e)[:500]
+            # Mask tokens that might appear in the error message
+            error_msg = re.sub(r'[A-Za-z0-9_-]{32,}', '[REDACTED]', str(e)[:500])
             print(f"FAILED: {error_msg}")
             results.append({"source": source_name, "inserted": 0, "skipped": 0, "error": error_msg})
 
@@ -79,7 +77,7 @@ def cmd_export(args):
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         for lead in leads:
-            row = {k: _sanitize_cell(lead[k]) for k in fieldnames}
+            row = {k: sanitize_csv_cell(lead[k]) for k in fieldnames}
             writer.writerow(row)
 
     print(f"Exported {len(leads)} leads to {output_path}")

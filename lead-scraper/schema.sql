@@ -10,6 +10,5 @@ CREATE TABLE IF NOT EXISTS leads (
     activity    TEXT,
     source      TEXT NOT NULL,
     scraped_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
-    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
     UNIQUE(source, profile_url)
 );

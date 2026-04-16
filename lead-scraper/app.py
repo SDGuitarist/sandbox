@@ -10,13 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from db import init_db, DB_PATH
 from models import get_all_leads, get_leads_by_source, search_leads, count_leads, delete_lead, VALID_SOURCES
-
-
-def _sanitize_cell(value):
-    """Prevent CSV formula injection."""
-    if value and isinstance(value, str) and value[0] in ("=", "-", "+", "@"):
-        return "\t" + value
-    return value
+from utils import sanitize_csv_cell
 
 
 def create_app():
@@ -27,7 +21,10 @@ def create_app():
     def index():
         source = request.args.get("source", "").strip()
         q = request.args.get("q", "").strip()
-        page = max(1, int(request.args.get("page", 1)))
+        try:
+            page = max(1, min(int(request.args.get("page", 1)), 10000))
+        except (ValueError, TypeError):
+            page = 1
         per_page = 100
         offset = (page - 1) * per_page
 
@@ -70,7 +67,7 @@ def create_app():
         writer = csv.DictWriter(si, fieldnames=fieldnames)
         writer.writeheader()
         for lead in leads:
-            row = {k: _sanitize_cell(lead[k]) for k in fieldnames}
+            row = {k: sanitize_csv_cell(lead[k]) for k in fieldnames}
             writer.writerow(row)
 
         output = make_response(si.getvalue())

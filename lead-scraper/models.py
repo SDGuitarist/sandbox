@@ -7,18 +7,18 @@ def get_all_leads(db_path=DB_PATH, limit=100, offset=0):
     """Return all leads with pagination."""
     with get_db(db_path) as conn:
         return conn.execute(
-            "SELECT * FROM leads ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM leads ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
             (limit, offset),
         ).fetchall()
 
 
 def get_leads_by_source(source: str, db_path=DB_PATH, limit=100, offset=0):
-    """Return leads filtered by source. Ignores invalid source values."""
+    """Return leads filtered by source. Returns empty list for invalid sources."""
     if source not in VALID_SOURCES:
-        return get_all_leads(db_path, limit, offset)
+        return []
     with get_db(db_path) as conn:
         return conn.execute(
-            "SELECT * FROM leads WHERE source = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM leads WHERE source = ? ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
             (source, limit, offset),
         ).fetchall()
 
@@ -27,7 +27,7 @@ def search_leads(query: str, db_path=DB_PATH, limit=100, offset=0):
     """Search leads by name (prefix match for index friendliness)."""
     with get_db(db_path) as conn:
         return conn.execute(
-            "SELECT * FROM leads WHERE name LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT * FROM leads WHERE name LIKE ? ORDER BY scraped_at DESC LIMIT ? OFFSET ?",
             (f"%{query}%", limit, offset),
         ).fetchall()
 

@@ -47,10 +47,4 @@ def scrape(location: str, config: dict) -> list[NormalizedLead]:
     }
 
     raw_items = run_actor(config["actor"], run_input)
-
-    leads = []
-    for item in raw_items:
-        normalized = normalize(item)
-        if normalized is not None:
-            leads.append(normalized)
-    return leads
+    return [lead for item in raw_items if (lead := normalize(item)) is not None]

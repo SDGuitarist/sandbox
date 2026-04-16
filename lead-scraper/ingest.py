@@ -1,17 +1,14 @@
-from db import get_db
+from db import get_db, DB_PATH
 from scrapers import NormalizedLead
 
 REQUIRED_FIELDS = {"name", "profile_url", "source"}
 
 
-def ingest_leads(leads: list[NormalizedLead], db_path=None) -> tuple[int, int, int]:
+def ingest_leads(leads: list[NormalizedLead], db_path=DB_PATH) -> tuple[int, int, int]:
     """Validate and insert leads. Returns (inserted, skipped, invalid) counts.
 
     This is the ONLY module that executes INSERT on the leads table.
     """
-    from db import DB_PATH
-    if db_path is None:
-        db_path = DB_PATH
 
     inserted = skipped = invalid = 0
     valid_leads = []
@@ -22,7 +19,7 @@ def ingest_leads(leads: list[NormalizedLead], db_path=None) -> tuple[int, int, i
             invalid += 1
             continue
         # Validate profile_url is https
-        if not lead["profile_url"].startswith("https://"):
+        if not lead["profile_url"].lower().startswith("https://"):
             invalid += 1
             continue
         valid_leads.append(lead)
