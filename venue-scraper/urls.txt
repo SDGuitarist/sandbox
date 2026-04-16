@@ -1,0 +1,6 @@
+# 5 diverse venue websites for smoke test (DNS verified)
+https://www.estancialajolla.com
+https://www.musicboxsd.com
+https://www.parqeventcenter.com
+https://www.theprado.com
+https://www.theabbeysd.com
