@@ -1,0 +1,20 @@
+{
+  "name": "The Grand Ballroom",
+  "description": "Elegant event space in downtown San Diego",
+  "email": "events@grandballroom.com",
+  "phone": "(619) 555-0100",
+  "address": "123 Main St, San Diego, CA 92101",
+  "booking_url": "https://grandballroom.com/book",
+  "website": "https://grandballroom.com",
+  "social_links": ["https://instagram.com/grandballroom", "https://facebook.com/grandballroom"],
+  "capacity": 300,
+  "capacity_range": "50-300",
+  "pricing": "$5,000 - $15,000 per event",
+  "pricing_range": "$5,000-$15,000",
+  "amenities": ["parking", "catering", "AV equipment", "bridal suite", "outdoor patio"],
+  "event_types": ["wedding", "corporate", "gala", "birthday"],
+  "venue_type": "ballroom",
+  "photos": ["https://grandballroom.com/img/main.jpg", "https://grandballroom.com/img/patio.jpg"],
+  "star_rating": 4.7,
+  "review_count": 128
+}
