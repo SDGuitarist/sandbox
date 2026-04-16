@@ -1,0 +1,56 @@
+[
+  {
+    "url": "https://www.eventbrite.com/e/ai-for-filmmakers-workshop-tickets-123456789",
+    "name": "AI for Filmmakers Workshop",
+    "description": "Learn how to integrate AI tools into your filmmaking workflow. Hands-on session covering script analysis, storyboarding, and post-production.",
+    "startDate": "2026-05-10T18:00:00",
+    "endDate": "2026-05-10T21:00:00",
+    "location": {
+      "name": "The Lot Studios",
+      "address": "1041 N Formosa Ave, San Diego, CA 92101"
+    },
+    "organizer": {
+      "name": "SD Creative Collective",
+      "url": "https://www.eventbrite.com/o/sd-creative-collective-12345678",
+      "description": "Community of filmmakers, musicians, and digital artists in San Diego."
+    },
+    "image": "https://img.evbuc.com/example.jpg",
+    "price": "Free",
+    "category": "Film & Media"
+  },
+  {
+    "url": "https://www.eventbrite.com/e/music-production-with-ai-tickets-987654321",
+    "name": "Music Production with AI",
+    "description": "Explore AI-powered music production techniques. From composition to mixing, discover tools that enhance your creative process.",
+    "startDate": "2026-05-15T19:00:00",
+    "endDate": "2026-05-15T22:00:00",
+    "location": {
+      "name": "Sound Stage SD",
+      "address": "742 5th Ave, San Diego, CA 92101"
+    },
+    "organizer": {
+      "name": "Jane Martinez",
+      "url": "https://www.eventbrite.com/o/jane-martinez-music-87654321",
+      "description": "Producer and educator based in San Diego."
+    },
+    "image": "https://img.evbuc.com/example2.jpg",
+    "price": "$25",
+    "category": "Music"
+  },
+  {
+    "url": "https://www.eventbrite.com/e/creative-ai-meetup-tickets-555555555",
+    "name": "Creative AI Meetup",
+    "description": null,
+    "startDate": "2026-05-20T17:30:00",
+    "endDate": "2026-05-20T19:30:00",
+    "location": null,
+    "organizer": {
+      "name": "TechArts SD",
+      "url": "https://www.eventbrite.com/o/techarts-sd-11223344",
+      "description": null
+    },
+    "image": null,
+    "price": "Free",
+    "category": "Technology"
+  }
+]

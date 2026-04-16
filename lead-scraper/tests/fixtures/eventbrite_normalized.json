@@ -1,0 +1,29 @@
+[
+  {
+    "name": "SD Creative Collective",
+    "bio": "Community of filmmakers, musicians, and digital artists in San Diego.",
+    "location": "San Diego, CA 92101",
+    "email": null,
+    "profile_url": "https://www.eventbrite.com/o/sd-creative-collective-12345678",
+    "activity": "Organized: AI for Filmmakers Workshop",
+    "source": "eventbrite"
+  },
+  {
+    "name": "Jane Martinez",
+    "bio": "Producer and educator based in San Diego.",
+    "location": "San Diego, CA 92101",
+    "email": null,
+    "profile_url": "https://www.eventbrite.com/o/jane-martinez-music-87654321",
+    "activity": "Organized: Music Production with AI",
+    "source": "eventbrite"
+  },
+  {
+    "name": "TechArts SD",
+    "bio": null,
+    "location": null,
+    "email": null,
+    "profile_url": "https://www.eventbrite.com/o/techarts-sd-11223344",
+    "activity": "Organized: Creative AI Meetup",
+    "source": "eventbrite"
+  }
+]
