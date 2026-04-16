@@ -1,0 +1,20 @@
+[
+  {
+    "firstName": "Sarah",
+    "lastName": "Kim",
+    "headline": "Creative Director | Brand Storytelling | AI Enthusiast",
+    "locationName": "San Diego, California",
+    "profileUrl": "https://www.linkedin.com/in/sarah-kim-creative",
+    "connectionCount": 500,
+    "summary": "15 years building brands for startups and studios."
+  },
+  {
+    "firstName": "Tom",
+    "lastName": "Reyes",
+    "headline": "Filmmaker & Editor",
+    "locationName": "San Diego Metropolitan Area",
+    "profileUrl": "https://www.linkedin.com/in/tom-reyes-film",
+    "connectionCount": 230,
+    "summary": null
+  }
+]

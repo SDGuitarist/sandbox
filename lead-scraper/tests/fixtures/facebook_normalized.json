@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Lisa Nguyen",
+    "bio": "Photographer and visual artist. Currently exploring AI-generated imagery.",
+    "location": "San Diego, California",
+    "email": null,
+    "profile_url": "https://www.facebook.com/lisa.nguyen.photo",
+    "activity": "Active in: SD Film & Photo Community. Recent posts: 8",
+    "source": "facebook"
+  },
+  {
+    "name": "David Okonkwo",
+    "bio": null,
+    "location": "San Diego, CA",
+    "email": null,
+    "profile_url": "https://www.facebook.com/david.okonkwo.music",
+    "activity": "Active in: San Diego Musicians Network. Recent posts: 3",
+    "source": "facebook"
+  }
+]

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Sarah Kim",
+    "bio": "Creative Director | Brand Storytelling | AI Enthusiast",
+    "location": "San Diego, California",
+    "email": null,
+    "profile_url": "https://www.linkedin.com/in/sarah-kim-creative",
+    "activity": "500+ connections. 15 years building brands for startups and studios.",
+    "source": "linkedin"
+  },
+  {
+    "name": "Tom Reyes",
+    "bio": "Filmmaker & Editor",
+    "location": "San Diego Metropolitan Area",
+    "email": null,
+    "profile_url": "https://www.linkedin.com/in/tom-reyes-film",
+    "activity": "230+ connections",
+    "source": "linkedin"
+  }
+]

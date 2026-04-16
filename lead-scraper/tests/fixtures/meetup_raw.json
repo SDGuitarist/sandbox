@@ -1,0 +1,29 @@
+[
+  {
+    "name": "Carlos Rivera",
+    "bio": "Director and cinematographer. 10 years shooting docs in San Diego.",
+    "city": "San Diego",
+    "profileUrl": "https://www.meetup.com/members/234567890",
+    "email": null,
+    "groups": ["FilmNet SD", "SD Documentary Collective"],
+    "eventsAttended": 12
+  },
+  {
+    "name": "Anika Patel",
+    "bio": "Sound designer and composer for indie film.",
+    "city": "San Diego",
+    "profileUrl": "https://www.meetup.com/members/345678901",
+    "email": "anika@example.com",
+    "groups": ["FilmNet SD"],
+    "eventsAttended": 5
+  },
+  {
+    "name": "Marcus Chen",
+    "bio": null,
+    "city": "La Jolla",
+    "profileUrl": "https://www.meetup.com/members/456789012",
+    "email": null,
+    "groups": ["SD Tech Creatives"],
+    "eventsAttended": 1
+  }
+]
