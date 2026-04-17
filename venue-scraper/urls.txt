@@ -1,6 +1,6 @@
-# 5 diverse venue websites for smoke test (DNS verified)
+# HTML fallback validation test
+# Previously failed (tests fallback):
+https://www.brick15.com
+# Previously succeeded (should still work, no fallback triggered):
 https://www.estancialajolla.com
 https://www.musicboxsd.com
-https://www.parqeventcenter.com
-https://www.theprado.com
-https://www.theabbeysd.com
