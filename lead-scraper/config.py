@@ -42,7 +42,7 @@ SOURCES = {
         "max_pages": 2,
     },
     "facebook": {
-        "enabled": False,  # Enable after verifying groups are public
+        "enabled": True,
         "actor": "apify/facebook-groups-scraper",
         "groups": [
             "https://www.facebook.com/groups/1488967914699762/",
@@ -50,7 +50,7 @@ SOURCES = {
         ],
     },
     "instagram": {
-        "enabled": False,  # Enable when ready to use Apify credits
+        "enabled": True,
         "actor": "apify/instagram-profile-scraper",
         "hashtags": [
             "SanDiegoFilmmaker",

@@ -4,16 +4,23 @@ from scrapers import NormalizedLead
 def normalize(raw_item: dict) -> NormalizedLead | None:
     """Normalize the post author from a Facebook group post.
 
-    The Apify facebook-groups-scraper returns posts, not member profiles.
-    This extracts the post author as a single lead (maintains contract).
+    The Apify facebook-groups-scraper returns posts with author in a nested
+    ``user`` dict (keys: ``name``, ``id``). Falls back to flat fields for
+    forward-compatibility.
     """
-    author_name = raw_item.get("name") or raw_item.get("userName")
-    author_url = raw_item.get("profileUrl") or raw_item.get("url")
+    user = raw_item.get("user") or {}
+    author_name = user.get("name") or raw_item.get("name") or raw_item.get("userName")
+    # Build profile URL from numeric user ID, fall back to post permalink
+    user_id = str(user.get("id", ""))
+    if user_id.isdigit():
+        author_url = f"https://www.facebook.com/profile.php?id={user_id}"
+    else:
+        author_url = raw_item.get("profileUrl") or raw_item.get("url")
     if not author_name or not author_url:
         return None
 
-    group_title = raw_item.get("groupTitle", "")
-    activity = f"Posted in: {group_title}" if group_title else None
+    group_label = raw_item.get("facebookUrl") or raw_item.get("groupTitle", "")
+    activity = f"Posted in: {group_label}" if group_label else None
 
     return NormalizedLead(
         name=author_name,
@@ -27,14 +34,14 @@ def normalize(raw_item: dict) -> NormalizedLead | None:
     )
 
 
-def _normalize_commenter(comment: dict, group_title: str) -> NormalizedLead | None:
+def _normalize_commenter(comment: dict, group_url: str) -> NormalizedLead | None:
     """Normalize a single commenter from a Facebook post comment."""
-    name = comment.get("name") or comment.get("userName")
+    name = comment.get("profileName") or comment.get("name") or comment.get("userName")
     url = comment.get("profileUrl") or comment.get("url")
     if not name or not url:
         return None
 
-    activity = f"Commented in: {group_title}" if group_title else None
+    activity = f"Commented in: {group_url}" if group_url else None
 
     return NormalizedLead(
         name=name,
@@ -54,9 +61,9 @@ def extract_leads_from_post(raw_item: dict) -> list[NormalizedLead]:
     author = normalize(raw_item)
     if author:
         leads.append(author)
-    group_title = raw_item.get("groupTitle", "")
+    group_label = raw_item.get("facebookUrl") or raw_item.get("groupTitle", "")
     for comment in raw_item.get("topComments", []):
-        commenter = _normalize_commenter(comment, group_title)
+        commenter = _normalize_commenter(comment, group_label)
         if commenter:
             leads.append(commenter)
     return leads
