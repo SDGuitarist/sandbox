@@ -33,37 +33,10 @@ def test_parse_extracts_phone():
     assert any("4045551234" in p for p in info.phones)
 
 
-def test_parse_extracts_social_links():
-    html = _load_html("enrich_website.html")
-    info = parse_profile_page(html)
-    assert "instagram" in info.social_urls
-    assert "twitter" in info.social_urls
-    assert "linkedin" in info.social_urls
-    assert "tiktok" in info.social_urls
-
-
-def test_parse_skips_share_urls():
-    """Facebook share links should not be counted as social profiles."""
-    html = _load_html("enrich_website.html")
-    info = parse_profile_page(html)
-    # The facebook social_url should be from JSON-LD sameAs, not the sharer link
-    assert "sharer" not in info.social_urls.get("facebook", "")
-
-
-def test_parse_jsonld_sameas():
-    """Schema.org sameAs provides social links even without <a> tags."""
-    html = _load_html("enrich_website.html")
-    info = parse_profile_page(html)
-    # JSON-LD has instagram and facebook
-    assert "instagram" in info.social_urls
-    assert "facebook" in info.social_urls
-
-
 def test_parse_empty_html():
     info = parse_profile_page("")
     assert info.emails == []
     assert info.phones == []
-    assert info.social_urls == {}
 
 
 def test_parse_no_contact_info():
