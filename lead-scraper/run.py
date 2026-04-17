@@ -62,6 +62,18 @@ def cmd_scrape(args):
         print("No leads scraped. Check your tokens and network.", file=sys.stderr)
         sys.exit(1)
 
+    # Auto-enrich new leads
+    if total_inserted > 0:
+        from enrich import enrich_leads
+        print()
+        enrich_leads()
+
+
+def cmd_enrich(args):
+    """Enrich existing leads by fetching their profile/website pages."""
+    from enrich import enrich_leads
+    enrich_leads()
+
 
 def cmd_export(args):
     """Export all leads to a CSV file."""
@@ -106,6 +118,10 @@ def main():
     sp_export = subparsers.add_parser("export", help="Export leads to CSV")
     sp_export.add_argument("--output", required=True, help="Output CSV file path")
     sp_export.set_defaults(func=cmd_export)
+
+    # enrich
+    sp_enrich = subparsers.add_parser("enrich", help="Enrich leads with contact info")
+    sp_enrich.set_defaults(func=cmd_enrich)
 
     # serve
     sp_serve = subparsers.add_parser("serve", help="Start Flask web UI")
