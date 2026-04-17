@@ -201,3 +201,22 @@ def test_dispatcher_limits_concurrency() -> None:
     dispatcher = get_dispatcher()
     assert dispatcher.max_session_permit == CONCURRENCY_LIMIT
     assert CONCURRENCY_LIMIT == 3
+
+
+def test_html_mode_uses_larger_chunks() -> None:
+    from crawler import get_run_config
+
+    normal = get_run_config(html_mode=False)
+    html = get_run_config(html_mode=True)
+    # HTML mode uses larger chunks to handle bigger content
+    normal_strategy = normal.extraction_strategy
+    html_strategy = html.extraction_strategy
+    assert html_strategy.chunk_token_threshold > normal_strategy.chunk_token_threshold
+
+
+def test_html_mode_still_bypasses_cache() -> None:
+    from crawl4ai import CacheMode
+    from crawler import get_run_config
+
+    config = get_run_config(html_mode=True)
+    assert config.cache_mode == CacheMode.BYPASS

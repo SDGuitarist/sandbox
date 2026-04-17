@@ -64,9 +64,20 @@ async def main(urls: list[str], output_dir: Path) -> None:
                 continue
 
             venue = validate_extraction(result.extracted_content, result.url)
+
+            # HTML fallback: retry if markdown extraction returned empty
+            if venue is None and result.success:
+                print(f"  RETRY (HTML): {result.url}", file=sys.stderr)
+                fallback = await crawler.arun(
+                    url=result.url,
+                    config=get_run_config(html_mode=True),
+                )
+                if fallback.success and fallback.extracted_content:
+                    venue = validate_extraction(fallback.extracted_content, result.url)
+
             if venue is None:
-                errors.append({"url": result.url, "error": "Pydantic validation failed"})
-                print(f"  FAIL: {result.url} -- validation failed", file=sys.stderr)
+                errors.append({"url": result.url, "error": "Extraction failed (markdown + HTML)"})
+                print(f"  FAIL: {result.url} -- extraction failed", file=sys.stderr)
                 continue
 
             results.append(venue.model_dump(mode="json"))

@@ -39,10 +39,25 @@ def get_browser_config() -> BrowserConfig:
     return BrowserConfig(headless=True, enable_stealth=True)
 
 
-def get_run_config() -> CrawlerRunConfig:
+def get_run_config(html_mode: bool = False) -> CrawlerRunConfig:
+    """Build run config. Set html_mode=True for sites that fail markdown extraction."""
+    strategy = get_strategy()
+    if html_mode:
+        strategy = LLMExtractionStrategy(
+            llm_config=LLMConfig(
+                provider="anthropic/claude-sonnet-4-20250514",
+                api_token="env:ANTHROPIC_API_KEY",
+            ),
+            schema=VenueData.model_json_schema(),
+            extraction_type="schema",
+            instruction=EXTRACTION_PROMPT,
+            input_format="fit_markdown",
+            chunk_token_threshold=4000,
+            overlap_rate=0.1,
+        )
     return CrawlerRunConfig(
-        extraction_strategy=get_strategy(),
-        cache_mode=CacheMode.BYPASS,  # prevent silent LLM skip on cache hits (#1455)
+        extraction_strategy=strategy,
+        cache_mode=CacheMode.BYPASS,
         page_timeout=15000,
         wait_until="domcontentloaded",
         delay_before_return_html=2.0,
