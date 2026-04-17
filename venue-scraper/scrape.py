@@ -2,7 +2,8 @@
 
 Usage:
     python scrape.py urls.txt --output results/
-    python scrape.py --url "https://example-venue.com"
+    python scrape.py --url "https://example-venue.com" --source gigsalad --proxy
+    python scrape.py urls.txt --db
 """
 from __future__ import annotations
 
@@ -14,8 +15,8 @@ from pathlib import Path
 
 from crawl4ai import AsyncWebCrawler
 
-from crawler import get_browser_config, get_dispatcher, get_run_config
-from models import validate_extraction
+from crawler import get_browser_config, get_dispatcher, get_proxy_from_env, get_run_config
+from models import VenueSource, validate_extraction
 
 
 def is_valid_url(url: str) -> bool:
@@ -42,12 +43,23 @@ def load_urls(filepath: Path) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
-async def main(urls: list[str], output_dir: Path) -> None:
+async def main(
+    urls: list[str],
+    output_dir: Path,
+    *,
+    source: VenueSource = VenueSource.WEBSITE,
+    use_proxy: bool = False,
+    use_db: bool = False,
+) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     results: list[dict] = []
     errors: list[dict] = []
 
-    async with AsyncWebCrawler(config=get_browser_config()) as crawler:
+    proxy_config = get_proxy_from_env() if use_proxy else None
+    if use_proxy and proxy_config is None:
+        print("Warning: --proxy set but IPROYAL_PROXY_SERVER not configured", file=sys.stderr)
+
+    async with AsyncWebCrawler(config=get_browser_config(proxy_config)) as crawler:
         crawl_results = await crawler.arun_many(
             urls=urls,
             config=get_run_config(),
@@ -55,18 +67,20 @@ async def main(urls: list[str], output_dir: Path) -> None:
         )
 
         for result in crawl_results:
-            if not result.success or not result.extracted_content:
+            # Hard failure: crawl itself failed (DNS, timeout, etc.)
+            if not result.success:
                 errors.append({
                     "url": result.url,
-                    "error": result.error_message or "No content extracted",
+                    "error": result.error_message or "Crawl failed",
                 })
                 print(f"  FAIL: {result.url} -- {result.error_message}", file=sys.stderr)
                 continue
 
+            # Try markdown extraction (may be falsy/empty -- that's OK, fallback handles it)
             venue = validate_extraction(result.extracted_content, result.url)
 
-            # HTML fallback: retry if markdown extraction returned empty
-            if venue is None and result.success:
+            # HTML fallback: retry if markdown extraction returned nothing usable
+            if venue is None:
                 print(f"  RETRY (HTML): {result.url}", file=sys.stderr)
                 fallback = await crawler.arun(
                     url=result.url,
@@ -80,10 +94,29 @@ async def main(urls: list[str], output_dir: Path) -> None:
                 print(f"  FAIL: {result.url} -- extraction failed", file=sys.stderr)
                 continue
 
+            # Tag the source
+            venue.source = source
             results.append(venue.model_dump(mode="json"))
             print(f"  OK: {venue.name} ({result.url})")
 
-    # Write results
+    # Persist to SQLite if requested
+    if use_db:
+        from db import get_db, init_db
+        from ingest import insert_venue
+
+        init_db()
+        inserted = 0
+        with get_db() as conn:
+            for row in results:
+                from models import VenueData
+
+                v = VenueData(**row)
+                status = insert_venue(conn, v)
+                if status == "inserted":
+                    inserted += 1
+        print(f"\nStored {inserted} new venues in venue_scraper.db ({len(results) - inserted} duplicates skipped).")
+
+    # Write JSON results
     output_file = output_dir / "results.json"
     output_file.write_text(json.dumps(results, indent=2, default=str))
 
@@ -107,10 +140,16 @@ if __name__ == "__main__":
         sys.exit(1)
 
     parser = argparse.ArgumentParser(description="Scrape venue websites for business intelligence")
-    source = parser.add_mutually_exclusive_group(required=True)
-    source.add_argument("urls_file", nargs="?", type=Path, help="File with one URL per line")
-    source.add_argument("--url", type=str, help="Scrape a single URL")
+    source_group = parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("urls_file", nargs="?", type=Path, help="File with one URL per line")
+    source_group.add_argument("--url", type=str, help="Scrape a single URL")
     parser.add_argument("--output", type=Path, default=Path("results"), help="Output directory")
+    parser.add_argument(
+        "--source", type=VenueSource, default=VenueSource.WEBSITE,
+        choices=list(VenueSource), help="Source tag",
+    )
+    parser.add_argument("--proxy", action="store_true", help="Use IPRoyal residential proxy")
+    parser.add_argument("--db", action="store_true", help="Persist results to SQLite")
     args = parser.parse_args()
 
     if args.url:
@@ -126,4 +165,4 @@ if __name__ == "__main__":
         print("No URLs found.", file=sys.stderr)
         sys.exit(1)
 
-    asyncio.run(main(url_list, args.output))
+    asyncio.run(main(url_list, args.output, source=args.source, use_proxy=args.proxy, use_db=args.db))

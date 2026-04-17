@@ -8,8 +8,19 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
+
+
+class VenueSource(StrEnum):
+    WEBSITE = "website"
+    GIGSALAD = "gigsalad"
+    THEBASH = "thebash"
+    YELP = "yelp"
+    THEKNOT = "theknot"
+    WEDDINGWIRE = "weddingwire"
+    ZOLA = "zola"
 
 
 class VenueData(BaseModel):
@@ -31,6 +42,7 @@ class VenueData(BaseModel):
     photos: list[str] = Field(default_factory=list, max_length=20)
     star_rating: float | None = None
     review_count: int | None = None
+    source: VenueSource = VenueSource.WEBSITE
     source_url: str
     scraped_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

@@ -5,6 +5,9 @@ All functions return typed config objects for use with AsyncWebCrawler.
 """
 from __future__ import annotations
 
+import os
+from typing import TypedDict
+
 from crawl4ai import (
     AsyncWebCrawler,
     BrowserConfig,
@@ -18,6 +21,24 @@ from crawl4ai.extraction_strategy import LLMExtractionStrategy
 from models import EXTRACTION_PROMPT, VenueData
 
 CONCURRENCY_LIMIT = 3  # conservative -- each tab uses ~100-200MB RAM
+
+
+class ProxyConfig(TypedDict):
+    server: str
+    username: str
+    password: str
+
+
+def get_proxy_from_env() -> ProxyConfig | None:
+    """Read IPRoyal proxy config from env vars. Returns None if not configured."""
+    server = os.environ.get("IPROYAL_PROXY_SERVER")
+    if not server:
+        return None
+    return ProxyConfig(
+        server=server,
+        username=os.environ.get("IPROYAL_PROXY_USER", ""),
+        password=os.environ.get("IPROYAL_PROXY_PASS", ""),
+    )
 
 
 def get_strategy() -> LLMExtractionStrategy:
@@ -35,8 +56,12 @@ def get_strategy() -> LLMExtractionStrategy:
     )
 
 
-def get_browser_config() -> BrowserConfig:
-    return BrowserConfig(headless=True, enable_stealth=True)
+def get_browser_config(proxy_config: ProxyConfig | None = None) -> BrowserConfig:
+    return BrowserConfig(
+        headless=True,
+        enable_stealth=True,
+        proxy_config=dict(proxy_config) if proxy_config else None,
+    )
 
 
 def get_run_config(html_mode: bool = False) -> CrawlerRunConfig:
