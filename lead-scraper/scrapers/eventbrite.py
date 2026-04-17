@@ -55,14 +55,38 @@ def normalize(raw_item: dict) -> NormalizedLead | None:
 
 
 def scrape(location: str, config: dict) -> list[NormalizedLead]:
-    """Run the Eventbrite Apify actor and normalize all results."""
+    """Run the Eventbrite Apify actor and normalize all results.
+
+    The actor accepts: country, city, category, keyword, maxPages.
+    Runs once per keyword with category='custom' and merges results.
+    """
     from scrapers._apify_helpers import run_actor
 
-    run_input = {
-        "searchQueries": config.get("keywords", []),
-        "location": location,
-        "maxItems": config.get("max_pages", 5) * 10,
-    }
+    city = config.get("city", location)
+    country = config.get("country", "united-states")
+    max_pages = config.get("max_pages", 5)
+    keywords = config.get("keywords", [])
 
-    raw_items = run_actor(config["actor"], run_input)
-    return [lead for item in raw_items if (lead := normalize(item)) is not None]
+    all_items: list[dict] = []
+
+    if keywords:
+        for kw in keywords:
+            run_input = {
+                "country": country,
+                "city": city,
+                "category": "custom",
+                "keyword": kw,
+                "maxPages": max_pages,
+            }
+            items = run_actor(config["actor"], run_input)
+            print(f"[{kw}: {len(items)}]", end=" ", flush=True)
+            all_items.extend(items)
+    else:
+        run_input = {
+            "country": country,
+            "city": city,
+            "maxPages": max_pages,
+        }
+        all_items = run_actor(config["actor"], run_input)
+
+    return [lead for item in all_items if (lead := normalize(item)) is not None]
