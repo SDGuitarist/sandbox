@@ -35,8 +35,9 @@ def scrape(location: str, config: dict) -> list[NormalizedLead]:
     from scrapers._apify_helpers import run_actor
 
     run_input = {
-        "searchQueries": config.get("queries", []),
+        "queries": config.get("queries", []),
         "location": location,
+        "maxResults": 50,
     }
     raw_items = run_actor(config["actor"], run_input)
     return [lead for item in raw_items if (lead := normalize(item)) is not None]

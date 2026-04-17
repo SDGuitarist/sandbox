@@ -4,3 +4,4 @@ venv/
 .claude/settings.local.json
 .claude/agent-memory/
 .env
+*.csv

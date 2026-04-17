@@ -12,6 +12,11 @@ def run_actor(actor_id: str, run_input: dict, timeout_secs: int = 300) -> list[d
         run_input=run_input,
         timeout_secs=timeout_secs,
     )
-    if run["status"] != "SUCCEEDED":
-        raise RuntimeError(f"Apify actor {actor_id} failed: {run['status']}")
-    return list(client.dataset(run["defaultDatasetId"]).iterate_items())
+    # Accept partial results from timed-out or aborted runs
+    status = run["status"]
+    if status not in ("SUCCEEDED", "TIMED-OUT", "ABORTED"):
+        raise RuntimeError(f"Apify actor {actor_id} failed: {status}")
+    items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+    if status != "SUCCEEDED":
+        print(f"({status}, got {len(items)} partial results)", end=" ")
+    return items

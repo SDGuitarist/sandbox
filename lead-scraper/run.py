@@ -17,6 +17,26 @@ from models import query_leads
 from utils import sanitize_csv_cell
 
 
+def _location_to_slug(location: str) -> str:
+    """Convert 'San Diego, CA' to 'ca--san-diego' for Eventbrite's API.
+
+    If the input already looks like a slug (contains '--'), return as-is.
+    """
+    if "--" in location:
+        return location
+
+    parts = [p.strip() for p in location.split(",")]
+    if len(parts) != 2:
+        print(f"Warning: couldn't parse location '{location}'. Expected 'City, ST' format.", file=sys.stderr)
+        return location
+
+    city, state = parts
+    # Lowercase, replace spaces with hyphens
+    city_slug = re.sub(r"\s+", "-", city.lower())
+    state_slug = state.lower()
+    return f"{state_slug}--{city_slug}"
+
+
 def cmd_scrape(args):
     """Run enabled scrapers and ingest results."""
     # Validate token early
@@ -39,7 +59,9 @@ def cmd_scrape(args):
             if scraper is None:
                 print(f"Unknown source: {source_name}")
                 continue
-            leads = scraper.scrape(args.location, source_config)
+            # Override config's city with CLI value
+            run_config = {**source_config, "city": args.location}
+            leads = scraper.scrape(args.location, run_config)
             print(f"found {len(leads)} leads.", end=" ", flush=True)
 
             inserted, skipped, invalid = ingest_leads(leads)

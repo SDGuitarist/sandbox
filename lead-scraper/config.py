@@ -27,7 +27,7 @@ def get_apify_token() -> str:
 # Source configs -- edit to add/remove groups and keywords
 SOURCES = {
     "meetup": {
-        "enabled": True,
+        "enabled": False,  # Requires paid actor rental -- enable after renting
         "actor": "datapilot/meetup-event-scraper",
         "groups": [
             "https://www.meetup.com/filmnet-sd/",
@@ -36,17 +36,27 @@ SOURCES = {
     "eventbrite": {
         "enabled": True,
         "actor": "aitorsm/eventbrite",
-        "keywords": ["AI workshop", "film", "creative", "music production"],
-        "max_pages": 5,
+        "keywords": [
+            "graphic design",
+            "video production",
+            "photography",
+            "content creator",
+            "social media marketing",
+            "freelancer",
+            "branding",
+            "UX design",
+        ],
+        "country": "united-states",
+        "max_pages": 2,
     },
     "facebook": {
-        "enabled": True,
+        "enabled": False,  # No groups configured yet -- add URLs then enable
         "actor": "apify/facebook-groups-scraper",
         "groups": [],
     },
     "linkedin": {
-        "enabled": True,
-        "actor": "apify/linkedin-scraper",
+        "enabled": False,  # Requires paid Apify actor rental
+        "actor": "curious_coder/linkedin-people-search-scraper",
         "queries": [
             "filmmaker San Diego",
             "musician San Diego",
