@@ -57,11 +57,33 @@ def get_strategy() -> LLMExtractionStrategy:
 
 
 def get_browser_config(proxy_config: ProxyConfig | None = None) -> BrowserConfig:
-    return BrowserConfig(
-        headless=True,
-        enable_stealth=True,
-        proxy_config=dict(proxy_config) if proxy_config else None,
-    )
+    proxy_str = None
+    if proxy_config:
+        user = proxy_config["username"]
+        passwd = proxy_config["password"]
+        server = proxy_config["server"]
+        # Use the string 'proxy' param with embedded credentials
+        if "://" in server:
+            scheme, rest = server.split("://", 1)
+            proxy_str = f"{scheme}://{user}:{passwd}@{rest}"
+        else:
+            proxy_str = f"http://{user}:{passwd}@{server}"
+    if proxy_config:
+        # patchright's chromium-headless-shell does not support proxy auth.
+        # Use Playwright's full chromium (installed via `playwright install chromium`).
+        return BrowserConfig(
+            headless=True,
+            enable_stealth=True,
+            browser_type="chromium",
+            chrome_channel="chromium",
+            proxy_config={
+                "server": proxy_config["server"],
+                "username": proxy_config["username"],
+                "password": proxy_config["password"],
+            },
+            extra_args=["--proxy-server=" + proxy_config["server"]],
+        )
+    return BrowserConfig(headless=True, enable_stealth=True)
 
 
 def get_run_config(html_mode: bool = False) -> CrawlerRunConfig:
