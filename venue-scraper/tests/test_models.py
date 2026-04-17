@@ -273,12 +273,24 @@ def test_proxy_from_env_returns_config_when_set(monkeypatch: pytest.MonkeyPatch)
     assert config["password"] == "pass1"
 
 
+def test_proxy_from_env_normalizes_bare_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    from crawler import get_proxy_from_env
+
+    monkeypatch.setenv("IPROYAL_PROXY_SERVER", "geo.iproyal.com:12321")
+    monkeypatch.setenv("IPROYAL_PROXY_USER", "u")
+    monkeypatch.setenv("IPROYAL_PROXY_PASS", "p")
+    config = get_proxy_from_env()
+    assert config is not None
+    assert config["server"] == "http://geo.iproyal.com:12321"
+
+
 def test_browser_config_accepts_proxy() -> None:
     from crawler import ProxyConfig, get_browser_config
 
     proxy = ProxyConfig(server="http://proxy:8080", username="u", password="p")
     config = get_browser_config(proxy_config=proxy)
     assert config.proxy_config is not None
+    assert config.use_persistent_context is True
 
 
 def test_browser_config_works_without_proxy() -> None:

@@ -29,13 +29,18 @@ class ProxyConfig(TypedDict):
     password: str
 
 
+def _normalize_proxy_server(server: str) -> str:
+    """Ensure proxy server is in the scheme://host:port form Playwright expects."""
+    return server if "://" in server else f"http://{server}"
+
+
 def get_proxy_from_env() -> ProxyConfig | None:
     """Read IPRoyal proxy config from env vars. Returns None if not configured."""
     server = os.environ.get("IPROYAL_PROXY_SERVER")
     if not server:
         return None
     return ProxyConfig(
-        server=server,
+        server=_normalize_proxy_server(server),
         username=os.environ.get("IPROYAL_PROXY_USER", ""),
         password=os.environ.get("IPROYAL_PROXY_PASS", ""),
     )
@@ -57,31 +62,21 @@ def get_strategy() -> LLMExtractionStrategy:
 
 
 def get_browser_config(proxy_config: ProxyConfig | None = None) -> BrowserConfig:
-    proxy_str = None
     if proxy_config:
-        user = proxy_config["username"]
-        passwd = proxy_config["password"]
-        server = proxy_config["server"]
-        # Use the string 'proxy' param with embedded credentials
-        if "://" in server:
-            scheme, rest = server.split("://", 1)
-            proxy_str = f"{scheme}://{user}:{passwd}@{rest}"
-        else:
-            proxy_str = f"http://{user}:{passwd}@{server}"
-    if proxy_config:
-        # patchright's chromium-headless-shell does not support proxy auth.
-        # Use Playwright's full chromium (installed via `playwright install chromium`).
+        # Crawl4AI's managed-browser/CDP path falls back to a CLI --proxy-server flag,
+        # which cannot handle authenticated residential proxies reliably. Force the
+        # native persistent-context path so Playwright receives server/user/password
+        # as structured proxy settings instead of inline credentials.
         return BrowserConfig(
             headless=True,
             enable_stealth=True,
             browser_type="chromium",
-            chrome_channel="chromium",
+            use_persistent_context=True,
             proxy_config={
-                "server": proxy_config["server"],
+                "server": _normalize_proxy_server(proxy_config["server"]),
                 "username": proxy_config["username"],
                 "password": proxy_config["password"],
             },
-            extra_args=["--proxy-server=" + proxy_config["server"]],
         )
     return BrowserConfig(headless=True, enable_stealth=True)
 
