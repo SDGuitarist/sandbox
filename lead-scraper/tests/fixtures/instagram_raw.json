@@ -1,0 +1,41 @@
+[
+  {
+    "username": "janedoe_films",
+    "fullName": "Jane Doe",
+    "biography": "Filmmaker & photographer based in San Diego. DM for collabs.",
+    "followersCount": 2340,
+    "followsCount": 890,
+    "postsCount": 156,
+    "isBusinessAccount": true,
+    "isVerified": false,
+    "categoryName": "Photographer",
+    "externalUrl": "https://www.janedoefilms.com",
+    "profilePicUrl": "https://example.com/pic.jpg"
+  },
+  {
+    "username": "sd_creative_studio",
+    "fullName": "SD Creative Studio",
+    "biography": "Video production | Branding | Content creation",
+    "followersCount": 5100,
+    "followsCount": 320,
+    "postsCount": 412,
+    "isBusinessAccount": true,
+    "isVerified": false,
+    "categoryName": "Video Creator",
+    "externalUrl": null,
+    "profilePicUrl": "https://example.com/pic2.jpg"
+  },
+  {
+    "username": null,
+    "fullName": null,
+    "biography": null,
+    "followersCount": 0,
+    "followsCount": 0,
+    "postsCount": 0,
+    "isBusinessAccount": false,
+    "isVerified": false,
+    "categoryName": null,
+    "externalUrl": null,
+    "profilePicUrl": null
+  }
+]

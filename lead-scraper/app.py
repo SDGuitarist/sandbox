@@ -56,7 +56,7 @@ def create_app():
 
         leads, _ = query_leads(source=source, q=q, limit=100000)
 
-        fieldnames = ["id", "name", "bio", "location", "email", "profile_url", "activity", "source", "scraped_at"]
+        fieldnames = ["id", "name", "bio", "location", "email", "phone", "website", "profile_url", "activity", "source", "scraped_at", "enriched_at"]
         si = io.StringIO()
         writer = csv.DictWriter(si, fieldnames=fieldnames)
         writer.writeheader()

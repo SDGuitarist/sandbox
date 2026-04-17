@@ -40,9 +40,24 @@ SOURCES = {
         "max_pages": 5,
     },
     "facebook": {
-        "enabled": True,
+        "enabled": False,  # Enable after verifying groups are public
         "actor": "apify/facebook-groups-scraper",
-        "groups": [],
+        "groups": [
+            "https://www.facebook.com/groups/1488967914699762/",
+            "https://www.facebook.com/groups/mexicanfilmmakerssd/",
+        ],
+    },
+    "instagram": {
+        "enabled": False,  # Enable when ready to use Apify credits
+        "actor": "apify/instagram-profile-scraper",
+        "hashtags": [
+            "SanDiegoFilmmaker",
+            "SDCreatives",
+            "SanDiegoPhotographer",
+            "SanDiegoDesigner",
+            "SDContentCreator",
+        ],
+        "max_profiles": 100,
     },
     "linkedin": {
         "enabled": True,

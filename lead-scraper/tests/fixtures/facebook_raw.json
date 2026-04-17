@@ -1,18 +1,24 @@
 [
   {
     "name": "Lisa Nguyen",
-    "about": "Photographer and visual artist. Currently exploring AI-generated imagery.",
-    "location": "San Diego, California",
+    "userName": null,
     "profileUrl": "https://www.facebook.com/lisa.nguyen.photo",
-    "groupName": "SD Film & Photo Community",
-    "recentPosts": 8
+    "text": "Just finished shooting a short film on AI-generated imagery. Looking for editors!",
+    "groupTitle": "SD Film & Photo Community",
+    "topComments": [
+      {
+        "name": "David Okonkwo",
+        "profileUrl": "https://www.facebook.com/david.okonkwo.music",
+        "text": "Great work! I do sound design, DM me."
+      }
+    ]
   },
   {
-    "name": "David Okonkwo",
-    "about": null,
-    "location": "San Diego, CA",
-    "profileUrl": "https://www.facebook.com/david.okonkwo.music",
-    "groupName": "San Diego Musicians Network",
-    "recentPosts": 3
+    "name": null,
+    "userName": null,
+    "profileUrl": null,
+    "text": "Anonymous post with no author info",
+    "groupTitle": "SD Film & Photo Community",
+    "topComments": []
   }
 ]

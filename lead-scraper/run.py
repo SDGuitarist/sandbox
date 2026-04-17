@@ -33,8 +33,8 @@ def cmd_scrape(args):
 
         print(f"Scraping {source_name}...", end=" ", flush=True)
         try:
-            from scrapers import eventbrite, meetup, facebook, linkedin
-            scraper_map = {"eventbrite": eventbrite, "meetup": meetup, "facebook": facebook, "linkedin": linkedin}
+            from scrapers import eventbrite, meetup, facebook, linkedin, instagram
+            scraper_map = {"eventbrite": eventbrite, "meetup": meetup, "facebook": facebook, "linkedin": linkedin, "instagram": instagram}
             scraper = scraper_map.get(source_name)
             if scraper is None:
                 print(f"Unknown source: {source_name}")
@@ -71,7 +71,7 @@ def cmd_export(args):
         return
 
     output_path = args.output
-    fieldnames = ["id", "name", "bio", "location", "email", "profile_url", "activity", "source", "scraped_at"]
+    fieldnames = ["id", "name", "bio", "location", "email", "phone", "website", "profile_url", "activity", "source", "scraped_at", "enriched_at"]
 
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
