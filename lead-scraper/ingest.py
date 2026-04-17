@@ -28,8 +28,8 @@ def ingest_leads(leads: list[NormalizedLead], db_path=DB_PATH) -> tuple[int, int
         for lead in valid_leads:
             conn.execute(
                 """INSERT OR IGNORE INTO leads
-                   (name, bio, location, email, profile_url, activity, source)
-                   VALUES (:name, :bio, :location, :email, :profile_url, :activity, :source)""",
+                   (name, bio, location, email, website, profile_url, activity, source)
+                   VALUES (:name, :bio, :location, :email, :website, :profile_url, :activity, :source)""",
                 lead,
             )
             if conn.execute("SELECT changes()").fetchone()[0] > 0:

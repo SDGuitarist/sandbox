@@ -22,6 +22,7 @@ def normalize(raw_item: dict) -> NormalizedLead | None:
         bio=raw_item.get("bio"),
         location=raw_item.get("city"),
         email=raw_item.get("email"),
+        website=None,
         profile_url=profile_url,
         activity=activity,
         source="meetup",

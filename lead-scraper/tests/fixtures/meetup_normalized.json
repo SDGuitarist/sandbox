@@ -4,6 +4,7 @@
     "bio": "Director and cinematographer. 10 years shooting docs in San Diego.",
     "location": "San Diego",
     "email": null,
+    "website": null,
     "profile_url": "https://www.meetup.com/members/234567890",
     "activity": "Groups: FilmNet SD, SD Documentary Collective. Events attended: 12",
     "source": "meetup"
@@ -13,6 +14,7 @@
     "bio": "Sound designer and composer for indie film.",
     "location": "San Diego",
     "email": "anika@example.com",
+    "website": null,
     "profile_url": "https://www.meetup.com/members/345678901",
     "activity": "Groups: FilmNet SD. Events attended: 5",
     "source": "meetup"
@@ -22,6 +24,7 @@
     "bio": null,
     "location": "La Jolla",
     "email": null,
+    "website": null,
     "profile_url": "https://www.meetup.com/members/456789012",
     "activity": "Groups: SD Tech Creatives. Events attended: 1",
     "source": "meetup"

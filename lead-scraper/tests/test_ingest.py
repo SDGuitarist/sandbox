@@ -18,6 +18,7 @@ def _make_lead(**overrides):
         "bio": "Filmmaker",
         "location": "San Diego, CA",
         "email": None,
+        "website": None,
         "profile_url": "https://example.com/jane",
         "activity": "Organized: Workshop",
         "source": "eventbrite",
