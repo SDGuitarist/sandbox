@@ -33,8 +33,8 @@ def cmd_scrape(args):
 
         print(f"Scraping {source_name}...", end=" ", flush=True)
         try:
-            from scrapers import eventbrite, meetup, facebook, linkedin
-            scraper_map = {"eventbrite": eventbrite, "meetup": meetup, "facebook": facebook, "linkedin": linkedin}
+            from scrapers import eventbrite, meetup, facebook, linkedin, instagram
+            scraper_map = {"eventbrite": eventbrite, "meetup": meetup, "facebook": facebook, "linkedin": linkedin, "instagram": instagram}
             scraper = scraper_map.get(source_name)
             if scraper is None:
                 print(f"Unknown source: {source_name}")
@@ -62,6 +62,18 @@ def cmd_scrape(args):
         print("No leads scraped. Check your tokens and network.", file=sys.stderr)
         sys.exit(1)
 
+    # Auto-enrich new leads
+    if total_inserted > 0:
+        from enrich import enrich_leads
+        print()
+        enrich_leads()
+
+
+def cmd_enrich(args):
+    """Enrich existing leads by fetching their profile/website pages."""
+    from enrich import enrich_leads
+    enrich_leads()
+
 
 def cmd_export(args):
     """Export all leads to a CSV file."""
@@ -71,7 +83,7 @@ def cmd_export(args):
         return
 
     output_path = args.output
-    fieldnames = ["id", "name", "bio", "location", "email", "profile_url", "activity", "source", "scraped_at"]
+    fieldnames = ["id", "name", "bio", "location", "email", "phone", "website", "profile_url", "activity", "source", "scraped_at", "enriched_at"]
 
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -106,6 +118,10 @@ def main():
     sp_export = subparsers.add_parser("export", help="Export leads to CSV")
     sp_export.add_argument("--output", required=True, help="Output CSV file path")
     sp_export.set_defaults(func=cmd_export)
+
+    # enrich
+    sp_enrich = subparsers.add_parser("enrich", help="Enrich leads with contact info")
+    sp_enrich.set_defaults(func=cmd_enrich)
 
     # serve
     sp_serve = subparsers.add_parser("serve", help="Start Flask web UI")

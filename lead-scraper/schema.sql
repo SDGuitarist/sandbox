@@ -6,9 +6,12 @@ CREATE TABLE IF NOT EXISTS leads (
     bio         TEXT,
     location    TEXT,
     email       TEXT,
+    phone       TEXT,
+    website     TEXT,
     profile_url TEXT NOT NULL,
     activity    TEXT,
     source      TEXT NOT NULL,
     scraped_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+    enriched_at TEXT,
     UNIQUE(source, profile_url)
 );

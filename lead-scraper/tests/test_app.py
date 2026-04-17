@@ -14,13 +14,13 @@ def _seed_db():
     """Insert test leads covering multiple sources and names."""
     init_db()
     leads = [
-        {"name": "Alice Film", "bio": None, "location": "San Diego", "email": None,
+        {"name": "Alice Film", "bio": None, "location": "San Diego", "email": None, "website": None,
          "profile_url": "https://example.com/alice", "activity": None, "source": "meetup"},
-        {"name": "Bob Music", "bio": None, "location": "San Diego", "email": None,
+        {"name": "Bob Music", "bio": None, "location": "San Diego", "email": None, "website": None,
          "profile_url": "https://example.com/bob", "activity": None, "source": "eventbrite"},
-        {"name": "Alice Photo", "bio": None, "location": "LA", "email": None,
+        {"name": "Alice Photo", "bio": None, "location": "LA", "email": None, "website": None,
          "profile_url": "https://example.com/alice2", "activity": None, "source": "eventbrite"},
-        {"name": "Charlie Design", "bio": None, "location": "San Diego", "email": None,
+        {"name": "Charlie Design", "bio": None, "location": "San Diego", "email": None, "website": None,
          "profile_url": "https://example.com/charlie", "activity": None, "source": "meetup"},
     ]
     ingest_leads(leads)

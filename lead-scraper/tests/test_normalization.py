@@ -11,6 +11,7 @@ from scrapers.eventbrite import normalize as eb_normalize
 from scrapers.meetup import normalize as mu_normalize
 from scrapers.facebook import normalize as fb_normalize
 from scrapers.linkedin import normalize as li_normalize
+from scrapers.instagram import normalize as ig_normalize
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -78,7 +79,24 @@ def test_meetup_normalization():
 
 
 def test_facebook_normalization():
+    """Facebook normalize() extracts post author only (single-return contract)."""
     _run_fixture_test(fb_normalize, "facebook_raw.json", "facebook_normalized.json", "Facebook")
+
+
+def test_facebook_extract_leads_from_post():
+    """extract_leads_from_post() extracts author + commenters."""
+    from scrapers.facebook import extract_leads_from_post
+    raw_items = load_fixture("facebook_raw.json")
+    # First post has author Lisa + commenter David
+    leads = extract_leads_from_post(raw_items[0])
+    assert len(leads) == 2
+    assert leads[0]["name"] == "Lisa Nguyen"
+    assert leads[0]["activity"] == "Posted in: SD Film & Photo Community"
+    assert leads[1]["name"] == "David Okonkwo"
+    assert leads[1]["activity"] == "Commented in: SD Film & Photo Community"
+    # Second post has no author (null name/url) -> 0 leads
+    leads2 = extract_leads_from_post(raw_items[1])
+    assert len(leads2) == 0
 
 
 def test_linkedin_normalization():
@@ -95,6 +113,23 @@ def test_linkedin_missing_names():
     assert li_normalize(raw) is None
 
 
+def test_instagram_normalization():
+    _run_fixture_test(ig_normalize, "instagram_raw.json", "instagram_normalized.json", "Instagram")
+
+
+def test_instagram_missing_username():
+    raw = {"username": None, "fullName": "Someone", "followersCount": 100}
+    assert ig_normalize(raw) is None
+
+
+def test_instagram_username_as_name_fallback():
+    raw = {"username": "cooluser", "fullName": None, "followersCount": 50, "categoryName": "Artist"}
+    result = ig_normalize(raw)
+    assert result is not None
+    assert result["name"] == "cooluser"
+    assert result["profile_url"] == "https://www.instagram.com/cooluser"
+
+
 def test_facebook_missing_profile_url():
-    raw = {"name": "Someone", "profileUrl": None}
+    raw = {"name": "Someone", "profileUrl": None, "text": "hello", "groupTitle": "G"}
     assert fb_normalize(raw) is None
