@@ -25,6 +25,10 @@ _PRIVATE_NETWORKS = [
     ipaddress.ip_network("172.16.0.0/12"),
     ipaddress.ip_network("192.168.0.0/16"),
     ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
 ]
 
 
@@ -45,8 +49,12 @@ def _is_safe_url(url: str) -> bool:
         if not hostname:
             return False
         addr_info = socket.getaddrinfo(hostname, None)
-        ip = ipaddress.ip_address(addr_info[0][4][0])
-        return not any(ip in net for net in _PRIVATE_NETWORKS)
+        # Check ALL resolved addresses, not just the first
+        for _, _, _, _, sockaddr in addr_info:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if any(ip in net for net in _PRIVATE_NETWORKS):
+                return False
+        return True
     except (socket.gaierror, ValueError, OSError):
         return False
 
@@ -57,7 +65,14 @@ def _fetch_page(session: requests.Session, url: str) -> str | None:
         return None
     try:
         resp = session.get(url, timeout=10, stream=True, allow_redirects=True)
-        content = resp.raw.read(MAX_RESPONSE_BYTES)
+        # Validate final URL after redirects (blocks redirect to private IPs)
+        if str(resp.url) != url and not _is_safe_url(str(resp.url)):
+            resp.close()
+            return None
+        if resp.status_code != 200:
+            resp.close()
+            return None
+        content = resp.raw.read(MAX_RESPONSE_BYTES, decode_content=True)
         resp.close()
         return content.decode("utf-8", errors="replace")
     except requests.RequestException:
@@ -117,10 +132,6 @@ def _enrich_single_lead(lead: dict, session: requests.Session) -> dict:
             updates["email"] = info.emails[0]
         if info.phones and not updates.get("phone"):
             updates["phone"] = info.phones[0]
-        # Discover website from social links if we don't have one
-        if not lead.get("website") and not updates.get("website"):
-            # If the profile page links to a personal website, save it
-            pass  # Future: extract non-social external links
 
     return updates
 
