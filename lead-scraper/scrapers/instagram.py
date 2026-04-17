@@ -2,27 +2,26 @@ from scrapers import NormalizedLead
 
 
 def normalize(raw_item: dict) -> NormalizedLead | None:
-    """Convert one raw Apify Instagram profile to a NormalizedLead."""
-    username = raw_item.get("username")
+    """Convert one raw Instagram hashtag post to a NormalizedLead.
+
+    The apify/instagram-hashtag-scraper returns posts, not profiles.
+    We extract the post owner as the lead.
+    """
+    username = raw_item.get("ownerUsername")
     if not username:
         return None
 
-    full_name = raw_item.get("fullName") or username
-    followers = raw_item.get("followersCount", 0)
-    category = raw_item.get("categoryName", "")
-    activity_parts = []
-    if followers:
-        activity_parts.append(f"{followers} followers")
-    if category:
-        activity_parts.append(category)
-    activity = ". ".join(activity_parts) if activity_parts else None
+    full_name = raw_item.get("ownerFullName") or username
+    caption = (raw_item.get("caption") or "")[:200] or None
+    likes = raw_item.get("likesCount", 0)
+    activity = f"{likes} likes" if likes else None
 
     return NormalizedLead(
         name=full_name,
-        bio=raw_item.get("biography"),
-        location=None,
+        bio=caption,
+        location=raw_item.get("locationName"),
         email=None,
-        website=raw_item.get("externalUrl"),
+        website=None,
         profile_url=f"https://www.instagram.com/{username}",
         activity=activity,
         source="instagram",
@@ -30,17 +29,14 @@ def normalize(raw_item: dict) -> NormalizedLead | None:
 
 
 def scrape(location: str, config: dict) -> list[NormalizedLead]:
-    """Run the Instagram Profile Apify actor and normalize results."""
+    """Run the Instagram Hashtag Apify actor and normalize results."""
     from scrapers._apify_helpers import run_actor
 
     hashtags = config.get("hashtags", [])
     max_profiles = config.get("max_profiles", 100)
 
-    # Build search URLs from hashtags
-    usernames_or_urls = [f"https://www.instagram.com/explore/tags/{tag}/" for tag in hashtags]
-
     run_input = {
-        "usernames": usernames_or_urls,
+        "hashtags": hashtags,
         "resultsLimit": max_profiles,
     }
 

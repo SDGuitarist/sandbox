@@ -51,7 +51,7 @@ SOURCES = {
     },
     "instagram": {
         "enabled": True,
-        "actor": "apify/instagram-profile-scraper",
+        "actor": "apify/instagram-hashtag-scraper",
         "hashtags": [
             "SanDiegoFilmmaker",
             "SDCreatives",

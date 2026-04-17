@@ -123,7 +123,7 @@ def test_instagram_missing_username():
 
 
 def test_instagram_username_as_name_fallback():
-    raw = {"username": "cooluser", "fullName": None, "followersCount": 50, "categoryName": "Artist"}
+    raw = {"ownerUsername": "cooluser", "ownerFullName": None, "likesCount": 50}
     result = ig_normalize(raw)
     assert result is not None
     assert result["name"] == "cooluser"
