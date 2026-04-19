@@ -11,7 +11,10 @@ from enrich import (
     enrich_from_bios,
     _get_leads_for_bio_parsing,
     _get_leads_for_website_crawl,
+    _get_leads_for_hunter,
     _merge_social_handles,
+    _extract_domain,
+    _split_name,
 )
 
 
@@ -166,3 +169,83 @@ def test_merge_handles_dedup():
 def test_merge_handles_no_new():
     result = _merge_social_handles(None, [])
     assert result is None
+
+
+# --- Domain extraction ---
+
+def test_extract_domain_basic():
+    assert _extract_domain("https://www.patcruzevents.com/about") == "patcruzevents.com"
+
+
+def test_extract_domain_strips_www():
+    assert _extract_domain("https://www.example.com") == "example.com"
+
+
+def test_extract_domain_skips_instagram():
+    assert _extract_domain("https://www.instagram.com/user") is None
+
+
+def test_extract_domain_skips_eventbrite():
+    assert _extract_domain("https://www.eventbrite.com/o/org-123") is None
+
+
+def test_extract_domain_skips_facebook():
+    assert _extract_domain("https://www.facebook.com/page") is None
+
+
+def test_extract_domain_skips_linktree():
+    assert _extract_domain("https://linktr.ee/user") is None
+
+
+# --- Name splitting ---
+
+def test_split_name_full():
+    assert _split_name("John Doe") == ("John", "Doe")
+
+
+def test_split_name_three_parts():
+    assert _split_name("John Q Doe") == ("John", "Doe")
+
+
+def test_split_name_single():
+    assert _split_name("Madonna") == ("Madonna", None)
+
+
+def test_split_name_empty():
+    assert _split_name("") == (None, None)
+
+
+# --- Hunter lead selection ---
+
+def test_hunter_selects_with_website_no_email(tmp_path):
+    db = _setup_db(tmp_path)
+    with get_db(db) as conn:
+        conn.execute(
+            "INSERT INTO leads (name, website, profile_url, source) VALUES (?, ?, ?, ?)",
+            ("Pat Cruz", "https://www.patcruzevents.com", "https://example.com/a", "eventbrite"),
+        )
+    leads = _get_leads_for_hunter(db)
+    assert len(leads) == 1
+    assert leads[0]["domain"] == "patcruzevents.com"
+
+
+def test_hunter_skips_platform_domains(tmp_path):
+    db = _setup_db(tmp_path)
+    with get_db(db) as conn:
+        conn.execute(
+            "INSERT INTO leads (name, website, profile_url, source) VALUES (?, ?, ?, ?)",
+            ("User", "https://www.instagram.com/user", "https://example.com/a", "instagram"),
+        )
+    leads = _get_leads_for_hunter(db)
+    assert len(leads) == 0
+
+
+def test_hunter_skips_with_email(tmp_path):
+    db = _setup_db(tmp_path)
+    with get_db(db) as conn:
+        conn.execute(
+            "INSERT INTO leads (name, website, email, profile_url, source) VALUES (?, ?, ?, ?, ?)",
+            ("Pat", "https://patcruz.com", "pat@patcruz.com", "https://example.com/a", "eventbrite"),
+        )
+    leads = _get_leads_for_hunter(db)
+    assert len(leads) == 0

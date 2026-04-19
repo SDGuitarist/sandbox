@@ -19,6 +19,7 @@ import json
 from enrich_parsers import parse_bio, parse_profile_page
 
 CONTACT_SCRAPER_ACTOR = "vdrmota/contact-info-scraper"
+HUNTER_API_BASE = "https://api.hunter.io/v2"
 
 MAX_RESPONSE_BYTES = 1_000_000  # 1 MB cap per page
 
@@ -405,3 +406,172 @@ def enrich_websites_deep(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         f"{result.social_found} social handles."
     )
     return result
+
+
+def _get_hunter_api_key() -> str | None:
+    """Get Hunter.io API key from environment. Returns None if not set."""
+    import os
+    return os.getenv("HUNTER_API_KEY")
+
+
+def _extract_domain(url: str) -> str | None:
+    """Extract root domain from a URL."""
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return None
+        # Skip social media and platform domains
+        skip = {"eventbrite.com", "instagram.com", "facebook.com",
+                "linkedin.com", "twitter.com", "x.com", "youtube.com",
+                "tiktok.com", "linktr.ee"}
+        for s in skip:
+            if hostname.endswith(s):
+                return None
+        return hostname.lstrip("www.")
+    except Exception:
+        return None
+
+
+def _get_leads_for_hunter(db_path: Path = DB_PATH) -> list[dict]:
+    """Get leads with websites that are missing email, where domain is usable."""
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, name, website FROM leads "
+            "WHERE website IS NOT NULL AND email IS NULL"
+        ).fetchall()
+    # Filter to leads with usable domains
+    leads = []
+    for row in rows:
+        d = dict(row)
+        domain = _extract_domain(d["website"])
+        if domain:
+            d["domain"] = domain
+            leads.append(d)
+    return leads
+
+
+def _split_name(full_name: str) -> tuple[str | None, str | None]:
+    """Split a full name into first and last. Returns (first, last)."""
+    parts = full_name.strip().split()
+    if len(parts) >= 2:
+        return parts[0], parts[-1]
+    if len(parts) == 1:
+        return parts[0], None
+    return None, None
+
+
+def enrich_with_hunter(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Find emails using Hunter.io Email Finder and Domain Search APIs."""
+    api_key = _get_hunter_api_key()
+    if not api_key:
+        print("Hunter.io: HUNTER_API_KEY not set, skipping.")
+        return EnrichmentResult()
+
+    leads = _get_leads_for_hunter(db_path)
+    if not leads:
+        print("No leads for Hunter.io enrichment.")
+        return EnrichmentResult()
+
+    result = EnrichmentResult()
+    session = requests.Session()
+    print(f"Hunter.io: enriching {len(leads)} leads...")
+
+    for i, lead in enumerate(leads, 1):
+        name = lead["name"][:30]
+        domain = lead["domain"]
+        first, last = _split_name(lead["name"])
+
+        print(f"  {i}/{len(leads)} {name} ({domain})...", end=" ", flush=True)
+
+        try:
+            # Try Email Finder first if we have a name
+            if first and last:
+                resp = session.get(
+                    f"{HUNTER_API_BASE}/email-finder",
+                    params={
+                        "domain": domain,
+                        "first_name": first,
+                        "last_name": last,
+                        "api_key": api_key,
+                    },
+                    timeout=15,
+                )
+                if resp.status_code == 200:
+                    data = resp.json().get("data", {})
+                    email = data.get("email")
+                    score = data.get("score", 0)
+                    if email and score >= 50:
+                        _persist_hunter_result(lead["id"], data, db_path)
+                        result.leads_processed += 1
+                        result.emails_found += 1
+                        print(f"email={email} (score={score})")
+                        continue
+                elif resp.status_code == 429:
+                    print("rate limited, stopping.")
+                    break
+                elif resp.status_code == 402:
+                    print("out of credits, stopping.")
+                    break
+
+            # Fall back to Domain Search
+            resp = session.get(
+                f"{HUNTER_API_BASE}/domain-search",
+                params={
+                    "domain": domain,
+                    "limit": 5,
+                    "api_key": api_key,
+                },
+                timeout=15,
+            )
+            if resp.status_code == 200:
+                data = resp.json().get("data", {})
+                emails = data.get("emails", [])
+                if emails:
+                    best = max(emails, key=lambda e: e.get("confidence", 0))
+                    email = best.get("value")
+                    confidence = best.get("confidence", 0)
+                    if email and confidence >= 50:
+                        _persist_hunter_result(
+                            lead["id"],
+                            {"email": email, "score": confidence,
+                             "phone_number": best.get("phone_number")},
+                            db_path,
+                        )
+                        result.leads_processed += 1
+                        result.emails_found += 1
+                        print(f"email={email} (conf={confidence})")
+                        continue
+            elif resp.status_code in (429, 402):
+                print("rate limited or out of credits, stopping.")
+                break
+
+            print("no results")
+
+        except requests.RequestException as e:
+            print(f"error: {str(e)[:60]}")
+
+    session.close()
+    print(
+        f"\nHunter.io complete. {result.leads_processed} enriched, "
+        f"{result.emails_found} emails found."
+    )
+    return result
+
+
+def _persist_hunter_result(
+    lead_id: int, data: dict, db_path: Path = DB_PATH
+) -> None:
+    """Write Hunter.io results to a lead. Only updates NULL columns."""
+    with get_db(db_path) as conn:
+        conn.execute(
+            """UPDATE leads SET
+                email = COALESCE(email, :email),
+                phone = COALESCE(phone, :phone)
+            WHERE id = :id""",
+            {
+                "email": data.get("email"),
+                "phone": data.get("phone_number"),
+                "id": lead_id,
+            },
+        )
