@@ -6,6 +6,8 @@ It never INSERTs — that is ingest.py's responsibility.
 
 import ipaddress
 import socket
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -15,6 +17,8 @@ import requests
 
 from db import get_db, DB_PATH
 import json
+
+VENUE_SCRAPER_DIR = Path(__file__).parent.parent / "venue-scraper"
 
 from enrich_parsers import parse_bio, parse_profile_page
 
@@ -575,3 +579,154 @@ def _persist_hunter_result(
                 "id": lead_id,
             },
         )
+
+
+def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Run the venue scraper on lead websites for LLM-powered contact extraction.
+
+    Calls the venue-scraper project via subprocess. Gracefully skips if
+    the venue-scraper directory or venv doesn't exist.
+    """
+    venv_python = VENUE_SCRAPER_DIR / "venv" / "bin" / "python"
+    scrape_script = VENUE_SCRAPER_DIR / "scrape.py"
+
+    if not scrape_script.exists():
+        print("Venue scraper: not found, skipping.")
+        return EnrichmentResult()
+    if not venv_python.exists():
+        print("Venue scraper: venv not set up, skipping.")
+        return EnrichmentResult()
+
+    import os
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("Venue scraper: ANTHROPIC_API_KEY not set, skipping.")
+        return EnrichmentResult()
+
+    # Get leads with websites that are still missing email
+    leads = _get_leads_for_website_crawl(db_path)
+    if not leads:
+        print("Venue scraper: no websites to crawl.")
+        return EnrichmentResult()
+
+    # Filter to non-platform domains only
+    filtered = []
+    for lead in leads:
+        domain = _extract_domain(lead["website"])
+        if domain:
+            filtered.append(lead)
+
+    if not filtered:
+        print("Venue scraper: no non-platform websites to crawl.")
+        return EnrichmentResult()
+
+    print(f"Venue scraper: crawling {len(filtered)} websites with LLM extraction...")
+
+    # Write URLs to temp file
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        for lead in filtered:
+            f.write(lead["website"] + "\n")
+        urls_file = f.name
+
+    # Run venue scraper
+    with tempfile.TemporaryDirectory() as output_dir:
+        try:
+            proc = subprocess.run(
+                [str(venv_python), str(scrape_script), urls_file,
+                 "--contacts-only", "--output", output_dir],
+                capture_output=True, text=True, timeout=600,
+                cwd=str(VENUE_SCRAPER_DIR),
+            )
+            print(proc.stdout)
+            if proc.stderr:
+                for line in proc.stderr.strip().split("\n")[-5:]:
+                    print(f"  {line}")
+        except subprocess.TimeoutExpired:
+            print("Venue scraper: timed out after 10 minutes.")
+            Path(urls_file).unlink(missing_ok=True)
+            return EnrichmentResult()
+        except Exception as e:
+            print(f"Venue scraper: failed -- {str(e)[:100]}")
+            Path(urls_file).unlink(missing_ok=True)
+            return EnrichmentResult()
+
+        Path(urls_file).unlink(missing_ok=True)
+
+        # Parse contacts.jsonl
+        contacts_file = Path(output_dir) / "contacts.jsonl"
+        if not contacts_file.exists():
+            print("Venue scraper: no contacts output.")
+            return EnrichmentResult()
+
+        result = EnrichmentResult()
+        url_to_lead = {lead["website"]: lead for lead in filtered}
+
+        for line in contacts_file.read_text().splitlines():
+            if not line.strip():
+                continue
+            contact = json.loads(line)
+            source_url = contact.get("source_url", "")
+
+            # Match back to lead
+            matched = url_to_lead.get(source_url)
+            if not matched:
+                continue
+
+            updates: dict = {}
+            if contact.get("email"):
+                updates["email"] = contact["email"]
+                result.emails_found += 1
+            if contact.get("phone"):
+                updates["phone"] = contact["phone"]
+                result.phones_found += 1
+
+            social = contact.get("social_links", [])
+            if social:
+                new_handles = []
+                for link in social:
+                    link_lower = link.lower()
+                    handle = link.rstrip("/").split("/")[-1]
+                    if "instagram.com" in link_lower:
+                        new_handles.append(f"instagram:{handle}")
+                    elif "twitter.com" in link_lower or "x.com" in link_lower:
+                        new_handles.append(f"twitter:{handle}")
+                    elif "linkedin.com" in link_lower:
+                        new_handles.append(f"linkedin:in/{handle}")
+                    elif "facebook.com" in link_lower:
+                        new_handles.append(f"facebook:{handle}")
+                    elif "tiktok.com" in link_lower:
+                        new_handles.append(f"tiktok:{handle}")
+                if new_handles:
+                    with get_db(db_path) as conn:
+                        row = conn.execute(
+                            "SELECT social_handles FROM leads WHERE id = ?",
+                            (matched["id"],)
+                        ).fetchone()
+                    existing = row["social_handles"] if row else None
+                    updates["social_handles"] = _merge_social_handles(
+                        existing, new_handles
+                    )
+                    result.social_found += 1
+
+            if updates:
+                with get_db(db_path) as conn:
+                    conn.execute(
+                        """UPDATE leads SET
+                            email = COALESCE(email, :email),
+                            phone = COALESCE(phone, :phone),
+                            social_handles = COALESCE(social_handles, :social_handles)
+                        WHERE id = :id""",
+                        {
+                            "email": updates.get("email"),
+                            "phone": updates.get("phone"),
+                            "social_handles": updates.get("social_handles"),
+                            "id": matched["id"],
+                        },
+                    )
+                result.leads_processed += 1
+
+    print(
+        f"\nVenue scraper complete. {result.leads_processed} enriched, "
+        f"{result.emails_found} emails, {result.phones_found} phones, "
+        f"{result.social_found} social handles."
+    )
+    return result
