@@ -8,6 +8,7 @@ import ipaddress
 import socket
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -510,10 +511,13 @@ def enrich_with_hunter(*, db_path: Path = DB_PATH) -> EnrichmentResult:
                         result.leads_processed += 1
                         result.emails_found += 1
                         print(f"email={email} (score={score})")
+                        time.sleep(0.25)
                         continue
                 elif resp.status_code == 429:
-                    print("rate limited, stopping.")
-                    break
+                    wait = int(resp.headers.get("retry-after", 10))
+                    print(f"rate limited, waiting {wait}s...")
+                    time.sleep(wait)
+                    continue  # retry this lead on next loop
                 elif resp.status_code == 402:
                     print("out of credits, stopping.")
                     break
@@ -545,12 +549,14 @@ def enrich_with_hunter(*, db_path: Path = DB_PATH) -> EnrichmentResult:
                         result.leads_processed += 1
                         result.emails_found += 1
                         print(f"email={email} (conf={confidence})")
+                        time.sleep(0.25)
                         continue
             elif resp.status_code in (429, 402):
                 print("rate limited or out of credits, stopping.")
                 break
 
             print("no results")
+            time.sleep(0.25)  # stay under 4 req/sec
 
         except requests.RequestException as e:
             print(f"error: {str(e)[:60]}")
@@ -609,6 +615,7 @@ def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         return EnrichmentResult()
 
     # Filter to non-platform domains only
+    MAX_VENUE_URLS = 15  # Cap to control LLM API cost and stay within timeout
     filtered = []
     for lead in leads:
         domain = _extract_domain(lead["website"])
@@ -618,6 +625,10 @@ def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
     if not filtered:
         print("Venue scraper: no non-platform websites to crawl.")
         return EnrichmentResult()
+
+    if len(filtered) > MAX_VENUE_URLS:
+        print(f"Venue scraper: capping at {MAX_VENUE_URLS} URLs (of {len(filtered)} available).")
+        filtered = filtered[:MAX_VENUE_URLS]
 
     print(f"Venue scraper: crawling {len(filtered)} websites with LLM extraction...")
 

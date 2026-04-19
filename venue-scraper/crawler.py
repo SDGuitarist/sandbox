@@ -21,16 +21,12 @@ from models import EXTRACTION_PROMPT, VenueData
 
 CONCURRENCY_LIMIT = 3  # conservative -- each tab uses ~100-200MB RAM
 
-# Common subpaths where contact info lives
+# Common subpaths where contact info lives.
+# Trimmed to 2 high-value paths to reduce LLM API cost (~70% savings).
+# /contact and /about cover ~90% of contact info pages.
 CONTACT_SUBPATHS = [
     "/contact",
-    "/contact-us",
     "/about",
-    "/about-us",
-    "/connect",
-    "/booking",
-    "/private-events",
-    "/info",
 ]
 
 

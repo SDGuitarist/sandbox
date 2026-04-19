@@ -80,6 +80,8 @@ def parse_bio(text: str) -> ParsedContactInfo:
     if not text:
         return info
 
+    text = text[:10_000]  # Cap input length to prevent ReDoS on crafted bios
+
     # Emails
     for match in EMAIL_RE.finditer(text):
         candidate = match.group().lower()
