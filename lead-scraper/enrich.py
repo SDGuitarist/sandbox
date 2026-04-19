@@ -18,6 +18,8 @@ import json
 
 from enrich_parsers import parse_bio, parse_profile_page
 
+CONTACT_SCRAPER_ACTOR = "vdrmota/contact-info-scraper"
+
 MAX_RESPONSE_BYTES = 1_000_000  # 1 MB cap per page
 
 # Private IP ranges to block (SSRF protection)
@@ -249,6 +251,156 @@ def enrich_from_bios(*, db_path: Path = DB_PATH) -> EnrichmentResult:
 
     print(
         f"\nBio parsing complete. {result.leads_processed} enriched, "
+        f"{result.emails_found} emails, {result.phones_found} phones, "
+        f"{result.social_found} social handles."
+    )
+    return result
+
+
+def _get_leads_for_website_crawl(db_path: Path = DB_PATH) -> list[dict]:
+    """Get leads with websites that are still missing email."""
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, name, website FROM leads "
+            "WHERE website IS NOT NULL AND email IS NULL"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _merge_social_handles(existing_json: str | None, new_handles: list[str]) -> str | None:
+    """Merge new social handles into existing JSON array, deduplicating."""
+    existing = json.loads(existing_json) if existing_json else []
+    merged = list(existing)
+    for h in new_handles:
+        if h not in merged:
+            merged.append(h)
+    return json.dumps(merged) if merged else None
+
+
+def enrich_websites_deep(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Crawl lead websites with vdrmota/contact-info-scraper for contact info."""
+    leads = _get_leads_for_website_crawl(db_path)
+    if not leads:
+        print("No websites to deep-crawl.")
+        return EnrichmentResult()
+
+    from scrapers._apify_helpers import run_actor
+
+    # Build URL list for the actor
+    urls = [lead["website"] for lead in leads]
+    url_to_lead = {lead["website"]: lead for lead in leads}
+
+    print(f"Deep-crawling {len(urls)} websites via {CONTACT_SCRAPER_ACTOR}...")
+
+    try:
+        raw_results = run_actor(
+            CONTACT_SCRAPER_ACTOR,
+            {
+                "startUrls": [{"url": u} for u in urls],
+                "maxDepth": 2,
+                "maxRequestsPerStartUrl": 5,
+            },
+            timeout_secs=600,
+        )
+    except Exception as e:
+        print(f"FAILED: {str(e)[:200]}")
+        return EnrichmentResult()
+
+    # Group results by domain to match back to leads
+    result = EnrichmentResult()
+
+    for item in raw_results:
+        domain = item.get("domain", "")
+        emails = item.get("emails", [])
+        phones = item.get("phones", [])
+        instagrams = item.get("instagrams", [])
+        twitters = item.get("twitters", [])
+        linkedins = item.get("linkedIns", [])
+        facebooks = item.get("facebooks", [])
+
+        if not emails and not phones and not instagrams and not twitters and not linkedins:
+            continue
+
+        # Match this result back to a lead by checking if any lead's website
+        # contains this domain
+        matched_lead = None
+        for url, lead in url_to_lead.items():
+            if domain and domain in url:
+                matched_lead = lead
+                break
+
+        if not matched_lead:
+            continue
+
+        updates: dict = {}
+
+        if emails:
+            updates["email"] = emails[0]
+            result.emails_found += 1
+        if phones:
+            digits = "".join(c for c in phones[0] if c.isdigit())
+            if 7 <= len(digits) <= 16:
+                updates["phone"] = digits
+                result.phones_found += 1
+
+        # Build social handles
+        new_handles = []
+        for ig in instagrams:
+            handle = ig.rstrip("/").split("/")[-1]
+            if handle:
+                new_handles.append(f"instagram:{handle}")
+        for tw in twitters:
+            handle = tw.rstrip("/").split("/")[-1]
+            if handle:
+                new_handles.append(f"twitter:{handle}")
+        for li in linkedins:
+            parts = li.rstrip("/").split("/")
+            if len(parts) >= 2:
+                new_handles.append(f"linkedin:in/{parts[-1]}")
+        for fb in facebooks:
+            handle = fb.rstrip("/").split("/")[-1]
+            if handle:
+                new_handles.append(f"facebook:{handle}")
+
+        if new_handles:
+            # Read existing handles to merge
+            with get_db(db_path) as conn:
+                row = conn.execute(
+                    "SELECT social_handles FROM leads WHERE id = ?",
+                    (matched_lead["id"],)
+                ).fetchone()
+            existing = row["social_handles"] if row else None
+            updates["social_handles"] = _merge_social_handles(existing, new_handles)
+            result.social_found += 1
+
+        if updates:
+            with get_db(db_path) as conn:
+                conn.execute(
+                    """UPDATE leads SET
+                        email = COALESCE(email, :email),
+                        phone = COALESCE(phone, :phone),
+                        social_handles = COALESCE(social_handles, :social_handles)
+                    WHERE id = :id""",
+                    {
+                        "email": updates.get("email"),
+                        "phone": updates.get("phone"),
+                        "social_handles": updates.get("social_handles"),
+                        "id": matched_lead["id"],
+                    },
+                )
+            result.leads_processed += 1
+            name = matched_lead["name"][:30]
+            found = []
+            if updates.get("email"):
+                found.append(f"email={updates['email']}")
+            if updates.get("phone"):
+                found.append(f"phone={updates['phone']}")
+            if new_handles:
+                found.append(f"social={len(new_handles)}")
+            print(f"  {name}: {', '.join(found)}")
+
+    print(
+        f"\nDeep crawl complete. {result.leads_processed} enriched, "
         f"{result.emails_found} emails, {result.phones_found} phones, "
         f"{result.social_found} social handles."
     )

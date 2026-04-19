@@ -70,11 +70,13 @@ def cmd_scrape(args):
 
 
 def cmd_enrich(args):
-    """Enrich existing leads: bio parsing then website fetching."""
-    from enrich import enrich_from_bios, enrich_leads
+    """Enrich existing leads: bio parsing, website fetching, then deep crawl."""
+    from enrich import enrich_from_bios, enrich_leads, enrich_websites_deep
     enrich_from_bios()
     print()
     enrich_leads()
+    print()
+    enrich_websites_deep()
 
 
 def cmd_export(args):

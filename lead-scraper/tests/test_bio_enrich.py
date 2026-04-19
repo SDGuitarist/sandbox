@@ -7,7 +7,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from db import get_db, init_db
-from enrich import enrich_from_bios, _get_leads_for_bio_parsing
+from enrich import (
+    enrich_from_bios,
+    _get_leads_for_bio_parsing,
+    _get_leads_for_website_crawl,
+    _merge_social_handles,
+)
 
 
 def _setup_db(tmp_path):
@@ -109,3 +114,55 @@ def test_bio_not_mutated(tmp_path):
     with get_db(db) as conn:
         row = conn.execute("SELECT bio FROM leads WHERE name = 'a'").fetchone()
     assert row["bio"] == original_bio
+
+
+# --- Website crawl selection ---
+
+def test_website_crawl_selects_no_email(tmp_path):
+    db = _setup_db(tmp_path)
+    with get_db(db) as conn:
+        conn.execute(
+            "INSERT INTO leads (name, website, profile_url, source) "
+            "VALUES (?, ?, ?, ?)",
+            ("a", "https://example.com", "https://example.com/a", "eventbrite"),
+        )
+    leads = _get_leads_for_website_crawl(db)
+    assert len(leads) == 1
+
+
+def test_website_crawl_skips_with_email(tmp_path):
+    db = _setup_db(tmp_path)
+    with get_db(db) as conn:
+        conn.execute(
+            "INSERT INTO leads (name, website, email, profile_url, source) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("a", "https://example.com", "a@b.com", "https://example.com/a", "eventbrite"),
+        )
+    leads = _get_leads_for_website_crawl(db)
+    assert len(leads) == 0
+
+
+def test_website_crawl_skips_no_website(tmp_path):
+    db = _setup_db(tmp_path)
+    _insert_lead(db, "a")
+    leads = _get_leads_for_website_crawl(db)
+    assert len(leads) == 0
+
+
+# --- Social handle merging ---
+
+def test_merge_handles_empty_existing():
+    result = _merge_social_handles(None, ["instagram:user"])
+    assert result == '["instagram:user"]'
+
+
+def test_merge_handles_dedup():
+    existing = '["instagram:user"]'
+    result = _merge_social_handles(existing, ["instagram:user", "twitter:handle"])
+    parsed = json.loads(result)
+    assert parsed == ["instagram:user", "twitter:handle"]
+
+
+def test_merge_handles_no_new():
+    result = _merge_social_handles(None, [])
+    assert result is None
