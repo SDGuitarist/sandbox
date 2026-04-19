@@ -14,7 +14,9 @@ from urllib.parse import urlparse
 import requests
 
 from db import get_db, DB_PATH
-from enrich_parsers import parse_profile_page
+import json
+
+from enrich_parsers import parse_bio, parse_profile_page
 
 MAX_RESPONSE_BYTES = 1_000_000  # 1 MB cap per page
 
@@ -37,6 +39,7 @@ class EnrichmentResult:
     leads_processed: int = 0
     emails_found: int = 0
     phones_found: int = 0
+    social_found: int = 0
 
 
 def _is_safe_url(url: str) -> bool:
@@ -174,5 +177,79 @@ def enrich_leads(*, db_path: Path = DB_PATH) -> EnrichmentResult:
     print(
         f"\nEnrichment complete. {result.leads_processed} processed, "
         f"{result.emails_found} emails, {result.phones_found} phones."
+    )
+    return result
+
+
+def _get_leads_for_bio_parsing(db_path: Path = DB_PATH) -> list[dict]:
+    """Get leads with bios that are missing email, phone, or social_handles."""
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, bio, profile_bio FROM leads "
+            "WHERE (bio IS NOT NULL OR profile_bio IS NOT NULL) "
+            "AND (email IS NULL OR phone IS NULL OR social_handles IS NULL)"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _persist_bio_enrichment(
+    lead_id: int, updates: dict, db_path: Path = DB_PATH
+) -> None:
+    """Write bio-parsed contact info. Only updates NULL columns."""
+    with get_db(db_path) as conn:
+        conn.execute(
+            """UPDATE leads SET
+                email = COALESCE(email, :email),
+                phone = COALESCE(phone, :phone),
+                social_handles = COALESCE(social_handles, :social_handles)
+            WHERE id = :id""",
+            {
+                "email": updates.get("email"),
+                "phone": updates.get("phone"),
+                "social_handles": updates.get("social_handles"),
+                "id": lead_id,
+            },
+        )
+
+
+def enrich_from_bios(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Parse bios for emails, phones, and social handles. No network calls."""
+    leads = _get_leads_for_bio_parsing(db_path)
+    if not leads:
+        print("No leads to bio-parse.")
+        return EnrichmentResult()
+
+    result = EnrichmentResult()
+    print(f"Bio-parsing {len(leads)} leads...")
+
+    for i, lead in enumerate(leads, 1):
+        bio_text = lead.get("bio") or ""
+        profile_bio_text = lead.get("profile_bio") or ""
+        combined = f"{bio_text}\n{profile_bio_text}".strip()
+
+        if not combined:
+            continue
+
+        info = parse_bio(combined)
+        updates: dict = {}
+
+        if info.emails:
+            updates["email"] = info.emails[0]
+            result.emails_found += 1
+        if info.phones:
+            updates["phone"] = info.phones[0]
+            result.phones_found += 1
+        if info.social_handles:
+            updates["social_handles"] = json.dumps(info.social_handles)
+            result.social_found += 1
+
+        if updates:
+            _persist_bio_enrichment(lead["id"], updates, db_path)
+            result.leads_processed += 1
+
+    print(
+        f"\nBio parsing complete. {result.leads_processed} enriched, "
+        f"{result.emails_found} emails, {result.phones_found} phones, "
+        f"{result.social_found} social handles."
     )
     return result

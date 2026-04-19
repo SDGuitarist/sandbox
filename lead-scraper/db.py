@@ -39,6 +39,9 @@ def migrate_db(db_path=DB_PATH):
         ("phone", "TEXT"),
         ("website", "TEXT"),
         ("enriched_at", "TEXT"),
+        ("social_handles", "TEXT"),
+        ("profile_bio", "TEXT"),
+        ("ig_profile_enriched_at", "TEXT"),
     ]
     with get_db(db_path) as conn:
         existing = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}
