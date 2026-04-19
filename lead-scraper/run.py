@@ -75,15 +75,20 @@ def cmd_enrich(args):
         enrich_from_bios, enrich_leads, enrich_websites_deep,
         enrich_with_venue_scraper, enrich_with_hunter,
     )
-    enrich_from_bios()
-    print()
-    enrich_leads()
-    print()
-    enrich_websites_deep()
-    print()
-    enrich_with_venue_scraper()
-    print()
-    enrich_with_hunter()
+    steps = {
+        "bio": enrich_from_bios,
+        "website": enrich_leads,
+        "deep": enrich_websites_deep,
+        "venue": enrich_with_venue_scraper,
+        "hunter": enrich_with_hunter,
+    }
+    selected = args.step
+    if selected == "all":
+        for name, func in steps.items():
+            func()
+            print()
+    else:
+        steps[selected]()
 
 
 def cmd_export(args):
@@ -132,6 +137,12 @@ def main():
 
     # enrich
     sp_enrich = subparsers.add_parser("enrich", help="Enrich leads with contact info")
+    sp_enrich.add_argument(
+        "--step",
+        choices=["bio", "website", "deep", "venue", "hunter", "all"],
+        default="all",
+        help="Run a specific enrichment step (default: all)",
+    )
     sp_enrich.set_defaults(func=cmd_enrich)
 
     # serve

@@ -74,6 +74,38 @@ def parse_profile_page(html: str) -> ParsedContactInfo:
     return info
 
 
+def normalize_social_urls(urls: dict[str, list[str]]) -> list[str]:
+    """Convert social media URLs to 'platform:handle' strings.
+
+    Args:
+        urls: dict with keys like 'instagrams', 'twitters', 'linkedIns', 'facebooks', 'tiktoks'.
+              Values are lists of URL strings.
+    Returns:
+        list of 'platform:handle' strings, e.g. ['instagram:user', 'twitter:handle']
+    """
+    handles = []
+    platform_map = {
+        "instagrams": "instagram",
+        "twitters": "twitter",
+        "linkedIns": "linkedin",
+        "facebooks": "facebook",
+        "tiktoks": "tiktok",
+    }
+    for key, platform in platform_map.items():
+        for url in urls.get(key, []):
+            parts = url.rstrip("/").split("/")
+            if platform == "linkedin" and len(parts) >= 2:
+                entry = f"linkedin:in/{parts[-1]}"
+            else:
+                handle = parts[-1]
+                if not handle:
+                    continue
+                entry = f"{platform}:{handle}"
+            if entry not in handles:
+                handles.append(entry)
+    return handles
+
+
 def parse_bio(text: str) -> ParsedContactInfo:
     """Extract emails, phones, and social handles from bio text. Pure function."""
     info = ParsedContactInfo()

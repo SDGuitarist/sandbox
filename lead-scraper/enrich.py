@@ -19,9 +19,13 @@ import requests
 from db import get_db, DB_PATH
 import json
 
-VENUE_SCRAPER_DIR = Path(__file__).parent.parent / "venue-scraper"
+import os as _os
+VENUE_SCRAPER_DIR = Path(_os.environ.get(
+    "VENUE_SCRAPER_DIR",
+    str(Path(__file__).parent.parent / "venue-scraper")
+))
 
-from enrich_parsers import parse_bio, parse_profile_page
+from enrich_parsers import normalize_social_urls, parse_bio, parse_profile_page
 
 CONTACT_SCRAPER_ACTOR = "vdrmota/contact-info-scraper"
 HUNTER_API_BASE = "https://api.hunter.io/v2"
@@ -100,22 +104,27 @@ def _get_unenriched_leads(db_path: Path = DB_PATH) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def _persist_enrichment(lead_id: int, updates: dict, db_path: Path = DB_PATH) -> None:
-    """Write enrichment results to a single lead. Only updates NULL columns."""
+def _persist_lead_update(lead_id: int, updates: dict, db_path: Path = DB_PATH) -> None:
+    """Write enrichment results to a single lead. Only updates NULL columns via COALESCE.
+
+    Unified persist function for all enrichment steps. Handles email, phone,
+    website, social_handles, and enriched_at.
+    """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_db(db_path) as conn:
-        # Only update columns that are currently NULL (don't overwrite ingest data)
         conn.execute(
             """UPDATE leads SET
                 email = COALESCE(email, :email),
                 phone = COALESCE(phone, :phone),
                 website = COALESCE(website, :website),
-                enriched_at = :enriched_at
+                social_handles = COALESCE(social_handles, :social_handles),
+                enriched_at = COALESCE(enriched_at, :enriched_at)
             WHERE id = :id""",
             {
                 "email": updates.get("email"),
                 "phone": updates.get("phone"),
                 "website": updates.get("website"),
+                "social_handles": updates.get("social_handles"),
                 "enriched_at": now,
                 "id": lead_id,
             },
@@ -167,7 +176,7 @@ def enrich_leads(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
         try:
             updates = _enrich_single_lead(lead, session)
-            _persist_enrichment(lead["id"], updates, db_path)
+            _persist_lead_update(lead["id"], updates, db_path)
             result.leads_processed += 1
             if updates.get("email"):
                 result.emails_found += 1
@@ -198,26 +207,6 @@ def _get_leads_for_bio_parsing(db_path: Path = DB_PATH) -> list[dict]:
             "AND (email IS NULL OR phone IS NULL OR social_handles IS NULL)"
         ).fetchall()
     return [dict(row) for row in rows]
-
-
-def _persist_bio_enrichment(
-    lead_id: int, updates: dict, db_path: Path = DB_PATH
-) -> None:
-    """Write bio-parsed contact info. Only updates NULL columns."""
-    with get_db(db_path) as conn:
-        conn.execute(
-            """UPDATE leads SET
-                email = COALESCE(email, :email),
-                phone = COALESCE(phone, :phone),
-                social_handles = COALESCE(social_handles, :social_handles)
-            WHERE id = :id""",
-            {
-                "email": updates.get("email"),
-                "phone": updates.get("phone"),
-                "social_handles": updates.get("social_handles"),
-                "id": lead_id,
-            },
-        )
 
 
 def enrich_from_bios(*, db_path: Path = DB_PATH) -> EnrichmentResult:
@@ -252,7 +241,7 @@ def enrich_from_bios(*, db_path: Path = DB_PATH) -> EnrichmentResult:
             result.social_found += 1
 
         if updates:
-            _persist_bio_enrichment(lead["id"], updates, db_path)
+            _persist_lead_update(lead["id"], updates, db_path)
             result.leads_processed += 1
 
     print(
@@ -331,7 +320,7 @@ def enrich_websites_deep(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         # contains this domain
         matched_lead = None
         for url, lead in url_to_lead.items():
-            if domain and domain in url:
+            if domain and _extract_domain(url) == domain:
                 matched_lead = lead
                 break
 
@@ -350,23 +339,12 @@ def enrich_websites_deep(*, db_path: Path = DB_PATH) -> EnrichmentResult:
                 result.phones_found += 1
 
         # Build social handles
-        new_handles = []
-        for ig in instagrams:
-            handle = ig.rstrip("/").split("/")[-1]
-            if handle:
-                new_handles.append(f"instagram:{handle}")
-        for tw in twitters:
-            handle = tw.rstrip("/").split("/")[-1]
-            if handle:
-                new_handles.append(f"twitter:{handle}")
-        for li in linkedins:
-            parts = li.rstrip("/").split("/")
-            if len(parts) >= 2:
-                new_handles.append(f"linkedin:in/{parts[-1]}")
-        for fb in facebooks:
-            handle = fb.rstrip("/").split("/")[-1]
-            if handle:
-                new_handles.append(f"facebook:{handle}")
+        new_handles = normalize_social_urls({
+            "instagrams": instagrams,
+            "twitters": twitters,
+            "linkedIns": linkedins,
+            "facebooks": facebooks,
+        })
 
         if new_handles:
             # Read existing handles to merge
@@ -380,20 +358,7 @@ def enrich_websites_deep(*, db_path: Path = DB_PATH) -> EnrichmentResult:
             result.social_found += 1
 
         if updates:
-            with get_db(db_path) as conn:
-                conn.execute(
-                    """UPDATE leads SET
-                        email = COALESCE(email, :email),
-                        phone = COALESCE(phone, :phone),
-                        social_handles = COALESCE(social_handles, :social_handles)
-                    WHERE id = :id""",
-                    {
-                        "email": updates.get("email"),
-                        "phone": updates.get("phone"),
-                        "social_handles": updates.get("social_handles"),
-                        "id": matched_lead["id"],
-                    },
-                )
+            _persist_lead_update(matched_lead["id"], updates, db_path)
             result.leads_processed += 1
             name = matched_lead["name"][:30]
             found = []
@@ -573,18 +538,10 @@ def _persist_hunter_result(
     lead_id: int, data: dict, db_path: Path = DB_PATH
 ) -> None:
     """Write Hunter.io results to a lead. Only updates NULL columns."""
-    with get_db(db_path) as conn:
-        conn.execute(
-            """UPDATE leads SET
-                email = COALESCE(email, :email),
-                phone = COALESCE(phone, :phone)
-            WHERE id = :id""",
-            {
-                "email": data.get("email"),
-                "phone": data.get("phone_number"),
-                "id": lead_id,
-            },
-        )
+    _persist_lead_update(lead_id, {
+        "email": data.get("email"),
+        "phone": data.get("phone_number"),
+    }, db_path)
 
 
 def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
@@ -692,20 +649,21 @@ def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
 
             social = contact.get("social_links", [])
             if social:
-                new_handles = []
+                # Group URLs by platform for normalize_social_urls
+                grouped: dict[str, list[str]] = {}
                 for link in social:
-                    link_lower = link.lower()
-                    handle = link.rstrip("/").split("/")[-1]
-                    if "instagram.com" in link_lower:
-                        new_handles.append(f"instagram:{handle}")
-                    elif "twitter.com" in link_lower or "x.com" in link_lower:
-                        new_handles.append(f"twitter:{handle}")
-                    elif "linkedin.com" in link_lower:
-                        new_handles.append(f"linkedin:in/{handle}")
-                    elif "facebook.com" in link_lower:
-                        new_handles.append(f"facebook:{handle}")
-                    elif "tiktok.com" in link_lower:
-                        new_handles.append(f"tiktok:{handle}")
+                    ll = link.lower()
+                    if "instagram.com" in ll:
+                        grouped.setdefault("instagrams", []).append(link)
+                    elif "twitter.com" in ll or "x.com" in ll:
+                        grouped.setdefault("twitters", []).append(link)
+                    elif "linkedin.com" in ll:
+                        grouped.setdefault("linkedIns", []).append(link)
+                    elif "facebook.com" in ll:
+                        grouped.setdefault("facebooks", []).append(link)
+                    elif "tiktok.com" in ll:
+                        grouped.setdefault("tiktoks", []).append(link)
+                new_handles = normalize_social_urls(grouped)
                 if new_handles:
                     with get_db(db_path) as conn:
                         row = conn.execute(
@@ -719,20 +677,7 @@ def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
                     result.social_found += 1
 
             if updates:
-                with get_db(db_path) as conn:
-                    conn.execute(
-                        """UPDATE leads SET
-                            email = COALESCE(email, :email),
-                            phone = COALESCE(phone, :phone),
-                            social_handles = COALESCE(social_handles, :social_handles)
-                        WHERE id = :id""",
-                        {
-                            "email": updates.get("email"),
-                            "phone": updates.get("phone"),
-                            "social_handles": updates.get("social_handles"),
-                            "id": matched["id"],
-                        },
-                    )
+                _persist_lead_update(matched["id"], updates, db_path)
                 result.leads_processed += 1
 
     print(
