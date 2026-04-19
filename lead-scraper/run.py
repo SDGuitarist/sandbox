@@ -87,7 +87,7 @@ def cmd_export(args):
         return
 
     output_path = args.output
-    fieldnames = ["id", "name", "bio", "location", "email", "phone", "website", "profile_url", "activity", "source", "scraped_at", "enriched_at"]
+    fieldnames = ["id", "name", "bio", "location", "email", "phone", "website", "social_handles", "profile_bio", "profile_url", "activity", "source", "scraped_at", "enriched_at"]
 
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)

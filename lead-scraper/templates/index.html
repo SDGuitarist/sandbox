@@ -27,6 +27,9 @@
             <tr>
                 <th>Name</th>
                 <th>Source</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Social</th>
                 <th>Location</th>
                 <th>Bio</th>
                 <th>Activity</th>
@@ -44,6 +47,9 @@
                     {% endif %}
                 </td>
                 <td><span class="badge badge-{{ lead.source }}">{{ lead.source }}</span></td>
+                <td>{{ lead.email or '' }}</td>
+                <td>{{ lead.phone or '' }}</td>
+                <td class="social">{% if lead.social_handles %}{{ lead.social_handles | replace('["', '') | replace('"]', '') | replace('","', ', ') | replace('"', '') }}{% endif %}</td>
                 <td>{{ lead.location or '' }}</td>
                 <td class="bio">{{ lead.bio or '' }}</td>
                 <td class="activity">{{ lead.activity or '' }}</td>
