@@ -5,6 +5,8 @@ All functions return typed config objects for use with AsyncWebCrawler.
 """
 from __future__ import annotations
 
+from urllib.parse import urljoin, urlparse
+
 from crawl4ai import (
     AsyncWebCrawler,
     BrowserConfig,
@@ -18,6 +20,18 @@ from crawl4ai.extraction_strategy import LLMExtractionStrategy
 from models import EXTRACTION_PROMPT, VenueData
 
 CONCURRENCY_LIMIT = 3  # conservative -- each tab uses ~100-200MB RAM
+
+# Common subpaths where contact info lives
+CONTACT_SUBPATHS = [
+    "/contact",
+    "/contact-us",
+    "/about",
+    "/about-us",
+    "/connect",
+    "/booking",
+    "/private-events",
+    "/info",
+]
 
 
 def get_strategy() -> LLMExtractionStrategy:
@@ -53,3 +67,20 @@ def get_run_config() -> CrawlerRunConfig:
 
 def get_dispatcher() -> SemaphoreDispatcher:
     return SemaphoreDispatcher(max_session_permit=CONCURRENCY_LIMIT)
+
+
+def discover_subpages(base_url: str) -> list[str]:
+    """Generate candidate subpage URLs for contact info discovery.
+
+    Returns the base URL plus common contact/about paths appended to it.
+    Deduplicates and preserves order (base URL first).
+    """
+    parsed = urlparse(base_url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+
+    urls = [base_url]
+    for path in CONTACT_SUBPATHS:
+        candidate = urljoin(origin, path)
+        if candidate not in urls:
+            urls.append(candidate)
+    return urls

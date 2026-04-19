@@ -14,8 +14,8 @@ from pathlib import Path
 
 from crawl4ai import AsyncWebCrawler
 
-from crawler import get_browser_config, get_dispatcher, get_run_config
-from models import validate_extraction
+from crawler import discover_subpages, get_browser_config, get_dispatcher, get_run_config
+from models import merge_venue_results, validate_extraction
 
 
 def is_valid_url(url: str) -> bool:
@@ -42,39 +42,68 @@ def load_urls(filepath: Path) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
-async def main(urls: list[str], output_dir: Path) -> None:
+async def main(urls: list[str], output_dir: Path, contacts_only: bool = False) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     results: list[dict] = []
     errors: list[dict] = []
 
     async with AsyncWebCrawler(config=get_browser_config()) as crawler:
-        crawl_results = await crawler.arun_many(
-            urls=urls,
-            config=get_run_config(),
-            dispatcher=get_dispatcher(),
-        )
+        for start_url in urls:
+            # Discover subpages for each start URL
+            all_pages = discover_subpages(start_url)
+            print(f"  Crawling {start_url} + {len(all_pages) - 1} subpages...")
 
-        for result in crawl_results:
-            if not result.success or not result.extracted_content:
-                errors.append({
-                    "url": result.url,
-                    "error": result.error_message or "No content extracted",
-                })
-                print(f"  FAIL: {result.url} -- {result.error_message}", file=sys.stderr)
-                continue
+            crawl_results = await crawler.arun_many(
+                urls=all_pages,
+                config=get_run_config(),
+                dispatcher=get_dispatcher(),
+            )
 
-            venue = validate_extraction(result.extracted_content, result.url)
-            if venue is None:
-                errors.append({"url": result.url, "error": "Pydantic validation failed"})
-                print(f"  FAIL: {result.url} -- validation failed", file=sys.stderr)
-                continue
+            # Collect valid extractions from all pages
+            page_venues = []
+            for result in crawl_results:
+                if not result.success or not result.extracted_content:
+                    if result.url == start_url:
+                        errors.append({
+                            "url": result.url,
+                            "error": result.error_message or "No content extracted",
+                        })
+                        print(f"    FAIL: {result.url} -- {result.error_message}", file=sys.stderr)
+                    # Subpage failures are expected (404s), don't log as errors
+                    continue
 
-            results.append(venue.model_dump(mode="json"))
-            print(f"  OK: {venue.name} ({result.url})")
+                venue = validate_extraction(result.extracted_content, result.url)
+                if venue is not None:
+                    page_venues.append(venue)
+                    print(f"    OK: {result.url}")
+
+            # Merge all pages into one result
+            if page_venues:
+                merged = merge_venue_results(page_venues)
+                if merged:
+                    merged.source_url = start_url
+                    results.append(merged.model_dump(mode="json"))
+                    print(f"  -> {merged.name}: email={merged.email}, phone={merged.phone}")
+            else:
+                errors.append({"url": start_url, "error": "No valid extractions from any page"})
+                print(f"  FAIL: {start_url} -- no data from any page", file=sys.stderr)
 
     # Write results
-    output_file = output_dir / "results.json"
-    output_file.write_text(json.dumps(results, indent=2, default=str))
+    if contacts_only:
+        output_file = output_dir / "contacts.jsonl"
+        with open(output_file, "w") as f:
+            for r in results:
+                contact = {
+                    "source_url": r["source_url"],
+                    "name": r.get("name"),
+                    "email": r.get("email"),
+                    "phone": r.get("phone"),
+                    "social_links": r.get("social_links", []),
+                }
+                f.write(json.dumps(contact) + "\n")
+    else:
+        output_file = output_dir / "results.json"
+        output_file.write_text(json.dumps(results, indent=2, default=str))
 
     # Summary
     total = len(urls)
@@ -100,6 +129,7 @@ if __name__ == "__main__":
     source.add_argument("urls_file", nargs="?", type=Path, help="File with one URL per line")
     source.add_argument("--url", type=str, help="Scrape a single URL")
     parser.add_argument("--output", type=Path, default=Path("results"), help="Output directory")
+    parser.add_argument("--contacts-only", action="store_true", help="Output only contact info as JSONL")
     args = parser.parse_args()
 
     if args.url:
@@ -115,4 +145,4 @@ if __name__ == "__main__":
         print("No URLs found.", file=sys.stderr)
         sys.exit(1)
 
-    asyncio.run(main(url_list, args.output))
+    asyncio.run(main(url_list, args.output, contacts_only=args.contacts_only))

@@ -46,6 +46,39 @@ Rules:
 """
 
 
+def merge_venue_results(venues: list[VenueData]) -> VenueData | None:
+    """Merge multiple VenueData results into one, preferring first non-null values.
+
+    Scalar fields: take the first non-null.
+    List fields: merge all, deduplicate, preserve order.
+    """
+    if not venues:
+        return None
+    if len(venues) == 1:
+        return venues[0]
+
+    base = venues[0].model_copy()
+
+    for venue in venues[1:]:
+        # Scalar fields: fill nulls from later pages
+        for field in ("name", "description", "email", "phone", "address",
+                      "booking_url", "website", "capacity", "capacity_range",
+                      "pricing", "pricing_range", "venue_type", "star_rating",
+                      "review_count"):
+            if getattr(base, field) is None and getattr(venue, field) is not None:
+                setattr(base, field, getattr(venue, field))
+
+        # List fields: merge with dedup
+        for field in ("social_links", "amenities", "event_types", "photos"):
+            existing = getattr(base, field)
+            new_items = getattr(venue, field)
+            for item in new_items:
+                if item not in existing:
+                    existing.append(item)
+
+    return base
+
+
 def validate_extraction(raw_json: str | dict | list, source_url: str) -> VenueData | None:
     """Validate raw LLM extraction output into a VenueData instance.
 
