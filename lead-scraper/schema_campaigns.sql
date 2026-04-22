@@ -32,3 +32,6 @@ CREATE TABLE IF NOT EXISTS outreach_queue (
     sent_at         TEXT,
     UNIQUE(lead_id, campaign_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_outreach_queue_campaign_status
+    ON outreach_queue(campaign_id, status);

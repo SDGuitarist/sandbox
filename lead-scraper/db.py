@@ -79,3 +79,9 @@ def init_db(db_path=DB_PATH):
         if campaigns_schema.exists():
             conn.executescript(campaigns_schema.read_text())
     migrate_db(db_path)  # Ensure existing DBs get new columns
+    # Index on leads columns added by migrate_db (must run after migration)
+    with get_db(db_path) as conn:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_leads_segment_quality "
+            "ON leads(segment, hook_quality)"
+        )
