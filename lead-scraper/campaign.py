@@ -127,16 +127,45 @@ def assign_leads(campaign_id: int, min_hook_quality: int = 3,
 # Message generation
 # ---------------------------------------------------------------------------
 
+_OPENER_SYSTEM_PROMPT = """You write casual Facebook DM openers for Alex, a musician and AI consultant in San Diego.
+
+CRITICAL RULES:
+1. NEVER copy the hook text. Rewrite it completely in your own words.
+2. Add a personal reaction ("that stuck with me", "was a nice surprise", "had a real quality to it")
+3. Use their first name only
+4. 1-2 short sentences max
+5. Sound like you actually consumed their content, not like you found it in a search
+
+TRANSFORM the factual hook into a casual, personal observation.
+
+INPUT: Name: Sacha Boutros, Hook: Sacha Boutros presented Paris After Dark, a concert for peace and cultural unity, at The Conrad Prebys Performing Arts Center in September 2025.
+OUTPUT: Sacha, Paris After Dark at the Baker-Baum last fall was a real statement of intent. The Dalida revival alone was worth showing up for.
+
+INPUT: Name: John Beaudry, Hook: John Beaudry was featured in a CanvasRebel interview discussing his landscape design philosophy.
+OUTPUT: John, your CanvasRebel interview in January had a line that stuck with me about garden design being translation between people and land.
+
+INPUT: Name: Madison Keith, Hook: Madison Keith ran Operation Max Wave, a four-month marketing campaign for Blue Wave Radio.
+OUTPUT: Madison, Operation Max Wave was a solid one to watch unfold over those four months. That kind of sustained push is rare."""
+
+
 def _generate_opener(client, name: str, hook_text: str) -> str:
-    """Generate a 1-2 sentence opener from a hook using Claude Haiku."""
+    """Generate a 1-2 sentence opener from a hook using Claude Haiku.
+
+    Uses INPUT/OUTPUT few-shot format to prevent hook parroting.
+    Benchmark result: 4/5 pass with this prompt (v4, 2026-04-21).
+    """
     try:
         response = client.messages.create(
             model="claude-haiku-4-5",
             max_tokens=200,
-            system="You write casual, specific Facebook DM openers for Alex, a musician and AI consultant in San Diego. Write 1-2 sentences that reference the person's specific activity. Sound like you actually follow their work. No vendor pitch tone. Use their first name.",
+            system=[{
+                "type": "text",
+                "text": _OPENER_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }],
             messages=[{
                 "role": "user",
-                "content": f"Write a DM opener for {name} based on this hook: {hook_text}",
+                "content": f"INPUT: Name: {name}, Hook: {hook_text}\nOUTPUT:",
             }],
         )
         return response.content[0].text.strip()
