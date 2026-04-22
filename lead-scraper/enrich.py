@@ -1,6 +1,7 @@
 """Enrichment pipeline: fetch lead websites and extract contact info.
 
-This module owns UPDATE on enrichment columns (email, phone, enriched_at).
+This module owns UPDATE on enrichment columns (email, phone, enriched_at,
+segment, segment_confidence, hook_text, hook_source_url, hook_quality).
 It never INSERTs — that is ingest.py's responsibility.
 """
 
@@ -685,4 +686,143 @@ def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         f"{result.emails_found} emails, {result.phones_found} phones, "
         f"{result.social_found} social handles."
     )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Segment classification (Claude Haiku 4.5)
+# ---------------------------------------------------------------------------
+
+try:
+    from pydantic import BaseModel, Field
+    from typing import Literal
+    _PYDANTIC_AVAILABLE = True
+except ImportError:
+    _PYDANTIC_AVAILABLE = False
+
+if _PYDANTIC_AVAILABLE:
+    class LeadClassification(BaseModel):
+        segment: Literal[
+            "real_estate", "writer", "wellness", "musician",
+            "connector", "small_biz", "creative", "nonprofit",
+            "tech", "other"
+        ]
+        confidence: float = Field(ge=0.0, le=1.0)
+
+
+_SEGMENT_SYSTEM_PROMPT = """You are a lead classifier. Classify the person into exactly one segment.
+
+Segments: real_estate, writer, wellness, musician, connector, small_biz, creative, nonprofit, tech, other
+
+Rules:
+- Empty/blank bio: segment "other", confidence 0.1
+- Under 20 chars and ambiguous: best guess, confidence under 0.4
+- Clear match: confidence 0.7-1.0
+- Multiple segments: pick strongest signal, lower confidence
+
+Examples:
+- "Realtor | Compass" -> real_estate, 0.95
+- "Author of 3 novels" -> writer, 0.95
+- "Singer/songwriter, yoga teacher" -> musician, 0.6
+- "Event producer bringing people together" -> connector, 0.8
+- "NYC" -> other, 0.1"""
+
+
+def _get_leads_for_segment(db_path: Path = DB_PATH) -> list[dict]:
+    """Get leads that haven't been classified yet."""
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, name, bio, profile_bio, activity, source FROM leads "
+            "WHERE segment IS NULL"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _persist_segment(lead_id: int, segment: str, confidence: float,
+                     db_path: Path = DB_PATH) -> None:
+    """Store segment classification on a lead.
+
+    Uses direct SET, not COALESCE -- selection query guarantees segment IS NULL.
+    """
+    with get_db(db_path) as conn:
+        conn.execute(
+            "UPDATE leads SET segment = ?, segment_confidence = ? WHERE id = ?",
+            (segment, confidence, lead_id),
+        )
+
+
+def _classify_single_lead(client, name: str, bio: str, activity: str) -> tuple[str, float]:
+    """Classify one lead via Claude Haiku. Returns (segment, confidence)."""
+    combined_bio = (bio or "").strip()
+    if len(combined_bio) < 3:
+        return ("other", 0.1)
+
+    activity_str = f" Activity: {activity}" if activity else ""
+    user_msg = f'Classify: "{combined_bio}".{activity_str}'
+
+    try:
+        response = client.messages.parse(
+            model="claude-haiku-4-5",
+            max_tokens=256,
+            system=[{
+                "type": "text",
+                "text": _SEGMENT_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }],
+            messages=[{"role": "user", "content": user_msg}],
+            output_format=LeadClassification,
+        )
+        if response.stop_reason == "refusal":
+            return ("other", 0.0)
+        return (response.parsed_output.segment, response.parsed_output.confidence)
+    except Exception:
+        # Graceful degradation on any API/parse error
+        return ("other", 0.0)
+
+
+def enrich_segment(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Classify leads into segments using Claude Haiku 4.5.
+
+    Uses client.messages.parse() with Pydantic for guaranteed valid JSON.
+    Pre-filters empty bios. Graceful degradation on API errors.
+    """
+    if not _PYDANTIC_AVAILABLE:
+        print("Segment classifier: pydantic not installed, skipping.")
+        return EnrichmentResult()
+
+    try:
+        import anthropic
+    except ImportError:
+        print("Segment classifier: anthropic SDK not installed, skipping.")
+        return EnrichmentResult()
+
+    api_key = _os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        print("Segment classifier: ANTHROPIC_API_KEY not set, skipping.")
+        return EnrichmentResult()
+
+    leads = _get_leads_for_segment(db_path)
+    if not leads:
+        print("No leads to classify.")
+        return EnrichmentResult()
+
+    result = EnrichmentResult()
+    client = anthropic.Anthropic(max_retries=3)
+
+    print(f"Classifying {len(leads)} leads...")
+    for i, lead in enumerate(leads, 1):
+        name = lead["name"][:40]
+        print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
+
+        bio = lead.get("bio") or lead.get("profile_bio") or ""
+        segment, confidence = _classify_single_lead(
+            client, lead["name"], bio, lead.get("activity") or ""
+        )
+        _persist_segment(lead["id"], segment, confidence, db_path)
+        result.leads_processed += 1
+        print(f"{segment} ({confidence:.2f})")
+
+        time.sleep(0.1)  # courtesy delay
+
+    print(f"\nClassification complete. {result.leads_processed} leads classified.")
     return result
