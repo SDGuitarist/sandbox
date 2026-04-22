@@ -1,6 +1,6 @@
 from db import get_db, DB_PATH
 
-VALID_SOURCES = {"meetup", "eventbrite", "facebook", "linkedin", "instagram"}
+VALID_SOURCES = {"meetup", "eventbrite", "facebook", "linkedin", "instagram", "csv_import"}
 
 
 def query_leads(source="", q="", db_path=DB_PATH, limit=100, offset=0):

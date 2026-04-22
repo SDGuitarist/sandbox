@@ -111,6 +111,14 @@ def cmd_export(args):
     print(f"Exported {len(leads)} leads to {output_path}")
 
 
+def cmd_import(args):
+    """Import leads from a CSV file."""
+    from ingest import import_from_csv
+
+    inserted, skipped, rejected = import_from_csv(args.csv, args.source)
+    print(f"Import complete. {inserted} new, {skipped} duplicates, {rejected} rejected.")
+
+
 def cmd_serve(args):
     """Start the Flask web UI."""
     from app import create_app
@@ -144,6 +152,12 @@ def main():
         help="Run a specific enrichment step (default: all)",
     )
     sp_enrich.set_defaults(func=cmd_enrich)
+
+    # import
+    sp_import = subparsers.add_parser("import", help="Import leads from CSV")
+    sp_import.add_argument("--csv", required=True, help="Path to CSV file")
+    sp_import.add_argument("--source", default="csv_import", help="Source label (default: csv_import)")
+    sp_import.set_defaults(func=cmd_import)
 
     # serve
     sp_serve = subparsers.add_parser("serve", help="Start Flask web UI")
