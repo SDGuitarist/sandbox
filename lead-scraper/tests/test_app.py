@@ -146,3 +146,14 @@ def test_delete_blocked_without_csrf_header():
         count = conn.execute("SELECT COUNT(*) FROM leads WHERE id = ?", (lead_id,)).fetchone()[0]
     assert count == 1
     _cleanup()
+
+
+def test_delete_nonexistent_lead():
+    """Deleting a nonexistent lead with CSRF header should return 204, not crash."""
+    client = _client()
+    resp = client.post(
+        "/leads/99999/delete",
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+    assert resp.status_code == 204
+    _cleanup()

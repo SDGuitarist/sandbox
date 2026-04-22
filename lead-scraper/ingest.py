@@ -88,14 +88,11 @@ def import_from_csv(csv_path: str, source: str = "csv_import", db_path=DB_PATH) 
         reader = csv.DictReader(f)
         header_map = _normalize_csv_headers(reader.fieldnames or [])
 
-        # Warn about columns that exist in the CSV but aren't imported
-        ignored_fields = {"phone"}
-        csv_headers_lower = {h.lower().strip() for h in (reader.fieldnames or [])}
-        ignored_present = ignored_fields & csv_headers_lower
-        if ignored_present:
+        # Warn about phone column (enrichment-only, not imported from CSV)
+        if "phone" in {h.lower().strip() for h in (reader.fieldnames or [])}:
             print(
-                f"Note: '{', '.join(ignored_present)}' column found but not imported. "
-                f"Phone numbers come from the enrichment pipeline (enrich --step bio/hunter/venue)."
+                "Note: 'phone' column found but not imported. "
+                "Phone numbers come from the enrichment pipeline (enrich --step bio/hunter/venue)."
             )
 
         leads: list[NormalizedLead] = []
