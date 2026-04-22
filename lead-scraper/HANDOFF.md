@@ -1,62 +1,47 @@
 # Lead Scraper -- Handoff
 
-**Date:** 2026-04-21
+**Date:** 2026-04-22
 **Branch:** master (all PRs merged)
 **Tests:** 142 passing
-**Phase:** Phase 2 Compound complete -- both cycles done
+**Phase:** All phases complete -- project stable
 
 ## What Was Done
 
 ### Phase 1: Outreach Intelligence Pipeline (PR #3, merged)
-- 11 implementation commits: segment classification, hook research, campaign CRUD, message generation, queue workflow
-- 10 review fix commits: indexes, batch DB, path containment, anti-injection, --limit flag, conftest extraction
-- Solution doc: `docs/solutions/2026-04-21-v2-review-cascade-fixes.md`
+- Segment classification (Claude Haiku 4.5), hook research (Perplexity Sonar Pro)
+- Campaign CRUD, message generation, queue review/approve/skip/sent workflow
+- 10 review fix commits: indexes, batch DB, path containment, anti-injection, --limit flag, conftest
 
 ### Phase 2: Opener Quality + Security Hardening (PR #4, merged)
 - Opener prompt: benchmark 2/5 -> 5/5 (banned words + conversation-opening rule)
-- CSV import sanitization (defense in depth)
-- CSRF protection on Flask delete (X-Requested-With + fetch)
-- Phone column warning on import
-- Review fix: simplified phone warning, re-added nonexistent-lead test
-- Solution doc: `docs/solutions/2026-04-21-v2-phase2-opener-benchmark-and-security.md`
+- CSV import sanitization, CSRF protection, phone column warning
 
-## Deferred Items
+### Phase 3: Hardening Deferrals (direct to master)
+- Null byte stripping in sanitize function
+- Renamed sanitize_csv_cell -> sanitize_cell_value (dual-use clarity)
 
-### From Phase 1 Review (P3s)
-- Template caching in generate loop (premature optimization)
-- .env parser quoted values (edge case, no user report)
+## Deferred Items (Closed)
 
-### From Phase 2 Review
-- Upgrade CSRF to Flask-WTF if app goes on-network
-- CSP headers + move inline script to static JS
-- Null byte stripping in CSV sanitizer
-- Rename sanitize_csv_cell for dual-use clarity
+| Item | Decision | Rationale |
+|------|----------|-----------|
+| Template caching | Won't fix | 3 templates, ~5ms worst case, premature optimization |
+| .env parser quoted values | Won't fix | Use python-dotenv if needed |
+| CSRF upgrade to Flask-WTF | Defer until on-network | Localhost-only, X-Requested-With sufficient |
+| CSP headers + static JS | Defer until on-network | Jinja2 autoescaping blocks stored XSS |
 
-### Unverified
-- Opener benchmark on real campaign data (synthetic only so far)
-- --limit default (50) calibration after first real campaign
+## Verified
 
-## Key Files
-
-| File | Role |
-|------|------|
-| enrich.py | All enrichment steps (segment, hook, bio, website, hunter, venue) |
-| campaign.py | Campaign CRUD, opener generation, queue management |
-| config.py | Config, API keys, TEMPLATES_DIR, available_segments() |
-| models.py | Lead queries, held leads |
-| ingest.py | CSV import with sanitization + phone warning |
-| app.py | Flask web UI with CSRF-protected delete |
-| run.py | CLI dispatcher with --limit flag |
-| tests/conftest.py | Shared setup_db fixture and insert_lead helper |
+- Opener benchmark: 5/5 on real scraped data (Sentakku, Greenbook, Packt, Mehmet, LearneRRing)
+- --limit default (50): confirmed adequate for 663-lead dataset
 
 ## Solution Docs
 
-- `docs/solutions/2026-04-19-contact-enrichment-5-step-pipeline.md` -- Phase 0 enrichment patterns
-- `docs/solutions/2026-04-21-v2-review-cascade-fixes.md` -- Phase 1 review fix patterns
-- `docs/solutions/2026-04-21-v2-phase2-opener-benchmark-and-security.md` -- Phase 2 patterns
+- `docs/solutions/2026-04-19-contact-enrichment-5-step-pipeline.md`
+- `docs/solutions/2026-04-21-v2-review-cascade-fixes.md`
+- `docs/solutions/2026-04-21-v2-phase2-opener-benchmark-and-security.md`
 
 ## Feed-Forward
 
-- **Hardest decision:** Incremental vs all-at-once opener fixes. Incremental proved only 2 of 4 planned fixes were needed.
-- **Rejected alternatives:** Shipping the 2/5 opener prompt as "good enough." Flask-WTF for one endpoint.
-- **Least confident:** Opener benchmark used synthetic leads only. First real campaign should re-benchmark with production data and may surface new failure patterns.
+- **Hardest decision:** Whether to run a full compound cycle for Phase 3. Decided 10 lines of zero-risk refactoring doesn't need 5-agent review.
+- **Rejected alternatives:** Keeping template caching as deferred (it's premature optimization, should be explicitly won't-fixed).
+- **Least confident:** CSRF/CSP deferrals assume the app stays localhost-only. If deployment scope changes, these become P1s immediately.

@@ -1,10 +1,19 @@
-def sanitize_csv_cell(value):
-    """Prevent CSV formula injection and strip control characters."""
+def sanitize_cell_value(value):
+    """Sanitize a string value for safe storage and CSV export.
+
+    Used at both import (defense in depth) and export (formula injection
+    prevention). Strips control characters and prefixes dangerous leading
+    characters that trigger formulas in Excel/Sheets.
+    """
     if not value or not isinstance(value, str):
         return value
-    # Strip tab, carriage return, newline (can break CSV rows or enable injection)
-    value = value.replace("\t", " ").replace("\r", "").replace("\n", " ")
+    # Strip null bytes, tab, carriage return, newline
+    value = value.replace("\x00", "").replace("\t", " ").replace("\r", "").replace("\n", " ")
     # Prefix dangerous leading characters that trigger formulas in Excel/Sheets
-    if value[0] in ("=", "-", "+", "@", "|"):
+    if value and value[0] in ("=", "-", "+", "@", "|"):
         return "'" + value
     return value
+
+
+# Backwards-compatible alias
+sanitize_csv_cell = sanitize_cell_value
