@@ -6,8 +6,6 @@ CREATE TABLE IF NOT EXISTS campaigns (
     target_date       TEXT,
     segment_filter    TEXT,
     template_vars_json TEXT CHECK(json_valid(template_vars_json) OR template_vars_json IS NULL),
-    status            TEXT NOT NULL DEFAULT 'draft'
-                      CHECK(status IN ('draft', 'active', 'complete')),
     created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now'))
 );
 

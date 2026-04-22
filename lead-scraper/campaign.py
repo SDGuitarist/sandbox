@@ -373,7 +373,6 @@ def show_status(campaign_id: int, db_path: Path = DB_PATH) -> None:
         print(f"Target date: {campaign['target_date']}")
     if campaign["segment_filter"]:
         print(f"Segments: {campaign['segment_filter']}")
-    print(f"Status: {campaign['status']}")
     print(f"\nLeads assigned: {assigned}")
     print(f"Messages generated: {total_queued}")
     print(f"  Draft:    {status_counts.get('draft', 0)}")
