@@ -23,7 +23,9 @@ def _available_segments() -> list[str]:
 
 def _read_template(segment: str) -> tuple[str, str]:
     """Read a template file. Returns (frontmatter_raw, body)."""
-    path = TEMPLATES_DIR / f"{segment}.md"
+    path = (TEMPLATES_DIR / f"{segment}.md").resolve()
+    if not path.is_relative_to(TEMPLATES_DIR.resolve()):
+        raise ValueError(f"Invalid segment name: {segment}")
     if not path.exists():
         raise FileNotFoundError(f"No template for segment: {segment}")
     text = path.read_text()
