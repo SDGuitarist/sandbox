@@ -119,6 +119,39 @@ def cmd_import(args):
     print(f"Import complete. {inserted} new, {skipped} duplicates, {rejected} rejected.")
 
 
+def cmd_campaign(args):
+    """Dispatch campaign subcommands."""
+    from campaign import (
+        create_campaign, assign_leads, generate_messages,
+        show_queue, approve_message, skip_message, mark_sent, show_status,
+    )
+
+    action = args.action
+    if action == "create":
+        template_vars = {}
+        for v in (args.var or []):
+            key, _, value = v.partition("=")
+            template_vars[key.strip()] = value.strip()
+        cid = create_campaign(
+            args.name, args.segment, template_vars or None, args.target_date,
+        )
+        print(f"Campaign created: ID {cid}")
+    elif action == "assign":
+        assign_leads(args.campaign_id, args.min_hook_quality)
+    elif action == "generate":
+        generate_messages(args.campaign_id)
+    elif action == "queue":
+        show_queue(args.campaign_id)
+    elif action == "approve":
+        approve_message(args.campaign_id, args.lead)
+    elif action == "skip":
+        skip_message(args.campaign_id, args.lead)
+    elif action == "sent":
+        mark_sent(args.campaign_id, args.lead)
+    elif action == "status":
+        show_status(args.campaign_id)
+
+
 def cmd_serve(args):
     """Start the Flask web UI."""
     from app import create_app
@@ -152,6 +185,43 @@ def main():
         help="Run a specific enrichment step (default: all)",
     )
     sp_enrich.set_defaults(func=cmd_enrich)
+
+    # campaign
+    sp_campaign = subparsers.add_parser("campaign", help="Campaign management")
+    campaign_sub = sp_campaign.add_subparsers(dest="action", required=True)
+
+    sp_create = campaign_sub.add_parser("create", help="Create a new campaign")
+    sp_create.add_argument("name", help="Campaign name")
+    sp_create.add_argument("--segment", help="Comma-separated segment filter")
+    sp_create.add_argument("--var", action="append", help="Template var: key=value")
+    sp_create.add_argument("--target-date", help="Campaign target date")
+
+    sp_assign = campaign_sub.add_parser("assign", help="Assign eligible leads")
+    sp_assign.add_argument("campaign_id", type=int)
+    sp_assign.add_argument("--min-hook-quality", type=int, default=3)
+
+    sp_gen = campaign_sub.add_parser("generate", help="Generate draft messages")
+    sp_gen.add_argument("campaign_id", type=int)
+
+    sp_queue = campaign_sub.add_parser("queue", help="Show draft messages for review")
+    sp_queue.add_argument("campaign_id", type=int)
+
+    sp_approve = campaign_sub.add_parser("approve", help="Approve a draft message")
+    sp_approve.add_argument("campaign_id", type=int)
+    sp_approve.add_argument("--lead", type=int, required=True)
+
+    sp_skip = campaign_sub.add_parser("skip", help="Skip a draft message")
+    sp_skip.add_argument("campaign_id", type=int)
+    sp_skip.add_argument("--lead", type=int, required=True)
+
+    sp_sent = campaign_sub.add_parser("sent", help="Mark an approved message as sent")
+    sp_sent.add_argument("campaign_id", type=int)
+    sp_sent.add_argument("--lead", type=int, required=True)
+
+    sp_status = campaign_sub.add_parser("status", help="Show campaign status")
+    sp_status.add_argument("campaign_id", type=int)
+
+    sp_campaign.set_defaults(func=cmd_campaign)
 
     # import
     sp_import = subparsers.add_parser("import", help="Import leads from CSV")
