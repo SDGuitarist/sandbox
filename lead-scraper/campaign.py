@@ -218,21 +218,21 @@ def generate_messages(campaign_id: int, db_path: Path = DB_PATH, limit: int = 0)
     count = 0
 
     print(f"Generating messages for {len(leads)} leads...")
-    for i, lead in enumerate(leads, 1):
-        name = lead["name"][:40]
-        print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
+    with get_db(db_path) as conn:
+        for i, lead in enumerate(leads, 1):
+            name = lead["name"][:40]
+            print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
 
-        _, template_body = _read_template(lead["segment"])
-        template_text = _fill_template(template_body, template_vars)
+            _, template_body = _read_template(lead["segment"])
+            template_text = _fill_template(template_body, template_vars)
 
-        if lead["hook_text"]:
-            opener_text = _generate_opener(client, lead["name"], lead["hook_text"])
-        else:
-            opener_text = ""
+            if lead["hook_text"]:
+                opener_text = _generate_opener(client, lead["name"], lead["hook_text"])
+            else:
+                opener_text = ""
 
-        full_message = f"{opener_text}\n\n{template_text}".strip()
+            full_message = f"{opener_text}\n\n{template_text}".strip()
 
-        with get_db(db_path) as conn:
             conn.execute(
                 """INSERT INTO outreach_queue
                    (lead_id, campaign_id, opener_text, template_text, full_message)
@@ -241,9 +241,9 @@ def generate_messages(campaign_id: int, db_path: Path = DB_PATH, limit: int = 0)
                 (lead["id"], campaign_id, opener_text, template_text, full_message),
             )
 
-        count += 1
-        print("done")
-        time.sleep(0.1)
+            count += 1
+            print("done")
+            time.sleep(0.1)
 
     print(f"\nGenerated {count} messages.")
     return count

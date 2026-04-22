@@ -741,16 +741,23 @@ def _get_leads_for_segment(db_path: Path = DB_PATH) -> list[dict]:
 
 
 def _persist_segment(lead_id: int, segment: str, confidence: float,
-                     db_path: Path = DB_PATH) -> None:
+                     db_path: Path = DB_PATH, conn=None) -> None:
     """Store segment classification on a lead.
 
     Uses direct SET, not COALESCE -- selection query guarantees segment IS NULL.
+    If conn is provided, uses it directly (caller manages transaction).
     """
-    with get_db(db_path) as conn:
+    if conn is not None:
         conn.execute(
             "UPDATE leads SET segment = ?, segment_confidence = ? WHERE id = ?",
             (segment, confidence, lead_id),
         )
+    else:
+        with get_db(db_path) as c:
+            c.execute(
+                "UPDATE leads SET segment = ?, segment_confidence = ? WHERE id = ?",
+                (segment, confidence, lead_id),
+            )
 
 
 def _classify_single_lead(client, name: str, bio: str, activity: str) -> tuple[str, float]:
@@ -815,19 +822,20 @@ def enrich_segment(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResu
     client = anthropic.Anthropic(max_retries=3)
 
     print(f"Classifying {len(leads)} leads...")
-    for i, lead in enumerate(leads, 1):
-        name = lead["name"][:40]
-        print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
+    with get_db(db_path) as conn:
+        for i, lead in enumerate(leads, 1):
+            name = lead["name"][:40]
+            print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
 
-        bio = lead.get("bio") or lead.get("profile_bio") or ""
-        segment, confidence = _classify_single_lead(
-            client, lead["name"], bio, lead.get("activity") or ""
-        )
-        _persist_segment(lead["id"], segment, confidence, db_path)
-        result.leads_processed += 1
-        print(f"{segment} ({confidence:.2f})")
+            bio = lead.get("bio") or lead.get("profile_bio") or ""
+            segment, confidence = _classify_single_lead(
+                client, lead["name"], bio, lead.get("activity") or ""
+            )
+            _persist_segment(lead["id"], segment, confidence, conn=conn)
+            result.leads_processed += 1
+            print(f"{segment} ({confidence:.2f})")
 
-        time.sleep(0.1)  # courtesy delay
+            time.sleep(0.1)  # courtesy delay
 
     print(f"\nClassification complete. {result.leads_processed} leads classified.")
     return result
@@ -889,17 +897,20 @@ def _get_leads_for_hook(db_path: Path = DB_PATH) -> list[dict]:
 
 
 def _persist_hook(lead_id: int, hook_text: str | None, hook_source_url: str | None,
-                  hook_quality: int, db_path: Path = DB_PATH) -> None:
+                  hook_quality: int, db_path: Path = DB_PATH, conn=None) -> None:
     """Store hook research results on a lead.
 
     Uses direct SET, not COALESCE -- selection query guarantees hook_text IS NULL.
+    If conn is provided, uses it directly (caller manages transaction).
     """
-    with get_db(db_path) as conn:
-        conn.execute(
-            "UPDATE leads SET hook_text = ?, hook_source_url = ?, hook_quality = ? "
-            "WHERE id = ?",
-            (hook_text, hook_source_url, hook_quality, lead_id),
-        )
+    stmt = ("UPDATE leads SET hook_text = ?, hook_source_url = ?, hook_quality = ? "
+            "WHERE id = ?")
+    params = (hook_text, hook_source_url, hook_quality, lead_id)
+    if conn is not None:
+        conn.execute(stmt, params)
+    else:
+        with get_db(db_path) as c:
+            c.execute(stmt, params)
 
 
 def _build_hook_context(lead: dict) -> str:
@@ -996,30 +1007,31 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
     session = requests.Session()
 
     print(f"Researching hooks for {len(leads)} leads...")
-    for i, lead in enumerate(leads, 1):
-        name = lead["name"][:40]
-        print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
+    with get_db(db_path) as conn:
+        for i, lead in enumerate(leads, 1):
+            name = lead["name"][:40]
+            print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
 
-        context = _build_hook_context(lead)
-        hook_text, source_url, tier = _research_single_hook(
-            session, api_key, lead["name"], context
-        )
+            context = _build_hook_context(lead)
+            hook_text, source_url, tier = _research_single_hook(
+                session, api_key, lead["name"], context
+            )
 
-        if tier == -1:
-            # Rate limited -- don't persist, lead stays eligible for retry
-            print("skipped (rate limited)")
-            continue
+            if tier == -1:
+                # Rate limited -- don't persist, lead stays eligible for retry
+                print("skipped (rate limited)")
+                continue
 
-        _persist_hook(lead["id"], hook_text, source_url, tier, db_path)
-        result.leads_processed += 1
+            _persist_hook(lead["id"], hook_text, source_url, tier, conn=conn)
+            result.leads_processed += 1
 
-        if hook_text:
-            tier_label = TIER_LABELS.get(tier, "unknown")
-            print(f"tier {tier} ({tier_label})")
-        else:
-            print("no hook found")
+            if hook_text:
+                tier_label = TIER_LABELS.get(tier, "unknown")
+                print(f"tier {tier} ({tier_label})")
+            else:
+                print("no hook found")
 
-        time.sleep(1.2)  # stay under 50 req/min
+            time.sleep(1.2)  # stay under 50 req/min
 
     session.close()
     print(f"\nHook research complete. {result.leads_processed} processed.")
