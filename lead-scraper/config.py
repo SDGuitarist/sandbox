@@ -24,6 +24,11 @@ def get_apify_token() -> str:
     return _require_env("APIFY_TOKEN")
 
 
+def get_perplexity_key() -> str | None:
+    """Get Perplexity API key. Returns None if not set (non-fatal)."""
+    return os.getenv("PERPLEXITY_API_KEY")
+
+
 # Source configs -- edit to add/remove groups and keywords
 SOURCES = {
     "meetup": {

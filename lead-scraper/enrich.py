@@ -826,3 +826,188 @@ def enrich_segment(*, db_path: Path = DB_PATH) -> EnrichmentResult:
 
     print(f"\nClassification complete. {result.leads_processed} leads classified.")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Hook research (Perplexity Sonar Pro)
+# ---------------------------------------------------------------------------
+
+PERPLEXITY_API_URL = "https://api.perplexity.ai/chat/completions"
+
+_HOOK_PROMPT_TEMPLATE = """Find one recent, specific, verifiable public activity for this person:
+
+Name: {name}
+Context: {context}
+
+Prefer: content they created (podcast episodes, articles, creative work)
+over opinions they expressed (interviews, commentary)
+over events they led
+over awards they received
+over transactions or metrics.
+
+Return a JSON object with these fields:
+- hook_text: one sentence describing the specific activity
+- source_description: a brief description of where you found this (e.g. "KPBS event listing")
+- tier: 1 (content created), 2 (opinion/position), 3 (event/project led), 4 (award/recognition), 5 (transaction/metric)
+Return ONLY the JSON object, no other text."""
+
+_HOOK_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "hook_text": {"type": "string"},
+                "source_description": {"type": "string"},
+                "tier": {"type": "integer"},
+            },
+            "required": ["hook_text", "tier"],
+        }
+    }
+}
+
+# Labels for display (derive from hook_quality, no column needed)
+TIER_LABELS = {
+    1: "content_created", 2: "opinion", 3: "event",
+    4: "award", 5: "transaction", 0: "no_hook",
+}
+
+
+def _get_leads_for_hook(db_path: Path = DB_PATH) -> list[dict]:
+    """Get leads with a segment but no hook yet."""
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, name, bio, profile_bio, activity, location, social_handles "
+            "FROM leads WHERE hook_text IS NULL AND segment IS NOT NULL"
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _persist_hook(lead_id: int, hook_text: str | None, hook_source_url: str | None,
+                  hook_quality: int, db_path: Path = DB_PATH) -> None:
+    """Store hook research results on a lead.
+
+    Uses direct SET, not COALESCE -- selection query guarantees hook_text IS NULL.
+    """
+    with get_db(db_path) as conn:
+        conn.execute(
+            "UPDATE leads SET hook_text = ?, hook_source_url = ?, hook_quality = ? "
+            "WHERE id = ?",
+            (hook_text, hook_source_url, hook_quality, lead_id),
+        )
+
+
+def _build_hook_context(lead: dict) -> str:
+    """Build context string from lead data for the Sonar Pro prompt."""
+    parts = []
+    bio = lead.get("bio") or lead.get("profile_bio") or ""
+    if bio.strip():
+        parts.append(bio.strip()[:500])
+    if lead.get("activity"):
+        parts.append(lead["activity"])
+    if lead.get("location"):
+        parts.append(f"Located in {lead['location']}")
+    return ". ".join(parts) if parts else lead["name"]
+
+
+def _research_single_hook(session: requests.Session, api_key: str,
+                          name: str, context: str) -> tuple[str | None, str | None, int]:
+    """Research one lead via Sonar Pro. Returns (hook_text, source_url, tier).
+
+    Source URL extracted from citations[] response field, NOT from model output.
+    """
+    prompt = _HOOK_PROMPT_TEMPLATE.format(name=name, context=context)
+
+    try:
+        resp = session.post(
+            PERPLEXITY_API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "sonar-pro",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "response_format": _HOOK_RESPONSE_FORMAT,
+            },
+            timeout=60,
+        )
+
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("retry-after", 10))
+            print(f"rate limited, waiting {wait}s...", end=" ")
+            time.sleep(wait)
+            return (None, None, 0)
+
+        if resp.status_code != 200:
+            return (None, None, 0)
+
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+
+        # Extract source URL from citations, NOT from model output
+        citations = data.get("citations", [])
+        source_url = citations[0] if citations else None
+
+        # Parse the structured JSON response
+        hook = json.loads(content)
+        hook_text = hook.get("hook_text", "").strip()
+        tier = hook.get("tier", 5)
+
+        if not hook_text or "cannot find" in hook_text.lower() or "no " in hook_text.lower()[:10]:
+            return (None, None, 0)
+
+        # Clamp tier to 1-5
+        tier = max(1, min(5, tier))
+        return (hook_text, source_url, tier)
+
+    except (json.JSONDecodeError, KeyError, requests.RequestException):
+        return (None, None, 0)
+
+
+def enrich_hook(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Research outreach hooks using Perplexity Sonar Pro.
+
+    Extracts source URLs from the citations response field (real URLs from
+    Perplexity's search), not from model-generated JSON (which hallucinates URLs).
+    """
+    from config import get_perplexity_key
+
+    api_key = get_perplexity_key()
+    if not api_key:
+        print("Hook research: PERPLEXITY_API_KEY not set, skipping.")
+        return EnrichmentResult()
+
+    leads = _get_leads_for_hook(db_path)
+    if not leads:
+        print("No leads to research hooks for.")
+        return EnrichmentResult()
+
+    result = EnrichmentResult()
+    session = requests.Session()
+
+    print(f"Researching hooks for {len(leads)} leads...")
+    for i, lead in enumerate(leads, 1):
+        name = lead["name"][:40]
+        print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
+
+        context = _build_hook_context(lead)
+        hook_text, source_url, tier = _research_single_hook(
+            session, api_key, lead["name"], context
+        )
+
+        _persist_hook(lead["id"], hook_text, source_url, tier, db_path)
+        result.leads_processed += 1
+
+        if hook_text:
+            tier_label = TIER_LABELS.get(tier, "unknown")
+            print(f"tier {tier} ({tier_label})")
+        else:
+            print("no hook found")
+
+        time.sleep(1.2)  # stay under 50 req/min
+
+    session.close()
+    print(f"\nHook research complete. {result.leads_processed} processed.")
+    return result
