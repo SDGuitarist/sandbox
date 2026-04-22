@@ -106,3 +106,14 @@ def test_import_sanitizes_formula_injection(setup_db, tmp_path):
     with get_db(setup_db) as conn:
         row = conn.execute("SELECT bio FROM leads WHERE name = 'Alice'").fetchone()
     assert row["bio"].startswith("'")
+
+
+def test_import_warns_about_phone_column(setup_db, tmp_path, capsys):
+    """Phone column should trigger a warning about enrichment pipeline."""
+    csv_path = _write_csv(tmp_path, "leads.csv", ["name", "profile_url", "phone"], [
+        {"name": "Alice", "profile_url": "https://facebook.com/alice", "phone": "619-555-1234"},
+    ])
+    import_from_csv(csv_path, db_path=setup_db)
+    output = capsys.readouterr().out
+    assert "phone" in output.lower()
+    assert "enrichment" in output.lower()
