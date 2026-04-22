@@ -38,7 +38,7 @@ def query_held_leads(db_path=DB_PATH) -> list[dict]:
     Hold reasons: low_confidence, no_hook, low_quality_hook, unsupported_segment.
     Computed at query time -- no new table needed.
     """
-    from campaign import _available_segments
+    from config import available_segments as _available_segments
 
     available = _available_segments()
     if not available:

@@ -11,14 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from db import get_db, DB_PATH
-
-# Template discovery uses repo-relative path, not CWD
-TEMPLATES_DIR = Path(__file__).parent / "templates" / "outreach"
-
-
-def _available_segments() -> list[str]:
-    """Derive available segments from template files on disk."""
-    return [p.stem for p in TEMPLATES_DIR.glob("*.md")]
+from config import TEMPLATES_DIR, available_segments as _available_segments
 
 
 def _read_template(segment: str) -> tuple[str, str]:

@@ -11,8 +11,9 @@ from db import get_db, init_db
 from campaign import (
     create_campaign, assign_leads, generate_messages,
     show_queue, approve_message, skip_message, mark_sent, show_status,
-    _fill_template, _available_segments, TEMPLATES_DIR,
+    _fill_template, _available_segments,
 )
+from config import TEMPLATES_DIR
 
 
 def _setup_db(tmp_path):

@@ -29,6 +29,15 @@ def get_perplexity_key() -> str | None:
     return os.getenv("PERPLEXITY_API_KEY")
 
 
+# Template discovery uses repo-relative path, not CWD
+TEMPLATES_DIR = Path(__file__).parent / "templates" / "outreach"
+
+
+def available_segments() -> list[str]:
+    """Derive available segments from template files on disk."""
+    return [p.stem for p in TEMPLATES_DIR.glob("*.md")]
+
+
 # Source configs -- edit to add/remove groups and keywords
 SOURCES = {
     "meetup": {
