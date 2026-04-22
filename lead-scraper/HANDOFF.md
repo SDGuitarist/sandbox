@@ -1,77 +1,62 @@
 # Lead Scraper -- Handoff
 
 **Date:** 2026-04-21
-**Branch:** `feat/v2-outreach-intelligence` (PR #3 against master)
-**Tests:** 137/139 passing (2 pre-existing: missing anthropic module, flaky mock)
-**Phase:** Compound complete -- ready for Phase 2
+**Branch:** master (all PRs merged)
+**Tests:** 142 passing
+**Phase:** Phase 2 Compound complete -- both cycles done
 
 ## What Was Done
 
-### Phase 1: Implementation (11 commits)
-Full outreach intelligence pipeline: segment classification (Claude Haiku 4.5), hook research (Perplexity Sonar Pro), campaign CRUD, message generation with opener LLM, queue review/approve/skip/sent workflow.
+### Phase 1: Outreach Intelligence Pipeline (PR #3, merged)
+- 11 implementation commits: segment classification, hook research, campaign CRUD, message generation, queue workflow
+- 10 review fix commits: indexes, batch DB, path containment, anti-injection, --limit flag, conftest extraction
+- Solution doc: `docs/solutions/2026-04-21-v2-review-cascade-fixes.md`
 
-### Phase 1: Review (5-agent review)
-Security Sentinel, Architecture Strategist, Performance Oracle, Code Simplicity Reviewer, Learnings Researcher. 17 findings: 3 P1, 7 P2, 7 P3.
+### Phase 2: Opener Quality + Security Hardening (PR #4, merged)
+- Opener prompt: benchmark 2/5 -> 5/5 (banned words + conversation-opening rule)
+- CSV import sanitization (defense in depth)
+- CSRF protection on Flask delete (X-Requested-With + fetch)
+- Phone column warning on import
+- Review fix: simplified phone warning, re-added nonexistent-lead test
+- Solution doc: `docs/solutions/2026-04-21-v2-phase2-opener-benchmark-and-security.md`
 
-### Phase 1: Review Fixes (10 commits)
-All 3 P1s and 7 P2s fixed in cascade order. Solution doc: `docs/solutions/2026-04-21-v2-review-cascade-fixes.md`.
+## Deferred Items
 
-| Fix | Summary |
-|-----|---------|
-| 1 | Indexes on leads(segment, hook_quality) and outreach_queue(campaign_id, status) |
-| 2 | .env.example with all 4 API key placeholders |
-| 3 | Path traversal check in _read_template |
-| 4 | Skip _persist_hook on 429 (tier=-1 sentinel) |
-| 5 | Anti-injection warning in LLM system prompts |
-| 6 | Remove dead campaigns.status column |
-| 7 | Move _available_segments() + TEMPLATES_DIR to config.py |
-| 8 | --limit flag (default 50) for segment/hook/generate |
-| 9 | Batch DB connections (1 per loop, not 1 per lead) |
-| 10 | Extract test helpers to tests/conftest.py (-156 lines) |
+### From Phase 1 Review (P3s)
+- Template caching in generate loop (premature optimization)
+- .env parser quoted values (edge case, no user report)
 
-## Next Session: Phase 2
+### From Phase 2 Review
+- Upgrade CSRF to Flask-WTF if app goes on-network
+- CSP headers + move inline script to static JS
+- Null byte stripping in CSV sanitizer
+- Rename sanitize_csv_cell for dual-use clarity
 
-### P3s Deferred from Phase 1 Review
-
-- CSV formula injection on import
-- CSRF on Flask delete endpoint
-- Cache templates in generate loop
-- Extract _transition_status() helper
-- CSV field map redundant keys
-- CSV phone column warning
-- .env parser quoted values
-
-### Opener Benchmark (Verify-First from Phase 1 Feed-Forward)
-
-The opener generation quality risk was flagged but never verified. Before expanding:
-
-1. Run 5-lead benchmark with rubric: sounds like Alex, hook-specific, 1-2 sentences, opens conversation
-2. If <4/5 pass, add voice guide examples to Haiku prompt
-3. If 4+/5 pass, opener quality is validated for production use
-
-### --limit Calibration
-
-Default 50 needs testing with a real campaign. May need adjustment up (for batch) or down (for dev safety).
+### Unverified
+- Opener benchmark on real campaign data (synthetic only so far)
+- --limit default (50) calibration after first real campaign
 
 ## Key Files
 
 | File | Role |
 |------|------|
 | enrich.py | All enrichment steps (segment, hook, bio, website, hunter, venue) |
-| campaign.py | Campaign CRUD, message generation, queue management |
+| campaign.py | Campaign CRUD, opener generation, queue management |
 | config.py | Config, API keys, TEMPLATES_DIR, available_segments() |
 | models.py | Lead queries, held leads |
-| run.py | CLI dispatcher |
-| db.py | SQLite connection management, migration |
+| ingest.py | CSV import with sanitization + phone warning |
+| app.py | Flask web UI with CSRF-protected delete |
+| run.py | CLI dispatcher with --limit flag |
 | tests/conftest.py | Shared setup_db fixture and insert_lead helper |
 
 ## Solution Docs
 
-- `docs/solutions/2026-04-19-contact-enrichment-5-step-pipeline.md` -- Phase 1 enrichment patterns
-- `docs/solutions/2026-04-21-v2-review-cascade-fixes.md` -- Review fix patterns (this phase)
+- `docs/solutions/2026-04-19-contact-enrichment-5-step-pipeline.md` -- Phase 0 enrichment patterns
+- `docs/solutions/2026-04-21-v2-review-cascade-fixes.md` -- Phase 1 review fix patterns
+- `docs/solutions/2026-04-21-v2-phase2-opener-benchmark-and-security.md` -- Phase 2 patterns
 
 ## Feed-Forward
 
-- **Hardest decision:** Cascade ordering vs. file-grouped batching for review fixes. Cascade won because behavioral fixes depended on schema being stable first.
-- **Rejected alternatives:** Fixing P3s in the same pass (scope creep risk, diminishing returns on a PR already at 21 commits).
-- **Least confident:** Opener generation quality. Gated by 5-lead benchmark with rubric. If benchmark fails, add voice guide examples to Haiku prompt. This is Phase 2's verify-first item.
+- **Hardest decision:** Incremental vs all-at-once opener fixes. Incremental proved only 2 of 4 planned fixes were needed.
+- **Rejected alternatives:** Shipping the 2/5 opener prompt as "good enough." Flask-WTF for one endpoint.
+- **Least confident:** Opener benchmark used synthetic leads only. First real campaign should re-benchmark with production data and may surface new failure patterns.
