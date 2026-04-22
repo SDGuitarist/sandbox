@@ -111,6 +111,24 @@ def cmd_export(args):
     print(f"Exported {len(leads)} leads to {output_path}")
 
 
+def cmd_leads(args):
+    """Show held leads with reasons."""
+    from models import query_held_leads
+
+    held = query_held_leads()
+    if not held:
+        print("No held leads.")
+        return
+
+    print(f"\n{'Name':<30} {'Segment':<15} {'Hook Q':<8} {'Reason'}")
+    print("-" * 75)
+    for lead in held:
+        hook_q = lead["hook_quality"] if lead["hook_quality"] is not None else "-"
+        segment = lead["segment"] or "-"
+        print(f"{lead['name'][:29]:<30} {segment:<15} {str(hook_q):<8} {lead['hold_reason']}")
+    print(f"\nTotal held: {len(held)}")
+
+
 def cmd_import(args):
     """Import leads from a CSV file."""
     from ingest import import_from_csv
@@ -185,6 +203,12 @@ def main():
         help="Run a specific enrichment step (default: all)",
     )
     sp_enrich.set_defaults(func=cmd_enrich)
+
+    # leads
+    sp_leads = subparsers.add_parser("leads", help="Lead queries")
+    leads_sub = sp_leads.add_subparsers(dest="action", required=True)
+    leads_sub.add_parser("held", help="Show leads held from auto-generation")
+    sp_leads.set_defaults(func=cmd_leads)
 
     # campaign
     sp_campaign = subparsers.add_parser("campaign", help="Campaign management")
