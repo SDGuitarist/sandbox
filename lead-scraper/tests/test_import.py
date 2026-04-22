@@ -93,3 +93,16 @@ def test_import_rejects_invalid_url(setup_db, tmp_path):
     inserted, _, rejected = import_from_csv(csv_path, db_path=setup_db)
     assert inserted == 0
     assert rejected == 1
+
+
+def test_import_sanitizes_formula_injection(setup_db, tmp_path):
+    """CSV cells starting with =, +, -, @, | should be prefixed with apostrophe."""
+    csv_path = _write_csv(tmp_path, "leads.csv", ["name", "profile_url", "bio"], [
+        {"name": "Alice", "profile_url": "https://facebook.com/alice",
+         "bio": '=HYPERLINK("http://evil.com","Click")'},
+    ])
+    inserted, _, _ = import_from_csv(csv_path, db_path=setup_db)
+    assert inserted == 1
+    with get_db(setup_db) as conn:
+        row = conn.execute("SELECT bio FROM leads WHERE name = 'Alice'").fetchone()
+    assert row["bio"].startswith("'")
