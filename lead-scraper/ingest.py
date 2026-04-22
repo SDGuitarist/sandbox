@@ -3,6 +3,7 @@ from pathlib import Path
 
 from db import get_db, DB_PATH
 from scrapers import NormalizedLead
+from utils import sanitize_csv_cell
 
 REQUIRED_FIELDS = {"name", "profile_url", "source"}
 
@@ -87,6 +88,13 @@ def import_from_csv(csv_path: str, source: str = "csv_import", db_path=DB_PATH) 
         reader = csv.DictReader(f)
         header_map = _normalize_csv_headers(reader.fieldnames or [])
 
+        # Warn about phone column (enrichment-only, not imported from CSV)
+        if "phone" in {h.lower().strip() for h in (reader.fieldnames or [])}:
+            print(
+                "Note: 'phone' column found but not imported. "
+                "Phone numbers come from the enrichment pipeline (enrich --step bio/hunter/venue)."
+            )
+
         leads: list[NormalizedLead] = []
         rejected = 0
 
@@ -95,7 +103,7 @@ def import_from_csv(csv_path: str, source: str = "csv_import", db_path=DB_PATH) 
             for csv_col, field_name in header_map.items():
                 val = (row.get(csv_col) or "").strip()
                 if val:
-                    mapped[field_name] = val
+                    mapped[field_name] = sanitize_csv_cell(val)
 
             # Require name and profile_url
             if not mapped.get("name") or not mapped.get("profile_url"):

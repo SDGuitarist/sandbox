@@ -132,6 +132,8 @@ CRITICAL RULES:
 3. Use their first name only
 4. 1-2 short sentences max
 5. Sound like you actually consumed their content, not like you found it in a search
+6. NEVER use these words: "impressive", "amazing", "incredible", "remarkable", "inspiring". Use specific observations instead.
+7. End with something that implies shared context or curiosity, not a compliment. Good: "the Dalida revival alone was worth showing up for." Bad: "that was really well done."
 
 TRANSFORM the factual hook into a casual, personal observation.
 
