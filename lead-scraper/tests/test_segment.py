@@ -6,44 +6,26 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from db import get_db, init_db
+from db import get_db
 from enrich import (
     _get_leads_for_segment, _persist_segment, _classify_single_lead,
     enrich_segment, EnrichmentResult,
 )
 
 
-def _setup_db(tmp_path):
-    db = tmp_path / "test.db"
-    init_db(db)
-    return db
-
-
-def _insert_lead(db, name="Test", bio=None, segment=None, **kwargs):
-    with get_db(db) as conn:
-        conn.execute(
-            "INSERT INTO leads (name, bio, profile_url, source, segment) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (name, bio, f"https://example.com/{name.lower()}", "test", segment),
-        )
-        return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-
-def test_segment_selects_null_segment_only(tmp_path):
-    db = _setup_db(tmp_path)
-    _insert_lead(db, "Unclassified", bio="Writer and author")
-    _insert_lead(db, "Classified", bio="Realtor", segment="real_estate")
-    leads = _get_leads_for_segment(db)
+def test_segment_selects_null_segment_only(setup_db, insert_lead):
+    insert_lead(setup_db, "Unclassified", bio="Writer and author")
+    insert_lead(setup_db, "Classified", bio="Realtor", segment="real_estate")
+    leads = _get_leads_for_segment(setup_db)
     names = [l["name"] for l in leads]
     assert "Unclassified" in names
     assert "Classified" not in names
 
 
-def test_segment_stores_result(tmp_path):
-    db = _setup_db(tmp_path)
-    lead_id = _insert_lead(db, "Alice", bio="Yoga teacher")
-    _persist_segment(lead_id, "wellness", 0.9, db)
-    with get_db(db) as conn:
+def test_segment_stores_result(setup_db, insert_lead):
+    lead_id = insert_lead(setup_db, "Alice", bio="Yoga teacher")
+    _persist_segment(lead_id, "wellness", 0.9, setup_db)
+    with get_db(setup_db) as conn:
         row = conn.execute(
             "SELECT segment, segment_confidence FROM leads WHERE id = ?", (lead_id,)
         ).fetchone()
@@ -111,16 +93,15 @@ def test_segment_successful_classification():
     assert confidence == 0.92
 
 
-def test_enrich_segment_skips_without_api_key(tmp_path):
+def test_enrich_segment_skips_without_api_key(setup_db, insert_lead):
     """Should skip gracefully when ANTHROPIC_API_KEY is not set."""
-    db = _setup_db(tmp_path)
-    _insert_lead(db, "Alice", bio="Writer")
+    insert_lead(setup_db, "Alice", bio="Writer")
     with patch.dict("os.environ", {}, clear=False):
         # Remove the key if present
         import os
         old = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
-            result = enrich_segment(db_path=db)
+            result = enrich_segment(db_path=setup_db)
             assert result.leads_processed == 0
         finally:
             if old:

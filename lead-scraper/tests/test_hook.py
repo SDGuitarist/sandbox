@@ -7,51 +7,32 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from db import get_db, init_db
+from db import get_db
 from enrich import (
     _get_leads_for_hook, _persist_hook, _research_single_hook,
     _build_hook_context, enrich_hook, EnrichmentResult,
 )
 
 
-def _setup_db(tmp_path):
-    db = tmp_path / "test.db"
-    init_db(db)
-    return db
-
-
-def _insert_lead(db, name="Test", bio=None, segment=None, hook_text=None, **kw):
-    with get_db(db) as conn:
-        conn.execute(
-            "INSERT INTO leads (name, bio, profile_url, source, segment, hook_text) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (name, bio, f"https://example.com/{name.lower()}", "test", segment, hook_text),
-        )
-        return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-
-def test_hook_requires_segment(tmp_path):
-    db = _setup_db(tmp_path)
-    _insert_lead(db, "NoSegment", bio="Writer", segment=None)
-    _insert_lead(db, "HasSegment", bio="Writer", segment="writer")
-    leads = _get_leads_for_hook(db)
+def test_hook_requires_segment(setup_db, insert_lead):
+    insert_lead(setup_db, "NoSegment", bio="Writer", segment=None)
+    insert_lead(setup_db, "HasSegment", bio="Writer", segment="writer")
+    leads = _get_leads_for_hook(setup_db)
     names = [l["name"] for l in leads]
     assert "NoSegment" not in names
     assert "HasSegment" in names
 
 
-def test_hook_skips_already_researched(tmp_path):
-    db = _setup_db(tmp_path)
-    _insert_lead(db, "Already", bio="Writer", segment="writer", hook_text="Some hook")
-    leads = _get_leads_for_hook(db)
+def test_hook_skips_already_researched(setup_db, insert_lead):
+    insert_lead(setup_db, "Already", bio="Writer", segment="writer", hook_text="Some hook")
+    leads = _get_leads_for_hook(setup_db)
     assert len(leads) == 0
 
 
-def test_hook_stores_result_with_citation_url(tmp_path):
-    db = _setup_db(tmp_path)
-    lead_id = _insert_lead(db, "Alice", segment="writer")
-    _persist_hook(lead_id, "Published a novel in March", "https://kpbs.org/article", 1, db)
-    with get_db(db) as conn:
+def test_hook_stores_result_with_citation_url(setup_db, insert_lead):
+    lead_id = insert_lead(setup_db, "Alice", segment="writer")
+    _persist_hook(lead_id, "Published a novel in March", "https://kpbs.org/article", 1, setup_db)
+    with get_db(setup_db) as conn:
         row = conn.execute(
             "SELECT hook_text, hook_source_url, hook_quality FROM leads WHERE id = ?",
             (lead_id,)
@@ -61,11 +42,10 @@ def test_hook_stores_result_with_citation_url(tmp_path):
     assert row["hook_quality"] == 1
 
 
-def test_hook_stores_no_hook(tmp_path):
-    db = _setup_db(tmp_path)
-    lead_id = _insert_lead(db, "NoHook", segment="other")
-    _persist_hook(lead_id, None, None, 0, db)
-    with get_db(db) as conn:
+def test_hook_stores_no_hook(setup_db, insert_lead):
+    lead_id = insert_lead(setup_db, "NoHook", segment="other")
+    _persist_hook(lead_id, None, None, 0, setup_db)
+    with get_db(setup_db) as conn:
         row = conn.execute(
             "SELECT hook_text, hook_source_url, hook_quality FROM leads WHERE id = ?",
             (lead_id,)
@@ -155,11 +135,10 @@ def test_hook_handles_api_error():
     assert tier == 0
 
 
-def test_hook_skips_if_no_api_key(tmp_path):
-    db = _setup_db(tmp_path)
-    _insert_lead(db, "Alice", segment="writer")
+def test_hook_skips_if_no_api_key(setup_db, insert_lead):
+    insert_lead(setup_db, "Alice", segment="writer")
     with patch("config.get_perplexity_key", return_value=None):
-        result = enrich_hook(db_path=db)
+        result = enrich_hook(db_path=setup_db)
     assert result.leads_processed == 0
 
 
