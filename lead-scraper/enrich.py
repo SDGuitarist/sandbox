@@ -938,7 +938,7 @@ def _research_single_hook(session: requests.Session, api_key: str,
             wait = int(resp.headers.get("retry-after", 10))
             print(f"rate limited, waiting {wait}s...", end=" ")
             time.sleep(wait)
-            return (None, None, 0)
+            return (None, None, -1)  # -1 = rate limited, caller must not persist
 
         if resp.status_code != 200:
             return (None, None, 0)
@@ -996,6 +996,11 @@ def enrich_hook(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         hook_text, source_url, tier = _research_single_hook(
             session, api_key, lead["name"], context
         )
+
+        if tier == -1:
+            # Rate limited -- don't persist, lead stays eligible for retry
+            print("skipped (rate limited)")
+            continue
 
         _persist_hook(lead["id"], hook_text, source_url, tier, db_path)
         result.leads_processed += 1
