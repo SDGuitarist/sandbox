@@ -70,10 +70,11 @@ def cmd_scrape(args):
 
 
 def cmd_enrich(args):
-    """Enrich existing leads: bio parsing, website fetching, deep crawl, venue scraper, Hunter.io."""
+    """Enrich existing leads: bio parsing, website fetching, deep crawl, venue scraper, Hunter.io, segment classification, hook research."""
     from enrich import (
         enrich_from_bios, enrich_leads, enrich_websites_deep,
         enrich_with_venue_scraper, enrich_with_hunter,
+        enrich_segment, enrich_hook,
     )
     steps = {
         "bio": enrich_from_bios,
@@ -81,12 +82,17 @@ def cmd_enrich(args):
         "deep": enrich_websites_deep,
         "venue": enrich_with_venue_scraper,
         "hunter": enrich_with_hunter,
+        "segment": enrich_segment,
+        "hook": enrich_hook,
     }
+    limit = getattr(args, "limit", 0) or 0
     selected = args.step
     if selected == "all":
         for name, func in steps.items():
             func()
             print()
+    elif selected in ("segment", "hook"):
+        steps[selected](limit=limit)
     else:
         steps[selected]()
 
@@ -109,6 +115,66 @@ def cmd_export(args):
             writer.writerow(row)
 
     print(f"Exported {len(leads)} leads to {output_path}")
+
+
+def cmd_leads(args):
+    """Show held leads with reasons."""
+    from models import query_held_leads
+
+    held = query_held_leads()
+    if not held:
+        print("No held leads.")
+        return
+
+    print(f"\n{'Name':<30} {'Segment':<15} {'Hook Q':<8} {'Reason'}")
+    print("-" * 75)
+    for lead in held:
+        hook_q = lead["hook_quality"] if lead["hook_quality"] is not None else "-"
+        segment = lead["segment"] or "-"
+        print(f"{lead['name'][:29]:<30} {segment:<15} {str(hook_q):<8} {lead['hold_reason']}")
+    print(f"\nTotal held: {len(held)}")
+
+
+def cmd_import(args):
+    """Import leads from a CSV file."""
+    from ingest import import_from_csv
+
+    inserted, skipped, rejected = import_from_csv(args.csv, args.source)
+    print(f"Import complete. {inserted} new, {skipped} duplicates, {rejected} rejected.")
+
+
+def cmd_campaign(args):
+    """Dispatch campaign subcommands."""
+    from campaign import (
+        create_campaign, assign_leads, generate_messages,
+        show_queue, approve_message, skip_message, mark_sent, show_status,
+    )
+
+    action = args.action
+    if action == "create":
+        template_vars = {}
+        for v in (args.var or []):
+            key, _, value = v.partition("=")
+            template_vars[key.strip()] = value.strip()
+        cid = create_campaign(
+            args.name, args.segment, template_vars or None, args.target_date,
+        )
+        print(f"Campaign created: ID {cid}")
+    elif action == "assign":
+        assign_leads(args.campaign_id, args.min_hook_quality)
+    elif action == "generate":
+        limit = getattr(args, "limit", 0) or 0
+        generate_messages(args.campaign_id, limit=limit)
+    elif action == "queue":
+        show_queue(args.campaign_id)
+    elif action == "approve":
+        approve_message(args.campaign_id, args.lead)
+    elif action == "skip":
+        skip_message(args.campaign_id, args.lead)
+    elif action == "sent":
+        mark_sent(args.campaign_id, args.lead)
+    elif action == "status":
+        show_status(args.campaign_id)
 
 
 def cmd_serve(args):
@@ -139,11 +205,68 @@ def main():
     sp_enrich = subparsers.add_parser("enrich", help="Enrich leads with contact info")
     sp_enrich.add_argument(
         "--step",
-        choices=["bio", "website", "deep", "venue", "hunter", "all"],
+        choices=["bio", "website", "deep", "venue", "hunter", "segment", "hook", "all"],
         default="all",
         help="Run a specific enrichment step (default: all)",
     )
+    sp_enrich.add_argument(
+        "--limit", type=int, default=50,
+        help="Max leads to process for segment/hook steps (default: 50)",
+    )
     sp_enrich.set_defaults(func=cmd_enrich)
+
+    # leads
+    sp_leads = subparsers.add_parser("leads", help="Lead queries")
+    leads_sub = sp_leads.add_subparsers(dest="action", required=True)
+    leads_sub.add_parser("held", help="Show leads held from auto-generation")
+    sp_leads.set_defaults(func=cmd_leads)
+
+    # campaign
+    sp_campaign = subparsers.add_parser("campaign", help="Campaign management")
+    campaign_sub = sp_campaign.add_subparsers(dest="action", required=True)
+
+    sp_create = campaign_sub.add_parser("create", help="Create a new campaign")
+    sp_create.add_argument("name", help="Campaign name")
+    sp_create.add_argument("--segment", help="Comma-separated segment filter")
+    sp_create.add_argument("--var", action="append", help="Template var: key=value")
+    sp_create.add_argument("--target-date", help="Campaign target date")
+
+    sp_assign = campaign_sub.add_parser("assign", help="Assign eligible leads")
+    sp_assign.add_argument("campaign_id", type=int)
+    sp_assign.add_argument("--min-hook-quality", type=int, default=3)
+
+    sp_gen = campaign_sub.add_parser("generate", help="Generate draft messages")
+    sp_gen.add_argument("campaign_id", type=int)
+    sp_gen.add_argument(
+        "--limit", type=int, default=50,
+        help="Max leads to generate messages for (default: 50)",
+    )
+
+    sp_queue = campaign_sub.add_parser("queue", help="Show draft messages for review")
+    sp_queue.add_argument("campaign_id", type=int)
+
+    sp_approve = campaign_sub.add_parser("approve", help="Approve a draft message")
+    sp_approve.add_argument("campaign_id", type=int)
+    sp_approve.add_argument("--lead", type=int, required=True)
+
+    sp_skip = campaign_sub.add_parser("skip", help="Skip a draft message")
+    sp_skip.add_argument("campaign_id", type=int)
+    sp_skip.add_argument("--lead", type=int, required=True)
+
+    sp_sent = campaign_sub.add_parser("sent", help="Mark an approved message as sent")
+    sp_sent.add_argument("campaign_id", type=int)
+    sp_sent.add_argument("--lead", type=int, required=True)
+
+    sp_status = campaign_sub.add_parser("status", help="Show campaign status")
+    sp_status.add_argument("campaign_id", type=int)
+
+    sp_campaign.set_defaults(func=cmd_campaign)
+
+    # import
+    sp_import = subparsers.add_parser("import", help="Import leads from CSV")
+    sp_import.add_argument("--csv", required=True, help="Path to CSV file")
+    sp_import.add_argument("--source", default="csv_import", help="Source label (default: csv_import)")
+    sp_import.set_defaults(func=cmd_import)
 
     # serve
     sp_serve = subparsers.add_parser("serve", help="Start Flask web UI")

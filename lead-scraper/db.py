@@ -1,7 +1,6 @@
 from contextlib import contextmanager
 from pathlib import Path
 import re
-import shutil
 import sqlite3
 from datetime import datetime
 
@@ -42,6 +41,11 @@ def migrate_db(db_path=DB_PATH):
         ("social_handles", "TEXT"),
         ("profile_bio", "TEXT"),
         ("ig_profile_enriched_at", "TEXT"),
+        ("segment", "TEXT"),
+        ("segment_confidence", "REAL"),
+        ("hook_text", "TEXT"),
+        ("hook_source_url", "TEXT"),
+        ("hook_quality", "INTEGER"),
     ]
     with get_db(db_path) as conn:
         existing = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}
@@ -50,10 +54,15 @@ def migrate_db(db_path=DB_PATH):
             return  # Schema is up to date, no backup needed
 
         # Backup only when we actually need to alter the schema
+        # Use sqlite3.backup() instead of shutil.copy2() -- WAL-safe
         backup = db_path.with_suffix(
             f".backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.db"
         )
-        shutil.copy2(db_path, backup)
+        src_conn = sqlite3.connect(str(db_path))
+        dst_conn = sqlite3.connect(str(backup))
+        src_conn.backup(dst_conn)
+        dst_conn.close()
+        src_conn.close()
 
         for col_name, col_type in to_add:
             if not _SAFE_IDENTIFIER.match(col_name):
@@ -62,8 +71,17 @@ def migrate_db(db_path=DB_PATH):
 
 
 def init_db(db_path=DB_PATH):
-    """Create tables from schema.sql if they don't exist. Safe to call repeatedly."""
-    schema_path = Path(__file__).parent / "schema.sql"
+    """Create tables from schema.sql and schema_campaigns.sql. Safe to call repeatedly."""
+    base_dir = Path(__file__).parent
     with get_db(db_path) as conn:
-        conn.executescript(schema_path.read_text())
+        conn.executescript((base_dir / "schema.sql").read_text())
+        campaigns_schema = base_dir / "schema_campaigns.sql"
+        if campaigns_schema.exists():
+            conn.executescript(campaigns_schema.read_text())
     migrate_db(db_path)  # Ensure existing DBs get new columns
+    # Index on leads columns added by migrate_db (must run after migration)
+    with get_db(db_path) as conn:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_leads_segment_quality "
+            "ON leads(segment, hook_quality)"
+        )
