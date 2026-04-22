@@ -112,27 +112,37 @@ def test_export_filtered_combined():
 
 # --- Delete route ---
 
-def test_delete_lead_via_post():
-    """POST /leads/<id>/delete removes the lead and redirects."""
+def test_delete_lead_with_csrf_header():
+    """POST with X-Requested-With header should delete and return 204."""
     client = _client()
-    # Get a lead ID from the DB
     with get_db() as conn:
         lead = conn.execute("SELECT id FROM leads LIMIT 1").fetchone()
     lead_id = lead["id"]
 
-    resp = client.post(f"/leads/{lead_id}/delete", follow_redirects=False)
-    assert resp.status_code == 302  # redirect to index
+    resp = client.post(
+        f"/leads/{lead_id}/delete",
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    )
+    assert resp.status_code == 204
 
-    # Verify lead is gone
     with get_db() as conn:
         count = conn.execute("SELECT COUNT(*) FROM leads WHERE id = ?", (lead_id,)).fetchone()[0]
     assert count == 0
     _cleanup()
 
 
-def test_delete_nonexistent_lead():
-    """Deleting a nonexistent lead should not crash, just redirect."""
+def test_delete_blocked_without_csrf_header():
+    """POST without X-Requested-With header should return 403."""
     client = _client()
-    resp = client.post("/leads/99999/delete", follow_redirects=False)
-    assert resp.status_code == 302
+    with get_db() as conn:
+        lead = conn.execute("SELECT id FROM leads LIMIT 1").fetchone()
+    lead_id = lead["id"]
+
+    resp = client.post(f"/leads/{lead_id}/delete")
+    assert resp.status_code == 403
+
+    # Lead should still exist
+    with get_db() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM leads WHERE id = ?", (lead_id,)).fetchone()[0]
+    assert count == 1
     _cleanup()

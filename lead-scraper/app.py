@@ -71,7 +71,9 @@ def create_app():
 
     @app.post("/leads/<int:lead_id>/delete")
     def delete(lead_id):
+        if request.headers.get("X-Requested-With") != "XMLHttpRequest":
+            return "CSRF check failed", 403
         delete_lead(lead_id)
-        return redirect(url_for("index"))
+        return "", 204
 
     return app

@@ -54,9 +54,8 @@
                 <td class="bio">{{ lead.bio or '' }}</td>
                 <td class="activity">{{ lead.activity or '' }}</td>
                 <td>
-                    <form method="post" action="{{ url_for('delete', lead_id=lead.id) }}" class="delete-form">
-                        <button type="submit" class="delete-btn" title="Delete lead">&times;</button>
-                    </form>
+                    <button class="delete-btn" title="Delete lead"
+                            onclick="deleteLead({{ lead.id }})">&times;</button>
                 </td>
             </tr>
             {% endfor %}
@@ -75,5 +74,17 @@
     {% else %}
     <p class="empty">No leads found. Run <code>python3 run.py scrape --location "San Diego, CA"</code> to get started.</p>
     {% endif %}
+    <script>
+    function deleteLead(id) {
+        if (!confirm('Delete this lead?')) return;
+        fetch('/leads/' + id + '/delete', {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function(r) {
+            if (r.ok) location.reload();
+            else alert('Delete failed: ' + r.status);
+        });
+    }
+    </script>
 </body>
 </html>
