@@ -1,93 +1,99 @@
-# Lead Scraper — Handoff
+# Lead Scraper -- Handoff
 
-**Date:** 2026-04-16
-**Branch:** master (all merged)
-**Tests:** 38/38 passing
-**Phase:** Cycle complete — ready for next task
+**Date:** 2026-04-21
+**Branch:** `feat/v2-outreach-intelligence` (10 commits ahead of master)
+**Tests:** 139/139 passing
+**Phase:** Work complete -- ready for review
 
 ## Current State
 
-Full compound engineering cycle complete (brainstorm -> plan -> deepen -> work -> review -> fixes -> merge -> compound). 3 scrapers wired, enrichment pipeline working, 7 patterns documented in `docs/solutions/2026-04-16-lead-scraper-enrichment-expansion.md`.
+Phase 1 of the outreach intelligence platform is implemented. Full compound cycle through brainstorm (3 revisions + Codex review), plan (2 revisions + Codex review + deepening with 5 research agents), work (8 changes + opener benchmark), ready for review.
 
 ## What Works Now
 
 ```bash
 cd ~/Projects/sandbox/lead-scraper
 source .venv/bin/activate
-python run.py scrape --location "San Diego, CA"  # Eventbrite active, auto-enriches
-python run.py enrich                              # enrich existing leads
-python run.py export --output leads.csv           # includes phone, website, enriched_at
-python run.py serve                               # Flask UI on localhost:5000
+
+# Import Facebook leads
+python run.py import --csv friends.csv
+
+# Classify segments (Claude Haiku 4.5)
+python run.py enrich --step segment
+
+# Research hooks (Perplexity Sonar Pro)
+python run.py enrich --step hook
+
+# Create and run a campaign
+python run.py campaign create "Workshop" --segment connector,writer \
+  --var date="April 25" --var seat_count=30 --var format="workshop" --var event_name="AI Workshop"
+python run.py campaign assign 1 --min-hook-quality 3
+python run.py campaign generate 1
+
+# Review (shows hook_source_url for verification)
+python run.py campaign queue 1
+
+# Approve, skip, or mark sent
+python run.py campaign approve 1 --lead 42
+python run.py campaign skip 1 --lead 43
+python run.py campaign sent 1 --lead 42
+
+# Check status
+python run.py campaign status 1
+
+# See what needs manual review
+python run.py leads held
 ```
 
-## Next Session: Enable Facebook + Instagram
+## Next Session: Review
 
-### Task 1: Enable Facebook Groups scraper
+Run `/workflows:review` on the `feat/v2-outreach-intelligence` branch. Key areas to scrutinize:
 
-In `config.py`, change `"enabled": False` to `"enabled": True` for facebook. Two SD groups already configured:
-- `https://www.facebook.com/groups/1488967914699762/` — SD Actors and Filmmakers
-- `https://www.facebook.com/groups/mexicanfilmmakerssd/` — Mexican Filmmakers in SD
+1. **Sonar Pro citation extraction** -- verify `citations[0]` is the right source URL strategy
+2. **Segment classifier prompt** -- check Haiku's Pydantic constrained output actually works on real leads
+3. **Campaign assign SQL** -- the segment filter + quality filter + confidence filter + template directory intersection
+4. **Opener generation prompt** -- the anti-parrot few-shot format passed benchmark 4/5 but hasn't been tested on real leads
+5. **WAL backup fix** -- replaced shutil.copy2 with sqlite3.backup in migrate_db
 
-**Risk:** Groups must be public. If private, scraper returns 0 leads with a warning. Test one group first.
+## Benchmarks Completed
 
-**The actor returns posts/comments, not member lists.** Leads come from post authors and commenters. The normalizer (`scrapers/facebook.py`) handles this via `extract_leads_from_post()`.
+| Benchmark | Model | Result | Date |
+|-----------|-------|--------|------|
+| Hook research | Sonar Pro | PASS 4/5 with context | 2026-04-21 |
+| Hook research | Sonar (standard) | FAIL 1/5 | 2026-04-21 |
+| Opener generation v1 | Haiku (naive prompt) | FAIL 0/5 (parrots hook) | 2026-04-21 |
+| Opener generation v4 | Haiku (anti-parrot few-shot) | PASS 4/5 | 2026-04-21 |
 
-### Task 2: Enable Instagram scraper
-
-In `config.py`, change `"enabled": False` to `"enabled": True` for instagram. Hashtags configured:
-- SanDiegoFilmmaker, SDCreatives, SanDiegoPhotographer, SanDiegoDesigner, SDContentCreator
-
-**Risk:** Free tier limit is 100 profiles per run. Actor: `apify/instagram-profile-scraper`. The `usernames` field receives explore/tags URLs — undocumented behavior that may break.
-
-**Instagram leads often have `externalUrl` (personal website)** — high-value for enrichment.
-
-### Task 3: Run scrape + verify
-
-```bash
-python run.py scrape --location "San Diego, CA"
-sqlite3 leads.db "SELECT source, COUNT(*) FROM leads GROUP BY source"
-sqlite3 leads.db "SELECT COUNT(*) FROM leads WHERE email IS NOT NULL"
-```
-
-## Critical: Apify Actor Input Schema
-
-The Eventbrite actor (`aitorsm/eventbrite`) accepts these parameters — previous bugs came from sending wrong param names:
-
-```json
-{
-  "country": "united-states",
-  "city": "San Diego",
-  "category": "film-and-media",
-  "keyword": "only used when category is 'custom'",
-  "maxPages": 5
-}
-```
-
-**Do NOT use:** `searchQueries`, `location`, `maxItems` — these are ignored by the actor.
-
-## Key Files
+## Key Files (Phase 1 additions)
 
 | File | What it does |
 |------|-------------|
-| `config.py` | Enable/disable sources, keywords/hashtags, actor config |
-| `scrapers/facebook.py` | Posts/comments normalizer + extract_leads_from_post() |
-| `scrapers/instagram.py` | Hashtag-based profile scraper |
-| `scrapers/eventbrite.py` | Per-keyword actor runs, handles both API formats |
-| `enrich.py` | HTTP fetch + parse pipeline, SSRF protection |
-| `enrich_parsers.py` | Pure HTML parsing (emails, phones) |
-| `db.py` | migrate_db() with conditional backup |
+| `campaign.py` | Campaign CRUD, message generation, queue review, approval workflow |
+| `schema_campaigns.sql` | 3 new tables: campaigns, campaign_leads, outreach_queue |
+| `templates/outreach/*.md` | 4 parameterized segment templates (connector, writer, small_biz, real_estate) |
+| `enrich.py` (extended) | +enrich_segment() (Haiku classifier), +enrich_hook() (Sonar Pro) |
+| `ingest.py` (extended) | +import_from_csv() with flexible column mapping |
+| `models.py` (extended) | +query_held_leads() with labeled hold reasons |
+| `config.py` (extended) | +get_perplexity_key() |
 
 ## Docs
 
-- **Solution:** `docs/solutions/2026-04-16-lead-scraper-enrichment-expansion.md`
-- **Plan:** `docs/plans/2026-04-16-feat-lead-scraper-expansion-plan.md`
-- **Prior build:** `docs/solutions/2026-04-15-lead-scraper-multi-source-pipeline.md`
+- **Brainstorm:** `docs/brainstorms/2026-04-21-lead-scraper-v2-outreach-platform-brainstorm.md`
+- **Plan:** `docs/plans/2026-04-21-feat-lead-scraper-v2-phase1-outreach-intelligence-plan.md`
+- **Research:** `docs/research/outreach-strategy/` (segment analysis, enrichment principles, template effectiveness)
+- **Prior solution:** `docs/solutions/2026-04-19-contact-enrichment-5-step-pipeline.md`
 
-## Deferred Work
+## Phase 2 (deferred)
 
-- Tier 2 enrichment (Maigret OSINT) — build if Tier 1 hit rate stays <30%
-- Tier 3 enrichment (Apify contact scraper) — build if Tiers 1+2 insufficient
-- ThreadPoolExecutor — add when enrichment exceeds 15 minutes
-- Twitter/X scraper — revisit on paid Apify plan
-- Eventbrite category-based scraping (film-and-media, science-and-tech, arts, business)
-- has-email/has-phone UI filters
+- Follow-up sequencing (multi-touch campaigns)
+- Network graph scoring (mutual friends + follower count)
+- Conversions table (outcome tracking: replied, warm, declined)
+- Enhanced Flask UI (campaign dashboard, lead detail, conversion charts)
+- Multi-channel support (Instagram DM, email)
+- Phone field in CSV import (extend ingest_leads INSERT)
+
+## Feed-Forward
+
+- **Hardest decision:** Opener generation prompt. Naive prompts score 0/5 (Haiku parrots hooks). INPUT/OUTPUT few-shot format with explicit "NEVER copy" rule scores 4/5. The format matters more than the instructions.
+- **Rejected alternatives:** Standard Sonar (1/5 vs Sonar Pro 4/5), hook_type column (derive from hook_quality), conversions table in Phase 1 (no way to record outcomes yet), Jinja2 templates (YAGNI).
+- **Least confident:** Real-world performance on leads Haiku hasn't seen in few-shot examples. The benchmark used 5 leads from the Apr 20 batch. First real campaign will be the true test.
