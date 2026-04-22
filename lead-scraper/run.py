@@ -70,10 +70,11 @@ def cmd_scrape(args):
 
 
 def cmd_enrich(args):
-    """Enrich existing leads: bio parsing, website fetching, deep crawl, venue scraper, Hunter.io."""
+    """Enrich existing leads: bio parsing, website fetching, deep crawl, venue scraper, Hunter.io, segment classification, hook research."""
     from enrich import (
         enrich_from_bios, enrich_leads, enrich_websites_deep,
         enrich_with_venue_scraper, enrich_with_hunter,
+        enrich_segment, enrich_hook,
     )
     steps = {
         "bio": enrich_from_bios,
@@ -81,6 +82,8 @@ def cmd_enrich(args):
         "deep": enrich_websites_deep,
         "venue": enrich_with_venue_scraper,
         "hunter": enrich_with_hunter,
+        "segment": enrich_segment,
+        "hook": enrich_hook,
     }
     selected = args.step
     if selected == "all":
@@ -198,7 +201,7 @@ def main():
     sp_enrich = subparsers.add_parser("enrich", help="Enrich leads with contact info")
     sp_enrich.add_argument(
         "--step",
-        choices=["bio", "website", "deep", "venue", "hunter", "all"],
+        choices=["bio", "website", "deep", "venue", "hunter", "segment", "hook", "all"],
         default="all",
         help="Run a specific enrichment step (default: all)",
     )
