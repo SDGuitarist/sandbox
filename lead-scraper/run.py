@@ -85,11 +85,14 @@ def cmd_enrich(args):
         "segment": enrich_segment,
         "hook": enrich_hook,
     }
+    limit = getattr(args, "limit", 0) or 0
     selected = args.step
     if selected == "all":
         for name, func in steps.items():
             func()
             print()
+    elif selected in ("segment", "hook"):
+        steps[selected](limit=limit)
     else:
         steps[selected]()
 
@@ -160,7 +163,8 @@ def cmd_campaign(args):
     elif action == "assign":
         assign_leads(args.campaign_id, args.min_hook_quality)
     elif action == "generate":
-        generate_messages(args.campaign_id)
+        limit = getattr(args, "limit", 0) or 0
+        generate_messages(args.campaign_id, limit=limit)
     elif action == "queue":
         show_queue(args.campaign_id)
     elif action == "approve":
@@ -205,6 +209,10 @@ def main():
         default="all",
         help="Run a specific enrichment step (default: all)",
     )
+    sp_enrich.add_argument(
+        "--limit", type=int, default=50,
+        help="Max leads to process for segment/hook steps (default: 50)",
+    )
     sp_enrich.set_defaults(func=cmd_enrich)
 
     # leads
@@ -229,6 +237,10 @@ def main():
 
     sp_gen = campaign_sub.add_parser("generate", help="Generate draft messages")
     sp_gen.add_argument("campaign_id", type=int)
+    sp_gen.add_argument(
+        "--limit", type=int, default=50,
+        help="Max leads to generate messages for (default: 50)",
+    )
 
     sp_queue = campaign_sub.add_parser("queue", help="Show draft messages for review")
     sp_queue.add_argument("campaign_id", type=int)

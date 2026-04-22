@@ -782,7 +782,7 @@ def _classify_single_lead(client, name: str, bio: str, activity: str) -> tuple[s
         return ("other", 0.0)
 
 
-def enrich_segment(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+def enrich_segment(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
     """Classify leads into segments using Claude Haiku 4.5.
 
     Uses client.messages.parse() with Pydantic for guaranteed valid JSON.
@@ -807,6 +807,9 @@ def enrich_segment(*, db_path: Path = DB_PATH) -> EnrichmentResult:
     if not leads:
         print("No leads to classify.")
         return EnrichmentResult()
+
+    if limit > 0:
+        leads = leads[:limit]
 
     result = EnrichmentResult()
     client = anthropic.Anthropic(max_retries=3)
@@ -968,7 +971,7 @@ def _research_single_hook(session: requests.Session, api_key: str,
         return (None, None, 0)
 
 
-def enrich_hook(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
     """Research outreach hooks using Perplexity Sonar Pro.
 
     Extracts source URLs from the citations response field (real URLs from
@@ -985,6 +988,9 @@ def enrich_hook(*, db_path: Path = DB_PATH) -> EnrichmentResult:
     if not leads:
         print("No leads to research hooks for.")
         return EnrichmentResult()
+
+    if limit > 0:
+        leads = leads[:limit]
 
     result = EnrichmentResult()
     session = requests.Session()

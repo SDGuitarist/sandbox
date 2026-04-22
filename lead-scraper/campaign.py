@@ -172,7 +172,7 @@ def _generate_opener(client, name: str, hook_text: str) -> str:
         return f"{first_name}, {hook_text}"
 
 
-def generate_messages(campaign_id: int, db_path: Path = DB_PATH) -> int:
+def generate_messages(campaign_id: int, db_path: Path = DB_PATH, limit: int = 0) -> int:
     """Generate draft messages for all assigned leads without queue entries.
 
     Returns count of messages generated.
@@ -204,6 +204,9 @@ def generate_messages(campaign_id: int, db_path: Path = DB_PATH) -> int:
     if not leads:
         print("No leads to generate messages for.")
         return 0
+
+    if limit > 0:
+        leads = leads[:limit]
 
     # Validate templates can be filled before spending API credits
     segments_needed = {row["segment"] for row in leads}
