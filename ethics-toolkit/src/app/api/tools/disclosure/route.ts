@@ -69,17 +69,21 @@ export async function POST(request: NextRequest) {
   }
 
   // Persist ToolEvent to Supabase
+  // Note: type assertion needed because Database['public']['Tables']['tool_events']['Insert']
+  // resolves to never due to a known Supabase codegen issue with complex Omit types.
   const supabase = createServiceClient();
-  const { error: insertError } = await supabase.from('tool_events').insert({
+  const insertRow = {
     event_id: eventId as string,
     schema_version: 1,
     workshop_session_id: (workshopSessionId as string) || null,
     anonymous_session_id: anonymousSessionId as string,
     user_id: (userId as string) || null,
-    tool_type: 'DISCLOSURE',
-    deterministic_payload: deterministicPayload,
-    probabilistic_payload: probabilisticPayload,
-  });
+    tool_type: 'DISCLOSURE' as const,
+    deterministic_payload: deterministicPayload as unknown as Record<string, unknown>,
+    probabilistic_payload: probabilisticPayload as unknown as Record<string, unknown> | null,
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: insertError } = await supabase.from('tool_events').insert(insertRow as any);
 
   if (insertError) {
     // Log error but don't block the response -- user still gets their output
