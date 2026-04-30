@@ -1038,6 +1038,181 @@ These are explicitly out of scope for the May 30 build:
 
 ---
 
+## Swarm Agent Assignment
+
+Each phase is a sequential swarm step. Agents within a phase run in parallel. No phase starts until the previous phase's gate passes. File paths are relative to the project root (`ethics-toolkit/`).
+
+### Phase 1: Foundation & Identity Shell (4 agents)
+
+#### Agent 1: `scaffold`
+
+| | |
+|---|---|
+| **Spec sections** | 1 (Global Constraints), 6 (Locked Decisions), 12 (Environment Variables) |
+| **Creates** | `package.json`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.js`, `next.config.ts`, `.env.example`, `.env.local` (gitignored), `.gitignore`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/lib/constants.ts` |
+| **Reads (no modify)** | None (first to run conceptually, but parallel -- no deps within phase) |
+
+#### Agent 2: `database`
+
+| | |
+|---|---|
+| **Spec sections** | 3 (Authoritative Database Schema), 3 RLS Rules |
+| **Creates** | `supabase/migrations/001_initial_schema.sql` (all tables, indexes, constraints from Section 3), `supabase/migrations/002_rls_policies.sql` (all RLS rules from Section 3), `supabase/config.toml`, `src/lib/supabase/client.ts` (browser client), `src/lib/supabase/server.ts` (server client with service role), `src/types/database.ts` (TypeScript types matching Section 3 tables) |
+| **Reads (no modify)** | `.env.example` (from scaffold, for env var names) |
+
+#### Agent 3: `auth`
+
+| | |
+|---|---|
+| **Spec sections** | 2 (Identity & Monetization Architecture -- Identity Flow, Facilitator Authentication) |
+| **Creates** | `src/lib/auth/anonymous-session.ts` (generate/store anonymousSessionId in localStorage + anonymous_sessions table), `src/lib/auth/magic-link.ts` (Supabase Auth magic link trigger + session claiming logic), `src/lib/auth/facilitator.ts` (bcrypt compare + httpOnly cookie + JWT/HMAC signing), `src/app/api/auth/magic-link/route.ts`, `src/app/api/auth/facilitator-login/route.ts`, `src/app/api/auth/save-results/route.ts` (claim anonymous data into userId), `src/middleware.ts` (facilitator route protection) |
+| **Reads (no modify)** | `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/types/database.ts` (from database agent) |
+
+#### Agent 4: `ui-shell`
+
+| | |
+|---|---|
+| **Spec sections** | 1 (Mobile-First Attendee UX), 2 (Identity Flow -- QR join) |
+| **Creates** | `src/app/(attendee)/layout.tsx`, `src/app/(attendee)/page.tsx` (attendee home), `src/app/(attendee)/join/[code]/page.tsx` (QR join page -- validates session_code against workshop_sessions), `src/app/(attendee)/tools/layout.tsx`, `src/app/(attendee)/results/page.tsx`, `src/app/(attendee)/save/page.tsx` (save results / magic link prompt), `src/app/facilitator/layout.tsx`, `src/app/facilitator/page.tsx` (facilitator home -- behind auth), `src/app/facilitator/login/page.tsx`, `src/components/ui/nav.tsx`, `src/components/ui/mobile-action-bar.tsx` (bottom thumb zone actions) |
+| **Reads (no modify)** | `src/app/layout.tsx`, `src/app/globals.css` (from scaffold), `src/middleware.ts` (from auth) |
+
+**Phase 1 Gate:** Per Section 10 -- anonymous ID stored, magic link claims session, facilitator login works, schema matches Section 3.
+
+---
+
+### Phase 2: The 5 Tools -- Deterministic First (5 agents)
+
+#### Agent 0 (pre-gate): `schemas`
+
+> **Runs before Agents 1-3.** Phase 2 tool agents do NOT start until this agent's fixture tests pass (Phase 2.0 gate from Section 10).
+
+| | |
+|---|---|
+| **Spec sections** | 4 (all 5 tool Zod schemas + fixtures), 10 (Shared Interface Specification -- ToolEvent) |
+| **Creates** | `src/lib/schemas/tool-event.ts` (ToolEvent interface + ToolType), `src/lib/schemas/disclosure.ts` (DisclosureInput, DisclosureOutput, DisclosureAI), `src/lib/schemas/policy-lookup.ts` (PolicyLookupInput), `src/lib/schemas/risk-scanner.ts` (RiskScannerInput, RiskScannerOutput, RiskAI), `src/lib/schemas/provenance.ts` (ProvenanceInput, ProvenanceOutput), `src/lib/schemas/budget.ts` (BudgetInput, BudgetOutput, BudgetAI), `src/lib/schemas/index.ts` (barrel export), `tests/schemas/disclosure.test.ts`, `tests/schemas/risk-scanner.test.ts`, `tests/schemas/provenance.test.ts`, `tests/schemas/budget.test.ts`, `tests/schemas/policy-lookup.test.ts` |
+| **Reads (no modify)** | `src/types/database.ts` (from Phase 1 database agent) |
+
+#### Agent 1: `tool-disclosure-festival`
+
+| | |
+|---|---|
+| **Spec sections** | 4 Tool 1 (AI Disclosure Generator -- deterministic checklist logic, satisfied rules, fixture), 4 Tool 2 (Festival Policy Lookup -- search, filters, seed data, pagination) |
+| **Creates** | `src/lib/tools/disclosure.ts` (deterministic checklist + template generation), `src/lib/tools/disclosure-mock.ts` (mock AI response with hardcoded delay), `src/app/(attendee)/tools/disclosure/page.tsx` (Disclosure Generator UI -- form + checklist + template output), `src/app/api/tools/disclosure/route.ts` (POST -- validate, compute, persist ToolEvent, return deterministic + optional AI), `src/lib/tools/festival-lookup.ts` (search + filter logic), `src/app/(attendee)/tools/festival/page.tsx` (Festival Policy Lookup UI -- search bar, filter dropdowns, paginated results), `src/app/api/tools/festival/route.ts` (GET -- query festival_policies), `supabase/migrations/003_seed_festival_policies.sql` (12 seed records from Section 4) |
+| **Reads (no modify)** | `src/lib/schemas/disclosure.ts`, `src/lib/schemas/policy-lookup.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1) |
+
+#### Agent 2: `tool-risk-provenance`
+
+| | |
+|---|---|
+| **Spec sections** | 4 Tool 3 (Risk Scanner -- all 7 scoring steps, fixture, department flags), 4 Tool 4 (Provenance Chain -- summary calc, duplicate detection, PDF export) |
+| **Creates** | `src/lib/tools/risk-scanner.ts` (deterministic scoring engine -- Steps 1-7 exactly), `src/lib/tools/risk-scanner-mock.ts` (mock AI recommendations), `src/app/(attendee)/tools/risk/page.tsx` (Risk Scanner UI -- form + tier badge + department flags + dimension breakdown), `src/app/api/tools/risk/route.ts` (POST -- validate, score, persist ToolEvent), `src/lib/tools/provenance.ts` (deterministic summary + duplicate detection), `src/app/(attendee)/tools/provenance/page.tsx` (Provenance Chain UI -- entry form + chain view + summary stats), `src/app/api/tools/provenance/route.ts` (POST -- validate, compute, persist ToolEvent), `src/lib/tools/provenance-pdf.ts` (PDF export with @react-pdf/renderer) |
+| **Reads (no modify)** | `src/lib/schemas/risk-scanner.ts`, `src/lib/schemas/provenance.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1) |
+
+#### Agent 3: `tool-budget-sw`
+
+| | |
+|---|---|
+| **Spec sections** | 4 Tool 5 (Budget Calculator -- RATE_TABLE, delta calc, fixture), 1 (Offline Degradation), 6 decision #9 (Service Worker) |
+| **Creates** | `src/lib/tools/budget.ts` (RATE_TABLE constant + deterministic lookup + delta calc), `src/lib/tools/budget-mock.ts` (mock AI ethical analysis), `src/app/(attendee)/tools/budget/page.tsx` (Budget Calculator UI -- role/tier selectors + cost comparison + displacement badge + delta display), `src/app/api/tools/budget/route.ts` (POST -- validate, lookup, persist ToolEvent), `public/sw.js` (Service Worker -- caches app shell, festival seed JSON, rate table JSON), `src/lib/sw-register.ts` (register SW on app load), `public/offline.html` (minimal offline fallback page) |
+| **Reads (no modify)** | `src/lib/schemas/budget.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1), `next.config.ts` (from Phase 1 scaffold -- may need SW headers) |
+
+**Phase 2 Gate:** Per Section 10 -- all 5 tools run end-to-end on mobile viewport, Zod validates real output, Risk Scanner fixture matches, SW caches festival/rate data, mock mode works without API keys.
+
+---
+
+### Phase 3: Realtime Engine & Facilitator View (3 agents)
+
+#### Agent 1: `realtime-engine`
+
+| | |
+|---|---|
+| **Spec sections** | 5 (Realtime Sync -- channel contract, all 6 message types, idempotency rules), 3 (processed_events, workshop_risk_scores, qna_questions, qna_votes tables) |
+| **Creates** | `src/lib/realtime/channel.ts` (Supabase Realtime channel setup -- `workshop:{workshopSessionId}`), `src/lib/realtime/types.ts` (TypeScript types for all 6 message payloads), `src/lib/realtime/broadcast.ts` (client-side broadcast helpers for poll, word cloud, confidence), `src/lib/realtime/idempotency.ts` (facilitator-side in-memory `Set<string>` for broadcast dedup), `src/app/api/workshop/risk-aggregate/route.ts` (POST -- persist to workshop_risk_scores + processed_events check + broadcast), `src/app/api/workshop/qna/question/route.ts` (POST -- persist to qna_questions + processed_events check + broadcast with assigned ID), `src/app/api/workshop/qna/upvote/route.ts` (POST -- persist to qna_votes + increment upvote_count + processed_events check + broadcast), `src/app/api/workshop/session/route.ts` (POST -- create workshop_sessions, facilitator-only) |
+| **Reads (no modify)** | `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/types/database.ts` (from Phase 1), `src/middleware.ts` (from Phase 1 auth -- facilitator route check) |
+
+#### Agent 2: `facilitator-dashboard`
+
+| | |
+|---|---|
+| **Spec sections** | 5 (Facilitator UI descriptions for all 6 message types), 1 (Data Privacy -- 5-response minimum) |
+| **Creates** | `src/app/facilitator/dashboard/page.tsx` (main facilitator dashboard -- layout with all widgets), `src/components/facilitator/poll-chart.tsx` (bar chart aggregate by optionId count), `src/components/facilitator/word-cloud.tsx` (word cloud sized by frequency), `src/components/facilitator/risk-breakdown.tsx` (percentage breakdown by tier -- low/medium/high/critical), `src/components/facilitator/confidence-delta.tsx` (before/after delta chart), `src/components/facilitator/qna-queue.tsx` (questions sorted by upvote_count, live-updating), `src/components/facilitator/min-response-guard.tsx` ("Waiting for more responses" when < 5), `src/app/facilitator/dashboard/layout.tsx` |
+| **Reads (no modify)** | `src/lib/realtime/channel.ts`, `src/lib/realtime/types.ts`, `src/lib/realtime/idempotency.ts` (from realtime-engine agent), `src/lib/supabase/client.ts` (from Phase 1) |
+
+#### Agent 3: `attendee-realtime`
+
+| | |
+|---|---|
+| **Spec sections** | 5 (Attendee-side broadcast interactions -- poll, word cloud, confidence; authoritative interactions -- Q&A question, upvote), 1 (Mobile-First UX) |
+| **Creates** | `src/components/attendee/poll-response.tsx` (single-tap option selection, broadcasts poll.response), `src/components/attendee/word-cloud-input.tsx` (text input max 50 chars, broadcasts word_cloud.submit), `src/components/attendee/confidence-slider.tsx` (1-10 slider with before/after phase, broadcasts confidence.submit), `src/components/attendee/qna-submit.tsx` (text input, POSTs to /api/workshop/qna/question), `src/components/attendee/qna-list.tsx` (view questions + upvote button, POSTs to /api/workshop/qna/upvote), `src/app/(attendee)/workshop/[sessionId]/page.tsx` (workshop live view -- renders all attendee realtime components) |
+| **Reads (no modify)** | `src/lib/realtime/channel.ts`, `src/lib/realtime/types.ts`, `src/lib/realtime/broadcast.ts` (from realtime-engine agent), `src/lib/auth/anonymous-session.ts` (from Phase 1), `src/lib/supabase/client.ts` (from Phase 1) |
+
+**Phase 3 Gate:** Per Section 10 -- automated 30-attendee simulation passes (99% event delivery, p95 < 1500ms, no duplicate votes on reconnect, < 5 shows guard message, disconnect shows fallback).
+
+---
+
+### Phase 4: Probabilistic AI, Payments & Lifecycle (3 agents)
+
+#### Agent 1: `ai-routes`
+
+| | |
+|---|---|
+| **Spec sections** | 4 (LLM schemas -- DisclosureAI, RiskAI, BudgetAI), 6 decision #8 (LLM Routing -- Haiku 4.5 for Tool 1, Sonnet 4.6 for Tools 3/5), 1 (Model Access Preflight, mock mode fallback) |
+| **Creates** | `src/lib/ai/client.ts` (Anthropic SDK client + model access preflight check), `src/lib/ai/mock.ts` (mock response functions -- same shape as real, used when keys missing or API unreachable), `src/app/api/ai/disclosure/route.ts` (POST -- Haiku 4.5 call, Zod-validated output, fallback to mock), `src/app/api/ai/risk/route.ts` (POST -- Sonnet 4.6 call, Zod-validated output, fallback to mock), `src/app/api/ai/budget/route.ts` (POST -- Sonnet 4.6 call, Zod-validated output, fallback to mock), `src/lib/ai/preflight.ts` (startup check for Haiku 4.5 + Sonnet 4.6 reachability) |
+| **Reads (no modify)** | `src/lib/schemas/disclosure.ts`, `src/lib/schemas/risk-scanner.ts`, `src/lib/schemas/budget.ts` (from Phase 2 schemas), `src/lib/tools/disclosure-mock.ts`, `src/lib/tools/risk-scanner-mock.ts`, `src/lib/tools/budget-mock.ts` (from Phase 2 -- for mock mode reference) |
+
+#### Agent 2: `payments-email`
+
+| | |
+|---|---|
+| **Spec sections** | 7 (Square Integration Contract -- checkout link flow, admin activation route), 8 (Email Lifecycle Contract -- 3 emails, idempotency, cron, unsubscribe), 2 (Monetization -- trial timing) |
+| **Creates** | `src/app/api/payments/checkout/route.ts` (GET -- redirect to SQUARE_CHECKOUT_URL), `src/app/(attendee)/payments/pending/page.tsx` ("Payment processing" return page), `src/app/api/admin/activate/route.ts` (POST -- facilitator-authenticated, sets entitlement_status + creates square_entitlements row), `src/lib/email/resend-client.ts` (Resend SDK client), `src/lib/email/templates/welcome.tsx` (HTML + plain-text), `src/lib/email/templates/day12-warning.tsx`, `src/lib/email/templates/day14-downgrade.tsx`, `src/lib/email/send.ts` (send function with opt-out check + retry logic), `src/lib/email/schedule-trial-emails.ts` (creates 3 email_jobs rows on conversion), `src/app/api/cron/process-emails/route.ts` (Vercel Cron -- CRON_SECRET protected, processes pending jobs), `src/app/(attendee)/unsubscribe/page.tsx` (token-validated unsubscribe page), `vercel.json` (cron schedule config for daily email processing) |
+| **Reads (no modify)** | `src/lib/supabase/server.ts`, `src/types/database.ts` (from Phase 1), `src/lib/auth/facilitator.ts`, `src/middleware.ts` (from Phase 1 auth -- facilitator validation for admin route) |
+
+#### Agent 3: `rate-limiting`
+
+| | |
+|---|---|
+| **Spec sections** | 9 (Rate Limiting -- all 4 route patterns, in-memory Map, 429 response shape) |
+| **Creates** | `src/lib/rate-limit/limiter.ts` (in-memory `Map<string, { count: number; resetAt: number }>` with configurable window/limit), `src/lib/rate-limit/middleware.ts` (rate limit middleware function -- extracts IP, checks limits, returns 429 with retryAfter), `src/lib/rate-limit/config.ts` (rate limit configs for all 4 route patterns from Section 9), `src/app/api/ai/middleware.ts` (applies 10/hr + 30/day per Section 9 to all `/api/ai/*` routes), `tests/rate-limit/limiter.test.ts` (unit tests for Map-based limiter) |
+| **Reads (no modify)** | `src/app/api/ai/disclosure/route.ts`, `src/app/api/ai/risk/route.ts`, `src/app/api/ai/budget/route.ts` (from ai-routes agent -- to wire rate limiting), `src/app/api/workshop/risk-aggregate/route.ts`, `src/app/api/workshop/qna/question/route.ts`, `src/app/api/workshop/qna/upvote/route.ts` (from Phase 3 -- to wire rate limiting), `src/app/api/auth/save-results/route.ts` (from Phase 1 -- to wire rate limiting) |
+
+**Phase 4 Gate:** Per Section 10 -- mock mode works without keys, AI routes Zod-validate output, Square checkout opens, admin activation sets entitlement, welcome email is idempotent, day 12/14 jobs created on trial start, cron processes pending jobs, all routes enforce rate limits, full end-to-end workflow passes.
+
+---
+
+### Cross-Phase File Ownership Summary
+
+| File/directory prefix | Owning agent | Phase |
+|---|---|---|
+| `package.json`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.js`, `next.config.ts`, `.env*`, `.gitignore` | scaffold | 1 |
+| `supabase/migrations/001*`, `supabase/migrations/002*`, `supabase/config.toml`, `src/lib/supabase/*`, `src/types/database.ts` | database | 1 |
+| `src/lib/auth/*`, `src/app/api/auth/*`, `src/middleware.ts` | auth | 1 |
+| `src/app/(attendee)/*` (layout, page, join, save, results) | ui-shell | 1 |
+| `src/app/facilitator/layout.tsx`, `src/app/facilitator/page.tsx`, `src/app/facilitator/login/*` | ui-shell | 1 |
+| `src/components/ui/*` | ui-shell | 1 |
+| `src/lib/schemas/*`, `tests/schemas/*` | schemas | 2 |
+| `src/lib/tools/disclosure*`, `src/app/(attendee)/tools/disclosure/*`, `src/app/api/tools/disclosure/*` | tool-disclosure-festival | 2 |
+| `src/lib/tools/festival*`, `src/app/(attendee)/tools/festival/*`, `src/app/api/tools/festival/*`, `supabase/migrations/003*` | tool-disclosure-festival | 2 |
+| `src/lib/tools/risk*`, `src/app/(attendee)/tools/risk/*`, `src/app/api/tools/risk/*` | tool-risk-provenance | 2 |
+| `src/lib/tools/provenance*`, `src/app/(attendee)/tools/provenance/*`, `src/app/api/tools/provenance/*` | tool-risk-provenance | 2 |
+| `src/lib/tools/budget*`, `src/app/(attendee)/tools/budget/*`, `src/app/api/tools/budget/*` | tool-budget-sw | 2 |
+| `public/sw.js`, `public/offline.html`, `src/lib/sw-register.ts` | tool-budget-sw | 2 |
+| `src/lib/realtime/*`, `src/app/api/workshop/*` | realtime-engine | 3 |
+| `src/app/facilitator/dashboard/*`, `src/components/facilitator/*` | facilitator-dashboard | 3 |
+| `src/components/attendee/*`, `src/app/(attendee)/workshop/*` | attendee-realtime | 3 |
+| `src/lib/ai/*`, `src/app/api/ai/*` | ai-routes | 4 |
+| `src/lib/email/*`, `src/app/api/payments/*`, `src/app/api/admin/*`, `src/app/api/cron/*`, `src/app/(attendee)/payments/*`, `src/app/(attendee)/unsubscribe/*`, `vercel.json` | payments-email | 4 |
+| `src/lib/rate-limit/*`, `tests/rate-limit/*` | rate-limiting | 4 |
+
+### Conflict Resolution Rules
+
+1. **No agent modifies files it does not own.** If an agent needs to integrate with another agent's file (e.g., rate-limiting needs to wrap AI routes), it creates its own middleware file and the integration is wired during the phase gate assembly step.
+2. **Phase 2 schemas agent is a hard pre-gate.** Tool agents 1-3 in Phase 2 do NOT start until the schemas agent's fixture tests pass.
+3. **Shared imports only.** Cross-agent dependencies are read-only imports. If Agent B needs a function from Agent A's file, it imports it -- it does not copy or redefine it.
+4. **Assembly-fix agent** runs after each phase's parallel agents complete. It handles wiring (imports, route registrations, layout links) that require touching multiple agents' files. This is the ONLY agent allowed to edit across ownership boundaries, and only during the gate sequence.
+
+---
+
 ## Feed-Forward
 
 - **Hardest decision:** Keeping full scope (5 tools + dual-mode workshop + payments + email) against Codex's recommendation to cut. Simplified Square to checkout links + manual activation to reduce integration risk without cutting scope.
