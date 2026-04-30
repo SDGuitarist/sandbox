@@ -76,6 +76,15 @@ const ROLE_MULTIPLIER: Record<string, number> = {
 const ETHICAL_ROLES = new Set(['voice_actor', 'composer', 'screenwriter']);
 
 /**
+ * Round to a fixed number of decimal places to avoid floating point artifacts.
+ * For example, 3 * 1.2 = 3.5999999999999996 in IEEE 754, but we want 3.6.
+ */
+function roundPrecision(value: number, decimals: number = 10): number {
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+/**
  * Clamp a number between min and max.
  */
 function clamp(value: number, min: number, max: number): number {
@@ -113,7 +122,7 @@ export function computeRiskScore(input: RiskScannerInputType): RiskScannerOutput
   const departmentScores = input.departments.map((dept) => {
     const basePoints = BASE_POINTS[dept.aiUsageLevel];
     const multiplier = ROLE_MULTIPLIER[dept.role];
-    const score = basePoints * multiplier;
+    const score = roundPrecision(basePoints * multiplier);
     return { role: dept.role, aiUsageLevel: dept.aiUsageLevel, score };
   });
 
