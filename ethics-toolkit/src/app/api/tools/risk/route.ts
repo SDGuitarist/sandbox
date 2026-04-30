@@ -56,15 +56,18 @@ export async function POST(request: NextRequest) {
 
     // Persist ToolEvent
     const supabase = createServiceClient();
-    const { error: insertError } = await supabase.from('tool_events').insert({
-      event_id: eventId,
+    const toolEvent = {
+      event_id: eventId as string,
       schema_version: 1,
-      workshop_session_id: workshopSessionId || null,
-      anonymous_session_id: anonymousSessionId,
-      tool_type: 'RISK',
+      workshop_session_id: (workshopSessionId as string) || null,
+      anonymous_session_id: anonymousSessionId as string,
+      user_id: null,
+      tool_type: 'RISK' as const,
       deterministic_payload: deterministicPayload as unknown as Record<string, unknown>,
       probabilistic_payload: probabilisticPayload as unknown as Record<string, unknown> | null,
-    });
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: insertError } = await (supabase.from('tool_events') as any).insert(toolEvent);
 
     if (insertError) {
       // If it's a duplicate eventId, return the existing result silently
