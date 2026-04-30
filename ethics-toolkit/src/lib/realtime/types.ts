@@ -116,3 +116,12 @@ export type RealtimeMessageType =
   | 'risk.aggregate'
   | 'qna.question'
   | 'qna.upvote';
+
+// ---------------------------------------------------------------------------
+// Convenience aliases (some consumers use "Message" suffix)
+// ---------------------------------------------------------------------------
+export type PollResponseMessage = PollResponsePayload;
+export type WordCloudSubmitMessage = WordCloudSubmitPayload;
+export type ConfidenceSubmitMessage = ConfidenceSubmitPayload;
+export type QnAQuestionPayload = QnaQuestionBroadcast;
+export type QnAUpvotePayload = QnaUpvoteBroadcast;

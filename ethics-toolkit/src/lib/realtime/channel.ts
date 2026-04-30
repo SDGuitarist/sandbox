@@ -96,5 +96,22 @@ export function getChannelForBroadcast(
   return channel;
 }
 
+/**
+ * Create a RealtimeChannel for a workshop session from an existing Supabase
+ * client instance. Used by attendee components that already have a client.
+ *
+ * @param supabase - An existing Supabase client (browser or server).
+ * @param workshopSessionId - UUID of the active workshop session.
+ * @returns A RealtimeChannel (caller is responsible for subscribing/unsubscribing).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- accepts any SupabaseClient generic
+export function createWorkshopChannel(
+  supabase: { channel: (name: string) => RealtimeChannel },
+  workshopSessionId: string
+): RealtimeChannel {
+  const channelName = `workshop:${workshopSessionId}`;
+  return supabase.channel(channelName);
+}
+
 // Re-export types for convenience
 export type { RealtimePayload, RealtimeMessageType };

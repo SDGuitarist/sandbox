@@ -62,3 +62,14 @@ export class IdempotencyGuard {
     this.seen.clear();
   }
 }
+
+/**
+ * Factory function that returns a plain Set<string> for facilitator-side
+ * broadcast dedup. The facilitator components use .has() and .add() directly.
+ *
+ * This is the simplest possible idempotency mechanism as specified in the
+ * spec: an in-memory Set<string> of received eventId values.
+ */
+export function createIdempotencySet(): Set<string> {
+  return new Set<string>();
+}
