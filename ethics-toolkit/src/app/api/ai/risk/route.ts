@@ -18,9 +18,14 @@ import { hasApiKey, getClient, MODELS } from '@/lib/ai/client';
 import { runPreflight } from '@/lib/ai/preflight';
 import { getMockRiskAI } from '@/lib/ai/mock';
 import { LEGAL_DISCLAIMER } from '@/lib/constants';
+import { withAiRateLimit } from '../middleware';
 
 export async function POST(request: NextRequest) {
   const requestId = crypto.randomUUID();
+
+  // Enforce rate limits (Section 9: 10 req/hr per IP, 30 req/day per user)
+  const rateLimitResponse = withAiRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const body = await request.json();
@@ -69,12 +74,30 @@ export async function POST(request: NextRequest) {
       unionAffiliation: input.unionAffiliation,
     });
 
-    const response = await client.messages.create({
-      model: MODELS.SONNET,
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+
+    let response;
+    try {
+      response = await client.messages.create({
+        model: MODELS.SONNET,
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+      }, { signal: controller.signal });
+    } catch (abortErr) {
+      clearTimeout(timeout);
+      console.error(`[${requestId}] Sonnet call timed out or aborted for risk route`);
+      const mockResult = await getMockRiskAI();
+      return NextResponse.json({
+        ...mockResult,
+        mock: true,
+        disclaimer: LEGAL_DISCLAIMER,
+        requestId,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     // Extract text content from the response
     const textBlock = response.content.find((block) => block.type === 'text');

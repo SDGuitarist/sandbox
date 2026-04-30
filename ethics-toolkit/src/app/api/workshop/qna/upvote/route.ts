@@ -104,25 +104,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Increment upvote_count on the question.
-  // Supabase JS v2 doesn't have a built-in atomic increment, so we
-  // fetch + update. For this low-volume workshop scenario (< 30 concurrent
-  // users), this is acceptable.
+  // Atomic increment via RPC -- prevents race condition with concurrent upvotes
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: questionRow } = await (supabase
-    .from('qna_questions') as any)
-    .select('upvote_count')
-    .eq('id', questionId)
-    .single();
+  const { data: newCount, error: rpcError } = await (supabase as any)
+    .rpc('increment_upvote', { p_question_id: questionId });
 
-  const currentCount = (questionRow as { upvote_count: number } | null)?.upvote_count ?? 0;
-  const newCount = currentCount + 1;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase
-    .from('qna_questions') as any)
-    .update({ upvote_count: newCount })
-    .eq('id', questionId);
+  if (rpcError) {
+    console.error('Failed to increment upvote count:', {
+      route: '/api/workshop/qna/upvote',
+      error: rpcError.message,
+      questionId,
+    });
+    return NextResponse.json(
+      { error: 'Failed to increment upvote.' },
+      { status: 500 }
+    );
+  }
 
   // Record in processed_events for idempotency
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

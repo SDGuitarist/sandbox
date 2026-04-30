@@ -139,7 +139,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
           `[email] Attempt ${attempt + 1} failed for ${emailType} to ${userEmail}:`,
           error.message
         );
-        await sleep(60_000); // Wait 60 seconds before retry
+        await sleep(5_000); // Brief retry delay (60s would exceed Vercel function timeout)
         continue;
       }
 
@@ -159,7 +159,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
           `[email] Attempt ${attempt + 1} threw for ${emailType} to ${userEmail}:`,
           err
         );
-        await sleep(60_000);
+        await sleep(5_000);
         continue;
       }
 

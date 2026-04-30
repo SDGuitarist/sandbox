@@ -24,27 +24,16 @@ export async function claimAnonymousSession(
 ): Promise<{ error: string | null }> {
   const supabase = createServerClient();
 
-  const { error: sessionError } = await supabase
-    .from('anonymous_sessions')
-    .update({
-      user_id: userId,
-      claimed_at: new Date().toISOString(),
-    })
-    .eq('anonymous_session_id', anonymousSessionId)
-    .is('user_id', null);
+  // Use transactional RPC to claim session + tool_events atomically
+  // Prevents partial claim data corruption (P0-2)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).rpc('claim_anonymous_session', {
+    p_anonymous_session_id: anonymousSessionId,
+    p_user_id: userId,
+  });
 
-  if (sessionError) {
-    return { error: sessionError.message };
-  }
-
-  const { error: eventsError } = await supabase
-    .from('tool_events')
-    .update({ user_id: userId })
-    .eq('anonymous_session_id', anonymousSessionId)
-    .is('user_id', null);
-
-  if (eventsError) {
-    return { error: eventsError.message };
+  if (error) {
+    return { error: error.message };
   }
 
   return { error: null };

@@ -7,3 +7,6 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 }
+
+// Alias used by auth and UI agents -- keeps both import names working
+export { createClient as createBrowserClient };

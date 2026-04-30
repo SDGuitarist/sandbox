@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AttendeeNav } from "@/components/ui/nav";
 import { getOrCreateAnonymousSessionId } from "@/lib/auth/anonymous-session";
+import { registerServiceWorker } from "@/lib/sw-register";
 
 export default function AttendeeLayout({
   children,
@@ -11,6 +12,7 @@ export default function AttendeeLayout({
 }) {
   useEffect(() => {
     getOrCreateAnonymousSessionId();
+    registerServiceWorker();
   }, []);
 
   return (

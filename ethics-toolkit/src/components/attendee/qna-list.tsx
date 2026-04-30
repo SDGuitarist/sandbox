@@ -91,9 +91,9 @@ export function QnaList({ channel, workshopSessionId }: QnaListProps) {
 
     channel.on("broadcast", { event: "workshop" }, handleBroadcast);
 
-    return () => {
-      channel.unsubscribe();
-    };
+    // Do NOT unsubscribe here -- the parent component owns the channel lifecycle.
+    // Unsubscribing here would kill the shared channel for all sibling components.
+    return () => {};
   }, [channel]);
 
   const handleUpvote = useCallback(

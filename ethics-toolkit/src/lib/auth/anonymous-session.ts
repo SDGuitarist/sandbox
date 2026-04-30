@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 
 const STORAGE_KEY = 'anonymousSessionId';
 
@@ -23,7 +23,7 @@ export function getAnonymousSessionId(): string {
 
 export async function ensureAnonymousSession(): Promise<string> {
   const anonymousSessionId = getAnonymousSessionId();
-  const supabase = createBrowserClient();
+  const supabase = createClient();
 
   const { data } = await supabase
     .from('anonymous_sessions')
@@ -32,8 +32,8 @@ export async function ensureAnonymousSession(): Promise<string> {
     .single();
 
   if (!data) {
-    await supabase
-      .from('anonymous_sessions')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from('anonymous_sessions') as any)
       .insert({ anonymous_session_id: anonymousSessionId });
   }
 
@@ -45,3 +45,6 @@ export function clearAnonymousSessionId(): void {
     localStorage.removeItem(STORAGE_KEY);
   }
 }
+
+// Alias used by UI shell agent -- keeps both import names working
+export { ensureAnonymousSession as getOrCreateAnonymousSessionId };

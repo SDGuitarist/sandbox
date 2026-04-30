@@ -7,3 +7,6 @@ export function createServiceClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
+
+// Alias used by auth agent -- keeps both import names working
+export { createServiceClient as createServerClient };
