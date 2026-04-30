@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ethics Toolkit - Offline</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16pt;
+      line-height: 1.5;
+      color: #111827;
+      background: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 28rem;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      font-size: 1rem;
+      color: #6b7280;
+      margin-bottom: 1rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #92400e;
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: 9999px;
+      margin-bottom: 1.5rem;
+    }
+    .retry-btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #ffffff;
+      background: #111827;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      min-height: 44px;
+      min-width: 44px;
+    }
+    .retry-btn:active { background: #374151; }
+    .disclaimer {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Offline</div>
+    <h1>You are currently offline</h1>
+    <p>
+      Deterministic tools (cost comparison, risk scoring) are available
+      with cached data. AI-powered recommendations require an internet
+      connection.
+    </p>
+    <p>
+      AI recommendation temporarily unavailable.
+    </p>
+    <button class="retry-btn" onclick="window.location.reload()">
+      Try Again
+    </button>
+    <p class="disclaimer">
+      Guidance, not legal advice. Consult an entertainment attorney for legal counsel.
+    </p>
+  </div>
+</body>
+</html>
