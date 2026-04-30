@@ -16,6 +16,26 @@ feed_forward:
 **Target Model:** Claude Opus 4.6
 **Execution Principle:** Opus 4.6 is a highly capable inferential model but is prone to overengineering and over-inferring unstated intent; therefore, this spec defines strict scope boundaries, explicit acceptance criteria, and rigid guardrails.
 
+### Enhancement Summary
+
+**Deepened on:** 2026-04-30
+**Research agents used:** 8 (Supabase, Square/Resend, Architecture, Security, Data Integrity, Spec Flow, Performance, Vercel Deployment) + Learnings Researcher (6 solution docs)
+
+**Key Patterns Applied from Prior Builds:**
+1. Shared spec scales to 6 agents with 0 mismatches when prescriptive (lifecycle contracts, route manifests, ownership tables) -- validated in 10+ builds
+2. Contract-check -> assembly-fix pipeline catches mechanical errors (wrong names, missing imports) but NOT design errors -- spec must be unambiguous
+3. Cross-module writes work when spec defines: (a) who owns the table, (b) exact function signature with usage example, (c) transaction pattern
+4. Zod validation at every LLM boundary prevents silent JSON corruption (producer-brief)
+5. In-memory rate limiting Map prevents wallet-denial attacks without external infra (producer-brief)
+6. `git -C <path>` not `cd && git` -- compound bash commands trigger security heuristics regardless of permissions
+
+**New Territory (no prior solution docs):**
+- Anonymous-to-auth identity flow (magic link session upgrade)
+- Supabase Realtime for workshop sync (broadcast + persisted channels)
+- Square checkout links + manual entitlement
+- Resend lifecycle emails with Vercel Cron
+- Service Worker caching for Next.js on Vercel
+
 ---
 
 ## 1. Global Platform Constraints & Guardrails
