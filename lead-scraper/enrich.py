@@ -75,24 +75,39 @@ def _is_safe_url(url: str) -> bool:
         return False
 
 
-def _fetch_page(session: requests.Session, url: str) -> str | None:
-    """Fetch a URL with timeout, size cap, and SSRF protection."""
+def _fetch_page(
+    session: requests.Session, url: str, max_retries: int = 3
+) -> str | None:
+    """Fetch a URL with timeout, size cap, SSRF protection, and retry.
+
+    Retries on transient errors (timeout, connection reset) with exponential
+    backoff.  Non-transient failures (bad status, SSRF block) return None
+    immediately without retrying.
+    """
     if not _is_safe_url(url):
         return None
-    try:
-        resp = session.get(url, timeout=10, stream=True, allow_redirects=True)
-        # Validate final URL after redirects (blocks redirect to private IPs)
-        if str(resp.url) != url and not _is_safe_url(str(resp.url)):
+    for attempt in range(max_retries):
+        try:
+            resp = session.get(url, timeout=10, stream=True, allow_redirects=True)
+            # Validate final URL after redirects (blocks redirect to private IPs)
+            if str(resp.url) != url and not _is_safe_url(str(resp.url)):
+                resp.close()
+                return None
+            if resp.status_code != 200:
+                resp.close()
+                return None
+            content = resp.raw.read(MAX_RESPONSE_BYTES, decode_content=True)
             resp.close()
+            return content.decode("utf-8", errors="replace")
+        except (requests.Timeout, requests.ConnectionError):
+            # Transient — worth retrying
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s
+                continue
             return None
-        if resp.status_code != 200:
-            resp.close()
+        except requests.RequestException:
+            # Non-transient (e.g. invalid URL, SSL error) — stop immediately
             return None
-        content = resp.raw.read(MAX_RESPONSE_BYTES, decode_content=True)
-        resp.close()
-        return content.decode("utf-8", errors="replace")
-    except requests.RequestException:
-        return None
 
 
 def _get_unenriched_leads(db_path: Path = DB_PATH) -> list[dict]:
@@ -157,8 +172,13 @@ def _enrich_single_lead(lead: dict, session: requests.Session) -> dict:
     return updates
 
 
-def enrich_leads(*, db_path: Path = DB_PATH) -> EnrichmentResult:
-    """Enrich unenriched leads by fetching their profile/website pages."""
+def enrich_leads(
+    *, db_path: Path = DB_PATH, max_minutes: int = 30
+) -> EnrichmentResult:
+    """Enrich unenriched leads by fetching their profile/website pages.
+
+    Stops after *max_minutes* to prevent runaway batch processes.
+    """
     leads = _get_unenriched_leads(db_path)
     if not leads:
         print("No leads to enrich.")
@@ -171,8 +191,17 @@ def enrich_leads(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     )
 
-    print(f"Enriching {len(leads)} leads...")
+    deadline = time.time() + (max_minutes * 60)
+
+    print(f"Enriching {len(leads)} leads (timeout: {max_minutes}min)...")
     for i, lead in enumerate(leads, 1):
+        if time.time() > deadline:
+            print(
+                f"\n  Timeout reached ({max_minutes}min). "
+                f"Processed {result.leads_processed}/{len(leads)} leads."
+            )
+            break
+
         name = lead["name"][:40]
         print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
         try:
@@ -432,11 +461,63 @@ def _split_name(full_name: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def enrich_with_hunter(*, db_path: Path = DB_PATH) -> EnrichmentResult:
-    """Find emails using Hunter.io Email Finder and Domain Search APIs."""
+def _check_hunter_quota(api_key: str) -> int | None:
+    """Check remaining Hunter.io requests. Returns remaining count or None."""
+    try:
+        resp = requests.get(
+            f"{HUNTER_API_BASE}/account",
+            params={"api_key": api_key},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return None
+        data = resp.json().get("data", {})
+        calls = data.get("calls", {})
+        used = calls.get("used", 0)
+        available = calls.get("available", 0)
+        remaining = available - used
+        if remaining <= available * 0.1:
+            print(f"  ** Hunter.io quota CRITICAL: {remaining}/{available} remaining **")
+        elif remaining <= available * 0.3:
+            print(f"  * Hunter.io quota warning: {remaining}/{available} remaining *")
+        else:
+            print(f"  Hunter.io quota: {remaining}/{available} remaining")
+        return remaining
+    except requests.RequestException:
+        return None
+
+
+def _hunter_get(session: requests.Session, url: str, params: dict,
+                max_retries: int = 3) -> requests.Response | None:
+    """GET a Hunter.io endpoint with retry on transient network errors."""
+    for attempt in range(max_retries):
+        try:
+            return session.get(url, params=params, timeout=15)
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+                continue
+            return None
+        except requests.RequestException:
+            return None
+
+
+def enrich_with_hunter(
+    *, db_path: Path = DB_PATH, max_minutes: int = 15
+) -> EnrichmentResult:
+    """Find emails using Hunter.io Email Finder and Domain Search APIs.
+
+    Checks quota before starting and stops after *max_minutes*.
+    """
     api_key = _get_hunter_api_key()
     if not api_key:
         print("Hunter.io: HUNTER_API_KEY not set, skipping.")
+        return EnrichmentResult()
+
+    # Check quota before burning API calls
+    remaining = _check_hunter_quota(api_key)
+    if remaining is not None and remaining < 1:
+        print("Hunter.io: no quota remaining, skipping.")
         return EnrichmentResult()
 
     leads = _get_leads_for_hunter(db_path)
@@ -446,86 +527,84 @@ def enrich_with_hunter(*, db_path: Path = DB_PATH) -> EnrichmentResult:
 
     result = EnrichmentResult()
     session = requests.Session()
-    print(f"Hunter.io: enriching {len(leads)} leads...")
+    deadline = time.time() + (max_minutes * 60)
+    print(f"Hunter.io: enriching {len(leads)} leads (timeout: {max_minutes}min)...")
 
     for i, lead in enumerate(leads, 1):
+        if time.time() > deadline:
+            print(
+                f"\n  Timeout reached ({max_minutes}min). "
+                f"Processed {result.leads_processed}/{len(leads)} leads."
+            )
+            break
+
         name = lead["name"][:30]
         domain = lead["domain"]
         first, last = _split_name(lead["name"])
 
         print(f"  {i}/{len(leads)} {name} ({domain})...", end=" ", flush=True)
 
-        try:
-            # Try Email Finder first if we have a name
-            if first and last:
-                resp = session.get(
-                    f"{HUNTER_API_BASE}/email-finder",
-                    params={
-                        "domain": domain,
-                        "first_name": first,
-                        "last_name": last,
-                        "api_key": api_key,
-                    },
-                    timeout=15,
-                )
-                if resp.status_code == 200:
-                    data = resp.json().get("data", {})
-                    email = data.get("email")
-                    score = data.get("score", 0)
-                    if email and score >= 50:
-                        _persist_hunter_result(lead["id"], data, db_path)
-                        result.leads_processed += 1
-                        result.emails_found += 1
-                        print(f"email={email} (score={score})")
-                        time.sleep(0.25)
-                        continue
-                elif resp.status_code == 429:
-                    wait = int(resp.headers.get("retry-after", 10))
-                    print(f"rate limited, waiting {wait}s...")
-                    time.sleep(wait)
-                    continue  # retry this lead on next loop
-                elif resp.status_code == 402:
-                    print("out of credits, stopping.")
-                    break
-
-            # Fall back to Domain Search
-            resp = session.get(
-                f"{HUNTER_API_BASE}/domain-search",
-                params={
-                    "domain": domain,
-                    "limit": 5,
-                    "api_key": api_key,
-                },
-                timeout=15,
-            )
+        # Try Email Finder first if we have a name
+        if first and last:
+            resp = _hunter_get(session, f"{HUNTER_API_BASE}/email-finder", {
+                "domain": domain, "first_name": first,
+                "last_name": last, "api_key": api_key,
+            })
+            if resp is None:
+                print("network error")
+                continue
             if resp.status_code == 200:
                 data = resp.json().get("data", {})
-                emails = data.get("emails", [])
-                if emails:
-                    best = max(emails, key=lambda e: e.get("confidence", 0))
-                    email = best.get("value")
-                    confidence = best.get("confidence", 0)
-                    if email and confidence >= 50:
-                        _persist_hunter_result(
-                            lead["id"],
-                            {"email": email, "score": confidence,
-                             "phone_number": best.get("phone_number")},
-                            db_path,
-                        )
-                        result.leads_processed += 1
-                        result.emails_found += 1
-                        print(f"email={email} (conf={confidence})")
-                        time.sleep(0.25)
-                        continue
-            elif resp.status_code in (429, 402):
-                print("rate limited or out of credits, stopping.")
+                email = data.get("email")
+                score = data.get("score", 0)
+                if email and score >= 50:
+                    _persist_hunter_result(lead["id"], data, db_path)
+                    result.leads_processed += 1
+                    result.emails_found += 1
+                    print(f"email={email} (score={score})")
+                    time.sleep(0.25)
+                    continue
+            elif resp.status_code == 429:
+                wait = int(resp.headers.get("retry-after", 10))
+                print(f"rate limited, waiting {wait}s...")
+                time.sleep(wait)
+                continue  # retry this lead on next loop
+            elif resp.status_code == 402:
+                print("out of credits, stopping.")
                 break
 
-            print("no results")
-            time.sleep(0.25)  # stay under 4 req/sec
+        # Fall back to Domain Search
+        resp = _hunter_get(session, f"{HUNTER_API_BASE}/domain-search", {
+            "domain": domain, "limit": 5, "api_key": api_key,
+        })
+        if resp is None:
+            print("network error")
+            continue
+        if resp.status_code == 200:
+            data = resp.json().get("data", {})
+            emails = data.get("emails", [])
+            if emails:
+                best = max(emails, key=lambda e: e.get("confidence", 0))
+                email = best.get("value")
+                confidence = best.get("confidence", 0)
+                if email and confidence >= 50:
+                    _persist_hunter_result(
+                        lead["id"],
+                        {"email": email, "score": confidence,
+                         "phone_number": best.get("phone_number")},
+                        db_path,
+                    )
+                    result.leads_processed += 1
+                    result.emails_found += 1
+                    print(f"email={email} (conf={confidence})")
+                    time.sleep(0.25)
+                    continue
+        elif resp.status_code in (429, 402):
+            print("rate limited or out of credits, stopping.")
+            break
 
-        except requests.RequestException as e:
-            print(f"error: {str(e)[:60]}")
+        print("no results")
+        time.sleep(0.25)  # stay under 4 req/sec
 
     session.close()
     print(
@@ -687,6 +766,32 @@ def enrich_with_venue_scraper(*, db_path: Path = DB_PATH) -> EnrichmentResult:
         f"{result.social_found} social handles."
     )
     return result
+
+
+def enrich_crawl(*, db_path: Path = DB_PATH) -> EnrichmentResult:
+    """Crawl lead websites: Apify deep crawl first, venue scraper as fallback.
+
+    Runs the free Apify contact-info-scraper on all leads missing email.
+    Then runs the LLM-powered venue scraper only on leads that Apify missed.
+    """
+    print("=== Step 1/2: Deep crawl (Apify, free) ===")
+    r1 = enrich_websites_deep(db_path=db_path)
+
+    # Check how many leads still need email after deep crawl
+    remaining = _get_leads_for_website_crawl(db_path)
+    if not remaining:
+        print("\nAll leads have emails after deep crawl. Skipping venue scraper.")
+        return r1
+
+    print(f"\n=== Step 2/2: Venue scraper on {len(remaining)} remaining leads ===")
+    r2 = enrich_with_venue_scraper(db_path=db_path)
+
+    return EnrichmentResult(
+        leads_processed=r1.leads_processed + r2.leads_processed,
+        emails_found=r1.emails_found + r2.emails_found,
+        phones_found=r1.phones_found + r2.phones_found,
+        social_found=r1.social_found + r2.social_found,
+    )
 
 
 # ---------------------------------------------------------------------------
