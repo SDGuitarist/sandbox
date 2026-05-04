@@ -47,8 +47,7 @@ export async function POST(request: NextRequest) {
   // Mock AI ethical analysis (Phase 2 uses mock; Phase 4 replaces with real API)
   let probabilisticPayload: { ethicalAnalysis: string } | null = null;
   try {
-    const ethicalAnalysis = await getMockBudgetAI(deterministicPayload);
-    probabilisticPayload = { ethicalAnalysis };
+    probabilisticPayload = await getMockBudgetAI(deterministicPayload);
   } catch {
     // LLM failure: show deterministic comparison with "Ethical analysis unavailable."
     probabilisticPayload = null;

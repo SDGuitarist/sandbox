@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { getAnonymousSessionId } from "@/lib/auth/anonymous-session";
+import { ensureAnonymousSession } from "@/lib/auth/anonymous-session";
 import type { RiskScannerOutputType } from "@/lib/schemas/risk-scanner";
 import type { RiskAIType } from "@/lib/schemas/risk-scanner";
 import { LEGAL_DISCLAIMER } from "@/lib/constants";
@@ -130,7 +130,7 @@ export default function RiskScannerPage() {
     setAiResult(null);
 
     try {
-      const anonymousSessionId = getAnonymousSessionId();
+      const anonymousSessionId = await ensureAnonymousSession();
       const eventId = crypto.randomUUID();
 
       const input = {

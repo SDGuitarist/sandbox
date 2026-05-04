@@ -11,7 +11,7 @@
  */
 
 import { useState } from "react";
-import { getAnonymousSessionId } from "@/lib/auth/anonymous-session";
+import { ensureAnonymousSession } from "@/lib/auth/anonymous-session";
 import { LEGAL_DISCLAIMER } from "@/lib/constants";
 
 const ROLES = [
@@ -94,7 +94,7 @@ export default function BudgetCalculatorPage() {
     try {
       let anonymousSessionId: string | null = null;
       try {
-        anonymousSessionId = getAnonymousSessionId();
+        anonymousSessionId = await ensureAnonymousSession();
       } catch {
         // Not in browser or no session yet -- proceed without persistence
       }

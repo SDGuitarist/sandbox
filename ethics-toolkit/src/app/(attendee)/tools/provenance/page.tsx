@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { getAnonymousSessionId } from "@/lib/auth/anonymous-session";
+import { ensureAnonymousSession } from "@/lib/auth/anonymous-session";
 import type { ProvenanceOutputType } from "@/lib/schemas/provenance";
 import type { DuplicateWarning } from "@/lib/tools/provenance";
 import { LEGAL_DISCLAIMER } from "@/lib/constants";
@@ -82,7 +82,7 @@ export default function ProvenancePage() {
     setDuplicateWarnings([]);
 
     try {
-      const anonymousSessionId = getAnonymousSessionId();
+      const anonymousSessionId = await ensureAnonymousSession();
       const eventId = crypto.randomUUID();
 
       const input = {

@@ -122,4 +122,5 @@ VALUES
     '2026-04-11',
     'verified',
     ARRAY[]::TEXT[]
-  );
+  )
+ON CONFLICT (festival_name, year) DO NOTHING;

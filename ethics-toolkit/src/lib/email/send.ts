@@ -16,16 +16,56 @@ import {
   day14DowngradePlainText,
 } from '@/lib/email/templates/day14-downgrade';
 import type { EmailType } from '@/types/database';
+import crypto from 'crypto';
 
 const FROM_ADDRESS = 'Ethics Toolkit <noreply@ethicstoolkit.app>';
 
+function getUnsubscribeSecret(): string {
+  return process.env.FACILITATOR_SESSION_SECRET || 'dev-unsubscribe-secret';
+}
+
 /**
- * Generates a simple unsubscribe token from userId.
- * In production, this would be a signed JWT or HMAC token.
- * For v1, we use a base64url-encoded userId as the token.
+ * Generates an HMAC-signed unsubscribe token.
+ * Format: base64url(userId).base64url(hmac-sha256(userId))
+ * Prevents arbitrary unsubscribe by requiring the secret to forge a token.
  */
-function generateUnsubscribeToken(userId: string): string {
-  return Buffer.from(userId).toString('base64url');
+export function generateUnsubscribeToken(userId: string): string {
+  const payload = Buffer.from(userId).toString('base64url');
+  const signature = crypto
+    .createHmac('sha256', getUnsubscribeSecret())
+    .update(userId)
+    .digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+/**
+ * Verifies an HMAC-signed unsubscribe token.
+ * Returns the userId if valid, or null if the token is invalid/tampered.
+ */
+export function verifyUnsubscribeToken(token: string): string | null {
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+
+  const [payload, signature] = parts;
+  let userId: string;
+  try {
+    userId = Buffer.from(payload, 'base64url').toString('utf-8');
+  } catch {
+    return null;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', getUnsubscribeSecret())
+    .update(userId)
+    .digest('base64url');
+
+  // Timing-safe comparison to prevent timing attacks
+  if (signature.length !== expectedSignature.length) return null;
+  const sigBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expectedSignature);
+  if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
+
+  return userId;
 }
 
 /**

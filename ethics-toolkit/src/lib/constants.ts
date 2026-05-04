@@ -3,9 +3,5 @@ export const LEGAL_DISCLAIMER =
 
 export const APP_NAME = "Ethics Toolkit";
 
-export enum ToolType {
-  DISCLOSURE = "DISCLOSURE",
-  RISK = "RISK",
-  PROVENANCE = "PROVENANCE",
-  BUDGET = "BUDGET",
-}
+// ToolType is defined canonically in src/lib/schemas/tool-event.ts and src/types/database.ts.
+// Import from either of those -- do not redefine here.

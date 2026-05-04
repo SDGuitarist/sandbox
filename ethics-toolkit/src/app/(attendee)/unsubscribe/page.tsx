@@ -1,11 +1,11 @@
 import { createServiceClient } from '@/lib/supabase/server';
+import { verifyUnsubscribeToken } from '@/lib/email/send';
 
 /**
- * /unsubscribe?token=<base64url-encoded-userId>
+ * /unsubscribe?token=<hmac-signed-token>
  *
- * Server-rendered unsubscribe page. Validates the token (base64url-encoded
- * userId), sets email_opt_out=true on the user's profile, and displays
- * the result. No extra API route needed -- runs server-side.
+ * Server-rendered unsubscribe page. Verifies the HMAC-signed token,
+ * sets email_opt_out=true on the user's profile, and displays the result.
  */
 
 interface UnsubscribePageProps {
@@ -20,42 +20,30 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
   let message = 'Invalid unsubscribe link. No token provided.';
 
   if (token) {
-    // Decode the token to get the userId
-    let userId: string | null = null;
-    try {
-      // base64url decode
-      const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
-      userId = Buffer.from(base64, 'base64').toString('utf-8');
-    } catch {
+    // Verify the HMAC-signed token
+    const userId = verifyUnsubscribeToken(token);
+
+    if (!userId) {
       status = 'invalid';
-      message = 'Invalid unsubscribe token.';
-    }
+      message = 'Invalid or expired unsubscribe token.';
+    } else {
+      // Set email_opt_out = true
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createServiceClient() as any;
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          email_opt_out: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
 
-    if (userId) {
-      // Validate it looks like a UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(userId)) {
-        status = 'invalid';
-        message = 'Invalid unsubscribe token format.';
+      if (error) {
+        status = 'error';
+        message = 'Failed to process your unsubscribe request. Please try again later.';
       } else {
-        // Set email_opt_out = true
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const supabase = createServiceClient() as any;
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            email_opt_out: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_id', userId);
-
-        if (error) {
-          status = 'error';
-          message = 'Failed to process your unsubscribe request. Please try again later.';
-        } else {
-          status = 'success';
-          message = 'You have been unsubscribed from Ethics Toolkit emails.';
-        }
+        status = 'success';
+        message = 'You have been unsubscribed from Ethics Toolkit emails.';
       }
     }
   }

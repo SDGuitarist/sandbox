@@ -15,10 +15,10 @@ import type { BudgetOutputType } from '@/lib/schemas/budget';
  */
 export async function getMockBudgetAI(
   budgetOutput: BudgetOutputType
-): Promise<string> {
+): Promise<{ ethicalAnalysis: string }> {
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  return (
+  const ethicalAnalysis =
     `Based on the ${budgetOutput.budgetTier} tier for a ${budgetOutput.roleName}, ` +
     `the market rate ranges from $${budgetOutput.humanCostRange.low.toLocaleString()} ` +
     `to $${budgetOutput.humanCostRange.high.toLocaleString()}. ` +
@@ -28,6 +28,7 @@ export async function getMockBudgetAI(
     `on fair compensation. Even when budgets are tight, exploring hybrid approaches that ` +
     `combine AI assistance with human expertise can preserve both quality and ethical standards. ` +
     `Consider whether the cost savings from AI justify the potential impact on the professional ` +
-    `community that supports the craft of filmmaking.`
-  );
+    `community that supports the craft of filmmaking.`;
+
+  return { ethicalAnalysis };
 }

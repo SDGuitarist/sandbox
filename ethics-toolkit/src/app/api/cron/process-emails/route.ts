@@ -66,6 +66,27 @@ export async function GET(request: NextRequest) {
   }> = [];
 
   for (const job of pendingJobs) {
+    // Concurrency guard: atomically claim this job by setting status='processing'.
+    // If another cron invocation already claimed it, the WHERE won't match.
+    const { data: claimed } = await supabase
+      .from('email_jobs')
+      .update({ status: 'processing' })
+      .eq('id', job.id)
+      .eq('status', 'pending')
+      .select('id')
+      .single() as { data: { id: string } | null };
+
+    if (!claimed) {
+      // Another worker already claimed this job -- skip
+      results.push({
+        jobId: job.id,
+        emailType: job.email_type,
+        status: 'skipped',
+        reason: 'Already claimed by another worker',
+      });
+      continue;
+    }
+
     // Look up user email and trial info
     const { data: profile } = await supabase
       .from('profiles')

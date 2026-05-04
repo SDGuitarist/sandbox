@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateFacilitatorPassword, setFacilitatorCookie } from '@/lib/auth/facilitator';
+import { checkDefaultRateLimit } from '@/lib/rate-limit/middleware';
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 60 req/min per IP (uses default tier -- brute force mitigation)
+  const rateLimitResponse = checkDefaultRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const body = await request.json();
   const { password } = body;
 
