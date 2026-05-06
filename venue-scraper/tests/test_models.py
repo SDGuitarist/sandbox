@@ -188,11 +188,11 @@ def test_run_config_uses_cache_bypass() -> None:
     assert config.cache_mode == CacheMode.BYPASS
 
 
-def test_run_config_uses_domcontentloaded() -> None:
+def test_run_config_uses_networkidle() -> None:
     from crawler import get_run_config
 
     config = get_run_config()
-    assert config.wait_until == "domcontentloaded"
+    assert config.wait_until == "networkidle"
 
 
 def test_dispatcher_limits_concurrency() -> None:

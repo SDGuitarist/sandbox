@@ -1,0 +1,66 @@
+{
+  "search_metadata": {
+    "id": "test_123",
+    "status": "Success",
+    "created_at": "2026-05-05 12:00:00 UTC",
+    "processed_at": "2026-05-05 12:00:01 UTC",
+    "total_time_taken": 1.2
+  },
+  "search_parameters": {
+    "engine": "google",
+    "q": "film school San Diego",
+    "location": "San Diego, California, United States",
+    "hl": "en",
+    "gl": "us"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "San Diego Film School - Official Site",
+      "link": "https://www.sandiegofilmschool.com",
+      "snippet": "Learn filmmaking at San Diego's premier film school."
+    },
+    {
+      "position": 2,
+      "title": "SD Film School on Yelp",
+      "link": "https://www.yelp.com/biz/sd-film-school",
+      "snippet": "Reviews for SD Film School."
+    },
+    {
+      "position": 3,
+      "title": "Pacific Arts Movement",
+      "link": "https://pacarts.org",
+      "snippet": "San Diego's premier Asian film arts organization."
+    },
+    {
+      "position": 4,
+      "title": "Media Arts Center San Diego",
+      "link": "https://www.mediaartscenter.org",
+      "snippet": "Digital Gym Cinema and film education."
+    },
+    {
+      "position": 5,
+      "title": "SD Film School - Facebook",
+      "link": "https://www.facebook.com/sdfilmschool",
+      "snippet": "Follow us on Facebook."
+    },
+    {
+      "position": 6,
+      "title": "Studio West - Recording & Production",
+      "link": "https://studiowest.com",
+      "snippet": "Full production facilities in San Diego."
+    },
+    {
+      "position": 7,
+      "title": "Another Film School",
+      "link": "ftp://legacy.filmschool.edu/info",
+      "snippet": "Legacy FTP link (should be filtered)."
+    },
+    {
+      "position": 8,
+      "title": "Duplicate Domain Result",
+      "link": "https://www.sandiegofilmschool.com/programs",
+      "snippet": "Another page from same domain (should be deduped)."
+    }
+  ]
+}

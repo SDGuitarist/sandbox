@@ -1,0 +1,50 @@
+[
+  {
+    "href": "/about-us",
+    "text": "About Our Studio",
+    "title": "About",
+    "base_domain": "example-studio.com"
+  },
+  {
+    "href": "/contact",
+    "text": "Contact Us",
+    "title": "Contact",
+    "base_domain": "example-studio.com"
+  },
+  {
+    "href": "/services",
+    "text": "Our Services",
+    "title": "Services",
+    "base_domain": "example-studio.com"
+  },
+  {
+    "href": "/team",
+    "text": "Meet the Team",
+    "title": "Team",
+    "base_domain": "example-studio.com"
+  },
+  {
+    "href": "https://evil.com/steal-data",
+    "text": "Contact Support",
+    "title": "External Link",
+    "base_domain": "evil.com"
+  },
+  {
+    "href": "/inquiries",
+    "text": "Inquiries & Booking",
+    "title": "Inquiries",
+    "base_domain": "example-studio.com"
+  },
+  {
+    "href": "",
+    "text": "Empty Link",
+    "title": "",
+    "base_domain": "example-studio.com"
+  },
+  {
+    "href": "/gallery",
+    "text": "",
+    "title": "Gallery",
+    "base_domain": "example-studio.com"
+  }
+]
