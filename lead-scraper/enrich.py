@@ -1098,8 +1098,8 @@ def _research_single_hook(session: requests.Session, api_key: str,
         if resp.status_code == 429:
             wait = parse_retry_after(resp.headers.get("retry-after"), fallback=10.0)
             print(f"rate limited, waiting {wait:.0f}s...", end=" ")
-            time.sleep(wait)
             if attempt < 2:
+                time.sleep(wait)
                 continue
             return (None, None, -1)
 
