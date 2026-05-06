@@ -150,3 +150,50 @@ def test_build_hook_context():
     assert "Writer and novelist" in ctx
     assert "Book Launch" in ctx
     assert "San Diego" in ctx
+
+
+@patch("enrich.time.sleep")
+def test_hook_research_retries_429_then_succeeds(mock_sleep):
+    """429 on first attempt -> retry -> 200 on second attempt. Lead is processed."""
+    mock_session = MagicMock()
+    mock_429 = MagicMock()
+    mock_429.status_code = 429
+    mock_429.headers = {"retry-after": "2"}
+
+    mock_200 = MagicMock()
+    mock_200.status_code = 200
+    mock_200.json.return_value = {
+        "choices": [{"message": {"content": json.dumps({
+            "hook_text": "Keynote speaker at AI Summit",
+            "source_description": "Event page",
+            "tier": 1,
+        })}}],
+        "citations": ["https://aisummit.com/speakers"],
+    }
+
+    mock_session.post.side_effect = [mock_429, mock_200]
+
+    hook_text, source_url, tier = _research_single_hook(
+        mock_session, "fake-key", "Alice", "Speaker in San Diego"
+    )
+    assert hook_text == "Keynote speaker at AI Summit"
+    assert tier == 1
+    assert mock_session.post.call_count == 2
+
+
+@patch("enrich.time.sleep")
+def test_hook_research_429_exhausted_skips_persist(mock_sleep):
+    """429 three times -> tier=-1 returned. hook_quality must NOT be persisted."""
+    mock_session = MagicMock()
+    mock_429 = MagicMock()
+    mock_429.status_code = 429
+    mock_429.headers = {"retry-after": "1"}
+
+    mock_session.post.return_value = mock_429
+
+    hook_text, source_url, tier = _research_single_hook(
+        mock_session, "fake-key", "Alice", "Writer"
+    )
+    assert tier == -1  # Transient failure signal
+    assert hook_text is None
+    assert mock_session.post.call_count == 3  # Tried 3 times

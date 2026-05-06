@@ -6,6 +6,7 @@ It never INSERTs — that is ingest.py's responsibility.
 """
 
 import ipaddress
+import random
 import socket
 import subprocess
 import tempfile
@@ -27,6 +28,7 @@ VENUE_SCRAPER_DIR = Path(_os.environ.get(
 ))
 
 from enrich_parsers import normalize_social_urls, parse_bio, parse_profile_page
+from resilience import parse_retry_after, RED, RESET
 
 CONTACT_SCRAPER_ACTOR = "vdrmota/contact-info-scraper"
 HUNTER_API_BASE = "https://api.hunter.io/v2"
@@ -193,8 +195,13 @@ def enrich_leads(
 
     deadline = time.time() + (max_minutes * 60)
 
+    consecutive_fails = 0
     print(f"Enriching {len(leads)} leads (timeout: {max_minutes}min)...")
     for i, lead in enumerate(leads, 1):
+        if consecutive_fails >= 3:
+            print(f"{RED}3 consecutive failures in website fetch. "
+                  f"Skipping remaining {len(leads) - i} leads.{RESET}")
+            break
         if time.time() > deadline:
             print(
                 f"\n  Timeout reached ({max_minutes}min). "
@@ -206,6 +213,7 @@ def enrich_leads(
         print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
         try:
             updates = _enrich_single_lead(lead, session)
+            consecutive_fails = 0
             _persist_lead_update(lead["id"], updates, db_path)
             result.leads_processed += 1
             if updates.get("email"):
@@ -218,6 +226,7 @@ def enrich_leads(
                 print("no contact info", end="")
             print()
         except Exception as e:
+            consecutive_fails += 1
             print(f"FAILED: {str(e)[:80]}")
 
     session.close()
@@ -527,10 +536,15 @@ def enrich_with_hunter(
 
     result = EnrichmentResult()
     session = requests.Session()
+    consecutive_fails = 0
     deadline = time.time() + (max_minutes * 60)
     print(f"Hunter.io: enriching {len(leads)} leads (timeout: {max_minutes}min)...")
 
     for i, lead in enumerate(leads, 1):
+        if consecutive_fails >= 3:
+            print(f"{RED}3 consecutive failures in hunter. "
+                  f"Skipping remaining {len(leads) - i} leads.{RESET}")
+            break
         if time.time() > deadline:
             print(
                 f"\n  Timeout reached ({max_minutes}min). "
@@ -551,8 +565,10 @@ def enrich_with_hunter(
                 "last_name": last, "api_key": api_key,
             })
             if resp is None:
+                consecutive_fails += 1
                 print("network error")
                 continue
+            consecutive_fails = 0  # Got a response
             if resp.status_code == 200:
                 data = resp.json().get("data", {})
                 email = data.get("email")
@@ -565,8 +581,8 @@ def enrich_with_hunter(
                     time.sleep(0.25)
                     continue
             elif resp.status_code == 429:
-                wait = int(resp.headers.get("retry-after", 10))
-                print(f"rate limited, waiting {wait}s...")
+                wait = parse_retry_after(resp.headers.get("retry-after"), fallback=10.0)
+                print(f"rate limited, waiting {wait:.0f}s...")
                 time.sleep(wait)
                 continue  # retry this lead on next loop
             elif resp.status_code == 402:
@@ -578,8 +594,10 @@ def enrich_with_hunter(
             "domain": domain, "limit": 5, "api_key": api_key,
         })
         if resp is None:
+            consecutive_fails += 1
             print("network error")
             continue
+        consecutive_fails = 0  # Got a response
         if resp.status_code == 200:
             data = resp.json().get("data", {})
             emails = data.get("emails", [])
@@ -1035,56 +1053,70 @@ def _research_single_hook(session: requests.Session, api_key: str,
                           name: str, context: str) -> tuple[str | None, str | None, int]:
     """Research one lead via Sonar Pro. Returns (hook_text, source_url, tier).
 
+    tier=-1 means transient failure (429 exhausted or network error).
+    Caller must NOT persist tier=-1 -- lead stays eligible for retry.
     Source URL extracted from citations[] response field, NOT from model output.
     """
     prompt = _HOOK_PROMPT_TEMPLATE.format(name=name, context=context)
 
-    try:
-        resp = session.post(
-            PERPLEXITY_API_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "sonar-pro",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.1,
-                "response_format": _HOOK_RESPONSE_FORMAT,
-            },
-            timeout=60,
-        )
+    for attempt in range(3):
+        try:
+            resp = session.post(
+                PERPLEXITY_API_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "sonar-pro",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1,
+                    "response_format": _HOOK_RESPONSE_FORMAT,
+                },
+                timeout=(5, 60),
+            )
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt < 2:
+                delay = random.uniform(0, 2 ** attempt)
+                time.sleep(delay)
+                continue
+            return (None, None, -1)
 
         if resp.status_code == 429:
-            wait = int(resp.headers.get("retry-after", 10))
-            print(f"rate limited, waiting {wait}s...", end=" ")
+            wait = parse_retry_after(resp.headers.get("retry-after"), fallback=10.0)
+            print(f"rate limited, waiting {wait:.0f}s...", end=" ")
             time.sleep(wait)
-            return (None, None, -1)  # -1 = rate limited, caller must not persist
+            if attempt < 2:
+                continue
+            return (None, None, -1)
 
         if resp.status_code != 200:
             return (None, None, 0)
 
-        data = resp.json()
-        content = data["choices"][0]["message"]["content"]
+        try:
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
 
-        # Extract source URL from citations, NOT from model output
-        citations = data.get("citations", [])
-        source_url = citations[0] if citations else None
+            # Extract source URL from citations, NOT from model output
+            citations = data.get("citations", [])
+            source_url = citations[0] if citations else None
 
-        # Parse the structured JSON response
-        hook = json.loads(content)
-        hook_text = hook.get("hook_text", "").strip()
-        tier = hook.get("tier", 5)
+            # Parse the structured JSON response
+            hook = json.loads(content)
+            hook_text = hook.get("hook_text", "").strip()
+            tier = hook.get("tier", 5)
 
-        if not hook_text or "cannot find" in hook_text.lower() or "no " in hook_text.lower()[:10]:
+            if not hook_text or "cannot find" in hook_text.lower() or "no " in hook_text.lower()[:10]:
+                return (None, None, 0)
+
+            # Clamp tier to 1-5
+            tier = max(1, min(5, tier))
+            return (hook_text, source_url, tier)
+
+        except (json.JSONDecodeError, KeyError):
             return (None, None, 0)
 
-        # Clamp tier to 1-5
-        tier = max(1, min(5, tier))
-        return (hook_text, source_url, tier)
-
-    except (json.JSONDecodeError, KeyError, requests.RequestException):
-        return (None, None, 0)
+    return (None, None, -1)
 
 
 def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
@@ -1111,9 +1143,15 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
     result = EnrichmentResult()
     session = requests.Session()
 
+    consecutive_fails = 0
     print(f"Researching hooks for {len(leads)} leads...")
     with get_db(db_path) as conn:
         for i, lead in enumerate(leads, 1):
+            if consecutive_fails >= 3:
+                print(f"{RED}3 consecutive failures in hook research. "
+                      f"Skipping remaining {len(leads) - i} leads.{RESET}")
+                break
+
             name = lead["name"][:40]
             print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
 
@@ -1123,10 +1161,11 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
             )
 
             if tier == -1:
-                # Rate limited -- don't persist, lead stays eligible for retry
-                print("skipped (rate limited)")
+                consecutive_fails += 1
+                print("skipped (transient failure)")
                 continue
 
+            consecutive_fails = 0
             _persist_hook(lead["id"], hook_text, source_url, tier, conn=conn)
             result.leads_processed += 1
 
