@@ -3,6 +3,8 @@
 Usage:
     python scrape.py urls.txt --output results/
     python scrape.py --url "https://example-venue.com"
+    python scrape.py --search "recording studios San Diego"
+    python scrape.py --search-film --csv
 """
 from __future__ import annotations
 
@@ -14,7 +16,12 @@ from pathlib import Path
 
 from crawl4ai import AsyncWebCrawler
 
-from crawler import discover_subpages, get_browser_config, get_dispatcher, get_run_config
+from crawler import (
+    discover_subpages_from_links,
+    get_browser_config,
+    get_dispatcher,
+    get_run_config,
+)
 from models import merge_venue_results, validate_extraction
 
 
@@ -42,42 +49,50 @@ def load_urls(filepath: Path) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
-async def main(urls: list[str], output_dir: Path, contacts_only: bool = False) -> None:
+async def main(urls: list[str], output_dir: Path, contacts_only: bool = False, csv_export: bool = False) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     results: list[dict] = []
     errors: list[dict] = []
 
+    # Apply 15-URL cap
+    if len(urls) > 15:
+        print(f"  Found {len(urls)} URLs, capping at 15.")
+        urls = urls[:15]
+
     async with AsyncWebCrawler(config=get_browser_config()) as crawler:
         for start_url in urls:
-            # Discover subpages for each start URL
-            all_pages = discover_subpages(start_url)
-            print(f"  Crawling {start_url} + {len(all_pages) - 1} subpages...")
-
-            crawl_results = await crawler.arun_many(
-                urls=all_pages,
-                config=get_run_config(),
-                dispatcher=get_dispatcher(),
+            # SINGLE-PASS: crawl homepage WITH extraction, then use links for subpages
+            homepage_results = await crawler.arun_many(
+                urls=[start_url], config=get_run_config(), dispatcher=get_dispatcher()
             )
+            homepage_result = homepage_results[0]
 
-            # Collect valid extractions from all pages
             page_venues = []
-            for result in crawl_results:
-                if not result.success or not result.extracted_content:
-                    if result.url == start_url:
-                        errors.append({
-                            "url": result.url,
-                            "error": result.error_message or "No content extracted",
-                        })
-                        print(f"    FAIL: {result.url} -- {result.error_message}", file=sys.stderr)
-                    # Subpage failures are expected (404s), don't log as errors
-                    continue
 
-                venue = validate_extraction(result.extracted_content, result.url)
-                if venue is not None:
+            # Extract from homepage
+            if homepage_result.success and homepage_result.extracted_content:
+                venue = validate_extraction(homepage_result.extracted_content, homepage_result.url)
+                if venue:
                     page_venues.append(venue)
-                    print(f"    OK: {result.url}")
+                    print(f"    OK: {homepage_result.url}")
 
-            # Merge all pages into one result
+            # Discover subpages from homepage links
+            internal_links = homepage_result.links.get("internal", []) if homepage_result.success else []
+            subpages = discover_subpages_from_links(start_url, internal_links)
+
+            # Crawl subpages
+            if subpages:
+                subpage_results = await crawler.arun_many(
+                    urls=subpages, config=get_run_config(), dispatcher=get_dispatcher()
+                )
+                for result in subpage_results:
+                    if result.success and result.extracted_content:
+                        venue = validate_extraction(result.extracted_content, result.url)
+                        if venue:
+                            page_venues.append(venue)
+                            print(f"    OK: {result.url}")
+
+            # Merge pages into one result
             if page_venues:
                 merged = merge_venue_results(page_venues)
                 if merged:
@@ -85,8 +100,8 @@ async def main(urls: list[str], output_dir: Path, contacts_only: bool = False) -
                     results.append(merged.model_dump(mode="json"))
                     print(f"  -> {merged.name}: email={merged.email}, phone={merged.phone}")
             else:
-                errors.append({"url": start_url, "error": "No valid extractions from any page"})
-                print(f"  FAIL: {start_url} -- no data from any page", file=sys.stderr)
+                errors.append({"url": start_url, "error": "No data from any page"})
+                print(f"  FAIL: {start_url}", file=sys.stderr)
 
     # Write results
     if contacts_only:
@@ -104,6 +119,11 @@ async def main(urls: list[str], output_dir: Path, contacts_only: bool = False) -
     else:
         output_file = output_dir / "results.json"
         output_file.write_text(json.dumps(results, indent=2, default=str))
+
+    # CSV export (new)
+    if csv_export and results:
+        from export import export_outreach_csv
+        export_outreach_csv(results, output_dir / "outreach.csv")
 
     # Summary
     total = len(urls)
@@ -128,21 +148,39 @@ if __name__ == "__main__":
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("urls_file", nargs="?", type=Path, help="File with one URL per line")
     source.add_argument("--url", type=str, help="Scrape a single URL")
+    source.add_argument("--search", type=str, metavar="QUERY",
+        help="Search Google for venue URLs (uses SerpAPI)")
+    source.add_argument("--search-film", action="store_true",
+        help="Run predefined film-venue searches for San Diego")
     parser.add_argument("--output", type=Path, default=Path("results"), help="Output directory")
     parser.add_argument("--contacts-only", action="store_true", help="Output only contact info as JSONL")
+    parser.add_argument("--csv", action="store_true",
+        help="Also export results as outreach CSV")
     args = parser.parse_args()
 
+    # SERPAPI_API_KEY only required if using search
+    if (args.search or args.search_film) and not os.environ.get("SERPAPI_API_KEY"):
+        print("Error: SERPAPI_API_KEY not set. Required for --search/--search-film.", file=sys.stderr)
+        sys.exit(1)
+
+    # Resolve URL list from source
     if args.url:
         if not is_valid_url(args.url):
             parser.error(f"Invalid URL (must start with http:// or https://): {args.url}")
         url_list = [args.url]
+    elif args.search:
+        from discover import search_venues
+        url_list = search_venues(args.search)
+    elif args.search_film:
+        from discover import search_film_venues
+        url_list = search_film_venues()
     elif args.urls_file:
         url_list = load_urls(args.urls_file)
     else:
-        parser.error("Provide urls_file or --url")
+        parser.error("Provide urls_file, --url, --search, or --search-film")
 
     if not url_list:
         print("No URLs found.", file=sys.stderr)
         sys.exit(1)
 
-    asyncio.run(main(url_list, args.output, contacts_only=args.contacts_only))
+    asyncio.run(main(url_list, args.output, contacts_only=args.contacts_only, csv_export=args.csv))
