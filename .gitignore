@@ -9,3 +9,5 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 writers-room-council/
+.claude/worktrees/
+.content-pipeline-agent
