@@ -61,9 +61,9 @@ async def main(urls: list[str], output_dir: Path, contacts_only: bool = False, c
 
     async with AsyncWebCrawler(config=get_browser_config()) as crawler:
         for start_url in urls:
-            # SINGLE-PASS: crawl homepage WITH extraction, then use links for subpages
+            # SINGLE-PASS: crawl homepage with networkidle (for link discovery)
             homepage_results = await crawler.arun_many(
-                urls=[start_url], config=get_run_config(), dispatcher=get_dispatcher()
+                urls=[start_url], config=get_run_config(wait_until="networkidle"), dispatcher=get_dispatcher()
             )
             homepage_result = homepage_results[0]
 
@@ -176,8 +176,9 @@ if __name__ == "__main__":
         url_list = search_film_venues()
     elif args.urls_file:
         url_list = load_urls(args.urls_file)
-    else:
-        parser.error("Provide urls_file, --url, --search, or --search-film")
+
+    # Defense-in-depth: validate all URLs regardless of source
+    url_list = [u for u in url_list if is_valid_url(u)]
 
     if not url_list:
         print("No URLs found.", file=sys.stderr)

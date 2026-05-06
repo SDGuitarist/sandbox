@@ -30,33 +30,40 @@ CONTACT_SUBPATHS = [
 ]
 
 
+_STRATEGY: LLMExtractionStrategy | None = None
+
+
 def get_strategy() -> LLMExtractionStrategy:
-    return LLMExtractionStrategy(
-        llm_config=LLMConfig(
-            provider="anthropic/claude-sonnet-4-20250514",
-            api_token="env:ANTHROPIC_API_KEY",
-        ),
-        schema=VenueData.model_json_schema(),
-        extraction_type="schema",
-        instruction=EXTRACTION_PROMPT,
-        input_format="markdown",
-        chunk_token_threshold=2000,
-        overlap_rate=0.1,
-    )
+    global _STRATEGY
+    if _STRATEGY is None:
+        _STRATEGY = LLMExtractionStrategy(
+            llm_config=LLMConfig(
+                provider="anthropic/claude-sonnet-4-20250514",
+                api_token="env:ANTHROPIC_API_KEY",
+            ),
+            schema=VenueData.model_json_schema(),
+            extraction_type="schema",
+            instruction=EXTRACTION_PROMPT,
+            input_format="markdown",
+            chunk_token_threshold=2000,
+            overlap_rate=0.1,
+        )
+    return _STRATEGY
 
 
 def get_browser_config() -> BrowserConfig:
     return BrowserConfig(headless=True, enable_stealth=True)
 
 
-def get_run_config() -> CrawlerRunConfig:
+def get_run_config(wait_until: str = "domcontentloaded") -> CrawlerRunConfig:
+    """Get crawler config. Use networkidle for homepage (link discovery), domcontentloaded for subpages."""
     return CrawlerRunConfig(
         extraction_strategy=get_strategy(),
         cache_mode=CacheMode.BYPASS,  # prevent silent LLM skip on cache hits (#1455)
         page_timeout=15000,
-        wait_until="networkidle",  # waits for JS nav menus to render links
-        delay_before_return_html=2.0,
-        scan_full_page=True,  # catches lazy-loaded nav links
+        wait_until=wait_until,
+        delay_before_return_html=2.0 if wait_until == "networkidle" else 0.5,
+        scan_full_page=wait_until == "networkidle",  # only full-page scan for homepage
         excluded_tags=["nav", "footer", "aside", "header"],
         remove_overlay_elements=True,
     )
@@ -147,20 +154,3 @@ def discover_subpages_from_links(
             found.append(candidate)
 
     return found[:2]  # Hard cap at 2 subpages
-
-
-def discover_subpages(base_url: str) -> list[str]:
-    """Generate candidate subpage URLs for contact info discovery.
-
-    Returns the base URL plus common contact/about paths appended to it.
-    Deduplicates and preserves order (base URL first).
-    """
-    parsed = urlparse(base_url)
-    origin = f"{parsed.scheme}://{parsed.netloc}"
-
-    urls = [base_url]
-    for path in CONTACT_SUBPATHS:
-        candidate = urljoin(origin, path)
-        if candidate not in urls:
-            urls.append(candidate)
-    return urls

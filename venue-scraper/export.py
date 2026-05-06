@@ -23,7 +23,7 @@ def sanitize_cell(value: str | None) -> str:
         return ""
     # Strip control characters that can break cell boundaries
     value = value.strip()
-    value = value.replace("\t", " ").replace("\r", "").replace("\n", " ")
+    value = value.replace("\x00", "").replace("\t", " ").replace("\r", "").replace("\n", " ")
     if value and value[0] in "=-+@|":
         return "'" + value
     return value

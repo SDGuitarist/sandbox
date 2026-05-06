@@ -155,8 +155,10 @@ def search_venues(
         print(f"[discover] API ERROR: {data['error']}", file=sys.stderr)
         return []
 
-    # Cache successful responses
-    if use_cache and "error" not in data:
+    # Cache successful responses to disk (saves free-tier credits).
+    # NOTE: Cache has no integrity verification. Only trusted in local-only execution.
+    # If deploying to shared environments, add HMAC signing or TTL validation.
+    if use_cache:
         cache_file.write_text(json.dumps(data, indent=2))
 
     if not data.get("organic_results"):
