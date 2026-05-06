@@ -155,6 +155,14 @@ def cmd_export(args):
 
 
 def cmd_leads(args):
+    """Dispatch leads subcommands."""
+    if args.action == "held":
+        _cmd_leads_held()
+    elif args.action == "unhold":
+        _cmd_leads_unhold(args)
+
+
+def _cmd_leads_held():
     """Show held leads with reasons."""
     from models import query_held_leads
 
@@ -170,6 +178,34 @@ def cmd_leads(args):
         segment = lead["segment"] or "-"
         print(f"{lead['name'][:29]:<30} {segment:<15} {str(hook_q):<8} {lead['hold_reason']}")
     print(f"\nTotal held: {len(held)}")
+
+
+def _cmd_leads_unhold(args):
+    """Force-approve a held lead for campaign assignment."""
+    from models import unhold_lead, query_held_leads
+    from db import get_db
+
+    lead_id = args.lead_id
+
+    # Look up the lead for confirmation output
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT name FROM leads WHERE id = ?", (lead_id,)
+        ).fetchone()
+    if not row:
+        print(f"Lead {lead_id} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    # Check current hold reasons (for user feedback)
+    held = query_held_leads()
+    reasons = [h["hold_reason"] for h in held if h["id"] == lead_id]
+
+    if not unhold_lead(lead_id):
+        print(f"Lead {lead_id} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    reason_str = ", ".join(reasons) if reasons else "none (already eligible)"
+    print(f"Approved lead {lead_id} ({row['name']}). Was held for: {reason_str}")
 
 
 def cmd_import(args):
@@ -360,6 +396,8 @@ def main():
     sp_leads = subparsers.add_parser("leads", help="Lead queries")
     leads_sub = sp_leads.add_subparsers(dest="action", required=True)
     leads_sub.add_parser("held", help="Show leads held from auto-generation")
+    sp_unhold = leads_sub.add_parser("unhold", help="Force-approve a held lead for campaigns")
+    sp_unhold.add_argument("lead_id", type=int, help="Lead ID to approve")
     sp_leads.set_defaults(func=cmd_leads)
 
     # campaign
