@@ -4,6 +4,8 @@
  * Validates input with Zod, looks up rate data, computes delta,
  * persists a ToolEvent, and returns deterministic output + optional mock AI.
  *
+ * Request body: { input: BudgetInput, eventId: string, anonymousSessionId: string, workshopSessionId?: string }
+ *
  * Spec reference: Section 4 Tool 5
  */
 
@@ -14,67 +16,57 @@ import { getMockBudgetAI } from '@/lib/tools/budget-mock';
 import { createServiceClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
-  let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid JSON body' },
-      { status: 400 }
-    );
-  }
+    const body = await request.json();
 
-  // Validate input with Zod
-  const parsed = BudgetInput.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Validation failed', details: parsed.error.flatten() },
-      { status: 400 }
-    );
-  }
+    // Validate input (nested under body.input)
+    const parseResult = BudgetInput.safeParse(body.input);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'validation_error', details: parseResult.error.flatten() },
+        { status: 400 }
+      );
+    }
 
-  const input = parsed.data;
+    const { anonymousSessionId, eventId, workshopSessionId } = body;
 
-  // Deterministic lookup
-  let deterministicPayload;
-  try {
-    deterministicPayload = computeBudget(input);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Rate data unavailable.';
-    return NextResponse.json({ error: message }, { status: 422 });
-  }
+    if (!eventId || typeof eventId !== 'string') {
+      return NextResponse.json(
+        { error: 'validation_error', details: 'eventId is required' },
+        { status: 400 }
+      );
+    }
+    if (!anonymousSessionId || typeof anonymousSessionId !== 'string') {
+      return NextResponse.json(
+        { error: 'validation_error', details: 'anonymousSessionId is required' },
+        { status: 400 }
+      );
+    }
 
-  // Mock AI ethical analysis (Phase 2 uses mock; Phase 4 replaces with real API)
-  let probabilisticPayload: { ethicalAnalysis: string } | null = null;
-  try {
-    probabilisticPayload = await getMockBudgetAI(deterministicPayload);
-  } catch {
-    // LLM failure: show deterministic comparison with "Ethical analysis unavailable."
-    probabilisticPayload = null;
-  }
+    // Deterministic lookup
+    let deterministicPayload;
+    try {
+      deterministicPayload = computeBudget(parseResult.data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Rate data unavailable.';
+      return NextResponse.json({ error: message }, { status: 422 });
+    }
 
-  // Extract anonymous session ID and optional fields from request body
-  const anonymousSessionId =
-    typeof (body as Record<string, unknown>).anonymousSessionId === 'string'
-      ? (body as Record<string, unknown>).anonymousSessionId as string
-      : null;
-  const eventId =
-    typeof (body as Record<string, unknown>).eventId === 'string'
-      ? (body as Record<string, unknown>).eventId as string
-      : crypto.randomUUID();
-  const workshopSessionId =
-    typeof (body as Record<string, unknown>).workshopSessionId === 'string'
-      ? ((body as Record<string, unknown>).workshopSessionId as string)
-      : null;
+    // Mock AI ethical analysis (Phase 2 uses mock; Phase 4 replaces with real API)
+    let probabilisticPayload: { ethicalAnalysis: string } | null = null;
+    try {
+      probabilisticPayload = await getMockBudgetAI(deterministicPayload);
+    } catch {
+      probabilisticPayload = null;
+    }
 
-  // Persist ToolEvent if we have an anonymousSessionId
-  if (anonymousSessionId) {
+    // Persist ToolEvent
     const supabase = createServiceClient();
     const toolEvent = {
-      event_id: eventId,
+      event_id: eventId as string,
       schema_version: 1,
-      workshop_session_id: workshopSessionId,
-      anonymous_session_id: anonymousSessionId,
+      workshop_session_id: (workshopSessionId as string) || null,
+      anonymous_session_id: anonymousSessionId as string,
       user_id: null,
       tool_type: 'BUDGET' as const,
       deterministic_payload: deterministicPayload as unknown as Record<string, unknown>,
@@ -84,17 +76,29 @@ export async function POST(request: NextRequest) {
     const { error: insertError } = await supabase.from('tool_events').insert(toolEvent as any);
 
     if (insertError) {
-      // Log but don't fail the request -- the user still gets their result
-      console.error(
-        '[budget] Failed to persist ToolEvent:',
-        insertError.message,
-        { eventId, anonymousSessionId }
-      );
+      if (insertError.code === '23505') {
+        return NextResponse.json({
+          deterministicPayload,
+          probabilisticPayload,
+          deduplicated: true,
+        });
+      }
+      console.error('[budget] Failed to persist ToolEvent:', insertError.message, { eventId, anonymousSessionId });
     }
-  }
 
-  return NextResponse.json({
-    deterministicPayload,
-    probabilisticPayload,
-  });
+    return NextResponse.json({
+      deterministicPayload,
+      probabilisticPayload,
+    });
+  } catch (error) {
+    console.error('Budget API error:', {
+      route: '/api/tools/budget',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    return NextResponse.json(
+      { error: 'internal_error', message: 'An unexpected error occurred' },
+      { status: 500 }
+    );
+  }
 }

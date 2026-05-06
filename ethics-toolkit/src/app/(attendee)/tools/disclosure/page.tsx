@@ -169,15 +169,17 @@ export default function DisclosurePage() {
       const body = {
         eventId,
         anonymousSessionId,
-        projectTitle,
-        aiUsageAreas: aiUsageAreas.map((area) => ({
-          ...area,
-          toolsUsed: area.toolsUsed.filter((t) => t.trim().length > 0),
-          humanSupervisor: area.humanSupervisor || undefined,
-          compensationNotes: area.compensationNotes || undefined,
-        })),
-        unionStatus,
-        distributionTargets: targets.length > 0 ? targets : undefined,
+        input: {
+          projectTitle,
+          aiUsageAreas: aiUsageAreas.map((area) => ({
+            ...area,
+            toolsUsed: area.toolsUsed.filter((t) => t.trim().length > 0),
+            humanSupervisor: area.humanSupervisor || undefined,
+            compensationNotes: area.compensationNotes || undefined,
+          })),
+          unionStatus,
+          distributionTargets: targets.length > 0 ? targets : undefined,
+        },
       };
 
       const res = await fetch('/api/tools/disclosure', {

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { createIdempotencySet } from "@/lib/realtime/idempotency";
 import type { RiskAggregatePayload } from "@/lib/realtime/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MinResponseGuard } from "./min-response-guard";
 
 /**
@@ -45,17 +45,17 @@ const TIER_STYLES: Record<RiskTier, { bg: string; bar: string; text: string }> =
   };
 
 interface RiskBreakdownProps {
-  workshopSessionId: string;
+  channel: RealtimeChannel;
+  connected: boolean;
 }
 
-export function RiskBreakdown({ workshopSessionId }: RiskBreakdownProps) {
+export function RiskBreakdown({ channel, connected }: RiskBreakdownProps) {
   const [tierCounts, setTierCounts] = useState<Record<RiskTier, number>>({
     low: 0,
     medium: 0,
     high: 0,
     critical: 0,
   });
-  const [connected, setConnected] = useState(false);
   const seenRef = useRef(createIdempotencySet());
 
   const totalResponses = Object.values(tierCounts).reduce(
@@ -80,23 +80,11 @@ export function RiskBreakdown({ workshopSessionId }: RiskBreakdownProps) {
   );
 
   useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase.channel(`workshop:${workshopSessionId}`);
-
-    channel
-      .on("broadcast", { event: "risk.aggregate" }, (msg) => {
-        const data = msg.payload as RiskAggregatePayload;
-        handleRiskAggregate(data);
-      })
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopSessionId, handleRiskAggregate]);
+    channel.on("broadcast", { event: "risk.aggregate" }, (msg) => {
+      const data = msg.payload as RiskAggregatePayload;
+      handleRiskAggregate(data);
+    });
+  }, [channel, handleRiskAggregate]);
 
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-4">

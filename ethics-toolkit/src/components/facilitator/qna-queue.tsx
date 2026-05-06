@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { createIdempotencySet } from "@/lib/realtime/idempotency";
 import type {
   QnAQuestionPayload,
   QnAUpvotePayload,
 } from "@/lib/realtime/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MinResponseGuard } from "./min-response-guard";
 
 /**
@@ -28,12 +28,12 @@ interface Question {
 }
 
 interface QnAQueueProps {
-  workshopSessionId: string;
+  channel: RealtimeChannel;
+  connected: boolean;
 }
 
-export function QnAQueue({ workshopSessionId }: QnAQueueProps) {
+export function QnAQueue({ channel, connected }: QnAQueueProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [connected, setConnected] = useState(false);
   const seenRef = useRef(createIdempotencySet());
 
   const handleQuestion = useCallback(
@@ -77,10 +77,6 @@ export function QnAQueue({ workshopSessionId }: QnAQueueProps) {
   );
 
   useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase.channel(`workshop:${workshopSessionId}`);
-
     channel
       .on("broadcast", { event: "qna.question" }, (msg) => {
         const data = msg.payload as QnAQuestionPayload;
@@ -89,15 +85,8 @@ export function QnAQueue({ workshopSessionId }: QnAQueueProps) {
       .on("broadcast", { event: "qna.upvote" }, (msg) => {
         const data = msg.payload as QnAUpvotePayload;
         handleUpvote(data);
-      })
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
       });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopSessionId, handleQuestion, handleUpvote]);
+  }, [channel, handleQuestion, handleUpvote]);
 
   // Sort by upvote_count descending, then by createdAt ascending (oldest first for ties)
   const sorted = [...questions].sort((a, b) => {

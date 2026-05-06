@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useWorkshopChannel } from "@/lib/realtime/use-workshop-channel";
 import { PollChart } from "@/components/facilitator/poll-chart";
 import { WordCloud } from "@/components/facilitator/word-cloud";
 import { RiskBreakdown } from "@/components/facilitator/risk-breakdown";
@@ -32,6 +33,9 @@ export default function FacilitatorDashboardPage() {
   const [sessions, setSessions] = useState<WorkshopSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Single shared Realtime channel for all facilitator widgets
+  const { channel, connected } = useWorkshopChannel(activeSessionId);
 
   useEffect(() => {
     async function loadActiveSessions() {
@@ -117,19 +121,19 @@ export default function FacilitatorDashboardPage() {
       </div>
 
       {/* Dashboard Grid */}
-      {activeSessionId && (
+      {activeSessionId && channel && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Row 1: Poll + Word Cloud */}
-          <PollChart workshopSessionId={activeSessionId} />
-          <WordCloud workshopSessionId={activeSessionId} />
+          <PollChart channel={channel} connected={connected} />
+          <WordCloud channel={channel} connected={connected} />
 
           {/* Row 2: Risk + Confidence */}
-          <RiskBreakdown workshopSessionId={activeSessionId} />
-          <ConfidenceDelta workshopSessionId={activeSessionId} />
+          <RiskBreakdown channel={channel} connected={connected} />
+          <ConfidenceDelta channel={channel} connected={connected} />
 
           {/* Row 3: Q&A (full width) */}
           <div className="md:col-span-2">
-            <QnAQueue workshopSessionId={activeSessionId} />
+            <QnAQueue channel={channel} connected={connected} />
           </div>
         </div>
       )}

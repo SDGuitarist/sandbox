@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { createIdempotencySet } from "@/lib/realtime/idempotency";
 import type { PollResponsePayload } from "@/lib/realtime/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MinResponseGuard } from "./min-response-guard";
 
 /**
@@ -17,14 +17,14 @@ import { MinResponseGuard } from "./min-response-guard";
  */
 
 interface PollChartProps {
-  workshopSessionId: string;
+  channel: RealtimeChannel;
+  connected: boolean;
   /** Labels to display for each optionId. Falls back to optionId string. */
   optionLabels?: Record<string, string>;
 }
 
-export function PollChart({ workshopSessionId, optionLabels }: PollChartProps) {
+export function PollChart({ channel, connected, optionLabels }: PollChartProps) {
   const [tallies, setTallies] = useState<Record<string, number>>({});
-  const [connected, setConnected] = useState(false);
   const seenRef = useRef(createIdempotencySet());
 
   const totalResponses = Object.values(tallies).reduce((s, n) => s + n, 0);
@@ -43,23 +43,11 @@ export function PollChart({ workshopSessionId, optionLabels }: PollChartProps) {
   );
 
   useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase.channel(`workshop:${workshopSessionId}`);
-
-    channel
-      .on("broadcast", { event: "poll.response" }, (msg) => {
-        const data = msg.payload as PollResponsePayload;
-        handlePollResponse(data);
-      })
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopSessionId, handlePollResponse]);
+    channel.on("broadcast", { event: "poll.response" }, (msg) => {
+      const data = msg.payload as PollResponsePayload;
+      handlePollResponse(data);
+    });
+  }, [channel, handlePollResponse]);
 
   const maxCount = Math.max(1, ...Object.values(tallies));
 

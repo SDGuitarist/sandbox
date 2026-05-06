@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { createIdempotencySet } from "@/lib/realtime/idempotency";
 import type { WordCloudSubmitPayload } from "@/lib/realtime/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MinResponseGuard } from "./min-response-guard";
 
 /**
@@ -18,7 +18,8 @@ import { MinResponseGuard } from "./min-response-guard";
  */
 
 interface WordCloudProps {
-  workshopSessionId: string;
+  channel: RealtimeChannel;
+  connected: boolean;
 }
 
 /** Map font size between min and max based on frequency */
@@ -50,9 +51,8 @@ function colorForPhrase(phrase: string): string {
   return COLORS[Math.abs(hash) % COLORS.length];
 }
 
-export function WordCloud({ workshopSessionId }: WordCloudProps) {
+export function WordCloud({ channel, connected }: WordCloudProps) {
   const [frequencies, setFrequencies] = useState<Record<string, number>>({});
-  const [connected, setConnected] = useState(false);
   const seenRef = useRef(createIdempotencySet());
 
   const totalSubmissions = Object.values(frequencies).reduce(
@@ -78,23 +78,12 @@ export function WordCloud({ workshopSessionId }: WordCloudProps) {
   );
 
   useEffect(() => {
-    const supabase = createClient();
+    channel.on("broadcast", { event: "word_cloud.submit" }, (msg) => {
+      const data = msg.payload as WordCloudSubmitPayload;
+      handleSubmission(data);
+    });
 
-    const channel = supabase.channel(`workshop:${workshopSessionId}`);
-
-    channel
-      .on("broadcast", { event: "word_cloud.submit" }, (msg) => {
-        const data = msg.payload as WordCloudSubmitPayload;
-        handleSubmission(data);
-      })
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopSessionId, handleSubmission]);
+  }, [channel, handleSubmission]);
 
   const sortedPhrases = useMemo(
     () =>

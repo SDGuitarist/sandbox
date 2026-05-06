@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { createIdempotencySet } from "@/lib/realtime/idempotency";
 import type { ConfidenceSubmitPayload } from "@/lib/realtime/types";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MinResponseGuard } from "./min-response-guard";
 
 /**
@@ -17,13 +17,13 @@ import { MinResponseGuard } from "./min-response-guard";
  */
 
 interface ConfidenceDeltaProps {
-  workshopSessionId: string;
+  channel: RealtimeChannel;
+  connected: boolean;
 }
 
-export function ConfidenceDelta({ workshopSessionId }: ConfidenceDeltaProps) {
+export function ConfidenceDelta({ channel, connected }: ConfidenceDeltaProps) {
   const [beforeValues, setBeforeValues] = useState<number[]>([]);
   const [afterValues, setAfterValues] = useState<number[]>([]);
-  const [connected, setConnected] = useState(false);
   const seenRef = useRef(createIdempotencySet());
 
   const handleConfidence = useCallback(
@@ -41,23 +41,11 @@ export function ConfidenceDelta({ workshopSessionId }: ConfidenceDeltaProps) {
   );
 
   useEffect(() => {
-    const supabase = createClient();
-
-    const channel = supabase.channel(`workshop:${workshopSessionId}`);
-
-    channel
-      .on("broadcast", { event: "confidence.submit" }, (msg) => {
-        const data = msg.payload as ConfidenceSubmitPayload;
-        handleConfidence(data);
-      })
-      .subscribe((status) => {
-        setConnected(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [workshopSessionId, handleConfidence]);
+    channel.on("broadcast", { event: "confidence.submit" }, (msg) => {
+      const data = msg.payload as ConfidenceSubmitPayload;
+      handleConfidence(data);
+    });
+  }, [channel, handleConfidence]);
 
   const avg = (values: number[]): number => {
     if (values.length === 0) return 0;

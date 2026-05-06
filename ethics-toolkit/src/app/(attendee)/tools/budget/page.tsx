@@ -99,20 +99,20 @@ export default function BudgetCalculatorPage() {
         // Not in browser or no session yet -- proceed without persistence
       }
 
-      const payload: Record<string, unknown> = {
+      const input: Record<string, unknown> = {
         role,
         budgetTier,
         projectScope,
-        eventId: crypto.randomUUID(),
       };
-
       if (currentBudget !== "") {
-        payload.currentBudgetForRole = Number(currentBudget);
+        input.currentBudgetForRole = Number(currentBudget);
       }
 
-      if (anonymousSessionId) {
-        payload.anonymousSessionId = anonymousSessionId;
-      }
+      const payload: Record<string, unknown> = {
+        input,
+        eventId: crypto.randomUUID(),
+        anonymousSessionId: anonymousSessionId ?? "",
+      };
 
       const res = await fetch("/api/tools/budget", {
         method: "POST",
