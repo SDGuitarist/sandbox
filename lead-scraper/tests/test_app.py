@@ -27,8 +27,10 @@ def _seed_db():
 
 
 def _cleanup():
-    if DB_PATH.exists():
-        DB_PATH.unlink()
+    for suffix in ("", "-wal", "-shm"):
+        p = Path(str(DB_PATH) + suffix)
+        if p.exists():
+            p.unlink()
 
 
 def _client():

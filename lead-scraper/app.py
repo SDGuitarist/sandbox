@@ -8,8 +8,8 @@ from flask import Flask, render_template, request, make_response, redirect, url_
 # Ensure imports work when run from any directory
 sys.path.insert(0, str(Path(__file__).parent))
 
-from db import init_db
-from models import query_leads, delete_lead, VALID_SOURCES
+from db import init_db, get_db
+from models import query_leads, query_leads_scored, delete_lead, VALID_SOURCES
 from utils import sanitize_csv_cell
 
 
@@ -32,7 +32,7 @@ def create_app():
         if source and source not in VALID_SOURCES:
             source = ""
 
-        leads, total = query_leads(source=source, q=q, limit=per_page, offset=offset)
+        leads, total = query_leads_scored(source=source, q=q, limit=per_page, offset=offset)
         has_next = offset + per_page < total
 
         return render_template(
@@ -68,6 +68,53 @@ def create_app():
         output.headers["Content-Disposition"] = "attachment; filename=leads.csv"
         output.headers["Content-Type"] = "text/csv"
         return output
+
+    @app.get("/campaigns")
+    def campaigns():
+        with get_db() as conn:
+            rows = conn.execute(
+                "SELECT c.*, "
+                "(SELECT COUNT(*) FROM campaign_leads cl WHERE cl.campaign_id = c.id) as assigned, "
+                "(SELECT COUNT(*) FROM outreach_queue oq WHERE oq.campaign_id = c.id) as total_messages "
+                "FROM campaigns c ORDER BY c.created_at DESC"
+            ).fetchall()
+
+            campaign_list = []
+            for row in rows:
+                c = dict(row)
+                statuses = conn.execute(
+                    "SELECT status, COUNT(*) as count FROM outreach_queue "
+                    "WHERE campaign_id = ? GROUP BY status",
+                    (c["id"],),
+                ).fetchall()
+                c["statuses"] = {s["status"]: s["count"] for s in statuses}
+
+                # Per-segment breakdown
+                segments = conn.execute(
+                    "SELECT l.segment, oq.status, COUNT(*) as count "
+                    "FROM outreach_queue oq JOIN leads l ON oq.lead_id = l.id "
+                    "WHERE oq.campaign_id = ? GROUP BY l.segment, oq.status",
+                    (c["id"],),
+                ).fetchall()
+                seg_data = {}
+                for s in segments:
+                    seg = s["segment"] or "unknown"
+                    if seg not in seg_data:
+                        seg_data[seg] = {}
+                    seg_data[seg][s["status"]] = s["count"]
+                c["segments"] = seg_data
+
+                # Conversion metrics
+                sent = sum(c["statuses"].get(s, 0) for s in ("sent", "replied", "booked", "declined", "no_response"))
+                replied = c["statuses"].get("replied", 0) + c["statuses"].get("booked", 0)
+                booked = c["statuses"].get("booked", 0)
+                c["sent_total"] = sent
+                c["reply_rate"] = round(replied / sent * 100) if sent else 0
+                c["book_rate"] = round(booked / sent * 100) if sent else 0
+
+                campaign_list.append(c)
+
+        return render_template("campaigns.html", campaigns=campaign_list)
 
     @app.post("/leads/<int:lead_id>/delete")
     def delete(lead_id):
