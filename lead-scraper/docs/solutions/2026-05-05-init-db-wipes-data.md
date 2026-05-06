@@ -1,37 +1,64 @@
 ---
-title: init_db() Wipes Live Data -- Never Call It to Query
+title: Concurrent SQLite Access Wipes Data -- Never Touch leads.db During Background Tasks
 date: 2026-05-05
-tags: [lead-scraper, database, data-loss]
-failure_class: destructive-operation
+updated: 2026-05-06
+tags: [lead-scraper, database, data-loss, sqlite, concurrency]
+failure_class: concurrent-db-access
 ---
 
 ## Problem
 
-After two successful scrape runs (568 + 204 = 772 leads), all data was lost. The database was empty.
+Lost leads data three times in one session. 772 leads, then 1,093 leads, then 484 leads (restored from backup). Every loss happened when a foreground process touched leads.db while a background process was also using it.
 
-## Root Cause
+## Root Cause (Confirmed)
 
-To check lead counts after the scrape, a Python script called `init_db()` from `db.py` before querying. `init_db()` recreates the database schema from scratch, which drops and recreates tables -- wiping all existing data.
+**Concurrent SQLite access through separate connections.** NOT `init_db()` itself -- the schema uses `CREATE TABLE IF NOT EXISTS` and is safe when run alone.
 
-## Fix
+The pattern every time:
+1. Background task (scrape or enrichment) running against leads.db via `run.py`
+2. Foreground command opens a separate connection to the same DB (query, import, or debug test)
+3. WAL-mode SQLite with two competing connections causes the table to appear missing or data to vanish
+4. Background task fails with `no such table: leads` on next INSERT
 
-**Never call `init_db()` to inspect data.** To query the database, connect directly:
+**Timeline of third incident (confirmed):**
+- 17:11 UTC: Background scrape starts, `init_db()` runs fine, table exists
+- ~17:15 UTC: Foreground debug test opens raw `sqlite3.connect()` to same DB, then calls `init_db()` through a second connection
+- 17:26 UTC: Background scrape tries to INSERT -- `no such table: leads`
 
-```python
-import sqlite3
-conn = sqlite3.connect('leads.db')
-conn.row_factory = sqlite3.Row
-total = conn.execute('SELECT COUNT(*) FROM leads').fetchone()[0]
+The foreground debug test was the cause. Two connections to WAL-mode SQLite, one running `executescript()` while another has an open transaction, caused the table to disappear from the background process's view.
+
+## The Rule
+
+**NEVER touch leads.db while a background process is running against it. Not even to read it.**
+
+- No `sqlite3 leads.db` queries
+- No Python scripts importing from `db.py`
+- No `run.py` commands (even `export`)
+- No foreground enrichment while background scrape is running
+- NOTHING until the background task completes
+
+## Safe Workflow
+
 ```
-
-Or use the CLI: `sqlite3 leads.db "SELECT COUNT(*) FROM leads;"`
+1. Run operation (scrape, enrich, import) -- wait for completion
+2. Verify count: sqlite3 leads.db "SELECT COUNT(*) FROM leads"
+3. Back up: cp leads.db leads.backup-safe-$(date +%Y%m%d-%H%M%S).db
+4. Run next operation -- wait for completion
+5. Verify and back up again
+6. Repeat
+```
 
 ## Prevention
 
-- `init_db()` should only be called at application startup (inside `run.py main()`), never in ad-hoc scripts
-- Ideally, `init_db()` should use `CREATE TABLE IF NOT EXISTS` instead of dropping tables -- but that's a code change for another day
-- Before any database operation, ask: "Does this function write or just read?"
+- Run all DB operations sequentially, never in parallel
+- Back up after every successful operation before starting the next
+- Use `sqlite3` CLI for quick counts, never Python `db.py` imports
+- If a background task is running, do NOT check on the DB -- check the task output file instead
 
 ## Cost
 
-772 leads lost. Recovered ~734 by re-running both keyword sets in a single combined scrape. Some leads may have been lost due to Apify result variation.
+- Incident 1: 772 leads lost. Re-scraped to recover ~734.
+- Incident 2: 1,093 leads lost (734 + 359 new). No backup existed.
+- Incident 3: 484 leads nearly lost. Restored from manual backup.
+- Apify results vary between runs -- re-scraping does NOT recover identical leads.
+- Total Apify credits wasted on redundant re-scrapes: ~6 runs.
