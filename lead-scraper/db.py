@@ -46,6 +46,7 @@ def migrate_db(db_path=DB_PATH):
         ("hook_text", "TEXT"),
         ("hook_source_url", "TEXT"),
         ("hook_quality", "INTEGER"),
+        ("manual_approved", "INTEGER DEFAULT 0"),
     ]
     with get_db(db_path) as conn:
         existing = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}

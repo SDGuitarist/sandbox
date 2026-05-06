@@ -106,9 +106,10 @@ def assign_leads(campaign_id: int, min_hook_quality: int = 3,
             f"""INSERT INTO campaign_leads (campaign_id, lead_id)
                 SELECT ?, id FROM leads
                 WHERE segment IN ({placeholders})
-                  AND hook_quality > 0
-                  AND hook_quality <= ?
-                  AND segment_confidence >= 0.7
+                  AND (
+                    (hook_quality > 0 AND hook_quality <= ? AND segment_confidence >= 0.7)
+                    OR COALESCE(manual_approved, 0) = 1
+                  )
                 ON CONFLICT(campaign_id, lead_id) DO NOTHING""",
             [campaign_id] + segments + [min_hook_quality],
         )

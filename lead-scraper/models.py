@@ -53,25 +53,28 @@ def query_held_leads(db_path=DB_PATH) -> list[dict]:
     parts = []
     params: list = []
 
+    # Each UNION part excludes manually approved leads (COALESCE handles NULL)
+    approved_filter = "AND COALESCE(manual_approved, 0) = 0"
+
     # Low confidence classification
     parts.append(
         "SELECT id, name, segment, segment_confidence, hook_quality, "
         "'low_confidence' as hold_reason "
-        "FROM leads WHERE segment_confidence IS NOT NULL AND segment_confidence < 0.7"
+        f"FROM leads WHERE segment_confidence IS NOT NULL AND segment_confidence < 0.7 {approved_filter}"
     )
 
     # No hook found
     parts.append(
         "SELECT id, name, segment, segment_confidence, hook_quality, "
         "'no_hook' as hold_reason "
-        "FROM leads WHERE hook_quality = 0"
+        f"FROM leads WHERE hook_quality = 0 {approved_filter}"
     )
 
     # Low quality hook (tier 4-5)
     parts.append(
         "SELECT id, name, segment, segment_confidence, hook_quality, "
         "'low_quality_hook' as hold_reason "
-        "FROM leads WHERE hook_quality >= 4"
+        f"FROM leads WHERE hook_quality >= 4 {approved_filter}"
     )
 
     # Unsupported segment (no template file)
@@ -80,7 +83,7 @@ def query_held_leads(db_path=DB_PATH) -> list[dict]:
             f"SELECT id, name, segment, segment_confidence, hook_quality, "
             f"'unsupported_segment' as hold_reason "
             f"FROM leads WHERE segment IS NOT NULL "
-            f"AND segment NOT IN ({placeholders})"
+            f"AND segment NOT IN ({placeholders}) {approved_filter}"
         )
         params.extend(available)
 
@@ -222,6 +225,20 @@ def query_leads_scored(source="", q="", db_path=DB_PATH, limit=100, offset=0):
         scored.append(d)
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored, total
+
+
+def unhold_lead(lead_id: int, db_path=DB_PATH) -> bool:
+    """Set manual_approved=1 for a lead. Returns True if lead existed.
+
+    Administrative override -- bypasses computed hold reasons so the lead
+    becomes eligible for campaign assignment. models.py owns admin/status
+    writes (delete_lead, unhold_lead) distinct from enrichment columns.
+    """
+    with get_db(db_path) as conn:
+        conn.execute(
+            "UPDATE leads SET manual_approved = 1 WHERE id = ?", (lead_id,)
+        )
+        return conn.execute("SELECT changes()").fetchone()[0] > 0
 
 
 def delete_lead(lead_id: int, db_path=DB_PATH) -> bool:
