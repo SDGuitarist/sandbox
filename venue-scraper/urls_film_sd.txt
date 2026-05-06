@@ -1,0 +1,37 @@
+# San Diego Film Venues -- May 30 Workshop Outreach
+# Curated from SerpAPI discovery + manual adds
+
+# Film Festivals (highest partnership value)
+https://sdfilmfest.com/
+https://sdlatinofilm.com/
+https://gifilmfestivalsd.org/2026/
+https://sdaff.org/
+https://filmconsortiumsd.com/
+
+# Film Schools
+https://ttf.sdsu.edu/
+https://cinematicarts.ucsd.edu/
+https://www.sdcity.edu/academics/schools-programs/arts-humanities-comms/radiotv/fjmp.aspx
+https://www.sandiego.edu/cas/film/
+https://mediaartscenter.org/
+
+# Production Studios
+https://www.purecinema.tv/
+https://www.sandiegovideoproduction.com/
+https://www.hyntfilms.com/
+https://www.haleproductionstudios.com/
+
+# Screening Rooms / Cinemas
+https://digitalgym.org/
+https://angelikafilmcenter.com/sandiego
+https://adamsavetheater.com/
+
+# Meetups
+https://www.meetup.com/sdfilmnet/
+
+# Original venue list (not yet scraped with new pipeline)
+https://www.estancialajolla.com
+https://www.musicboxsd.com
+https://www.parqeventcenter.com
+https://www.theprado.com
+https://www.theabbeysd.com
