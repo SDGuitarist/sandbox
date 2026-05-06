@@ -1,0 +1,41 @@
+"""Resilience helpers for the enrichment pipeline.
+
+Exports:
+    parse_retry_after() -- safely parse Retry-After headers with a cap
+    YELLOW, RED, GREEN, RESET -- ANSI color constants (empty when piped)
+"""
+
+import sys
+
+
+# ---------------------------------------------------------------------------
+# Retry-After header parsing (security hardened)
+# ---------------------------------------------------------------------------
+
+def parse_retry_after(header_value, fallback=10.0):
+    """Parse Retry-After header with a 120s safety cap.
+
+    Handles integer seconds. Returns fallback on missing, non-integer,
+    or negative values. Caps at 120s to prevent hangs from misconfigured
+    servers (e.g. Retry-After: 999999 would sleep 11 days).
+    """
+    MAX_RETRY_WAIT = 120
+    if header_value is None:
+        return fallback
+    try:
+        wait = int(header_value)
+    except (ValueError, TypeError):
+        return fallback
+    return min(max(0, wait), MAX_RETRY_WAIT)
+
+
+# ---------------------------------------------------------------------------
+# ANSI color constants -- empty strings when stdout is not a terminal
+# ---------------------------------------------------------------------------
+
+_IS_TTY = sys.stdout.isatty()
+
+YELLOW = "\033[33m" if _IS_TTY else ""
+RED = "\033[31m" if _IS_TTY else ""
+GREEN = "\033[32m" if _IS_TTY else ""
+RESET = "\033[0m" if _IS_TTY else ""
