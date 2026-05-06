@@ -1,27 +1,26 @@
-# Review Context -- Sandbox
+# Review Context — Ethics Toolkit
 
 ## Risk Chain
 
-**Brainstorm risk:** Whether the swarm pattern works at 5+ agents and whether cross-module writes (log_activity called from 3 agents) work cleanly.
+**Brainstorm risk:** "Cross-cutting concerns (auth, realtime, LLM, payments, email) at platform scale have never been tested in a swarm."
 
-**Plan mitigation:** Detailed 728-line shared interface spec with explicit cross-module write pattern, data ownership table with "Called By" column, and per-agent assignment sections including the exact call pattern.
+**Plan mitigation:** 4-phase sequential build (foundation -> tools -> realtime -> integration) with schema pre-gate. Export Name Table + Cross-Boundary Wiring Section prescribed.
 
-**Work risk (from Feed-Forward):** Whether the 700+ line spec remains readable for agents, and whether spec-defined validation rules get implemented.
+**Work risk (from Feed-Forward):** Integration seam failures despite prescriptive spec -- agents produced correct isolated code but wrong imports, dead wiring, and non-atomic operations at boundaries.
 
-**Review resolution:** 9 findings (2 P1, 5 P2, 2 P3). Two root cause themes: (1) input validation gaps -- spec defined rules in prose that agents skipped, (2) swarm consistency gaps -- agents made independent UX decisions. All 9 fixed in parallel with zero conflicts. Cross-module writes, data ownership, CSRF, route prefixes all passed cleanly.
+**Review resolution:** 28 unique findings (12 P0, 12 P1-R1, 4 P1-R2) from 5 agents. All P0/P1 resolved across 3 commits. 15 P2s deferred. Top finding: import mismatches (13 files) from agents making independently reasonable naming decisions.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| project-tracker/routes/tasks.py | Due date validation, category check, description cap, flash messages, activity logging for assign/unassign | Input validation completeness |
-| project-tracker/routes/members.py | Flash messages added | Consistency with other routes |
-| project-tracker/schema.sql | Composite index added | Query performance |
-| project-tracker/models/categories.py | Dead code removed (COLOR_RE) | Import cleanliness |
-| project-tracker/models/members.py | Dead code removed (count_tasks_for_member) | YAGNI |
-| project-tracker/app.py | SECRET_KEY comment added | Documentation |
-| project-tracker/templates/tasks/form.html | maxlength on textarea | Client-side validation |
+| lib/ai/route-factory.ts | NEW: extracted from 3 duplicate routes | Single point of failure for all AI calls |
+| lib/realtime/use-workshop-channel.ts | NEW: shared channel hook | Channel lifecycle management |
+| lib/email/send.ts | HMAC token signing + retry fix | Crypto correctness, timing safety |
+| supabase/migrations/005_p1_fixes.sql | RLS, FKs, triggers, constraints | Data integrity, cascading effects |
+| supabase/migrations/004_atomic_upvote_and_claim.sql | Atomic RPCs | Concurrency correctness |
+| app/api/cron/process-emails/route.ts | Atomic claim-before-send | Double-send prevention |
 
 ## Plan Reference
 
-docs/plans/2026-04-12-feat-project-tracker-scale-test-plan.md
+`docs/plans/2026-04-30-ethics-toolkit-platform-spec.md`

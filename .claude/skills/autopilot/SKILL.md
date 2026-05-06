@@ -381,15 +381,20 @@ Run `/update-learnings`
 Verify it completes by checking that it outputs the "Learnings Propagated"
 table. If it does not run or errors, run it again manually.
 
-### Update Agent Pitfalls (MANDATORY -- DO NOT SKIP)
+### Verify Agent Pitfalls Updated (MANDATORY GATE)
 
-After review findings are resolved:
+`/update-learnings` Step 6 should have updated `~/.claude/docs/agent-pitfalls.md`.
+Verify by checking the Update Log table at the bottom of the file:
 
-1. Read `~/.claude/docs/agent-pitfalls.md`
-2. Trace each review finding to its originating agent
-3. Classify into existing failure class or create a new one
-4. Update the per-agent-type section if a specific agent type has a new pitfall
-5. Update the Update Log table at the bottom
+1. Read the last row of the Update Log in `~/.claude/docs/agent-pitfalls.md`
+2. Confirm it contains today's date AND the current build name
+3. If missing: the update-learnings step failed or was skipped. Run the
+   agent-pitfalls update manually:
+   - Read the solution doc's review findings
+   - Trace each finding to existing failure class or create new one
+   - Update per-agent-type rules
+   - Add Update Log entry
+4. Do NOT proceed to BUILD_TRACKING until this gate passes
 
 ### Update BUILD_TRACKING.md (MANDATORY -- DO NOT SKIP)
 
