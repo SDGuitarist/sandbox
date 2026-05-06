@@ -28,7 +28,7 @@ VENUE_SCRAPER_DIR = Path(_os.environ.get(
 ))
 
 from enrich_parsers import normalize_social_urls, parse_bio, parse_profile_page
-from resilience import parse_retry_after, RED, RESET
+from resilience import parse_retry_after, RED, YELLOW, GREEN, RESET
 
 CONTACT_SCRAPER_ACTOR = "vdrmota/contact-info-scraper"
 HUNTER_API_BASE = "https://api.hunter.io/v2"
@@ -486,9 +486,9 @@ def _check_hunter_quota(api_key: str) -> int | None:
         available = calls.get("available", 0)
         remaining = available - used
         if remaining <= available * 0.1:
-            print(f"  ** Hunter.io quota CRITICAL: {remaining}/{available} remaining **")
+            print(f"  {RED}** Hunter.io quota CRITICAL: {remaining}/{available} remaining **{RESET}")
         elif remaining <= available * 0.3:
-            print(f"  * Hunter.io quota warning: {remaining}/{available} remaining *")
+            print(f"  {YELLOW}* Hunter.io quota warning: {remaining}/{available} remaining *{RESET}")
         else:
             print(f"  Hunter.io quota: {remaining}/{available} remaining")
         return remaining
@@ -524,8 +524,8 @@ def enrich_with_hunter(
         return EnrichmentResult()
 
     # Check quota before burning API calls
-    remaining = _check_hunter_quota(api_key)
-    if remaining is not None and remaining < 1:
+    start_remaining = _check_hunter_quota(api_key)
+    if start_remaining is not None and start_remaining < 1:
         print("Hunter.io: no quota remaining, skipping.")
         return EnrichmentResult()
 
@@ -625,6 +625,19 @@ def enrich_with_hunter(
         time.sleep(0.25)  # stay under 4 req/sec
 
     session.close()
+
+    # End-of-run credit summary (skip if API was down)
+    if consecutive_fails < 3 and start_remaining is not None:
+        end_remaining = _check_hunter_quota(api_key)
+        if end_remaining is not None:
+            used = start_remaining - end_remaining
+            pct = (end_remaining / max(start_remaining + used, 1)) * 100
+            if pct <= 30:
+                print(f"\n{YELLOW}HUNTER.IO SUMMARY: Used {used} credits. "
+                      f"Only {end_remaining} remaining ({pct:.0f}%).{RESET}")
+            else:
+                print(f"\n{GREEN}HUNTER.IO SUMMARY: Used {used} credits. "
+                      f"{end_remaining} remaining ({pct:.0f}%).{RESET}")
     print(
         f"\nHunter.io complete. {result.leads_processed} enriched, "
         f"{result.emails_found} emails found."
