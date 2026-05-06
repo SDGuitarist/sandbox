@@ -143,9 +143,9 @@ CREATE TABLE projects (
   protecting TEXT,
   -- Handoff state (drives contextual next-step UX)
   handoff_state TEXT NOT NULL DEFAULT 'ready',
-  -- CHECK (handoff_state IN ('ready', 'seed_complete', 'awaiting_draft', 'council_complete_greenlight', 'council_complete_rewrite', 'council_complete_pass', 'awaiting_revision', 'editor_ready'))
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  CHECK (handoff_state IN ('ready', 'seed_complete', 'awaiting_draft', 'council_complete_greenlight', 'council_complete_rewrite', 'council_complete_pass', 'awaiting_revision', 'editor_ready'))
 );
 CREATE INDEX idx_projects_user ON projects(user_id);
 
@@ -164,7 +164,6 @@ CREATE TABLE council_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   mode TEXT NOT NULL,
-  -- CHECK (mode IN ('seed_council', 'standard_council', 'returning_writer'))
   draft_version_id UUID REFERENCES draft_versions(id),
   previous_session_id UUID REFERENCES council_sessions(id),
   -- Structured session data
@@ -175,17 +174,18 @@ CREATE TABLE council_sessions (
   closing_handoff_delivered BOOLEAN DEFAULT false,
   -- Standard Council / RWP outputs
   verdict TEXT,
-  -- CHECK (verdict IN ('greenlight', 'rewrite', 'pass'))
   pass_subtype TEXT,
-  -- CHECK (pass_subtype IN ('premise_broken', 'reckoning_insufficient'))
   verdict_explanation TEXT,
   central_question TEXT,
   revision_map TEXT,
   what_survives TEXT,
   -- Status
   status TEXT NOT NULL DEFAULT 'in_progress',
-  -- CHECK (status IN ('in_progress', 'completed', 'abandoned'))
   current_step INTEGER NOT NULL DEFAULT 0,
+  CHECK (mode IN ('seed_council', 'standard_council', 'returning_writer')),
+  CHECK (verdict IS NULL OR verdict IN ('greenlight', 'rewrite', 'pass')),
+  CHECK (pass_subtype IS NULL OR pass_subtype IN ('premise_broken', 'reckoning_insufficient')),
+  CHECK (status IN ('in_progress', 'completed', 'abandoned')),
   created_at TIMESTAMPTZ DEFAULT now(),
   completed_at TIMESTAMPTZ
 );
@@ -197,8 +197,8 @@ CREATE TABLE editor_sessions (
   project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   draft_version_id UUID NOT NULL REFERENCES draft_versions(id),
   status TEXT NOT NULL DEFAULT 'analyzing',
-  -- CHECK (status IN ('analyzing', 'review', 'completed'))
   suppression_count INTEGER DEFAULT 0,
+  CHECK (status IN ('analyzing', 'review', 'completed')),
   signature_snapshot JSONB,
   created_at TIMESTAMPTZ DEFAULT now(),
   completed_at TIMESTAMPTZ
@@ -210,13 +210,13 @@ CREATE TABLE editor_suggestions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   editor_session_id UUID NOT NULL REFERENCES editor_sessions(id) ON DELETE CASCADE,
   principle_id INTEGER NOT NULL,
-  -- CHECK (principle_id BETWEEN 1 AND 15)
   classification TEXT NOT NULL,
-  -- CHECK (classification IN ('structural_catch', 'voice_formalization', 'voice_protection'))
   -- Deterministic pre-LLM flags (P7, P8) always classified as 'voice_protection'
   -- P9 classified by LLM as 'voice_protection' when register matches
   -- P1-6, 10-15 classified by LLM as 'structural_catch' or 'voice_formalization'
   is_suppressed BOOLEAN NOT NULL DEFAULT false,
+  CHECK (principle_id BETWEEN 1 AND 15),
+  CHECK (classification IN ('structural_catch', 'voice_formalization', 'voice_protection')),
   -- true when classification = 'voice_formalization' and register_leveling is off
   flag_text TEXT NOT NULL,
   question_text TEXT,
@@ -225,8 +225,8 @@ CREATE TABLE editor_suggestions (
   char_offset_end INTEGER NOT NULL,
   -- User decision (null until decided)
   user_decision TEXT,
-  -- CHECK (user_decision IN ('accept', 'reject', 'accept_no_edit'))
   decided_at TIMESTAMPTZ,
+  CHECK (user_decision IS NULL OR user_decision IN ('accept', 'reject', 'accept_no_edit')),
   user_note TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -253,6 +253,15 @@ CREATE TABLE editorial_signatures (
   total_suppressions INTEGER DEFAULT 0,
   last_updated TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id)
+);
+
+-- Rate limiting (per-user counters for expensive AI routes — see Section 9 for limits)
+CREATE TABLE rate_limits (
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  route_pattern TEXT NOT NULL,
+  window_start TIMESTAMPTZ NOT NULL,
+  request_count INTEGER DEFAULT 1,
+  PRIMARY KEY (user_id, route_pattern, window_start)
 );
 ```
 
@@ -288,39 +297,61 @@ CREATE POLICY "Users manage own suggestions" ON editor_suggestions FOR ALL
     WHERE p.user_id = auth.uid()
   ));
 CREATE POLICY "Users manage own signature" ON editorial_signatures FOR ALL USING (auth.uid() = user_id);
+
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE allowed_emails ENABLE ROW LEVEL SECURITY;
+
+-- rate_limits: users can read own limits; writes via SECURITY DEFINER upsert_rate_limit() only
+CREATE POLICY "Users read own rate limits" ON rate_limits FOR SELECT USING (auth.uid() = user_id);
+
+-- allowed_emails: no direct user access; checked only by SECURITY DEFINER auth hook
+CREATE POLICY "No direct access to allowed_emails" ON allowed_emails FOR SELECT USING (false);
 ```
 
 ```sql
 -- Migration 003: RPC Functions (Atomic Operations)
 
 -- Atomic signature update after accept/reject decision
+-- p_principle_id removed: derived from the suggestion row (never trust caller-supplied value)
 CREATE OR REPLACE FUNCTION update_signature_after_decision(
   p_user_id UUID,
   p_suggestion_id UUID,
-  p_principle_id INTEGER,
   p_decision TEXT,
   p_user_note TEXT DEFAULT NULL,
   p_decided_at TIMESTAMPTZ DEFAULT now()
 ) RETURNS void AS $$
 DECLARE
+  v_principle_id INTEGER;
   v_key TEXT;
-  v_current JSONB;
 BEGIN
   -- SECURITY: verify caller owns this data
   IF p_user_id != auth.uid() THEN
     RAISE EXCEPTION 'unauthorized';
   END IF;
 
-  -- Update the suggestion
-  UPDATE editor_suggestions
+  -- Atomic: update suggestion only if undecided AND owned by caller.
+  -- Combines ownership check + idempotency + principle_id derivation in one statement.
+  -- If already decided or not owned, no row is returned and we exit silently.
+  UPDATE public.editor_suggestions es
   SET user_decision = p_decision, decided_at = p_decided_at, user_note = p_user_note
-  WHERE id = p_suggestion_id;
+  FROM public.editor_sessions eds
+  JOIN public.projects p ON eds.project_id = p.id
+  WHERE es.id = p_suggestion_id
+    AND es.editor_session_id = eds.id
+    AND p.user_id = auth.uid()
+    AND es.user_decision IS NULL
+  RETURNING es.principle_id INTO v_principle_id;
 
-  -- Build principle key
-  v_key := 'p' || p_principle_id::TEXT;
+  -- No row updated: either already decided (idempotent) or not owned
+  IF v_principle_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- Build principle key from derived value
+  v_key := 'p' || v_principle_id::TEXT;
 
   -- Upsert signature with principle weight update
-  INSERT INTO editorial_signatures (user_id, principle_weights, total_decisions_logged, last_updated)
+  INSERT INTO public.editorial_signatures (user_id, principle_weights, total_decisions_logged, last_updated)
   VALUES (p_user_id, jsonb_build_object(v_key, jsonb_build_object(
     'accept_count', CASE WHEN p_decision IN ('accept', 'accept_no_edit') THEN 1 ELSE 0 END,
     'reject_count', CASE WHEN p_decision = 'reject' THEN 1 ELSE 0 END,
@@ -344,20 +375,38 @@ BEGIN
     total_decisions_logged = editorial_signatures.total_decisions_logged + 1,
     last_updated = now();
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
--- Auth Hook: whitelist enforcement (prevents magic link for non-whitelisted emails)
--- NOTE: This function must be wired to auth.users via Supabase Dashboard > Auth > Hooks > "Before User Created"
--- The trigger cannot be created via SQL migration because auth.users is managed by Supabase
-CREATE OR REPLACE FUNCTION check_email_allowed()
-RETURNS trigger AS $$
+-- Auth Hook: whitelist enforcement (prevents signup for non-whitelisted emails)
+-- Wire via Supabase Dashboard > Auth > Hooks > "Before User Created" (Postgres hook type)
+-- Contract: receives event jsonb with user object; return {} to allow, error object to reject.
+-- Email path: event->'user'->>'email' (NOT event->'record')
+CREATE OR REPLACE FUNCTION public.check_email_allowed(event jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  user_email TEXT;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM allowed_emails WHERE email = NEW.email) THEN
-    RAISE EXCEPTION 'Signup not allowed for this email';
+  user_email := event->'user'->>'email';
+  IF NOT EXISTS (SELECT 1 FROM public.allowed_emails WHERE email = user_email) THEN
+    RETURN jsonb_build_object(
+      'error', jsonb_build_object(
+        'http_code', 403,
+        'message', 'Beta access is by invitation. Contact alex@amplifyai.to.'
+      )
+    );
   END IF;
-  RETURN NEW;
+  -- Return empty object to allow signup
+  RETURN '{}'::jsonb;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+-- Auth hook permissions: only supabase_auth_admin may call this function
+GRANT EXECUTE ON FUNCTION public.check_email_allowed(jsonb) TO supabase_auth_admin;
+REVOKE EXECUTE ON FUNCTION public.check_email_allowed(jsonb) FROM authenticated, anon, public;
 
 -- RLS helper: get user's project IDs (avoids per-row subquery in RLS policies)
 CREATE OR REPLACE FUNCTION auth.user_project_ids()
@@ -367,14 +416,119 @@ SET search_path = ''
 AS $$
   SELECT p.id FROM public.projects p WHERE p.user_id = (SELECT auth.uid())
 $$;
+
+-- SECURITY: Force non-privileged defaults on profile INSERT (prevents self-promotion via INSERT)
+-- Authenticated users always get is_admin = false, is_beta_whitelisted = false.
+-- Service_role / SQL editor (auth.uid() IS NULL) can set any values for bootstrap.
+CREATE OR REPLACE FUNCTION enforce_non_privileged_insert()
+RETURNS trigger AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN NEW;  -- service_role / SQL editor: allow any values
+  END IF;
+  NEW.is_admin := false;
+  NEW.is_beta_whitelisted := false;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+CREATE TRIGGER trg_enforce_non_privileged_insert
+  BEFORE INSERT ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_non_privileged_insert();
+
+-- SECURITY: Prevent non-admin users from escalating privileges via profile UPDATE
+-- Service_role / SQL editor (auth.uid() IS NULL) bypasses this check for admin bootstrap.
+CREATE OR REPLACE FUNCTION prevent_privilege_escalation()
+RETURNS trigger AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RETURN NEW;  -- service_role / SQL editor: allow any changes
+  END IF;
+  IF (NEW.is_admin IS DISTINCT FROM OLD.is_admin
+      OR NEW.is_beta_whitelisted IS DISTINCT FROM OLD.is_beta_whitelisted) THEN
+    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true) THEN
+      RAISE EXCEPTION 'Only admins can modify admin or whitelist status';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+CREATE TRIGGER trg_prevent_privilege_escalation
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_privilege_escalation();
+
+-- Admin check helper (used by /api/admin/* routes)
+CREATE OR REPLACE FUNCTION auth.is_admin()
+RETURNS boolean
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
+    (SELECT is_admin FROM public.profiles WHERE id = (SELECT auth.uid())),
+    false
+  )
+$$;
+
+-- Rate limit upsert (SECURITY DEFINER bypasses RLS for writes)
+CREATE OR REPLACE FUNCTION upsert_rate_limit(
+  p_route_pattern TEXT,
+  p_window_start TIMESTAMPTZ
+) RETURNS INTEGER AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  INSERT INTO public.rate_limits (user_id, route_pattern, window_start, request_count)
+  VALUES (auth.uid(), p_route_pattern, p_window_start, 1)
+  ON CONFLICT (user_id, route_pattern, window_start) DO UPDATE
+    SET request_count = rate_limits.request_count + 1
+  RETURNING request_count INTO v_count;
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
+
+-- Admin RPC: add an email to the beta whitelist (called by /api/admin/whitelist)
+CREATE OR REPLACE FUNCTION public.add_allowed_email(p_email TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+  IF NOT (SELECT auth.is_admin()) THEN
+    RAISE EXCEPTION 'Only admins can add whitelisted emails';
+  END IF;
+  INSERT INTO public.allowed_emails (email)
+  VALUES (p_email)
+  ON CONFLICT (email) DO NOTHING;
+END;
+$$;
+
+-- Only authenticated users can call (admin check is inside the function)
+GRANT EXECUTE ON FUNCTION public.add_allowed_email(text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.add_allowed_email(text) FROM anon, public;
 ```
 
 ```sql
--- Migration 004: Seed Data
+-- Migration 004: Seed Data & Bootstrap
+--
+-- BOOTSTRAP ORDER (critical):
+-- 1. Run migrations 001-003 (schema, RLS, RPC functions, triggers)
+-- 2. Run this migration to seed Alex's email into allowed_emails
+-- 3. Enable the "Before User Created" hook in Supabase Dashboard
+--    (if the hook is enabled before this seed runs, Alex cannot sign up)
+-- 4. Alex signs up via magic link (profile created with is_admin = false
+--    by trg_enforce_non_privileged_insert — this is correct and expected)
+-- 5. Promote Alex to admin by running this in the Supabase SQL editor:
+--      UPDATE profiles SET is_admin = true WHERE email = 'alex@amplifyai.to';
+--    This works because the SQL editor runs as postgres (auth.uid() IS NULL),
+--    which bypasses prevent_privilege_escalation(). It will NOT work from
+--    the app or via the anon/authenticated client.
+-- 6. After promotion, Alex can add beta testers via /api/admin/whitelist
 
--- Beta whitelist (populated by Alex before workshop)
--- INSERT INTO profiles (id, email, is_beta_whitelisted) VALUES (...);
--- Seed data is managed via admin route, not migration
+INSERT INTO allowed_emails (email) VALUES ('alex@amplifyai.to') ON CONFLICT DO NOTHING;
 ```
 
 ---
@@ -432,6 +586,7 @@ const FingerprintInput = z.object({
 const ScoringFloorResult = z.object({
   passed: z.boolean(),
   reason: z.string().optional(),
+  isMock: z.boolean().optional(),  // true when running in mock mode
 });
 
 const ProjectCalibration = z.object({
@@ -451,11 +606,40 @@ All council session transcripts use this discriminated union. Prevents swarm age
 const TranscriptEntry = z.discriminatedUnion('type', [
   z.object({ type: z.literal('coaxing'), content: z.string() }),
   z.object({ type: z.literal('micro_interview'), question: z.string(), response: z.string() }),
-  z.object({ type: z.literal('beat'), beat: z.number(), voiceName: z.string(), content: z.string() }),
-  z.object({ type: z.literal('voice'), voiceNumber: z.number(), voiceName: z.string(), content: z.string(), keyQuestion: z.string() }),
+  z.object({
+    type: z.literal('beat'),
+    beat: z.number().min(1).max(5),
+    voiceName: z.string(),
+    content: z.string(),
+    protectionQuestion: z.string().optional(),   // Beat 2: "what would you fight to keep?"
+    unanswerableQuestion: z.string().optional(),  // Beat 4: Contrarian's unanswerable
+    finalQuestion: z.string().optional(),         // Beat 5: "what's the version that survives?"
+  }),
+  z.object({
+    type: z.literal('voice'),
+    voiceNumber: z.number().min(1).max(5),
+    voiceName: z.enum(['champion', 'story_architect', 'character_interrogator', 'audience_proxy', 'contrarian']),
+    content: z.string(),
+    keyQuestion: z.string(),
+    specificReferences: z.array(z.string()).optional(),
+  }),
   z.object({ type: z.literal('writer_response'), content: z.string(), respondingTo: z.string() }),
-  z.object({ type: z.literal('closing_handoff'), content: z.string() }),
-  z.object({ type: z.literal('verdict'), verdict: z.string(), explanation: z.string(), centralQuestion: z.string() }),
+  z.object({
+    type: z.literal('closing_handoff'),
+    content: z.string(),
+    namedIntent: z.string().optional(),          // Writer's Beat 5 answer
+    unanswerableQuestion: z.string().optional(),  // From Beat 4
+  }),
+  z.object({
+    type: z.literal('verdict'),
+    verdict: z.enum(['greenlight', 'rewrite', 'pass']),
+    passSubtype: z.enum(['premise_broken', 'reckoning_insufficient']).optional(),
+    verdictExplanation: z.string(),
+    centralQuestion: z.string(),
+    revisionMap: z.string().optional(),
+    whatSurvives: z.string().optional(),
+  }),
+  z.object({ type: z.literal('scoring_floor'), passed: z.boolean(), reason: z.string().optional() }),
 ]);
 
 type Transcript = z.infer<typeof TranscriptEntry>[];
@@ -532,7 +716,7 @@ const CouncilVerdict = z.object({
 
 ### 4.4 Returning Writer Protocol
 
-**Flow:** Reads previous session's central question, verdict, and revision map from project record. Runs full 5-voice council calibrated against the previous pass. New verdict accounts for revision progress.
+**Flow:** Reads previous session's central question, verdict, and revision map from `council_sessions` (via `previous_session_id` FK on the new session, not from the projects table). Runs full 5-voice council calibrated against the previous pass. New verdict accounts for revision progress.
 
 ```typescript
 // lib/schemas/rwp.ts
@@ -569,9 +753,13 @@ const EditorSuggestion = z.object({
 });
 
 const EditorAnalysisResponse = z.object({
-  suggestions: z.array(EditorSuggestion),
+  editorSessionId: z.string().uuid(),  // persisted session ID for /decide calls
+  suggestions: z.array(EditorSuggestion.extend({
+    id: z.string().uuid(),  // persisted suggestion ID for /decide calls
+  })),
   totalGenerated: z.number(),
   suppressedCount: z.number(),
+  isMock: z.boolean().optional(),  // true when running in mock mode
 });
 
 // Crystal filter: suppress suggestions where classification = 'voice_formalization'
@@ -612,6 +800,128 @@ const EditorAnalysisResponse = z.object({
 **Active state:** Principle acceptance rates (bar chart per principle), total documents, total decisions, suppression count ("N voice formalizations suppressed"), compounding indicators.
 
 **Must be readable after 2 sessions.** Even with 3 decisions logged, show: "tell-after-show flagged twice, both accepted."
+
+### 4.7 API Route Contracts (Full Input/Output Schemas)
+
+Every API route's request and response types are defined here. Agents building routes MUST use these exact schemas for validation. All routes return `ApiError` on failure.
+
+```typescript
+// lib/schemas/api-contracts.ts
+
+// -- Shared error envelope (all routes) --
+const ApiError = z.object({
+  error: z.string(),
+  retryAfter: z.number().optional(),              // seconds (429 only)
+  schemaValidationFailed: z.boolean().optional(),  // true when LLM output failed Zod parse
+});
+
+// -- Phase 0 --
+// POST /api/phase0/fingerprint
+const FingerprintRequest = FingerprintInput; // reuse existing schema
+const FingerprintResponse = z.object({
+  success: z.literal(true),
+  fingerprintId: z.string().uuid(),
+});
+
+// POST /api/phase0/scoring-floor
+const ScoringFloorRequest = z.object({
+  writingSample: z.string().min(100).max(10000),
+  beforeAfterBefore: z.string().min(50).max(5000).optional(),
+  beforeAfterAfter: z.string().min(50).max(5000).optional(),
+});
+const ScoringFloorResponse = ScoringFloorResult; // reuse existing
+
+// -- Projects --
+// POST /api/projects
+const CreateProjectRequest = z.object({
+  title: z.string().min(1).max(200),
+  genre: z.literal('essay_longform'),
+  description: z.string().min(1).max(500),
+  intent: z.string().min(1).max(500),
+  protecting: z.string().min(1).max(500),
+});
+const CreateProjectResponse = z.object({
+  success: z.literal(true),
+  projectId: z.string().uuid(),
+});
+
+// -- Editor --
+// POST /api/editor/analyze
+const EditorAnalyzeRequest = z.object({
+  projectId: z.string().uuid(),
+  content: z.string().min(1).max(100000),
+});
+const EditorAnalyzeResponse = EditorAnalysisResponse; // reuse existing
+// On failure: returns ApiError (never raw LLM output)
+
+// POST /api/editor/decide
+const EditorDecideRequest = z.object({
+  suggestionId: z.string().uuid(),
+  // principleId removed: derived from the suggestion row by the RPC function
+  decision: z.enum(['accept', 'reject', 'accept_no_edit']),
+  userNote: z.string().max(1000).optional(),
+});
+const EditorDecideResponse = z.object({ success: z.literal(true) });
+
+// -- Council: Seed --
+// POST /api/council/seed (streaming via Vercel AI SDK)
+const SeedBeatRequest = z.object({
+  projectId: z.string().uuid(),
+  sessionId: z.string().uuid().optional(),  // omit to start new session
+  beat: z.number().min(1).max(5),
+  userResponse: z.string().max(5000).optional(),
+});
+// Response: streamed via useChat/DefaultChatTransport. Structured output
+// extracted server-side as SeedBeatResponse or SeedClosingHandoff (beat 5+).
+// If mock mode: returns getMockSeedBeat() with isMock indicator in stream metadata.
+
+// -- Council: Standard --
+// POST /api/council/standard (streaming via Vercel AI SDK)
+const StandardVoiceRequest = z.object({
+  projectId: z.string().uuid(),
+  sessionId: z.string().uuid().optional(),
+  voiceNumber: z.number().min(1).max(5),
+  draftVersionId: z.string().uuid(),
+  userResponse: z.string().max(5000).optional(),
+});
+// Response: streamed. Structured output as CouncilVoiceResponse.
+// After voice 5: additional CouncilVerdict returned.
+
+// -- Council: RWP --
+// POST /api/council/rwp (streaming via Vercel AI SDK)
+const RWPVoiceRequest = z.object({
+  projectId: z.string().uuid(),
+  sessionId: z.string().uuid().optional(),
+  previousSessionId: z.string().uuid(),
+  voiceNumber: z.number().min(1).max(5),
+  draftVersionId: z.string().uuid(),
+  userResponse: z.string().max(5000).optional(),
+});
+// Response: streamed. Same structured output as Standard Council.
+
+// -- Signature --
+// GET /api/signature (no request body)
+const SignatureResponse = z.object({
+  principleWeights: z.record(z.string(), z.object({
+    acceptCount: z.number(),
+    rejectCount: z.number(),
+    acceptNoEditCount: z.number(),
+    totalFlagged: z.number(),
+  })),
+  registerLeveling: z.boolean(),
+  totalDocumentsEdited: z.number(),
+  totalDecisionsLogged: z.number(),
+  totalSuppressions: z.number(),
+});
+
+// -- Admin (requires auth.is_admin() = true) --
+// POST /api/admin/whitelist — calls add_allowed_email() RPC
+const WhitelistRequest = z.object({ email: z.string().email() });
+const WhitelistResponse = z.object({ success: z.literal(true) });
+
+// POST /api/admin/seed-demo (no request body)
+const SeedDemoResponse = z.object({ success: z.literal(true), seededProjects: z.number() });
+```
 
 ---
 
@@ -673,7 +983,9 @@ const EditorAnalysisResponse = z.object({
 ```typescript
 // lib/ai/client.ts
 import Anthropic from '@anthropic-ai/sdk';
+import { createAnthropic } from '@ai-sdk/anthropic';
 
+// --- Anthropic SDK (non-streaming structured calls: Scoring Floor, Editor analysis) ---
 let client: Anthropic | null = null;
 
 export function getClient(): Anthropic {
@@ -681,6 +993,13 @@ export function getClient(): Anthropic {
     client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
   return client;
+}
+
+// --- Vercel AI SDK (streaming calls: Council voices, Seed beats) ---
+// Pre-configured model for streamText() / Output.object() — see Section 5
+export function getStreamingModel() {
+  const provider = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  return provider('claude-opus-4-6');
 }
 
 export function hasApiKey(): boolean {
@@ -697,8 +1016,8 @@ export const MODELS = {
 2. Construct system prompt from prompt template + fingerprint + project calibration + session context.
 3. Call API with 30-second AbortController timeout (longer than ethics toolkit's 15s because Council responses are longer).
 4. Validate response against Zod schema.
-5. If validation fails, return raw text with `schema_validation_failed: true` flag.
-6. On timeout or API error, return mock response with `is_mock: true` flag.
+5. If validation fails, store raw text server-side (log for debugging). Return generic error with `schema_validation_failed: true` flag. Never expose raw LLM output to the client (could leak system prompt fragments).
+6. On timeout or API error, return mock response with `isMock: true` flag (matches Zod schema field name).
 
 ### Prompt Caching
 - Use Anthropic prompt caching for the system prompt portion (voice persona + framework rules).
@@ -759,16 +1078,7 @@ Templates stored in `lib/prompts/` as TypeScript template literal functions that
 | `/api/editor/*` | 5 req/hour, 25 req/day | User | Supabase `rate_limits` table |
 | All other `/api/*` | 60 req/min | IP | In-memory Map (best-effort) |
 
-```sql
--- Include in Migration 001 (database agent creates this alongside other tables)
-CREATE TABLE rate_limits (
-  user_id UUID NOT NULL REFERENCES profiles(id),
-  route_pattern TEXT NOT NULL,
-  window_start TIMESTAMPTZ NOT NULL,
-  request_count INTEGER DEFAULT 1,
-  PRIMARY KEY (user_id, route_pattern, window_start)
-);
-```
+Schema: see `rate_limits` table in Section 3, Migration 001. RLS in Migration 002. Upsert via `upsert_rate_limit()` RPC in Migration 003.
 
 Response on limit: HTTP 429 with `{ "error": "rate_limited", "retryAfter": <seconds> }`.
 
@@ -778,22 +1088,23 @@ Response on limit: HTTP 429 with `{ "error": "rate_limited", "retryAfter": <seco
 
 ## 10. Autopilot Phasing Strategy
 
-### Phase 1: Foundation (3 agents, days 1-3)
+### Phase 1: Foundation (4 agents, days 1-3)
 
 **Scope:**
 - Next.js 15 scaffolding with App Router
 - Supabase setup (schema, RLS, RPC functions from Section 3)
 - Magic link auth flow
+- **Zod schemas for ALL modes** (fingerprint, seed council, standard council, RWP, editor, API contracts) plus fixture tests — runs as Agent 1.5 after database, before phase0-ui
 - Phase 0 onboarding UI (8 inputs across user-level questions)
 - Project creation + project-level calibration
 - App shell with dashboard (mode selector)
 - Scoring Floor check API
 
-**Gate:** User can sign up via magic link, complete Phase 0 (all 8 inputs), create a project with calibration, see the mode selector dashboard. Scoring Floor check returns pass/fail.
+**Dependency chain:** scaffold-auth + database (parallel) -> schemas (1.5) -> phase0-ui (needs schema imports)
 
-### Phase 2: Editor (4 agents, days 4-14)
+**Gate:** User can sign up via magic link, complete Phase 0 (all 8 inputs), create a project with calibration, see the mode selector dashboard. Scoring Floor check returns pass/fail. All Zod schemas pass fixture tests and match SQL types.
 
-**Pre-gate 2.0 (1 agent):** Zod schemas for ALL modes (fingerprint, seed council, standard council, RWP, editor) plus fixture tests. All TypeScript types match SQL schema. MUST pass before Phase 2 agents start.
+### Phase 2: Editor (3 agents, days 4-14)
 
 **Scope:**
 - Paste text input with document rendering
@@ -919,7 +1230,7 @@ NEXT_PUBLIC_APP_URL=
 |------|--------|-----------|
 | `lib/supabase/client.ts` | `createBrowserClient` | All client components, hooks |
 | `lib/supabase/server.ts` | `createServerClient` | All API routes, middleware |
-| `lib/ai/client.ts` | `getClient` | All AI API routes |
+| `lib/ai/client.ts` | `getClient` | Non-streaming AI routes (`phase0-ui`, `editor-core`) |
 | `lib/ai/client.ts` | `hasApiKey` | All AI API routes (mock check) |
 | `lib/ai/client.ts` | `MODELS` | All AI API routes |
 | `lib/schemas/index.ts` | `TranscriptEntry` | All Council routes, project-flow components |
@@ -933,10 +1244,12 @@ NEXT_PUBLIC_APP_URL=
 | `lib/schemas/index.ts` | `RWPContext` | RWP routes |
 | `lib/schemas/index.ts` | `EditorSuggestion` | Editor routes, annotation components |
 | `lib/schemas/index.ts` | `EditorAnalysisResponse` | Editor routes |
+| `lib/ai/phase0-mock.ts` | `getMockScoringFloor` | Phase 0 routes (mock mode) |
 | `lib/ai/mock.ts` | `getMockSeedBeat` | Seed Council routes (mock mode) |
 | `lib/ai/mock.ts` | `getMockVoiceResponse` | Standard Council routes (mock mode) |
 | `lib/ai/mock.ts` | `getMockVerdict` | Standard Council routes (mock mode) |
 | `lib/ai/mock.ts` | `getMockEditorAnalysis` | Editor routes (mock mode) |
+| `lib/ai/client.ts` | `getStreamingModel` | All streaming Council routes |
 | `lib/editor/deterministic.ts` | `runDeterministicPass` | Editor routes (P7/P8 grep) |
 | `lib/editor/vocabulary.ts` | `BANNED_VOCABULARY` | deterministic.ts |
 | `lib/prompts/seed.ts` | `buildSeedBeatPrompt` | Seed Council routes |
@@ -945,23 +1258,37 @@ NEXT_PUBLIC_APP_URL=
 | `lib/prompts/phase0.ts` | `buildScoringFloorPrompt` | Phase 0 routes |
 | `lib/rate-limit.ts` | `withRateLimit` | All API routes |
 | `lib/auth/middleware.ts` | `authMiddleware` | middleware.ts |
+| `lib/schemas/api-contracts.ts` | All API route request/response schemas | All API routes (validation) |
+| `lib/schemas/api-contracts.ts` | `ApiError` | All API routes (error responses) |
 
 ---
 
 ## Cross-Boundary Wiring Section
 
-| Function | Created By | Called By | When In Flow |
-|----------|-----------|-----------|--------------|
-| `createBrowserClient()` | auth agent | All client components | On component mount |
-| `createServerClient()` | auth agent | All API routes | Start of every route handler |
-| `runDeterministicPass()` | editor-deterministic agent | editor-api agent | Before LLM analysis in Editor |
-| `buildSeedBeatPrompt()` | prompts agent | seed-api agent | Per beat in Seed Council |
-| `buildVoicePrompt()` | prompts agent | council-api agent | Per voice in Standard Council |
-| `buildEditorPrompt()` | prompts agent | editor-api agent | LLM analysis call |
-| `update_signature_after_decision()` | database agent | editor-api agent | After accept/reject |
-| `withRateLimit()` | rate-limit agent | All API routes | Top of every route handler |
-| `getMockSeedBeat()` | mock agent | seed-api agent | When hasApiKey() = false |
-| `getMockEditorAnalysis()` | mock agent | editor-api agent | When hasApiKey() = false |
+Every function that crosses an agent ownership boundary is listed below with exact agent IDs and file paths.
+
+| Function | File | Created By (Agent) | Called By (Agent) | When In Flow |
+|----------|------|--------------------|-------------------|--------------|
+| `createBrowserClient()` | `src/lib/supabase/client.ts` | `scaffold-auth` (1) | All client components (editors, councils, signature) | On component mount |
+| `createServerClient()` | `src/lib/supabase/server.ts` | `scaffold-auth` (1) | All API route agents (`phase0-ui`, `editor-core`, `seed-council`, `standard-council-rwp`, `signature-dashboard`, `demo-prep`) | Start of every route handler |
+| `getClient()` | `src/lib/ai/client.ts` | `scaffold-auth` (1) | `phase0-ui` (3) (Scoring Floor), `editor-core` (2.1) (Editor analysis) | Non-streaming Anthropic SDK calls only |
+| `hasApiKey()` | `src/lib/ai/client.ts` | `scaffold-auth` (1) | `phase0-ui` (3), `editor-core` (2.1), `seed-council` (3.2), `standard-council-rwp` (3.3) | Mock mode check (all AI routes) |
+| `runDeterministicPass()` | `src/lib/editor/deterministic.ts` | `editor-core` (2.1) | `editor-core` (2.1) via `/api/editor/analyze` route | Before LLM analysis in Editor |
+| `buildSeedBeatPrompt()` | `src/lib/prompts/seed.ts` | `council-prompts` (3.1) | `seed-council` (3.2) via `/api/council/seed` route | Per beat in Seed Council |
+| `buildVoicePrompt()` | `src/lib/prompts/council.ts` | `council-prompts` (3.1) | `standard-council-rwp` (3.3) via `/api/council/standard` and `/api/council/rwp` routes | Per voice in Standard/RWP Council |
+| `buildEditorPrompt()` | `src/lib/prompts/editor.ts` | `editor-core` (2.1) | `editor-core` (2.1) via `/api/editor/analyze` route | LLM analysis call |
+| `buildScoringFloorPrompt()` | `src/lib/prompts/phase0.ts` | `phase0-ui` (3) | `phase0-ui` (3) via `/api/phase0/scoring-floor` route | Phase 0 scoring check |
+| `update_signature_after_decision()` | `supabase/migrations/003_rpc_functions.sql` | `database` (2) | `editor-core` (2.1) via `/api/editor/decide` route | After accept/reject |
+| `upsert_rate_limit()` | `supabase/migrations/003_rpc_functions.sql` | `database` (2) | `editor-core` (2.1) via `withRateLimit()` | Rate limit check |
+| `auth.is_admin()` | `supabase/migrations/003_rpc_functions.sql` | `database` (2) | `demo-prep` (4.1) via `/api/admin/*` routes, `add_allowed_email()` RPC | Admin route auth |
+| `add_allowed_email()` | `supabase/migrations/003_rpc_functions.sql` | `database` (2) | `demo-prep` (4.1) via `/api/admin/whitelist` route | Admin adds beta tester |
+| `withRateLimit()` | `src/lib/rate-limit.ts` | `editor-core` (2.1) | All API route agents | Top of every AI/editor route handler |
+| `getMockSeedBeat()` | `src/lib/ai/mock.ts` | `editor-core` (2.1) | `seed-council` (3.2) | When `hasApiKey()` = false |
+| `getMockVoiceResponse()` | `src/lib/ai/mock.ts` | `editor-core` (2.1) | `standard-council-rwp` (3.3) | When `hasApiKey()` = false |
+| `getMockVerdict()` | `src/lib/ai/mock.ts` | `editor-core` (2.1) | `standard-council-rwp` (3.3) | When `hasApiKey()` = false |
+| `getMockScoringFloor()` | `src/lib/ai/phase0-mock.ts` | `phase0-ui` (3) | `phase0-ui` (3) via `/api/phase0/scoring-floor` | When `hasApiKey()` = false |
+| `getMockEditorAnalysis()` | `src/lib/ai/mock.ts` | `editor-core` (2.1) | `editor-core` (2.1) | When `hasApiKey()` = false |
+| `getStreamingModel()` | `src/lib/ai/client.ts` | `scaffold-auth` (1) | `seed-council` (3.2), `standard-council-rwp` (3.3) | Streaming Council calls via Vercel AI SDK |
 
 ---
 
@@ -969,26 +1296,28 @@ NEXT_PUBLIC_APP_URL=
 
 | Table | Writer | Reader(s) |
 |-------|--------|-----------|
-| `profiles` | auth module | All modules |
-| `fingerprints` | phase0 module | council, editor, signature dashboard |
-| `projects` | project module | All modules |
-| `draft_versions` | project module (paste text) | council, editor, RWP |
-| `council_sessions` | council module | RWP module, project view, session history |
-| `editor_sessions` | editor module | signature dashboard |
-| `editor_suggestions` | editor module | signature dashboard, annotation UI |
-| `editorial_signatures` | editor module (via RPC) | signature dashboard |
+| `profiles` | `scaffold-auth` (1) | All modules |
+| `fingerprints` | `phase0-ui` (3) | council, editor, signature dashboard |
+| `projects` | `phase0-ui` (3) | All modules |
+| `draft_versions` | `editor-core` (2.1), `standard-council-rwp` (3.3) | council, editor, RWP |
+| `council_sessions` | `seed-council` (3.2), `standard-council-rwp` (3.3) | RWP module, project view, session history |
+| `editor_sessions` | `editor-core` (2.1) | signature dashboard |
+| `editor_suggestions` | `editor-core` (2.1) | signature dashboard, annotation UI |
+| `editorial_signatures` | `editor-core` (2.1) via RPC | signature dashboard |
+| `rate_limits` | `editor-core` (2.1) via `upsert_rate_limit()` RPC | `withRateLimit()` reads |
+| `allowed_emails` | `demo-prep` (4.1) via `add_allowed_email()` RPC + Migration 004 seed | auth hook (SECURITY DEFINER) |
 
 ---
 
 ## Swarm Agent Assignment
 
-### Phase 1: Foundation (3 agents)
+### Phase 1: Foundation (4 agents)
 
 #### Agent 1: `scaffold-auth`
 | | |
 |---|---|
-| **Spec sections** | 1, 2, 6, 12 |
-| **Creates** | `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/app/auth/callback/route.ts`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/middleware.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/middleware.ts`, `src/lib/auth/middleware.ts`, `next.config.ts`, `tailwind.config.ts`, `tsconfig.json`, `package.json`, `.env.example` |
+| **Spec sections** | 1, 2, 6, 7 (client pattern), 12 |
+| **Creates** | `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/app/auth/callback/route.ts`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/middleware.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/middleware.ts`, `src/lib/auth/middleware.ts`, `src/lib/ai/client.ts`, `next.config.ts`, `tailwind.config.ts`, `tsconfig.json`, `package.json`, `.env.example` |
 | **Reads** | None (first agent) |
 
 #### Agent 2: `database`
@@ -998,28 +1327,28 @@ NEXT_PUBLIC_APP_URL=
 | **Creates** | `supabase/migrations/001_core_schema.sql`, `supabase/migrations/002_rls_policies.sql`, `supabase/migrations/003_rpc_functions.sql`, `supabase/migrations/004_seed_data.sql`, `src/types/database.ts` |
 | **Reads** | None |
 
+#### Agent 1.5: `schemas` (GATE — runs after database, before phase0-ui)
+| | |
+|---|---|
+| **Spec sections** | 4.1-4.7 (all Zod schemas + API contracts) |
+| **Creates** | `src/lib/schemas/fingerprint.ts`, `src/lib/schemas/transcript.ts`, `src/lib/schemas/seed-council.ts`, `src/lib/schemas/standard-council.ts`, `src/lib/schemas/rwp.ts`, `src/lib/schemas/editor.ts`, `src/lib/schemas/api-contracts.ts`, `src/lib/schemas/index.ts`, `src/lib/schemas/__tests__/schemas.test.ts` |
+| **Reads** | `types/database.ts` (created by `database` agent) |
+
 #### Agent 3: `phase0-ui`
 | | |
 |---|---|
 | **Spec sections** | 4.1 |
-| **Creates** | `src/app/(app)/onboarding/page.tsx`, `src/app/(app)/onboarding/components/FingerprintForm.tsx`, `src/app/(app)/onboarding/components/ScoringFloorCheck.tsx`, `src/app/(app)/projects/new/page.tsx`, `src/app/(app)/projects/new/components/ProjectForm.tsx`, `src/app/api/phase0/fingerprint/route.ts`, `src/app/api/phase0/scoring-floor/route.ts`, `src/app/api/projects/route.ts`, `src/lib/prompts/phase0.ts` |
-| **Reads** | `lib/supabase/server.ts`, `types/database.ts`, `lib/ai/client.ts` (NOTE: lib/ai/client.ts does not exist in Phase 1. Phase0-ui agent must create a minimal version with `hasApiKey()` + mock fallback. Phase 2 editor-core agent will replace it with the full version.) |
+| **Creates** | `src/app/(app)/onboarding/page.tsx`, `src/app/(app)/onboarding/components/FingerprintForm.tsx`, `src/app/(app)/onboarding/components/ScoringFloorCheck.tsx`, `src/app/(app)/projects/new/page.tsx`, `src/app/(app)/projects/new/components/ProjectForm.tsx`, `src/app/api/phase0/fingerprint/route.ts`, `src/app/api/phase0/scoring-floor/route.ts`, `src/app/api/projects/route.ts`, `src/lib/prompts/phase0.ts`, `src/lib/ai/phase0-mock.ts` |
+| **Reads** | `lib/supabase/server.ts`, `lib/schemas/index.ts` (created by `schemas` agent), `types/database.ts`, `lib/ai/client.ts` (created by `scaffold-auth`) |
 
-### Phase 2: Editor (4 agents)
-
-#### Agent 2.0: `schemas` (PRE-GATE)
-| | |
-|---|---|
-| **Spec sections** | 4.1-4.6 (all Zod schemas) |
-| **Creates** | `src/lib/schemas/fingerprint.ts`, `src/lib/schemas/transcript.ts`, `src/lib/schemas/seed-council.ts`, `src/lib/schemas/standard-council.ts`, `src/lib/schemas/rwp.ts`, `src/lib/schemas/editor.ts`, `src/lib/schemas/index.ts`, `src/lib/schemas/__tests__/schemas.test.ts` |
-| **Reads** | `types/database.ts` |
+### Phase 2: Editor (3 agents)
 
 #### Agent 2.1: `editor-core`
 | | |
 |---|---|
 | **Spec sections** | 4.5, 7 |
-| **Creates** | `src/lib/editor/deterministic.ts`, `src/lib/editor/vocabulary.ts`, `src/lib/ai/client.ts`, `src/lib/ai/mock.ts`, `src/lib/prompts/editor.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/analyze/route.ts`, `src/app/api/editor/decide/route.ts` |
-| **Reads** | `lib/schemas/index.ts`, `lib/supabase/server.ts`, `types/database.ts` |
+| **Creates** | `src/lib/editor/deterministic.ts`, `src/lib/editor/vocabulary.ts`, `src/lib/ai/mock.ts`, `src/lib/prompts/editor.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/analyze/route.ts`, `src/app/api/editor/decide/route.ts`, `src/lib/editor/__fixtures__/classification-fixtures.ts`, `src/lib/editor/__tests__/classification.test.ts` |
+| **Reads** | `lib/schemas/index.ts`, `lib/supabase/server.ts`, `lib/ai/client.ts` (created by `scaffold-auth`), `types/database.ts` |
 
 #### Agent 2.2: `editor-ui`
 | | |
@@ -1042,8 +1371,7 @@ NEXT_PUBLIC_APP_URL=
 |---|---|
 | **Spec sections** | 8 |
 | **Creates** | `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/seed-fixtures.ts`, `src/lib/prompts/__fixtures__/council-fixtures.ts`, `src/lib/prompts/__tests__/regression.test.ts` |
-| **Modifies** | `src/lib/prompts/phase0.ts` (created in Phase 1 as minimal version, Phase 3 replaces with full implementation including golden transcript-calibrated prompts) |
-| **Reads** | `lib/schemas/index.ts`, `lib/ai/client.ts` |
+| **Reads** | `lib/schemas/index.ts`, `lib/prompts/phase0.ts` (created by `phase0-ui`) |
 
 #### Agent 3.2: `seed-council`
 | | |
@@ -1062,7 +1390,7 @@ NEXT_PUBLIC_APP_URL=
 #### Agent 3.4: `project-flow`
 | | |
 |---|---|
-| **Spec sections** | 4.3 (verdict handoff), 15 (session navigation) |
+| **Spec sections** | 4.3 (verdict handoff), 6 (locked decision 12: read-only scroll back) |
 | **Creates** | `src/app/(app)/projects/[id]/page.tsx`, `src/app/(app)/projects/[id]/components/ProjectDashboard.tsx`, `src/app/(app)/projects/[id]/components/SessionHistory.tsx`, `src/app/(app)/projects/[id]/components/HandoffState.tsx`, `src/app/(app)/projects/[id]/components/ModeSelector.tsx` |
 | **Reads** | `lib/schemas/index.ts`, `lib/supabase/client.ts`, `types/database.ts` |
 
@@ -1092,20 +1420,23 @@ NEXT_PUBLIC_APP_URL=
 | `src/app/layout.tsx`, `src/middleware.ts`, `next.config.ts`, `package.json` | scaffold-auth | 1 |
 | `src/lib/supabase/*` | scaffold-auth | 1 |
 | `src/lib/auth/*` | scaffold-auth | 1 |
+| `src/lib/ai/client.ts` | scaffold-auth | 1 |
+| `src/app/globals.css` | scaffold-auth (creates) / polish (appends annotation + voice styles only) | 1 / 4 |
 | `supabase/migrations/*` | database | 1 |
 | `src/types/database.ts` | database | 1 |
 | `src/app/(app)/onboarding/*`, `src/app/api/phase0/*`, `src/app/api/projects/*` | phase0-ui | 1 |
-| `src/lib/schemas/*` | schemas | 2.0 |
-| `src/lib/editor/*`, `src/lib/ai/*`, `src/lib/rate-limit.ts`, `src/app/api/editor/*` | editor-core | 2 |
+| `src/lib/prompts/phase0.ts`, `src/lib/ai/phase0-mock.ts` | phase0-ui | 1 |
+| `src/lib/schemas/*` | schemas | 1.5 |
+| `src/lib/editor/*`, `src/lib/ai/mock.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/*` | editor-core | 2 |
 | `src/lib/prompts/editor.ts` | editor-core | 2 |
 | `src/app/(app)/projects/[id]/editor/*`, `src/components/ui/*` | editor-ui | 2 |
 | `src/app/(app)/signature/*`, `src/app/api/signature/*` | signature-dashboard | 2 |
-| `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/phase0.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/*`, `src/lib/prompts/__tests__/*` | council-prompts | 3 |
+| `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/*`, `src/lib/prompts/__tests__/*` | council-prompts | 3 |
 | `src/app/(app)/projects/[id]/seed/*`, `src/app/api/council/seed/*` | seed-council | 3 |
 | `src/app/(app)/projects/[id]/council/*`, `src/app/(app)/projects/[id]/rwp/*`, `src/app/api/council/standard/*`, `src/app/api/council/rwp/*` | standard-council-rwp | 3 |
 | `src/app/(app)/projects/[id]/page.tsx`, `src/app/(app)/projects/[id]/components/*` | project-flow | 3 |
 | `src/app/api/admin/*`, `src/lib/demo/*` | demo-prep | 4 |
-| `src/app/(app)/components/*`, `src/app/globals.css` | polish | 4 |
+| `src/app/(app)/components/*` | polish | 4 |
 
 ---
 
@@ -1133,7 +1464,8 @@ NEXT_PUBLIC_APP_URL=
 ### Verification Commands
 - `npm run dev` starts the app on localhost:3000
 - `npm test` runs all Vitest tests
-- `curl -s http://localhost:3000/api/phase0/scoring-floor -X POST -H "Content-Type: application/json" -d '{"writingSample":"test"}' | jq .passed` returns false (too short)
+- `curl -s http://localhost:3000/api/phase0/scoring-floor -X POST -H "Content-Type: application/json" -d '{"writingSample":"test"}'` returns 400 (Zod rejects: writingSample below 100-char min)
+- `curl -s http://localhost:3000/api/phase0/scoring-floor -X POST -H "Content-Type: application/json" -d '{"writingSample":"I write things sometimes. Writing is something I do when I feel like expressing ideas. I tend to write about various topics that come to mind without much structure or depth."}'  | jq .passed` returns false (insufficient texture for Council voices)
 - Manual: complete Phase 0, create project, run Seed Council through Beat 5, verify Closing Handoff appears
 
 ---
