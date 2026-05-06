@@ -55,6 +55,26 @@ The solution-doc-searcher agent will return relevant lessons from prior builds.
 were found and their key lessons (e.g., "CSRF missing in Flask builds,"
 "scalar returns need usage examples," "data ownership required in spec").
 
+### Step 2.5: Create BUILD_TRACKING.md
+
+Copy the tracking template into the project root. This is MANDATORY -- do not
+skip. The template is at `~/.claude/docs/autopilot-tracking-template.md`.
+
+1. Read `~/.claude/docs/autopilot-tracking-template.md`
+2. Write it to `BUILD_TRACKING.md` in the project root
+3. Fill in the Run Info section (project name, spec path, date, build method)
+4. Each swarm agent will append to AGENT_STATUS after completing
+5. After review, fill in RUN_METRICS and Agent Performance Summary
+
+If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
+Run Info + empty AGENT_STATUS + empty FAILURES + empty RUN_METRICS sections.
+
+### Step 2.6: Inject Agent Pitfalls
+
+Read `~/.claude/docs/agent-pitfalls.md`. These pitfalls MUST be injected into
+every agent brief in Step 10w (swarm) or referenced in Step 7s (solo).
+Capture the full document content for injection later.
+
 ### Step 3: Expand Brief + Roadmap
 
 Expand the user's app description into a structured brief, informed by the
@@ -338,7 +358,7 @@ review findings reference the Feed-Forward risk if applicable.
 
 Run `/compound-engineering:resolve_todo_parallel`
 
-### Compound + Learnings
+### Compound
 
 Run `/workflows:compound`
 
@@ -349,9 +369,38 @@ Run `/workflows:compound`
 3. What was learned (the delta between expectation and reality)
 
 If the compound workflow doesn't produce this section, add it before
-running update-learnings.
+proceeding.
+
+### Update Learnings (MANDATORY -- DO NOT SKIP)
+
+**WARNING: This is FC11 from agent-pitfalls.md. The orchestrator has skipped
+this step in 2 of 3 recent builds. It is a SEPARATE step from Compound.**
 
 Run `/update-learnings`
+
+Verify it completes by checking that it outputs the "Learnings Propagated"
+table. If it does not run or errors, run it again manually.
+
+### Update Agent Pitfalls (MANDATORY -- DO NOT SKIP)
+
+After review findings are resolved:
+
+1. Read `~/.claude/docs/agent-pitfalls.md`
+2. Trace each review finding to its originating agent
+3. Classify into existing failure class or create a new one
+4. Update the per-agent-type section if a specific agent type has a new pitfall
+5. Update the Update Log table at the bottom
+
+### Update BUILD_TRACKING.md (MANDATORY -- DO NOT SKIP)
+
+Fill in the remaining sections of BUILD_TRACKING.md:
+
+1. AGENT_STATUS: one block per agent (status, files, issues, commit)
+2. FAILURES: one block per P0/P1 finding with failure class reference
+3. RUN_METRICS: final build metrics table + agent performance summary
+4. Lessons for Next Build: list what was added to agent-pitfalls.md
+
+Commit BUILD_TRACKING.md with the final metrics.
 
 ### Done
 
