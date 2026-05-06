@@ -9,6 +9,14 @@ body {
     color: #212529;
 }
 
+.nav { display: flex; gap: 15px; margin-bottom: 20px; }
+.nav a {
+    text-decoration: none; color: #495057; font-weight: 500;
+    padding: 6px 14px; border-radius: 4px;
+}
+.nav a:hover { background: #e9ecef; }
+.nav-active { background: #0d6efd !important; color: white !important; }
+
 h1 { margin-bottom: 20px; }
 h1 .count { color: #6c757d; font-size: 0.6em; font-weight: normal; }
 
@@ -71,6 +79,23 @@ tr:hover { background: #f8f9fa; }
 .badge-meetup { background: #f64060; color: white; }
 .badge-facebook { background: #1877f2; color: white; }
 .badge-linkedin { background: #0a66c2; color: white; }
+.badge-instagram { background: #e1306c; color: white; }
+.badge-draft { background: #6c757d; color: white; }
+.badge-approved { background: #0d6efd; color: white; }
+.badge-sent { background: #198754; color: white; }
+.badge-replied { background: #0dcaf0; color: #000; }
+.badge-booked { background: #20c997; color: white; }
+.badge-declined { background: #dc3545; color: white; }
+.badge-no_response { background: #ffc107; color: #000; }
+.badge-skipped { background: #adb5bd; color: white; }
+
+.score {
+    display: inline-block; width: 32px; text-align: center;
+    padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: 700;
+}
+.score-high { background: #d1e7dd; color: #0f5132; }
+.score-mid { background: #fff3cd; color: #664d03; }
+.score-low { background: #f8d7da; color: #842029; }
 
 .delete-form { display: inline; }
 .delete-btn {
@@ -105,3 +130,22 @@ tr:hover { background: #f8f9fa; }
     padding: 2px 6px;
     border-radius: 3px;
 }
+
+/* Campaign cards */
+.card {
+    background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.card-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.card-header h2 { font-size: 18px; margin: 0; }
+.card .meta { color: #6c757d; font-size: 14px; margin-bottom: 16px; }
+.card h3 { font-size: 14px; margin: 16px 0 8px; color: #495057; }
+
+.metrics { display: flex; gap: 24px; margin-bottom: 16px; }
+.metric { text-align: center; }
+.metric-value { display: block; font-size: 24px; font-weight: 700; color: #212529; }
+.metric-label { font-size: 12px; color: #6c757d; text-transform: uppercase; }
+
+.status-table { width: auto; margin-bottom: 8px; }
+.status-table th, .status-table td { padding: 4px 12px; font-size: 13px; }
+.social { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

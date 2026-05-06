@@ -75,6 +75,12 @@ def cmd_enrich(args):
         enrich_from_bios, enrich_leads, enrich_crawl,
         enrich_with_hunter, enrich_segment, enrich_hook,
     )
+
+    # --refresh: clear stale enrichment data before re-running
+    if getattr(args, "refresh", False):
+        days = getattr(args, "days", 30)
+        _refresh_stale_leads(args.step, days)
+
     steps = {
         "bio": enrich_from_bios,
         "website": enrich_leads,
@@ -93,6 +99,39 @@ def cmd_enrich(args):
         steps[selected](limit=limit)
     else:
         steps[selected]()
+
+
+def _refresh_stale_leads(step: str, days: int):
+    """Clear enrichment data older than N days so leads get re-processed."""
+    from datetime import datetime, timedelta
+    from db import get_db
+
+    cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+    with get_db() as conn:
+        if step in ("hook", "all"):
+            cursor = conn.execute(
+                "UPDATE leads SET hook_text = NULL, hook_source_url = NULL, hook_quality = NULL "
+                "WHERE enriched_at < ? AND hook_text IS NOT NULL",
+                (cutoff,),
+            )
+            print(f"Refreshed {cursor.rowcount} stale hooks (older than {days} days).")
+
+        if step in ("segment", "all"):
+            cursor = conn.execute(
+                "UPDATE leads SET segment = NULL, segment_confidence = NULL "
+                "WHERE enriched_at < ? AND segment IS NOT NULL",
+                (cutoff,),
+            )
+            print(f"Refreshed {cursor.rowcount} stale segments (older than {days} days).")
+
+        if step in ("website", "crawl", "hunter", "all"):
+            cursor = conn.execute(
+                "UPDATE leads SET enriched_at = NULL "
+                "WHERE enriched_at < ?",
+                (cutoff,),
+            )
+            print(f"Refreshed {cursor.rowcount} stale contact enrichments (older than {days} days).")
 
 
 def cmd_export(args):
@@ -167,6 +206,37 @@ def cmd_dedup(args):
         print(f"  Merged {len(group)} leads -> kept id {keeper_id} ({names[0]})")
         merged += 1
     print(f"\nMerged {merged} groups, removed {total_dupes} duplicate leads.")
+
+
+def cmd_cleanup(args):
+    """Remove old database backups, keeping the most recent N."""
+    keep = args.keep
+    db_dir = Path(__file__).parent
+    backups = sorted(db_dir.glob("leads.backup-*.db"), key=lambda p: p.name)
+
+    if len(backups) <= keep:
+        print(f"Only {len(backups)} backups found, keeping all (threshold: {keep}).")
+        return
+
+    to_delete = backups[:-keep]
+    print(f"Found {len(backups)} backups. Removing {len(to_delete)}, keeping {keep}.\n")
+
+    freed = 0
+    for backup in to_delete:
+        size = backup.stat().st_size
+        # Also remove -shm and -wal companions
+        for suffix in ("", "-shm", "-wal"):
+            companion = Path(str(backup) + suffix)
+            if companion.exists():
+                if not args.dry_run:
+                    companion.unlink()
+                freed += companion.stat().st_size if companion.exists() or suffix == "" else 0
+        print(f"  {'[dry run] ' if args.dry_run else ''}Removed {backup.name} ({size // 1024}KB)")
+
+    if args.dry_run:
+        print(f"\nDry run. Use without --dry-run to delete.")
+    else:
+        print(f"\nDeleted {len(to_delete)} backups, freed ~{freed // 1024 // 1024}MB.")
 
 
 def cmd_schedule(args):
@@ -276,6 +346,14 @@ def main():
         "--limit", type=int, default=50,
         help="Max leads to process for segment/hook steps (default: 50)",
     )
+    sp_enrich.add_argument(
+        "--refresh", action="store_true",
+        help="Re-enrich leads older than --days (clears stale data first)",
+    )
+    sp_enrich.add_argument(
+        "--days", type=int, default=30,
+        help="Age threshold for --refresh in days (default: 30)",
+    )
     sp_enrich.set_defaults(func=cmd_enrich)
 
     # leads
@@ -354,6 +432,14 @@ def main():
     sp_import.add_argument("--csv", required=True, help="Path to CSV file")
     sp_import.add_argument("--source", default="csv_import", help="Source label (default: csv_import)")
     sp_import.set_defaults(func=cmd_import)
+
+    # cleanup
+    sp_cleanup = subparsers.add_parser("cleanup", help="Remove old database backups")
+    sp_cleanup.add_argument("--keep", type=int, default=5,
+                            help="Number of recent backups to keep (default: 5)")
+    sp_cleanup.add_argument("--dry-run", action="store_true",
+                            help="Show what would be deleted without deleting")
+    sp_cleanup.set_defaults(func=cmd_cleanup)
 
     # dedup
     sp_dedup = subparsers.add_parser("dedup", help="Find and merge duplicate leads")

@@ -184,6 +184,46 @@ def merge_leads(group: list[dict], db_path=DB_PATH) -> int:
     return keeper["id"]
 
 
+def readiness_score(lead: dict) -> int:
+    """Compute a 0-100 readiness score for outreach.
+
+    Scoring:
+      +30 has email
+      +10 has phone
+      +5  has social handles
+      +10 has segment
+      +20 segment_confidence (scaled: confidence * 20)
+      +25 hook quality (tier 1=25, 2=20, 3=15, 4=5, 5=2)
+    """
+    score = 0
+    if lead.get("email"):
+        score += 30
+    if lead.get("phone"):
+        score += 10
+    if lead.get("social_handles"):
+        score += 5
+    if lead.get("segment"):
+        score += 10
+    conf = lead.get("segment_confidence") or 0
+    score += int(conf * 20)
+    hook_q = lead.get("hook_quality") or 0
+    hook_points = {1: 25, 2: 20, 3: 15, 4: 5, 5: 2}.get(hook_q, 0)
+    score += hook_points
+    return min(score, 100)
+
+
+def query_leads_scored(source="", q="", db_path=DB_PATH, limit=100, offset=0):
+    """Like query_leads but returns dicts with readiness_score attached, sorted by score."""
+    leads, total = query_leads(source=source, q=q, db_path=db_path, limit=limit, offset=offset)
+    scored = []
+    for lead in leads:
+        d = dict(lead)
+        d["score"] = readiness_score(d)
+        scored.append(d)
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    return scored, total
+
+
 def delete_lead(lead_id: int, db_path=DB_PATH) -> bool:
     """Delete a lead by ID. Returns True if a row was deleted.
 

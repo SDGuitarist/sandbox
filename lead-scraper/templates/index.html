@@ -7,10 +7,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <nav class="nav">
+        <a href="/" class="nav-active">Leads</a>
+        <a href="/campaigns">Campaigns</a>
+    </nav>
+
     <h1>Lead Scraper <span class="count">({{ total }} leads)</span></h1>
 
     <form method="get" class="filters">
-        <input name="q" value="{{ q }}" placeholder="Search by name...">
+        <input name="q" value="{{ q }}" placeholder="Search leads...">
         <select name="source">
             <option value="">All sources</option>
             {% for s in valid_sources %}
@@ -25,6 +30,7 @@
     <table>
         <thead>
             <tr>
+                <th>Score</th>
                 <th>Name</th>
                 <th>Source</th>
                 <th>Email</th>
@@ -39,6 +45,7 @@
         <tbody>
             {% for lead in leads %}
             <tr>
+                <td><span class="score score-{{ 'high' if lead.score >= 70 else 'mid' if lead.score >= 40 else 'low' }}">{{ lead.score }}</span></td>
                 <td>
                     {% if lead.profile_url %}
                     <a href="{{ lead.profile_url }}" target="_blank" rel="noopener">{{ lead.name }}</a>

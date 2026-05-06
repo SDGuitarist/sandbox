@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaigns - Lead Scraper</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <a href="/">Leads</a>
+        <a href="/campaigns" class="nav-active">Campaigns</a>
+    </nav>
+
+    <h1>Campaigns <span class="count">({{ campaigns | length }})</span></h1>
+
+    {% if campaigns %}
+    {% for c in campaigns %}
+    <div class="card">
+        <div class="card-header">
+            <h2>{{ c.name }}</h2>
+            <span class="count">{{ c.created_at[:10] }}</span>
+        </div>
+
+        {% if c.target_date %}
+        <p class="meta">Target: {{ c.target_date }}{% if c.segment_filter %} | Segments: {{ c.segment_filter }}{% endif %}</p>
+        {% endif %}
+
+        <div class="metrics">
+            <div class="metric">
+                <span class="metric-value">{{ c.assigned }}</span>
+                <span class="metric-label">Assigned</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value">{{ c.total_messages }}</span>
+                <span class="metric-label">Messages</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value">{{ c.sent_total }}</span>
+                <span class="metric-label">Sent</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value">{{ c.reply_rate }}%</span>
+                <span class="metric-label">Reply Rate</span>
+            </div>
+            <div class="metric">
+                <span class="metric-value">{{ c.book_rate }}%</span>
+                <span class="metric-label">Conversion</span>
+            </div>
+        </div>
+
+        <table class="status-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for status in ['draft', 'approved', 'sent', 'replied', 'booked', 'declined', 'no_response', 'skipped'] %}
+                {% if c.statuses.get(status, 0) > 0 %}
+                <tr>
+                    <td><span class="badge badge-{{ status }}">{{ status | replace('_', ' ') }}</span></td>
+                    <td>{{ c.statuses.get(status, 0) }}</td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if c.segments %}
+        <h3>By Segment</h3>
+        <table class="status-table">
+            <thead>
+                <tr>
+                    <th>Segment</th>
+                    {% for status in ['draft', 'approved', 'sent', 'replied', 'booked', 'declined', 'no_response', 'skipped'] %}
+                    <th>{{ status[:4] }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for seg, counts in c.segments.items() %}
+                <tr>
+                    <td>{{ seg }}</td>
+                    {% for status in ['draft', 'approved', 'sent', 'replied', 'booked', 'declined', 'no_response', 'skipped'] %}
+                    <td>{{ counts.get(status, '') }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="empty">No campaigns yet. Create one with <code>python3 run.py campaign create "My Campaign" --segment connector</code></p>
+    {% endif %}
+</body>
+</html>

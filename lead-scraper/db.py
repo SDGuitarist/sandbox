@@ -74,12 +74,12 @@ def _migrate_outreach_statuses(db_path=DB_PATH):
     """Expand outreach_queue status CHECK to include response tracking statuses.
 
     SQLite doesn't support ALTER CHECK, so we recreate the table if needed.
+    Uses get_db to avoid WAL lock conflicts with other connections.
     """
     if not db_path.exists():
         return
 
-    conn = sqlite3.connect(str(db_path))
-    try:
+    with get_db(db_path) as conn:
         row = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='outreach_queue'"
         ).fetchone()
@@ -110,8 +110,6 @@ def _migrate_outreach_statuses(db_path=DB_PATH):
                 ON outreach_queue(campaign_id, status);
         """)
         conn.execute("PRAGMA foreign_keys=ON")
-    finally:
-        conn.close()
 
 
 def init_db(db_path=DB_PATH):
