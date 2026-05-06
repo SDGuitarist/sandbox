@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from db import get_db
-from models import query_held_leads, unhold_lead
+from models import query_held_leads, unhold_lead, merge_leads
 from campaign import assign_leads, create_campaign
 
 
@@ -84,3 +84,36 @@ def test_null_manual_approved_treated_as_not_approved(setup_db, insert_lead):
     # handles both NULL and 0 correctly via COALESCE
     held = [h["id"] for h in query_held_leads(setup_db)]
     assert lead_id in held
+
+
+def test_merge_preserves_manual_approved(setup_db, insert_lead):
+    """When any duplicate in a merge group has manual_approved=1, the keeper inherits it."""
+    # Insert two leads with same profile URL (duplicates)
+    id_a = insert_lead(setup_db, "Alice A", segment="writer",
+                       segment_confidence=0.9, hook_quality=2,
+                       profile_url="https://example.com/alice", source="meetup")
+    id_b = insert_lead(setup_db, "Alice B", segment="writer",
+                       segment_confidence=0.8,
+                       profile_url="https://example.com/alice-b", source="eventbrite")
+
+    # Approve the less-complete duplicate
+    unhold_lead(id_b, setup_db)
+
+    # Verify approval is set
+    with get_db(setup_db) as conn:
+        row = conn.execute("SELECT manual_approved FROM leads WHERE id = ?", (id_b,)).fetchone()
+    assert row["manual_approved"] == 1
+
+    # Merge: id_a is the keeper (more complete), id_b is the dupe (approved)
+    with get_db(setup_db) as conn:
+        leads = [dict(r) for r in conn.execute(
+            "SELECT * FROM leads WHERE id IN (?, ?)", (id_a, id_b)
+        ).fetchall()]
+
+    keeper_id = merge_leads(leads, setup_db)
+    assert keeper_id == id_a  # More complete lead is the keeper
+
+    # The keeper must inherit manual_approved=1 from the merged duplicate
+    with get_db(setup_db) as conn:
+        row = conn.execute("SELECT manual_approved FROM leads WHERE id = ?", (keeper_id,)).fetchone()
+    assert row["manual_approved"] == 1

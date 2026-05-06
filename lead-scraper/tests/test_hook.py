@@ -197,3 +197,30 @@ def test_hook_research_429_exhausted_skips_persist(mock_sleep):
     assert tier == -1  # Transient failure signal
     assert hook_text is None
     assert mock_session.post.call_count == 3  # Tried 3 times
+
+
+@patch("enrich.requests.Session")
+@patch("enrich.time.sleep")
+def test_enrich_hook_429_leaves_hook_quality_null(mock_sleep, mock_session_cls,
+                                                   setup_db, insert_lead):
+    """Full enrich_hook(): 3x429 must leave hook_quality as NULL in the database."""
+    lead_id = insert_lead(setup_db, "Alice", segment="writer",
+                          segment_confidence=0.9)
+
+    mock_429 = MagicMock()
+    mock_429.status_code = 429
+    mock_429.headers = {"retry-after": "1"}
+
+    mock_session = MagicMock()
+    mock_session.post.return_value = mock_429
+    mock_session_cls.return_value = mock_session
+
+    with patch("config.get_perplexity_key", return_value="fake-key"):
+        enrich_hook(db_path=setup_db)
+
+    with get_db(setup_db) as conn:
+        row = conn.execute(
+            "SELECT hook_quality, hook_text FROM leads WHERE id = ?", (lead_id,)
+        ).fetchone()
+    assert row["hook_quality"] is None  # NOT persisted as 0
+    assert row["hook_text"] is None

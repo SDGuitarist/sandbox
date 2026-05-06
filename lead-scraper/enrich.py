@@ -196,13 +196,12 @@ def enrich_leads(
 
     deadline = time.time() + (max_minutes * 60)
 
-    consecutive_fails = 0
+    # Note: no circuit breaker here. _enrich_single_lead never raises on network
+    # failure -- _fetch_page returns None and the function returns an empty dict.
+    # The except block only catches rare parse errors, not sustained outages.
+    # The timeout deadline already prevents runaway batches.
     print(f"Enriching {len(leads)} leads (timeout: {max_minutes}min)...")
     for i, lead in enumerate(leads, 1):
-        if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
-            print(f"{RED}3 consecutive failures in website fetch. "
-                  f"Skipping remaining {len(leads) - i} leads.{RESET}")
-            break
         if time.time() > deadline:
             print(
                 f"\n  Timeout reached ({max_minutes}min). "
@@ -214,7 +213,6 @@ def enrich_leads(
         print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
         try:
             updates = _enrich_single_lead(lead, session)
-            consecutive_fails = 0
             _persist_lead_update(lead["id"], updates, db_path)
             result.leads_processed += 1
             if updates.get("email"):
@@ -227,7 +225,6 @@ def enrich_leads(
                 print("no contact info", end="")
             print()
         except Exception as e:
-            consecutive_fails += 1
             print(f"FAILED: {str(e)[:80]}")
 
     session.close()
@@ -628,17 +625,17 @@ def enrich_with_hunter(
     session.close()
 
     # End-of-run credit summary (skip if API was down)
-    if consecutive_fails < 3 and start_remaining is not None:
+    if consecutive_fails < MAX_CONSECUTIVE_FAILS and start_remaining is not None:
         end_remaining = _check_hunter_quota(api_key)
         if end_remaining is not None:
             used = start_remaining - end_remaining
-            pct = (end_remaining / max(start_remaining + used, 1)) * 100
+            pct = (end_remaining / max(start_remaining, 1)) * 100
             if pct <= 30:
                 print(f"\n{YELLOW}HUNTER.IO SUMMARY: Used {used} credits. "
-                      f"Only {end_remaining} remaining ({pct:.0f}%).{RESET}")
+                      f"Only {end_remaining} remaining ({pct:.0f}% of pre-run balance).{RESET}")
             else:
                 print(f"\n{GREEN}HUNTER.IO SUMMARY: Used {used} credits. "
-                      f"{end_remaining} remaining ({pct:.0f}%).{RESET}")
+                      f"{end_remaining} remaining ({pct:.0f}% of pre-run balance).{RESET}")
     print(
         f"\nHunter.io complete. {result.leads_processed} enriched, "
         f"{result.emails_found} emails found."
