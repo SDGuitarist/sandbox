@@ -154,7 +154,7 @@ def cmd_export(args):
     print(f"Exported {len(leads)} leads to {output_path}")
 
 
-def cmd_leads(args):
+def cmd_leads(args) -> None:
     """Dispatch leads subcommands."""
     if args.action == "held":
         _cmd_leads_held()
@@ -162,7 +162,7 @@ def cmd_leads(args):
         _cmd_leads_unhold(args)
 
 
-def _cmd_leads_held():
+def _cmd_leads_held() -> None:
     """Show held leads with reasons."""
     from models import query_held_leads
 
@@ -180,7 +180,7 @@ def _cmd_leads_held():
     print(f"\nTotal held: {len(held)}")
 
 
-def _cmd_leads_unhold(args):
+def _cmd_leads_unhold(args) -> None:
     """Force-approve a held lead for campaign assignment."""
     from models import unhold_lead, query_held_leads
     from db import get_db
@@ -190,7 +190,7 @@ def _cmd_leads_unhold(args):
     # Look up the lead for confirmation output
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name FROM leads WHERE id = ?", (lead_id,)
+            "SELECT name, segment FROM leads WHERE id = ?", (lead_id,)
         ).fetchone()
     if not row:
         print(f"Lead {lead_id} not found.", file=sys.stderr)
@@ -206,6 +206,14 @@ def _cmd_leads_unhold(args):
 
     reason_str = ", ".join(reasons) if reasons else "none (already eligible)"
     print(f"Approved lead {lead_id} ({row['name']}). Was held for: {reason_str}")
+
+    # Warn if lead still can't be assigned due to missing/unsupported segment
+    from config import available_segments as _available_segments
+    segments = _available_segments()
+    if not row["segment"]:
+        print("WARNING: Lead has no segment -- will not be assigned to campaigns until enriched.")
+    elif segments and row["segment"] not in segments:
+        print(f"WARNING: Segment '{row['segment']}' has no template -- lead will not be assigned.")
 
 
 def cmd_import(args):

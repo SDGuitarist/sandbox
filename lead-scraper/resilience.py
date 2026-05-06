@@ -12,21 +12,23 @@ import sys
 # Retry-After header parsing (security hardened)
 # ---------------------------------------------------------------------------
 
-def parse_retry_after(header_value, fallback=10.0):
+MAX_RETRY_WAIT: int = 120
+
+
+def parse_retry_after(header_value: str | None, fallback: float = 10.0) -> float:
     """Parse Retry-After header with a 120s safety cap.
 
     Handles integer seconds. Returns fallback on missing, non-integer,
     or negative values. Caps at 120s to prevent hangs from misconfigured
     servers (e.g. Retry-After: 999999 would sleep 11 days).
     """
-    MAX_RETRY_WAIT = 120
     if header_value is None:
         return fallback
     try:
         wait = int(header_value)
     except (ValueError, TypeError):
         return fallback
-    return min(max(0, wait), MAX_RETRY_WAIT)
+    return float(min(max(0, wait), MAX_RETRY_WAIT))
 
 
 # ---------------------------------------------------------------------------

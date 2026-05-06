@@ -34,6 +34,7 @@ CONTACT_SCRAPER_ACTOR = "vdrmota/contact-info-scraper"
 HUNTER_API_BASE = "https://api.hunter.io/v2"
 
 MAX_RESPONSE_BYTES = 1_000_000  # 1 MB cap per page
+MAX_CONSECUTIVE_FAILS = 3  # Circuit breaker threshold for enrichment loops
 
 # Private IP ranges to block (SSRF protection)
 _PRIVATE_NETWORKS = [
@@ -198,7 +199,7 @@ def enrich_leads(
     consecutive_fails = 0
     print(f"Enriching {len(leads)} leads (timeout: {max_minutes}min)...")
     for i, lead in enumerate(leads, 1):
-        if consecutive_fails >= 3:
+        if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
             print(f"{RED}3 consecutive failures in website fetch. "
                   f"Skipping remaining {len(leads) - i} leads.{RESET}")
             break
@@ -541,7 +542,7 @@ def enrich_with_hunter(
     print(f"Hunter.io: enriching {len(leads)} leads (timeout: {max_minutes}min)...")
 
     for i, lead in enumerate(leads, 1):
-        if consecutive_fails >= 3:
+        if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
             print(f"{RED}3 consecutive failures in hunter. "
                   f"Skipping remaining {len(leads) - i} leads.{RESET}")
             break
@@ -1160,7 +1161,7 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
     print(f"Researching hooks for {len(leads)} leads...")
     with get_db(db_path) as conn:
         for i, lead in enumerate(leads, 1):
-            if consecutive_fails >= 3:
+            if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
                 print(f"{RED}3 consecutive failures in hook research. "
                       f"Skipping remaining {len(leads) - i} leads.{RESET}")
                 break

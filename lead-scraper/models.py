@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from db import get_db, DB_PATH
 
 VALID_SOURCES = {"meetup", "eventbrite", "facebook", "linkedin", "instagram", "csv_import"}
@@ -35,7 +37,7 @@ def query_leads(source="", q="", db_path=DB_PATH, limit=100, offset=0):
     return rows, count
 
 
-def query_held_leads(db_path=DB_PATH) -> list[dict]:
+def query_held_leads(db_path: Path = DB_PATH) -> list[dict]:
     """Return leads held from auto-generation with labeled reasons.
 
     Hold reasons: low_confidence, no_hook, low_quality_hook, unsupported_segment.
@@ -172,6 +174,10 @@ def merge_leads(group: list[dict], db_path=DB_PATH) -> int:
                     updates[field] = dupe[field]
                     break
 
+    # Preserve manual_approved if ANY duplicate was approved (OR/MAX semantics)
+    if any(d.get("manual_approved") == 1 for d in group):
+        updates["manual_approved"] = 1
+
     with get_db(db_path) as conn:
         if updates:
             set_parts = [f"{k} = ?" for k in updates]
@@ -227,7 +233,7 @@ def query_leads_scored(source="", q="", db_path=DB_PATH, limit=100, offset=0):
     return scored, total
 
 
-def unhold_lead(lead_id: int, db_path=DB_PATH) -> bool:
+def unhold_lead(lead_id: int, db_path: Path = DB_PATH) -> bool:
     """Set manual_approved=1 for a lead. Returns True if lead existed.
 
     Administrative override -- bypasses computed hold reasons so the lead
