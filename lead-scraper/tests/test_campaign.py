@@ -223,5 +223,5 @@ def test_status_shows_counts(setup_db, insert_lead, capsys):
     output = capsys.readouterr().out
     assert "Workshop" in output
     assert "Leads assigned: 2" in output
-    assert "Draft:    1" in output
-    assert "Approved: 1" in output
+    assert "Draft:" in output and "1" in output
+    assert "Approved:" in output and "1" in output

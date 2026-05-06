@@ -141,11 +141,64 @@ def cmd_import(args):
     print(f"Import complete. {inserted} new, {skipped} duplicates, {rejected} rejected.")
 
 
+def cmd_dedup(args):
+    """Find and merge duplicate leads."""
+    from models import find_duplicates, merge_leads
+
+    groups = find_duplicates()
+    if not groups:
+        print("No duplicates found.")
+        return
+
+    total_dupes = sum(len(g) - 1 for g in groups)
+    print(f"Found {len(groups)} duplicate groups ({total_dupes} extra leads):\n")
+    for i, group in enumerate(groups, 1):
+        names = [f"{l['name']} (id={l['id']}, source={l['source']})" for l in group]
+        print(f"  Group {i}: {', '.join(names)}")
+
+    if not args.apply:
+        print(f"\nDry run. Use --apply to merge these groups.")
+        return
+
+    merged = 0
+    for group in groups:
+        keeper_id = merge_leads(group)
+        names = [l["name"] for l in group]
+        print(f"  Merged {len(group)} leads -> kept id {keeper_id} ({names[0]})")
+        merged += 1
+    print(f"\nMerged {merged} groups, removed {total_dupes} duplicate leads.")
+
+
+def cmd_schedule(args):
+    """Print crontab setup for automatic scraping."""
+    script = Path(__file__).resolve()
+    project_dir = script.parent
+    # Prefer the project venv python over system python
+    venv_python = project_dir / "venv" / "bin" / "python"
+    python = str(venv_python) if venv_python.exists() else str(Path(sys.executable).resolve())
+    location = args.location
+
+    cron_line = (
+        f'0 8 * * * cd {project_dir} && '
+        f'{python} {script} scrape --location "{location}" '
+        f'>> /tmp/lead-scraper.log 2>&1'
+    )
+
+    print("To scrape automatically every day at 8am, add this to your crontab:\n")
+    print(f"  {cron_line}")
+    print()
+    print("Commands:")
+    print("  crontab -e    # open crontab editor")
+    print("  crontab -l    # view current crontab")
+
+
 def cmd_campaign(args):
     """Dispatch campaign subcommands."""
     from campaign import (
         create_campaign, assign_leads, generate_messages,
         show_queue, approve_message, skip_message, mark_sent, show_status,
+        mark_replied, mark_booked, mark_declined, mark_no_response,
+        approve_all_messages, skip_all_messages,
     )
 
     action = args.action
@@ -171,6 +224,18 @@ def cmd_campaign(args):
         skip_message(args.campaign_id, args.lead)
     elif action == "sent":
         mark_sent(args.campaign_id, args.lead)
+    elif action == "replied":
+        mark_replied(args.campaign_id, args.lead)
+    elif action == "booked":
+        mark_booked(args.campaign_id, args.lead)
+    elif action == "declined":
+        mark_declined(args.campaign_id, args.lead)
+    elif action == "no-response":
+        mark_no_response(args.campaign_id, args.lead)
+    elif action == "approve-all":
+        approve_all_messages(args.campaign_id)
+    elif action == "skip-all":
+        skip_all_messages(args.campaign_id, getattr(args, "except_leads", None))
     elif action == "status":
         show_status(args.campaign_id)
 
@@ -255,6 +320,30 @@ def main():
     sp_sent.add_argument("campaign_id", type=int)
     sp_sent.add_argument("--lead", type=int, required=True)
 
+    sp_replied = campaign_sub.add_parser("replied", help="Mark a sent message as replied")
+    sp_replied.add_argument("campaign_id", type=int)
+    sp_replied.add_argument("--lead", type=int, required=True)
+
+    sp_booked = campaign_sub.add_parser("booked", help="Mark as booked (converted)")
+    sp_booked.add_argument("campaign_id", type=int)
+    sp_booked.add_argument("--lead", type=int, required=True)
+
+    sp_declined = campaign_sub.add_parser("declined", help="Mark as declined")
+    sp_declined.add_argument("campaign_id", type=int)
+    sp_declined.add_argument("--lead", type=int, required=True)
+
+    sp_noresp = campaign_sub.add_parser("no-response", help="Mark as no response")
+    sp_noresp.add_argument("campaign_id", type=int)
+    sp_noresp.add_argument("--lead", type=int, required=True)
+
+    sp_approve_all = campaign_sub.add_parser("approve-all", help="Approve all draft messages")
+    sp_approve_all.add_argument("campaign_id", type=int)
+
+    sp_skip_all = campaign_sub.add_parser("skip-all", help="Skip all draft messages")
+    sp_skip_all.add_argument("campaign_id", type=int)
+    sp_skip_all.add_argument("--except", type=int, nargs="+", dest="except_leads",
+                             help="Lead IDs to keep as draft")
+
     sp_status = campaign_sub.add_parser("status", help="Show campaign status")
     sp_status.add_argument("campaign_id", type=int)
 
@@ -265,6 +354,18 @@ def main():
     sp_import.add_argument("--csv", required=True, help="Path to CSV file")
     sp_import.add_argument("--source", default="csv_import", help="Source label (default: csv_import)")
     sp_import.set_defaults(func=cmd_import)
+
+    # dedup
+    sp_dedup = subparsers.add_parser("dedup", help="Find and merge duplicate leads")
+    sp_dedup.add_argument("--apply", action="store_true",
+                          help="Actually merge (default: dry run)")
+    sp_dedup.set_defaults(func=cmd_dedup)
+
+    # schedule
+    sp_schedule = subparsers.add_parser("schedule", help="Print crontab setup for auto-scraping")
+    sp_schedule.add_argument("--location", required=True,
+                             help='Target location, e.g. "San Diego, CA"')
+    sp_schedule.set_defaults(func=cmd_schedule)
 
     # serve
     sp_serve = subparsers.add_parser("serve", help="Start Flask web UI")

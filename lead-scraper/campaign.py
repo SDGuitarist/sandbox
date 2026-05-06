@@ -339,6 +339,111 @@ def mark_sent(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Response tracking (post-send outcomes)
+# ---------------------------------------------------------------------------
+
+def mark_replied(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
+    """Mark a sent message as replied. Only transitions sent -> replied."""
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue SET status = 'replied' "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'sent'",
+            (campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Must be sent first, or not found.")
+            return False
+    print(f"Marked replied for lead {lead_id}.")
+    return True
+
+
+def mark_booked(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
+    """Mark as booked (converted). Transitions sent or replied -> booked."""
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue SET status = 'booked' "
+            "WHERE campaign_id = ? AND lead_id = ? AND status IN ('sent', 'replied')",
+            (campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Must be sent or replied first, or not found.")
+            return False
+    print(f"Marked booked for lead {lead_id}.")
+    return True
+
+
+def mark_declined(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
+    """Mark as declined. Transitions sent or replied -> declined."""
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue SET status = 'declined' "
+            "WHERE campaign_id = ? AND lead_id = ? AND status IN ('sent', 'replied')",
+            (campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Must be sent or replied first, or not found.")
+            return False
+    print(f"Marked declined for lead {lead_id}.")
+    return True
+
+
+def mark_no_response(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
+    """Mark as no response. Transitions sent -> no_response."""
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue SET status = 'no_response' "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'sent'",
+            (campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Must be sent first, or not found.")
+            return False
+    print(f"Marked no_response for lead {lead_id}.")
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Bulk operations
+# ---------------------------------------------------------------------------
+
+def approve_all_messages(campaign_id: int, db_path: Path = DB_PATH) -> int:
+    """Approve all draft messages in a campaign. Returns count approved."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue SET status = 'approved', approved_at = ? "
+            "WHERE campaign_id = ? AND status = 'draft'",
+            (now, campaign_id),
+        )
+        count = cursor.rowcount
+    print(f"Approved {count} messages in campaign {campaign_id}.")
+    return count
+
+
+def skip_all_messages(campaign_id: int, except_leads: list[int] | None = None,
+                      db_path: Path = DB_PATH) -> int:
+    """Skip all draft messages, optionally excluding specific lead IDs."""
+    with get_db(db_path) as conn:
+        if except_leads:
+            placeholders = ",".join("?" for _ in except_leads)
+            cursor = conn.execute(
+                f"UPDATE outreach_queue SET status = 'skipped' "
+                f"WHERE campaign_id = ? AND status = 'draft' "
+                f"AND lead_id NOT IN ({placeholders})",
+                [campaign_id] + except_leads,
+            )
+        else:
+            cursor = conn.execute(
+                "UPDATE outreach_queue SET status = 'skipped' "
+                "WHERE campaign_id = ? AND status = 'draft'",
+                (campaign_id,),
+            )
+        count = cursor.rowcount
+    print(f"Skipped {count} messages in campaign {campaign_id}.")
+    return count
+
+
+# ---------------------------------------------------------------------------
 # Status
 # ---------------------------------------------------------------------------
 
@@ -371,9 +476,26 @@ def show_status(campaign_id: int, db_path: Path = DB_PATH) -> None:
         print(f"Target date: {campaign['target_date']}")
     if campaign["segment_filter"]:
         print(f"Segments: {campaign['segment_filter']}")
+    sent = status_counts.get('sent', 0)
+    replied = status_counts.get('replied', 0)
+    booked = status_counts.get('booked', 0)
+    declined = status_counts.get('declined', 0)
+    no_response = status_counts.get('no_response', 0)
+    total_sent = sent + replied + booked + declined + no_response
+
     print(f"\nLeads assigned: {assigned}")
     print(f"Messages generated: {total_queued}")
-    print(f"  Draft:    {status_counts.get('draft', 0)}")
-    print(f"  Approved: {status_counts.get('approved', 0)}")
-    print(f"  Sent:     {status_counts.get('sent', 0)}")
-    print(f"  Skipped:  {status_counts.get('skipped', 0)}")
+    print(f"  Draft:       {status_counts.get('draft', 0)}")
+    print(f"  Approved:    {status_counts.get('approved', 0)}")
+    print(f"  Sent:        {sent}")
+    print(f"  Skipped:     {status_counts.get('skipped', 0)}")
+    print(f"  Replied:     {replied}")
+    print(f"  Booked:      {booked}")
+    print(f"  Declined:    {declined}")
+    print(f"  No Response: {no_response}")
+
+    if total_sent > 0:
+        reply_rate = (replied + booked) / total_sent * 100
+        book_rate = booked / total_sent * 100
+        print(f"\nReply rate:      {reply_rate:.0f}% ({replied + booked}/{total_sent})")
+        print(f"Conversion rate: {book_rate:.0f}% ({booked}/{total_sent})")

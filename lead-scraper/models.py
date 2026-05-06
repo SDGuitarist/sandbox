@@ -13,8 +13,11 @@ def query_leads(source="", q="", db_path=DB_PATH, limit=100, offset=0):
         params.append(source)
 
     if q:
-        clauses.append("name LIKE ?")
-        params.append(f"%{q}%")
+        clauses.append(
+            "(name LIKE ? OR bio LIKE ? OR location LIKE ? "
+            "OR email LIKE ? OR hook_text LIKE ?)"
+        )
+        params.extend([f"%{q}%"] * 5)
 
     where = " AND ".join(clauses)
     where_sql = f"WHERE {where}" if where else ""
@@ -87,6 +90,98 @@ def query_held_leads(db_path=DB_PATH) -> list[dict]:
         rows = conn.execute(query, params).fetchall()
 
     return [dict(r) for r in rows]
+
+
+def find_duplicates(db_path=DB_PATH) -> list[list[dict]]:
+    """Find duplicate leads by exact email or name match (case-insensitive).
+
+    Returns a list of groups, where each group is a list of duplicate lead dicts.
+    """
+    groups = []
+    seen_ids: set[int] = set()
+
+    with get_db(db_path) as conn:
+        # Email duplicates (most reliable signal)
+        email_groups = conn.execute(
+            "SELECT LOWER(email) as match_key, GROUP_CONCAT(id) as ids "
+            "FROM leads WHERE email IS NOT NULL "
+            "GROUP BY LOWER(email) HAVING COUNT(*) > 1"
+        ).fetchall()
+
+        for row in email_groups:
+            ids = [int(x) for x in row["ids"].split(",")]
+            leads = []
+            for lid in ids:
+                lead = conn.execute("SELECT * FROM leads WHERE id = ?", (lid,)).fetchone()
+                if lead:
+                    leads.append(dict(lead))
+                    seen_ids.add(lid)
+            if len(leads) > 1:
+                groups.append(leads)
+
+        # Name duplicates (only for leads not already matched by email)
+        name_groups = conn.execute(
+            "SELECT LOWER(TRIM(name)) as match_key, GROUP_CONCAT(id) as ids "
+            "FROM leads WHERE email IS NULL "
+            "GROUP BY LOWER(TRIM(name)) HAVING COUNT(*) > 1"
+        ).fetchall()
+
+        for row in name_groups:
+            ids = [int(x) for x in row["ids"].split(",") if int(x) not in seen_ids]
+            if len(ids) < 2:
+                continue
+            leads = []
+            for lid in ids:
+                lead = conn.execute("SELECT * FROM leads WHERE id = ?", (lid,)).fetchone()
+                if lead:
+                    leads.append(dict(lead))
+            if len(leads) > 1:
+                groups.append(leads)
+
+    return groups
+
+
+def merge_leads(group: list[dict], db_path=DB_PATH) -> int:
+    """Merge a group of duplicate leads. Keeps the most complete lead.
+
+    Fills missing fields from duplicates, then deletes the dupes.
+    Campaign assignments for deleted leads are cascade-deleted.
+    Returns the ID of the surviving lead.
+    """
+    def completeness(lead):
+        return sum(1 for v in lead.values() if v is not None)
+
+    sorted_leads = sorted(group, key=completeness, reverse=True)
+    keeper = sorted_leads[0]
+    dupes = sorted_leads[1:]
+
+    fill_fields = [
+        "bio", "location", "email", "phone", "website", "social_handles",
+        "profile_bio", "segment", "segment_confidence", "hook_text",
+        "hook_source_url", "hook_quality", "activity",
+    ]
+
+    updates = {}
+    for field in fill_fields:
+        if keeper.get(field) is None:
+            for dupe in dupes:
+                if dupe.get(field) is not None:
+                    updates[field] = dupe[field]
+                    break
+
+    with get_db(db_path) as conn:
+        if updates:
+            set_parts = [f"{k} = ?" for k in updates]
+            values = list(updates.values()) + [keeper["id"]]
+            conn.execute(
+                f"UPDATE leads SET {', '.join(set_parts)} WHERE id = ?",
+                values,
+            )
+
+        for dupe in dupes:
+            conn.execute("DELETE FROM leads WHERE id = ?", (dupe["id"],))
+
+    return keeper["id"]
 
 
 def delete_lead(lead_id: int, db_path=DB_PATH) -> bool:

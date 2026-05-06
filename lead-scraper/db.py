@@ -70,6 +70,50 @@ def migrate_db(db_path=DB_PATH):
             conn.execute(f"ALTER TABLE leads ADD COLUMN {col_name} {col_type}")
 
 
+def _migrate_outreach_statuses(db_path=DB_PATH):
+    """Expand outreach_queue status CHECK to include response tracking statuses.
+
+    SQLite doesn't support ALTER CHECK, so we recreate the table if needed.
+    """
+    if not db_path.exists():
+        return
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='outreach_queue'"
+        ).fetchone()
+        if not row or "'replied'" in row[0]:
+            return  # Table doesn't exist yet or already migrated
+
+        conn.execute("PRAGMA foreign_keys=OFF")
+        conn.executescript("""
+            CREATE TABLE outreach_queue_new (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                lead_id         INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+                campaign_id     INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+                opener_text     TEXT,
+                template_text   TEXT,
+                full_message    TEXT,
+                status          TEXT NOT NULL DEFAULT 'draft'
+                                CHECK(status IN ('draft', 'approved', 'sent', 'skipped',
+                                                 'replied', 'booked', 'declined', 'no_response')),
+                generated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
+                approved_at     TEXT,
+                sent_at         TEXT,
+                UNIQUE(lead_id, campaign_id)
+            );
+            INSERT INTO outreach_queue_new SELECT * FROM outreach_queue;
+            DROP TABLE outreach_queue;
+            ALTER TABLE outreach_queue_new RENAME TO outreach_queue;
+            CREATE INDEX IF NOT EXISTS idx_outreach_queue_campaign_status
+                ON outreach_queue(campaign_id, status);
+        """)
+        conn.execute("PRAGMA foreign_keys=ON")
+    finally:
+        conn.close()
+
+
 def init_db(db_path=DB_PATH):
     """Create tables from schema.sql and schema_campaigns.sql. Safe to call repeatedly."""
     base_dir = Path(__file__).parent
@@ -79,6 +123,7 @@ def init_db(db_path=DB_PATH):
         if campaigns_schema.exists():
             conn.executescript(campaigns_schema.read_text())
     migrate_db(db_path)  # Ensure existing DBs get new columns
+    _migrate_outreach_statuses(db_path)  # Expand status CHECK constraint
     # Index on leads columns added by migrate_db (must run after migration)
     with get_db(db_path) as conn:
         conn.execute(

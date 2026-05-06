@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS outreach_queue (
     template_text   TEXT,
     full_message    TEXT,
     status          TEXT NOT NULL DEFAULT 'draft'
-                    CHECK(status IN ('draft', 'approved', 'sent', 'skipped')),
+                    CHECK(status IN ('draft', 'approved', 'sent', 'skipped',
+                                     'replied', 'booked', 'declined', 'no_response')),
     generated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
     approved_at     TEXT,
     sent_at         TEXT,
