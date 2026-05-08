@@ -1,7 +1,7 @@
 ---
 title: "feat: Expand Scraper Targets to 10K via Filmmaker Tool Communities"
 type: feat
-status: active
+status: complete
 date: 2026-05-08
 origin: docs/brainstorms/2026-05-08-filmmaker-tool-targets-10k-brainstorm.md
 feed_forward:
@@ -333,8 +333,31 @@ python run.py dedup
 - **Location lesson:** Jamie Lee Kendall incident (feedback_scraper-location-signal.md)
 - **Tony meeting notes:** `~/Documents/dev-notes/2026-05-07.md:30` ("wants 10x volume")
 
+## Phase 3 Results (2026-05-08)
+
+First scrape with expanded targets completed successfully.
+
+| Source | Before | After | New |
+|--------|--------|-------|-----|
+| Eventbrite | 199 | 232 | +33 |
+| Facebook | 258 | 1,153 | +895 |
+| Instagram | 738 | 1,500 | +762 |
+| Venue scraper | 16 | 16 | 0 |
+| **Total** | **1,211** | **2,901** | **+1,690** |
+
+- Facebook scraper timed out at 300s (got 1,627 of ~1,928 results). Split groups into 2 batches on next run.
+- Cross-source dedup: zero duplicates found (expected -- needs email enrichment first).
+- Auto-enrichment (bio step) ran on all 1,690 new leads. Found 11 emails, 6 phones.
+
+### Follow-up needed
+1. Split Facebook groups into 2 config batches to avoid 300s timeout
+2. Run `enrich --step segment --limit 100` and `enrich --step hook --limit 100` in batches
+3. Re-run dedup after Hunter.io enrichment adds emails
+4. Consider second scrape cycle in a few weeks for new group posts/members
+
 ## Feed-Forward
 
-- **Hardest decision:** SD-specific only limits volume. Realistic estimate is 3,000-6,000, not 10,000. May need to revisit after Phase 1.
+- **Hardest decision:** SD-specific only limits volume. Realistic estimate was 3,000-6,000. Actual first scrape: 2,901 (1,211 existing + 1,690 new). SD-only is viable but needs multiple scrape cycles or group splitting to reach 10K.
 - **Rejected alternatives:** National groups with location filtering (higher volume but Jamie Lee problem). Risk-tier prioritization (unnecessary since enrichment classifies).
-- **Least confident:** Whether Phase 1 will yield enough confirmed targets to justify the SD-only constraint. The go/no-go gate (under 2,000 scrape-realistic = stop and revisit) will force the decision.
+- **Least confident:** Facebook timeout. 15 groups in one Apify call hit the 300s limit and returned partial results (~85%). Splitting into 2 batches of 7-8 groups each should fix this.
+- **Resolved:** The SD-only constraint works. Go/no-go gate (2,000 threshold) cleared. No need to add national groups or secondary sources.
