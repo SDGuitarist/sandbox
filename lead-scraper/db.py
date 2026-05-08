@@ -50,6 +50,7 @@ def migrate_db(db_path=DB_PATH):
         ("hook_verified", "INTEGER DEFAULT 0"),
         ("is_sendable", "INTEGER DEFAULT 1"),
         ("sendable_reason", "TEXT"),
+        ("skip_count", "INTEGER DEFAULT 0"),
     ]
     with get_db(db_path) as conn:
         existing = {row[1] for row in conn.execute("PRAGMA table_info(leads)")}

@@ -117,7 +117,12 @@ def assign_leads(campaign_id: int, min_hook_quality: int = 3,
             AND COALESCE(is_sendable, 1) = 1
             AND (profile_url LIKE '%instagram.com%'
                  OR profile_url LIKE '%facebook.com%')
-            AND id NOT IN (SELECT lead_id FROM campaign_leads)
+            AND id NOT IN (
+                SELECT cl.lead_id FROM campaign_leads cl
+                JOIN outreach_queue oq ON cl.lead_id = oq.lead_id AND cl.campaign_id = oq.campaign_id
+                WHERE oq.status IN ('sent', 'draft', 'approved', 'replied', 'booked')
+            )
+            AND COALESCE(skip_count, 0) < 3
         """
         cursor = conn.execute(
             f"""INSERT INTO campaign_leads (campaign_id, lead_id)
@@ -356,7 +361,7 @@ def approve_message(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> 
 
 
 def skip_message(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
-    """Skip a draft message."""
+    """Skip a draft message and clear hook fields for re-enrichment."""
     with get_db(db_path) as conn:
         cursor = conn.execute(
             "UPDATE outreach_queue SET status = 'skipped' "
@@ -366,6 +371,13 @@ def skip_message(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> boo
         if cursor.rowcount == 0:
             print("Already skipped or not found.")
             return False
+        # Clear hook fields so lead re-enters the enrichment pool
+        conn.execute(
+            "UPDATE leads SET hook_text = NULL, hook_source_url = NULL, "
+            "hook_quality = NULL, hook_verified = 0, "
+            "skip_count = COALESCE(skip_count, 0) + 1 WHERE id = ?",
+            (lead_id,),
+        )
     print(f"Skipped message for lead {lead_id}.")
     return True
 

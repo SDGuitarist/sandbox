@@ -49,6 +49,52 @@ def test_assign_filters_by_segment_and_quality(setup_db, insert_lead):
     assert count == 1
 
 
+def test_dedup_allows_skipped_leads_in_new_campaigns(setup_db, insert_lead):
+    """Skipped leads should be recyclable into future campaigns."""
+    lid = insert_lead(setup_db, "Recycled", segment="connector", hook_quality=1,
+                      segment_confidence=0.9, hook_verified=1, is_sendable=1,
+                      profile_url="https://www.instagram.com/recycled")
+
+    # Campaign 7: lead assigned, generated, then skipped
+    c7 = create_campaign("Old", "connector", None, None, setup_db)
+    assign_leads(c7, db_path=setup_db)
+    with get_db(setup_db) as conn:
+        conn.execute(
+            "INSERT INTO outreach_queue (lead_id, campaign_id, full_message, status) "
+            "VALUES (?, ?, ?, 'skipped')", (lid, c7, "Old msg"),
+        )
+
+    # Campaign 13: skipped lead should be assignable
+    c13 = create_campaign("New", "connector", None, None, setup_db)
+    count = assign_leads(c13, db_path=setup_db)
+    assert count == 1
+
+    with get_db(setup_db) as conn:
+        assigned = conn.execute(
+            "SELECT lead_id FROM campaign_leads WHERE campaign_id = ?", (c13,)
+        ).fetchall()
+    assert lid in {r["lead_id"] for r in assigned}
+
+
+def test_dedup_blocks_sent_leads(setup_db, insert_lead):
+    """Sent leads must NOT be assignable to new campaigns."""
+    lid = insert_lead(setup_db, "Sent", segment="connector", hook_quality=1,
+                      segment_confidence=0.9, hook_verified=1, is_sendable=1,
+                      profile_url="https://www.instagram.com/sent")
+
+    c7 = create_campaign("Old", "connector", None, None, setup_db)
+    assign_leads(c7, db_path=setup_db)
+    with get_db(setup_db) as conn:
+        conn.execute(
+            "INSERT INTO outreach_queue (lead_id, campaign_id, full_message, status) "
+            "VALUES (?, ?, ?, 'sent')", (lid, c7, "Sent msg"),
+        )
+
+    c13 = create_campaign("New", "connector", None, None, setup_db)
+    count = assign_leads(c13, db_path=setup_db)
+    assert count == 0
+
+
 def test_assign_derives_segments_from_templates(setup_db):
     """Only segments with template files should be eligible."""
     available = _available_segments()
@@ -177,6 +223,56 @@ def test_skip_message(setup_db, insert_lead):
             "SELECT status FROM outreach_queue WHERE lead_id = ?", (lid,)
         ).fetchone()
     assert row["status"] == "skipped"
+
+
+def test_skip_clears_hook_fields(setup_db, insert_lead):
+    """Skipping a lead should clear hook fields for re-enrichment."""
+    lid = insert_lead(setup_db, "HookLead", hook_text="Old hook",
+                      hook_source_url="https://example.com/old",
+                      hook_quality=2, hook_verified=1)
+    cid = create_campaign("Test", None, None, None, setup_db)
+    with get_db(setup_db) as conn:
+        conn.execute(
+            "INSERT INTO outreach_queue (lead_id, campaign_id, full_message) VALUES (?, ?, ?)",
+            (lid, cid, "Message"),
+        )
+    skip_message(cid, lid, db_path=setup_db)
+
+    with get_db(setup_db) as conn:
+        lead = conn.execute(
+            "SELECT hook_text, hook_source_url, hook_quality, hook_verified "
+            "FROM leads WHERE id = ?", (lid,)
+        ).fetchone()
+    assert lead["hook_text"] is None
+    assert lead["hook_source_url"] is None
+    assert lead["hook_quality"] is None
+    assert lead["hook_verified"] == 0
+
+
+def test_skip_increments_skip_count(setup_db, insert_lead):
+    """Each skip should increment the lead's skip_count."""
+    lid = insert_lead(setup_db, "Counter", profile_url="https://www.instagram.com/counter")
+    cid = create_campaign("Test", None, None, None, setup_db)
+    with get_db(setup_db) as conn:
+        conn.execute(
+            "INSERT INTO outreach_queue (lead_id, campaign_id, full_message) VALUES (?, ?, ?)",
+            (lid, cid, "Message"),
+        )
+    skip_message(cid, lid, db_path=setup_db)
+
+    with get_db(setup_db) as conn:
+        row = conn.execute("SELECT skip_count FROM leads WHERE id = ?", (lid,)).fetchone()
+    assert row["skip_count"] == 1
+
+
+def test_skip_count_3_blocks_assignment(setup_db, insert_lead):
+    """Leads with skip_count >= 3 should not be auto-assigned."""
+    lid = insert_lead(setup_db, "TooMany", segment="connector", hook_quality=1,
+                      segment_confidence=0.9, hook_verified=1, is_sendable=1,
+                      skip_count=3, profile_url="https://www.instagram.com/toomany")
+    cid = create_campaign("Test", "connector", None, None, setup_db)
+    count = assign_leads(cid, db_path=setup_db)
+    assert count == 0
 
 
 def test_sent_requires_approved(setup_db, insert_lead):
