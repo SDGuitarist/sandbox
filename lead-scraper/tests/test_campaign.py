@@ -10,8 +10,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from db import get_db
 from campaign import (
     create_campaign, assign_leads, generate_messages,
-    show_queue, approve_message, skip_message, mark_sent, show_status,
-    _fill_template, _available_segments,
+    show_queue, approve_message, skip_message, skip_all_messages,
+    mark_sent, show_status, _fill_template, _available_segments,
 )
 from config import TEMPLATES_DIR
 
@@ -273,6 +273,35 @@ def test_skip_count_3_blocks_assignment(setup_db, insert_lead):
     cid = create_campaign("Test", "connector", None, None, setup_db)
     count = assign_leads(cid, db_path=setup_db)
     assert count == 0
+
+
+def test_skip_all_clears_hooks_and_increments_count(setup_db, insert_lead):
+    """Bulk skip should clear hooks and increment skip_count for all skipped leads."""
+    lid1 = insert_lead(setup_db, "A", hook_text="Hook A", hook_quality=1, hook_verified=1)
+    lid2 = insert_lead(setup_db, "B", hook_text="Hook B", hook_quality=2, hook_verified=1)
+    cid = create_campaign("Test", None, None, None, setup_db)
+    with get_db(setup_db) as conn:
+        conn.execute(
+            "INSERT INTO outreach_queue (lead_id, campaign_id, full_message) VALUES (?, ?, ?)",
+            (lid1, cid, "Msg1"),
+        )
+        conn.execute(
+            "INSERT INTO outreach_queue (lead_id, campaign_id, full_message) VALUES (?, ?, ?)",
+            (lid2, cid, "Msg2"),
+        )
+    count = skip_all_messages(cid, db_path=setup_db)
+    assert count == 2
+
+    with get_db(setup_db) as conn:
+        for lid in (lid1, lid2):
+            lead = conn.execute(
+                "SELECT hook_text, hook_quality, hook_verified, skip_count "
+                "FROM leads WHERE id = ?", (lid,)
+            ).fetchone()
+            assert lead["hook_text"] is None
+            assert lead["hook_quality"] is None
+            assert lead["hook_verified"] == 0
+            assert lead["skip_count"] == 1
 
 
 def test_sent_requires_approved(setup_db, insert_lead):

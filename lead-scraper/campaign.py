@@ -482,10 +482,17 @@ def approve_all_messages(campaign_id: int, db_path: Path = DB_PATH) -> int:
 
 def skip_all_messages(campaign_id: int, except_leads: list[int] | None = None,
                       db_path: Path = DB_PATH) -> int:
-    """Skip all draft messages, optionally excluding specific lead IDs."""
+    """Skip all draft messages and clear hook fields for re-enrichment."""
     with get_db(db_path) as conn:
+        # Collect lead_ids that will be skipped before updating
         if except_leads:
             placeholders = ",".join("?" for _ in except_leads)
+            skipped_ids = [r[0] for r in conn.execute(
+                f"SELECT lead_id FROM outreach_queue "
+                f"WHERE campaign_id = ? AND status = 'draft' "
+                f"AND lead_id NOT IN ({placeholders})",
+                [campaign_id] + except_leads,
+            ).fetchall()]
             cursor = conn.execute(
                 f"UPDATE outreach_queue SET status = 'skipped' "
                 f"WHERE campaign_id = ? AND status = 'draft' "
@@ -493,12 +500,27 @@ def skip_all_messages(campaign_id: int, except_leads: list[int] | None = None,
                 [campaign_id] + except_leads,
             )
         else:
+            skipped_ids = [r[0] for r in conn.execute(
+                "SELECT lead_id FROM outreach_queue "
+                "WHERE campaign_id = ? AND status = 'draft'",
+                (campaign_id,),
+            ).fetchall()]
             cursor = conn.execute(
                 "UPDATE outreach_queue SET status = 'skipped' "
                 "WHERE campaign_id = ? AND status = 'draft'",
                 (campaign_id,),
             )
         count = cursor.rowcount
+        # Clear hooks and increment skip_count for all skipped leads
+        if skipped_ids:
+            id_placeholders = ",".join("?" for _ in skipped_ids)
+            conn.execute(
+                f"UPDATE leads SET hook_text = NULL, hook_source_url = NULL, "
+                f"hook_quality = NULL, hook_verified = 0, "
+                f"skip_count = COALESCE(skip_count, 0) + 1 "
+                f"WHERE id IN ({id_placeholders})",
+                skipped_ids,
+            )
     print(f"Skipped {count} messages in campaign {campaign_id}.")
     return count
 
