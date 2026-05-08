@@ -50,7 +50,19 @@ SOURCES = {
     "eventbrite": {
         "enabled": True,
         "actor": "aitorsm/eventbrite",
-        "keywords": ["filmmaking", "film festival", "screenwriting", "film production", "indie film", "video production San Diego", "documentary", "short film", "cinematography", "post production", "film scoring"],
+        "keywords": [
+            # Bucket 1: Musicians/Composers
+            "composer showcase", "film composer", "music producer San Diego", "songwriter workshop",
+            # Bucket 2: Authors/Writers
+            "author talk San Diego", "screenwriting workshop", "writers conference",
+            # Bucket 3: Indie Filmmakers/Producers
+            "indie film San Diego", "documentary screening", "film festival San Diego", "video production",
+            # Bucket 4: Creative entrepreneurs/educators
+            "creative entrepreneurship", "creative business workshop", "art director",
+            # Bucket 5: Filmmaker tools expansion (2026-05-08)
+            "screenwriting San Diego", "cinematography San Diego", "filmmaking San Diego",
+            "documentary San Diego", "short film San Diego", "video editing San Diego",
+        ],
         "country": "united-states",
         "city": "San Diego",
         "max_pages": 2,
@@ -59,26 +71,45 @@ SOURCES = {
         "enabled": True,
         "actor": "apify/facebook-groups-scraper",
         "groups": [
+            # Existing
             "https://www.facebook.com/groups/1488967914699762/",
             "https://www.facebook.com/groups/mexicanfilmmakerssd/",
+            # Filmmaker - core
+            "https://www.facebook.com/groups/sandiegofilmnetwork/",
+            "https://www.facebook.com/groups/filmconsortiumsd/",
+            "https://www.facebook.com/groups/SanDiego48HFP/",
+            "https://www.facebook.com/groups/244108549311595/",
+            # Filmmaker - crew / cast
+            "https://www.facebook.com/groups/audiovisualproductioncrewsd/",
+            "https://www.facebook.com/groups/castncrew/",
+            "https://www.facebook.com/groups/sandiegoactors/",
+            # Filmmaker - institutional
+            "https://www.facebook.com/groups/SDSUTheatreTVAndFilm/",
+            # Writing / Music (workshop audience tiers)
+            "https://www.facebook.com/groups/SanDiegoWriters/",
+            "https://www.facebook.com/groups/BBSanDiegoCA/",
+            # Media / adjacent creative
+            "https://www.facebook.com/groups/sdmediapros/",
+            "https://www.facebook.com/groups/257380068144396/",
+            "https://www.facebook.com/groups/SanDiegoPhotographers/",
         ],
     },
     "instagram": {
         "enabled": True,
         "actor": "apify/instagram-hashtag-scraper",
         "hashtags": [
-            "SanDiegoFilmmaker",
-            "SanDiegoFilm",
-            "SDFilmmaker",
-            "SanDiegoVideoProduction",
-            "IndieFilmSD",
-            "SanDiegoDirector",
-            "SDScreenwriter",
-            "SanDiegoCinema",
-            "SDCreatives",
-            "SanDiegoPhotographer",
+            # Bucket 1: Musicians/Composers
+            "SanDiegoMusician", "SanDiegoComposer", "SDSongwriter", "SanDiegoMusicProducer",
+            # Bucket 2: Authors/Writers
+            "SanDiegoAuthor", "SanDiegoWriter", "SDScreenwriter",
+            # Bucket 3: Indie Filmmakers
+            "SanDiegoFilmmaker", "SDFilmmaker", "SanDiegoFilm", "IndieFilmSD", "SanDiegoVideoProduction",
+            # Bucket 4: Creative entrepreneurs
+            "SDCreatives", "SanDiegoCreative", "SanDiegoArtist",
+            # Bucket 5: Filmmaker tools expansion (2026-05-08)
+            "SanDiegoFilmCommunity", "SanDiegoCinematography", "SanDiegoDocumentary", "SDIndieFilm",
         ],
-        "max_profiles": 100,
+        "max_profiles": 400,
     },
     "linkedin": {
         "enabled": False,  # Requires paid Apify actor rental
