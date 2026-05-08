@@ -1,10 +1,14 @@
 ---
 segment: small_biz
-evidence: signal-rich, 0 conversions (0/6, competitor intel from 1 decline)
-cta_style: peer-credibility
+evidence: referral framing (33% connector conversion rate). 0/6 with direct pitch. Rewritten May 2026.
+cta_style: referral
 ---
-Quick one. I've been using AI to run my business development for the past year and it's changed everything. Not ChatGPT tips. Actual systems that handle leads, follow-ups, and client communication with my voice and my standards.
+I've been building AI ethics frameworks for creatives and small businesses. The core question is how you use AI tools without training a competitor on your process, your clients, your voice.
 
-I'm running a small {{format}} on {{date}} teaching how to build this for your own business. {{seat_count}} seats, hands-on, laptops open.
+Started in film because that's where the ethics debate got loud first, but every business owner I've talked to has the same concerns.
 
-Is this something you'd be interested in?
+{{format}} on {{date}}, {{seat_count}} seats, hands-on. San Diego.
+
+Not sure if it's your thing, but I bet you know someone who's been trying to figure out the AI side of their business.
+
+amplifyai.to

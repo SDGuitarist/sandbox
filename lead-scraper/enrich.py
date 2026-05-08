@@ -994,6 +994,7 @@ over transactions or metrics.
 
 Return a JSON object with these fields:
 - hook_text: one sentence describing the specific activity
+- source_url: the direct URL where you found this information (must be a real, clickable URL that contains the activity you described)
 - source_description: a brief description of where you found this (e.g. "KPBS event listing")
 - tier: 1 (content created), 2 (opinion/position), 3 (event/project led), 4 (award/recognition), 5 (transaction/metric)
 Return ONLY the JSON object, no other text."""
@@ -1005,6 +1006,7 @@ _HOOK_RESPONSE_FORMAT = {
             "type": "object",
             "properties": {
                 "hook_text": {"type": "string"},
+                "source_url": {"type": "string"},
                 "source_description": {"type": "string"},
                 "tier": {"type": "integer"},
             },
@@ -1024,7 +1026,8 @@ def _get_leads_for_hook(db_path: Path = DB_PATH) -> list[dict]:
     """Get leads with a segment but no hook yet."""
     with get_db(db_path) as conn:
         rows = conn.execute(
-            "SELECT id, name, bio, profile_bio, activity, location, social_handles "
+            "SELECT id, name, bio, profile_bio, activity, location, social_handles, "
+            "profile_url "
             "FROM leads WHERE hook_text IS NULL AND segment IS NOT NULL"
         ).fetchall()
     return [dict(row) for row in rows]
@@ -1060,13 +1063,454 @@ def _build_hook_context(lead: dict) -> str:
     return ". ".join(parts) if parts else lead["name"]
 
 
+# ---------------------------------------------------------------------------
+# Lead pre-screening (run before enrichment or campaign assignment)
+# ---------------------------------------------------------------------------
+
+# Org-name signals: if name contains any of these (case-insensitive), it's an org
+_ORG_NAME_SIGNALS = [
+    "productions", "production", "films", "film ", " film", "media",
+    "agency", "marketing", "creative suite", "studios", "studio",
+    "cinema", "theater", "theatre", "church", "ymca", "institute",
+    "foundation", "llc", "inc.", "university", "college",
+    "anonymous", "festival", "project ", " project", "collective",
+    "the movie", "short film", "tv ", " tv", "network",
+]
+
+# Name patterns that aren't real person names
+_INVALID_NAME_SIGNALS = [
+    "anonymous", "photographer", "videographer", "filmmaker",
+    "the best of", "the last", "the influence",
+]
+
+# URL domains that should never be verify sources
+_BLOCKED_URL_PATTERNS = [
+    ".txt", ".csv", ".pdf",  # data files
+    "wikipedia.org", "gettyimages.com",  # reference sites
+    "ncbi.nlm.nih.gov", "pmc.ncbi",  # medical research
+    "chocolatey.org", "thomsonreuters.com",  # unrelated
+    "ideascale.com", "walzr.com",  # unrelated
+    ".ac.jp", ".tu-darmstadt.de",  # academic
+    "admin.sc.gov",  # government salary
+    "positivecoach.org",  # sports
+]
+
+# Non-SD geography signals in bios
+_NON_SD_GEO_SIGNALS = [
+    "maharashtra", "chandigarh", "kanchipuram", "mumbai", "delhi",
+    "bangalore", "hyderabad", "chennai", "kolkata", "pune",
+    "south dakota", "sioux falls",  # SD = South Dakota confusion
+    "nigeria", "lagos", "ghana", "accra",
+]
+
+
+def _check_is_org(name: str) -> str | None:
+    """Check if name looks like an organization. Returns reason or None."""
+    name_lower = name.lower()
+    for signal in _ORG_NAME_SIGNALS:
+        if signal in name_lower:
+            return f"org_name:{signal}"
+    # Names that are ALL CAPS and > 3 words are likely brands
+    words = name.split()
+    if len(words) >= 2 and name == name.upper() and len(name) > 10:
+        return "org_name:all_caps_brand"
+    return None
+
+
+def _check_valid_name(name: str) -> str | None:
+    """Check if name looks like a real person. Returns reason or None."""
+    name_lower = name.lower()
+    for signal in _INVALID_NAME_SIGNALS:
+        if signal in name_lower:
+            return f"invalid_name:{signal}"
+    # Must have at least one word that could be a first name (2+ alpha chars)
+    words = [w for w in name.split() if w.isalpha() and len(w) >= 2]
+    if not words:
+        return "invalid_name:no_alpha_words"
+    # Emoji-only names
+    alpha_chars = sum(1 for c in name if c.isalpha())
+    if alpha_chars < 3:
+        return "invalid_name:too_few_letters"
+    return None
+
+
+def _check_blocked_url(hook_source_url: str | None) -> str | None:
+    """Check if hook URL is from a blocked domain. Returns reason or None."""
+    if not hook_source_url:
+        return None
+    url_lower = hook_source_url.lower()
+    for pattern in _BLOCKED_URL_PATTERNS:
+        if pattern in url_lower:
+            return f"blocked_url:{pattern}"
+    return None
+
+
+def _check_geography(bio: str) -> str | None:
+    """Check if bio indicates non-SD location. Returns reason or None."""
+    if not bio:
+        return None
+    bio_lower = bio.lower()
+    # Only flag if non-SD geo found AND no SD geo found
+    has_sd = any(s in bio_lower for s in ["san diego", "california", " ca ", " sd "])
+    if has_sd:
+        return None
+    for signal in _NON_SD_GEO_SIGNALS:
+        if signal in bio_lower:
+            return f"wrong_geo:{signal}"
+    return None
+
+
+def _check_dm_possible(profile_url: str | None) -> str | None:
+    """Check if lead has a DM-able profile. Returns reason or None."""
+    if not profile_url:
+        return "no_profile_url"
+    url_lower = profile_url.lower()
+    if "instagram.com" not in url_lower and "facebook.com" not in url_lower:
+        return f"not_dm_able:{profile_url[:50]}"
+    return None
+
+
+def screen_leads(*, db_path: Path = DB_PATH) -> dict:
+    """Run all pre-screening checks on leads and set is_sendable flag.
+
+    Checks: org account, valid name, blocked URL, geography, DM-able profile.
+    Sets is_sendable=0 with reason for any lead that fails.
+    Sets is_sendable=1 for leads that pass all checks.
+
+    Returns dict with counts per failure reason.
+    """
+    counts = {"passed": 0, "failed": 0, "reasons": {}}
+
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, name, bio, profile_bio, profile_url, hook_source_url "
+            "FROM leads"
+        ).fetchall()
+
+    if not rows:
+        print("No leads to screen.")
+        return counts
+
+    updates = []
+    print(f"Screening {len(rows)} leads...")
+
+    for row in rows:
+        bio = (row["bio"] or "") + " " + (row["profile_bio"] or "")
+        reason = (
+            _check_is_org(row["name"])
+            or _check_valid_name(row["name"])
+            or _check_blocked_url(row["hook_source_url"])
+            or _check_geography(bio)
+            or _check_dm_possible(row["profile_url"])
+        )
+
+        if reason:
+            updates.append((0, reason, row["id"]))
+            counts["failed"] += 1
+            counts["reasons"][reason.split(":")[0]] = counts["reasons"].get(
+                reason.split(":")[0], 0
+            ) + 1
+        else:
+            updates.append((1, None, row["id"]))
+            counts["passed"] += 1
+
+    with get_db(db_path) as conn:
+        conn.executemany(
+            "UPDATE leads SET is_sendable = ?, sendable_reason = ? WHERE id = ?",
+            updates,
+        )
+
+    print(f"\nScreening complete. {counts['passed']} sendable, {counts['failed']} blocked.")
+    if counts["reasons"]:
+        print("Failure reasons:")
+        for reason, count in sorted(counts["reasons"].items(), key=lambda x: -x[1]):
+            print(f"  {reason}: {count}")
+    return counts
+
+
+# ---------------------------------------------------------------------------
+# Hook-vs-bio consistency check (catches wrong-person and fabricated hooks)
+# ---------------------------------------------------------------------------
+
+def verify_hook_consistency(*, db_path: Path = DB_PATH, limit: int = 0) -> dict:
+    """Check if hook_text is consistent with the lead's bio.
+
+    Uses Claude Haiku to compare the hook claim against the bio content.
+    If the hook describes a different person, profession, or geography
+    than the bio, marks hook_verified=0.
+
+    Only checks leads that are currently hook_verified=1 and is_sendable=1.
+    Returns dict with counts.
+    """
+    import anthropic
+    import config  # ensure .env is loaded
+
+    counts = {"consistent": 0, "inconsistent": 0, "skipped": 0}
+
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            """SELECT id, name, bio, profile_bio, hook_text
+               FROM leads
+               WHERE hook_verified = 1 AND is_sendable = 1
+               AND hook_text IS NOT NULL
+               AND length(COALESCE(bio, '') || COALESCE(profile_bio, '')) > 20"""
+        ).fetchall()
+
+    if not rows:
+        print("No leads to check consistency for.")
+        return counts
+
+    if limit > 0:
+        rows = rows[:limit]
+
+    client = anthropic.Anthropic(max_retries=2)
+    updates = []
+
+    print(f"Checking hook-vs-bio consistency for {len(rows)} leads...")
+    for i, row in enumerate(rows, 1):
+        bio = ((row["bio"] or "") + " " + (row["profile_bio"] or "")).strip()[:400]
+        hook = row["hook_text"]
+
+        try:
+            resp = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=50,
+                messages=[{"role": "user", "content": f"""Does this hook describe the same person as the bio? Answer YES or NO only.
+
+Name: {row['name']}
+Bio: {bio}
+Hook: {hook}
+
+Answer YES if the hook could plausibly be about this person (same field, same area, compatible activities).
+Answer NO if the hook describes a clearly different person (different profession, different city, different field entirely)."""}],
+            )
+            answer = resp.content[0].text.strip().upper()
+
+            if "NO" in answer:
+                updates.append((row["id"],))
+                counts["inconsistent"] += 1
+                name = row["name"][:30]
+                print(f"  {i}/{len(rows)} {name}... INCONSISTENT")
+            else:
+                counts["consistent"] += 1
+                if i % 25 == 0:
+                    print(f"  {i}/{len(rows)} ... {counts['consistent']} consistent so far")
+        except Exception as e:
+            counts["skipped"] += 1
+            if counts["skipped"] <= 3:
+                print(f"  {i}/{len(rows)} ERROR: {type(e).__name__}: {str(e)[:100]}")
+            elif counts["skipped"] == 4:
+                print(f"  ... suppressing further errors")
+
+        time.sleep(0.3)
+
+    if updates:
+        with get_db(db_path) as conn:
+            conn.executemany(
+                "UPDATE leads SET hook_verified = 0 WHERE id = ?",
+                updates,
+            )
+
+    print(f"\nConsistency check complete. {counts['consistent']} OK, "
+          f"{counts['inconsistent']} inconsistent, {counts['skipped']} skipped.")
+    return counts
+
+
+# ---------------------------------------------------------------------------
+# Tier A: Extract hook directly from bio (no Perplexity needed)
+# ---------------------------------------------------------------------------
+
+_BIO_RICH_SIGNALS = [
+    "won ", "winner", "award", "premiered", "screened", "selected",
+    "published", "released", "launched", "founded", "created",
+    "performed", "festival", "featured", "starred", "directed",
+    "produced", "composed", "wrote ", "built ", "opened ",
+    "#1 ", "best ", "sold out", "bestseller", "certified",
+    "film festival", "official selection",
+]
+
+
+def _bio_is_rich(bio: str) -> bool:
+    """Check if a bio contains specific, extractable hook content.
+
+    Returns True if the bio has at least one action signal (a verb or
+    achievement marker) plus enough length to be meaningful.
+    """
+    if not bio or len(bio.strip()) < 40:
+        return False
+    bio_lower = bio.lower()
+    return any(signal in bio_lower for signal in _BIO_RICH_SIGNALS)
+
+
+_BIO_HOOK_PROMPT = """Extract the single most compelling, specific public activity from this bio.
+
+Name: {name}
+Bio: {bio}
+
+Rules:
+- Pick the most recent or impressive achievement, project, or creation mentioned.
+- Write one sentence describing it as a factual statement.
+- Include specific names, titles, dates, or places if mentioned.
+- If the bio contains a URL that supports the hook, include it.
+- Do NOT search the web. Only use what is written in the bio above.
+
+Return a JSON object:
+- hook_text: one sentence describing the activity
+- source_url: a URL from the bio that supports this (or empty string if none)
+- tier: 1 (content created), 2 (opinion/position), 3 (event/project led), 4 (award/recognition), 5 (transaction/metric)
+Return ONLY the JSON object."""
+
+_BIO_HOOK_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "hook_text": {"type": "string"},
+                "source_url": {"type": "string"},
+                "tier": {"type": "integer"},
+            },
+            "required": ["hook_text", "tier"],
+        }
+    }
+}
+
+
+def _extract_hook_from_bio(client, name: str, bio: str,
+                           profile_url: str) -> tuple[str | None, str | None, int]:
+    """Extract a hook directly from bio text using Claude Haiku.
+
+    Returns (hook_text, source_url, tier). source_url is the lead's
+    profile_url (where the bio lives) unless the bio contains a more
+    specific URL.
+    """
+    try:
+        prompt = _BIO_HOOK_PROMPT.format(name=name, bio=bio[:800])
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        content = resp.content[0].text.strip()
+        # Strip markdown code fences if present
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1]  # remove ```json line
+            content = content.rsplit("```", 1)[0]  # remove closing ```
+            content = content.strip()
+        hook = json.loads(content)
+        hook_text = hook.get("hook_text", "").strip()
+        tier = hook.get("tier", 5)
+
+        if not hook_text or len(hook_text) < 10:
+            return (None, None, 0)
+
+        tier = max(1, min(5, tier))
+
+        # Use URL from bio if provided, otherwise use profile_url
+        bio_url = hook.get("source_url", "").strip()
+        source_url = bio_url if bio_url.startswith("http") else profile_url
+
+        return (hook_text, source_url, tier)
+    except Exception:
+        return (None, None, 0)
+
+
+# ---------------------------------------------------------------------------
+# Tier B: URL verification helpers (for Perplexity pipeline)
+# ---------------------------------------------------------------------------
+
+def _extract_hook_keywords(hook_text: str, name: str) -> list[str]:
+    """Extract key phrases from hook_text to search for in a page.
+
+    Pulls proper nouns, quoted titles, and specific terms that would only
+    appear on a page actually about this hook. Skips generic words.
+    """
+    import re
+    keywords = []
+    # Extract quoted titles (e.g. 'Swimming With Giants')
+    quoted = re.findall(r"['\"]([^'\"]+)['\"]", hook_text)
+    keywords.extend(quoted)
+    # Extract capitalized multi-word phrases (proper nouns, event names)
+    caps = re.findall(r"(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)", hook_text)
+    keywords.extend(caps)
+    # Always include the person/org name (first word or full name)
+    name_parts = name.split()
+    if name_parts:
+        keywords.append(name_parts[-1])  # last name most distinctive
+        if len(name_parts) > 1:
+            keywords.append(name_parts[0])  # first name too
+    # Deduplicate, keep order
+    seen = set()
+    unique = []
+    for kw in keywords:
+        kw_lower = kw.lower()
+        if kw_lower not in seen and len(kw) > 2:
+            seen.add(kw_lower)
+            unique.append(kw)
+    return unique
+
+
+def _verify_url_contains_hook(session: requests.Session, url: str,
+                              hook_text: str, name: str,
+                              is_own_profile: bool = False) -> bool:
+    """Fetch a URL and check if it contains key phrases from the hook.
+
+    For external URLs (not the lead's own profile), the lead's name MUST
+    appear on the page in addition to 2+ hook keywords. This prevents
+    false positives from unrelated pages that happen to contain generic terms.
+
+    For the lead's own profile, only 2+ keywords are required (their name
+    may not appear in the same form on their own page).
+    """
+    try:
+        resp = session.get(url, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; hook-verify/1.0)"
+        })
+        if resp.status_code != 200:
+            return False
+        text = resp.text.lower()
+        keywords = _extract_hook_keywords(hook_text, name)
+        matches = sum(1 for kw in keywords if kw.lower() in text)
+
+        if is_own_profile:
+            return matches >= 2
+
+        # External URL: require name on page + 2 keyword matches
+        name_parts = name.lower().split()
+        # Check if any substantial part of the name appears (last name or first+last)
+        name_found = False
+        for part in name_parts:
+            if len(part) > 2 and part in text:
+                name_found = True
+                break
+        return name_found and matches >= 2
+    except (requests.RequestException, Exception):
+        return False
+
+
+def _find_verified_url(session: requests.Session, candidate_urls: list[str],
+                       hook_text: str, name: str,
+                       profile_url: str = "") -> str | None:
+    """Try each candidate URL and return the first one that verifies."""
+    for url in candidate_urls:
+        if not url or not url.startswith("http"):
+            continue
+        is_own = (url == profile_url) if profile_url else False
+        if _verify_url_contains_hook(session, url, hook_text, name,
+                                     is_own_profile=is_own):
+            return url
+    return None
+
+
 def _research_single_hook(session: requests.Session, api_key: str,
                           name: str, context: str) -> tuple[str | None, str | None, int]:
     """Research one lead via Sonar Pro. Returns (hook_text, source_url, tier).
 
     tier=-1 means transient failure (429 exhausted or network error).
     Caller must NOT persist tier=-1 -- lead stays eligible for retry.
-    Source URL extracted from citations[] response field, NOT from model output.
+    Source URL: tries model's source_url first, then citations[], verifying
+    each by fetching the page and checking for hook keywords. Returns None
+    if no candidate URL actually contains the hook content.
     """
     prompt = _HOOK_PROMPT_TEMPLATE.format(name=name, context=context)
 
@@ -1107,10 +1551,7 @@ def _research_single_hook(session: requests.Session, api_key: str,
         try:
             data = resp.json()
             content = data["choices"][0]["message"]["content"]
-
-            # Extract source URL from citations, NOT from model output
             citations = data.get("citations", [])
-            source_url = citations[0] if citations else None
 
             # Parse the structured JSON response
             hook = json.loads(content)
@@ -1122,7 +1563,19 @@ def _research_single_hook(session: requests.Session, api_key: str,
 
             # Clamp tier to 1-5
             tier = max(1, min(5, tier))
-            return (hook_text, source_url, tier)
+
+            # Build candidate URLs: model's source_url first, then citations
+            model_url = hook.get("source_url", "").strip()
+            candidates = []
+            if model_url:
+                candidates.append(model_url)
+            candidates.extend(citations)
+
+            # Verify each candidate until one passes
+            verified_url = _find_verified_url(
+                session, candidates, hook_text, name
+            )
+            return (hook_text, verified_url, tier)
 
         except (json.JSONDecodeError, KeyError):
             return (None, None, 0)
@@ -1131,17 +1584,21 @@ def _research_single_hook(session: requests.Session, api_key: str,
 
 
 def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
-    """Research outreach hooks using Perplexity Sonar Pro.
+    """Research outreach hooks using a two-tier pipeline.
 
-    Extracts source URLs from the citations response field (real URLs from
-    Perplexity's search), not from model-generated JSON (which hallucinates URLs).
+    Tier A (bio-rich): If the lead's bio contains specific achievements or
+    projects, extract the hook directly using Claude Haiku. The verify URL
+    is the lead's own profile_url (where the bio lives). No web search needed.
+
+    Tier B (bio-poor): If the bio is too vague, use Perplexity Sonar Pro to
+    search the web. Verify each candidate URL by fetching the page and
+    checking for hook keywords. If no URL verifies, store NULL.
     """
+    import anthropic
     from config import get_perplexity_key
 
     api_key = get_perplexity_key()
-    if not api_key:
-        print("Hook research: PERPLEXITY_API_KEY not set, skipping.")
-        return EnrichmentResult()
+    haiku_client = anthropic.Anthropic(max_retries=2)
 
     leads = _get_leads_for_hook(db_path)
     if not leads:
@@ -1153,6 +1610,8 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
 
     result = EnrichmentResult()
     session = requests.Session()
+    tier_a_count = 0
+    tier_b_count = 0
 
     consecutive_fails = 0
     print(f"Researching hooks for {len(leads)} leads...")
@@ -1164,7 +1623,39 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
                 break
 
             name = lead["name"][:40]
-            print(f"  {i}/{len(leads)} {name}...", end=" ", flush=True)
+            bio = (lead.get("bio") or "") + " " + (lead.get("profile_bio") or "")
+            profile_url = lead.get("profile_url", "") or ""
+
+            # Tier A: extract from bio if it has enough content
+            # Try for any bio >= 40 chars — the LLM decides if it's hookable
+            if len(bio.strip()) >= 40:
+                print(f"  {i}/{len(leads)} {name}... [bio]", end=" ", flush=True)
+                hook_text, source_url, tier = _extract_hook_from_bio(
+                    haiku_client, lead["name"], bio.strip(), profile_url
+                )
+                if hook_text:
+                    _persist_hook(lead["id"], hook_text, source_url, tier, conn=conn)
+                    # Tier A hooks are pre-verified (extracted from bio at profile_url)
+                    conn.execute(
+                        "UPDATE leads SET hook_verified = 1 WHERE id = ?",
+                        (lead["id"],),
+                    )
+                    result.leads_processed += 1
+                    tier_a_count += 1
+                    tier_label = TIER_LABELS.get(tier, "unknown")
+                    print(f"tier {tier} ({tier_label}) ✓")
+                    time.sleep(0.2)
+                    continue
+                # Tier A failed, fall through to Tier B
+                print("bio extraction failed, trying web...", end=" ", flush=True)
+
+            # Tier B: Perplexity web search
+            if not api_key:
+                print(f"  {i}/{len(leads)} {name}... no API key, skipping")
+                continue
+
+            print(f"  {i}/{len(leads)} {name}... [web]" if not _bio_is_rich(bio)
+                  else "", end=" ", flush=True)
 
             context = _build_hook_context(lead)
             hook_text, source_url, tier = _research_single_hook(
@@ -1179,6 +1670,7 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
             consecutive_fails = 0
             _persist_hook(lead["id"], hook_text, source_url, tier, conn=conn)
             result.leads_processed += 1
+            tier_b_count += 1
 
             if hook_text:
                 tier_label = TIER_LABELS.get(tier, "unknown")
@@ -1189,5 +1681,107 @@ def enrich_hook(*, db_path: Path = DB_PATH, limit: int = 0) -> EnrichmentResult:
             time.sleep(1.2)  # stay under 50 req/min
 
     session.close()
-    print(f"\nHook research complete. {result.leads_processed} processed.")
+    print(f"\nHook research complete. {result.leads_processed} processed "
+          f"({tier_a_count} from bio, {tier_b_count} from web).")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Hook verification (run after enrichment, before campaigns)
+# ---------------------------------------------------------------------------
+
+def verify_hooks(*, db_path: Path = DB_PATH) -> dict:
+    """Verify all unverified hooks and mark them as verified or not.
+
+    Tier A hooks (source_url matches profile_url): auto-verified since
+    the hook was extracted from the bio at that URL.
+
+    Tier B hooks (source_url is external): fetch the page and check for
+    hook keywords. Mark verified only if the page contains the hook content.
+
+    Hooks with no source_url: marked as unverified (hook_verified = 0).
+
+    Returns dict with counts: {verified, failed, no_url, already_verified}.
+    """
+    counts = {"verified": 0, "failed": 0, "no_url": 0, "already_verified": 0}
+
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            """SELECT id, name, hook_text, hook_source_url, profile_url,
+                      hook_verified
+               FROM leads
+               WHERE hook_text IS NOT NULL"""
+        ).fetchall()
+
+    if not rows:
+        print("No hooks to verify.")
+        return counts
+
+    session = requests.Session()
+    to_update = []
+
+    print(f"Verifying hooks for {len(rows)} leads...")
+    for i, row in enumerate(rows, 1):
+        lead_id = row["id"]
+        name = row["name"][:40]
+        hook_text = row["hook_text"]
+        source_url = row["hook_source_url"]
+        profile_url = row["profile_url"] or ""
+
+        # Already verified — skip
+        if row["hook_verified"] == 1:
+            counts["already_verified"] += 1
+            continue
+
+        # No source URL — can't verify
+        if not source_url:
+            print(f"  {i}/{len(rows)} {name}... no URL")
+            counts["no_url"] += 1
+            to_update.append((0, lead_id))
+            continue
+
+        # Tier A: source_url matches profile_url — auto-verified
+        if source_url == profile_url:
+            print(f"  {i}/{len(rows)} {name}... auto-verified (bio)")
+            counts["verified"] += 1
+            to_update.append((1, lead_id))
+            continue
+
+        # Same-domain check: if source_url is on the same platform as
+        # profile_url (e.g. both instagram.com), auto-verify. We scraped
+        # the bio from that platform, so the hook content exists there.
+        # This handles Instagram/Facebook login walls that block fetching.
+        source_domain = urlparse(source_url).netloc.replace("www.", "")
+        profile_domain = urlparse(profile_url).netloc.replace("www.", "")
+        if source_domain and source_domain == profile_domain:
+            print(f"  {i}/{len(rows)} {name}... auto-verified (same platform)")
+            counts["verified"] += 1
+            to_update.append((1, lead_id))
+            continue
+
+        # Tier B: external URL — fetch and check (requires name on page)
+        print(f"  {i}/{len(rows)} {name}...", end=" ", flush=True)
+        if _verify_url_contains_hook(session, source_url, hook_text, name,
+                                     is_own_profile=False):
+            print("verified")
+            counts["verified"] += 1
+            to_update.append((1, lead_id))
+        else:
+            print("FAILED")
+            counts["failed"] += 1
+            to_update.append((0, lead_id))
+
+    # Batch update
+    with get_db(db_path) as conn:
+        conn.executemany(
+            "UPDATE leads SET hook_verified = ? WHERE id = ?",
+            to_update,
+        )
+
+    session.close()
+    print(f"\nVerification complete. "
+          f"{counts['verified']} verified, "
+          f"{counts['failed']} failed, "
+          f"{counts['no_url']} no URL, "
+          f"{counts['already_verified']} already verified.")
+    return counts

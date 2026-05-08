@@ -78,25 +78,64 @@ def test_hook_handles_empty_citations():
     assert tier == 3
 
 
-def test_hook_extracts_citation_url():
-    """Source URL should come from citations[0], not from model output."""
+def test_hook_extracts_verified_url():
+    """Source URL should be verified by fetching and checking for hook keywords."""
     mock_session = MagicMock()
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = {
+
+    # POST response (Perplexity API)
+    mock_post_resp = MagicMock()
+    mock_post_resp.status_code = 200
+    mock_post_resp.json.return_value = {
         "choices": [{"message": {"content": json.dumps({
             "hook_text": "Paris After Dark concert at the Conrad",
+            "source_url": "https://kpbs.org/events/paris-after-dark",
             "source_description": "KPBS event listing",
             "tier": 1,
         })}}],
         "citations": ["https://kpbs.org/events/paris-after-dark", "https://theconrad.org"],
     }
-    mock_session.post.return_value = mock_resp
+    mock_session.post.return_value = mock_post_resp
+
+    # GET response (URL verification) — page contains hook keywords
+    mock_get_resp = MagicMock()
+    mock_get_resp.status_code = 200
+    mock_get_resp.text = "<html>Sacha Boutros presents Paris After Dark concert at the Conrad</html>"
+    mock_session.get.return_value = mock_get_resp
 
     hook_text, source_url, tier = _research_single_hook(
         mock_session, "fake-key", "Sacha Boutros", "Singer in San Diego"
     )
-    assert source_url == "https://kpbs.org/events/paris-after-dark"  # citations[0]
+    assert source_url == "https://kpbs.org/events/paris-after-dark"
+    assert tier == 1
+
+
+def test_hook_returns_none_url_when_unverified():
+    """Source URL should be None when no candidate URL verifies."""
+    mock_session = MagicMock()
+
+    mock_post_resp = MagicMock()
+    mock_post_resp.status_code = 200
+    mock_post_resp.json.return_value = {
+        "choices": [{"message": {"content": json.dumps({
+            "hook_text": "Paris After Dark concert at the Conrad",
+            "source_description": "KPBS event listing",
+            "tier": 1,
+        })}}],
+        "citations": ["https://unrelated-site.com/something"],
+    }
+    mock_session.post.return_value = mock_post_resp
+
+    # GET response — page does NOT contain hook keywords
+    mock_get_resp = MagicMock()
+    mock_get_resp.status_code = 200
+    mock_get_resp.text = "<html>Completely unrelated page about cooking recipes</html>"
+    mock_session.get.return_value = mock_get_resp
+
+    hook_text, source_url, tier = _research_single_hook(
+        mock_session, "fake-key", "Sacha Boutros", "Singer in San Diego"
+    )
+    assert source_url is None  # no URL verified
+    assert hook_text == "Paris After Dark concert at the Conrad"  # hook still returned
     assert tier == 1
 
 

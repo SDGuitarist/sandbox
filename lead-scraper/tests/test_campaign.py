@@ -28,10 +28,10 @@ def test_create_campaign(setup_db):
 
 
 def test_assign_filters_by_segment_and_quality(setup_db, insert_lead):
-    lid1 = insert_lead(setup_db, "Good", segment="connector", hook_quality=1, segment_confidence=0.9)
-    lid2 = insert_lead(setup_db, "BadHook", segment="connector", hook_quality=4, segment_confidence=0.9)
-    lid3 = insert_lead(setup_db, "LowConf", segment="connector", hook_quality=1, segment_confidence=0.5)
-    lid4 = insert_lead(setup_db, "WrongSeg", segment="wellness", hook_quality=1, segment_confidence=0.9)
+    lid1 = insert_lead(setup_db, "Good", segment="connector", hook_quality=1, segment_confidence=0.9, hook_verified=1, is_sendable=1, profile_url="https://www.instagram.com/good")
+    lid2 = insert_lead(setup_db, "BadHook", segment="connector", hook_quality=4, segment_confidence=0.9, hook_verified=1, is_sendable=1, profile_url="https://www.instagram.com/badhook")
+    lid3 = insert_lead(setup_db, "LowConf", segment="connector", hook_quality=1, segment_confidence=0.5, hook_verified=1, is_sendable=1, profile_url="https://www.instagram.com/lowconf")
+    lid4 = insert_lead(setup_db, "WrongSeg", segment="wellness", hook_quality=1, segment_confidence=0.9, hook_verified=1, is_sendable=1, profile_url="https://www.instagram.com/wrongseg")
 
     cid = create_campaign("Test", "connector", None, None, setup_db)
     count = assign_leads(cid, min_hook_quality=3, db_path=setup_db)

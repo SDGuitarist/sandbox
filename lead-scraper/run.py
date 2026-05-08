@@ -91,10 +91,27 @@ def cmd_enrich(args):
     }
     limit = getattr(args, "limit", 0) or 0
     selected = args.step
-    if selected == "all":
+    if selected == "verify":
+        from enrich import verify_hooks
+        verify_hooks()
+    elif selected == "screen":
+        from enrich import screen_leads
+        screen_leads()
+    elif selected == "consistency":
+        from enrich import verify_hook_consistency
+        verify_hook_consistency(limit=limit)
+    elif selected == "all":
         for name, func in steps.items():
             func()
             print()
+        # Auto-verify, screen, and consistency check after enrichment
+        from enrich import verify_hooks, screen_leads, verify_hook_consistency
+        print()
+        verify_hooks()
+        print()
+        screen_leads()
+        print()
+        verify_hook_consistency()
     elif selected in ("segment", "hook"):
         steps[selected](limit=limit)
     else:
@@ -382,7 +399,7 @@ def main():
     sp_enrich = subparsers.add_parser("enrich", help="Enrich leads with contact info")
     sp_enrich.add_argument(
         "--step",
-        choices=["bio", "website", "crawl", "hunter", "segment", "hook", "all"],
+        choices=["bio", "website", "crawl", "hunter", "segment", "hook", "verify", "screen", "consistency", "all"],
         default="all",
         help="Run a specific enrichment step (default: all)",
     )

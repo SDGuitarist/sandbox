@@ -1,14 +1,14 @@
 ---
-segment: writer
+segment: musician
 evidence: referral framing (33% connector conversion rate). Rewritten May 2026.
 cta_style: referral
 ---
 I've been building AI ethics frameworks for filmmakers. The core question is what protections actually exist for your work when AI gets involved. Consent, compensation, credit.
 
-Started in film because that's where the WGA fights kicked off, but the authorship and voice questions apply to every writer I've talked to.
+The conversation started in film, but musicians came up constantly in the research. Less protection than almost any other creative role right now.
 
 {{format}} on {{date}}, {{seat_count}} seats, hands-on. San Diego.
 
-Not sure if it's your thing, but I bet you know a writer or filmmaker who'd want to be in the room for this.
+Not sure if it's your thing, but I bet you know someone in music or film who'd want to be in the room for this.
 
 amplifyai.to
