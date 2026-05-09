@@ -156,8 +156,7 @@ def _migrate_needs_review_status(db_path=DB_PATH):
         )
 
         if already_has_status and already_has_columns and already_has_fk:
-            print("outreach_queue: already migrated (needs_review + sender columns + FK)")
-            return
+            return  # Already migrated
 
         pre_count = conn.execute("SELECT COUNT(*) FROM outreach_queue").fetchone()[0]
 
