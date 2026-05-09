@@ -446,7 +446,7 @@ def gate_skip(campaign_id: int, lead_id: int, reason: str,
             "UPDATE outreach_queue "
             "SET status = 'skipped', skip_reason = ?, gate_checked_at = ? "
             "WHERE campaign_id = ? AND lead_id = ? AND status = 'draft'",
-            (now, now, campaign_id, lead_id),
+            (reason, now, campaign_id, lead_id),
         )
         if cursor.rowcount == 0:
             return False
@@ -462,7 +462,7 @@ def gate_needs_review(campaign_id: int, lead_id: int, reason: str,
             "UPDATE outreach_queue "
             "SET status = 'needs_review', skip_reason = ?, gate_checked_at = ? "
             "WHERE campaign_id = ? AND lead_id = ? AND status = 'draft'",
-            (now, now, campaign_id, lead_id),
+            (reason, now, campaign_id, lead_id),
         )
         if cursor.rowcount == 0:
             return False
