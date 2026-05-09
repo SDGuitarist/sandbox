@@ -323,6 +323,79 @@ def cmd_schedule(args):
     print("  crontab -l    # view current crontab")
 
 
+def cmd_account(args):
+    """Dispatch account subcommands."""
+    from account import (
+        add_account, list_accounts, confirm_risk, set_cooldown,
+        disable_account, enable_account,
+    )
+
+    action = args.action
+    if action == "add":
+        add_account(args.name, platform=args.platform, daily_cap=args.daily_cap)
+    elif action == "list":
+        list_accounts()
+    elif action == "login":
+        _account_login(args.name)
+    elif action == "confirm-risk":
+        # Look up account ID by name
+        _with_account_by_name(args.name, confirm_risk)
+    elif action == "cooldown":
+        _with_account_by_name(args.name, lambda aid: set_cooldown(aid, args.hours))
+    elif action == "disable":
+        _with_account_by_name(args.name, disable_account)
+    elif action == "enable":
+        _with_account_by_name(args.name, enable_account)
+
+
+def _with_account_by_name(name, func):
+    """Look up account ID by name, then call func(account_id)."""
+    from db import get_db
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT id FROM sender_accounts WHERE name = ?", (name,)
+        ).fetchone()
+    if not row:
+        print(f"Account '{name}' not found.", file=sys.stderr)
+        sys.exit(1)
+    func(row['id'])
+
+
+def _account_login(name):
+    """Open a headed browser for manual login. Session saved to profile_dir."""
+    from db import get_db
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT profile_dir FROM sender_accounts WHERE name = ?", (name,)
+        ).fetchone()
+    if not row:
+        print(f"Account '{name}' not found.", file=sys.stderr)
+        sys.exit(1)
+
+    profile_dir = row['profile_dir']
+    Path(profile_dir).mkdir(parents=True, exist_ok=True)
+
+    from playwright.sync_api import sync_playwright
+    print(f"Opening browser for '{name}'...")
+    print(f"Profile: {profile_dir}")
+    print("Log in to Facebook/Instagram manually.")
+    print("Press Enter here when done to save session and close.\n")
+
+    pw = sync_playwright().start()
+    context = pw.chromium.launch_persistent_context(
+        user_data_dir=profile_dir,
+        headless=False,
+        viewport={"width": 1280, "height": 800},
+    )
+    page = context.pages[0] if context.pages else context.new_page()
+    page.goto("https://www.facebook.com")
+
+    input("Press Enter to save session and close browser...")
+    context.close()
+    pw.stop()
+    print(f"Session saved for '{name}'.")
+
+
 def cmd_campaign(args):
     """Dispatch campaign subcommands."""
     from campaign import (
@@ -424,6 +497,38 @@ def main():
     sp_unhold = leads_sub.add_parser("unhold", help="Force-approve a held lead for campaigns")
     sp_unhold.add_argument("lead_id", type=int, help="Lead ID to approve")
     sp_leads.set_defaults(func=cmd_leads)
+
+    # account
+    sp_account = subparsers.add_parser("account", help="Sender account management")
+    account_sub = sp_account.add_subparsers(dest="action", required=True)
+
+    sp_acc_add = account_sub.add_parser("add", help="Add a sender account")
+    sp_acc_add.add_argument("name", help="Account name (used as profile dir name)")
+    sp_acc_add.add_argument("--platform", choices=["facebook", "instagram", "both"],
+                            default="both", help="Platform (default: both)")
+    sp_acc_add.add_argument("--daily-cap", type=int, default=30,
+                            help="Max sends per day (default: 30)")
+
+    account_sub.add_parser("list", help="List all sender accounts")
+
+    sp_acc_login = account_sub.add_parser("login", help="Open browser for manual login")
+    sp_acc_login.add_argument("name", help="Account name")
+
+    sp_acc_risk = account_sub.add_parser("confirm-risk",
+                                         help="Acknowledge Meta ban risk (required before sends)")
+    sp_acc_risk.add_argument("name", help="Account name")
+
+    sp_acc_cool = account_sub.add_parser("cooldown", help="Set cooldown period (restricted accounts)")
+    sp_acc_cool.add_argument("name", help="Account name")
+    sp_acc_cool.add_argument("--hours", type=int, required=True, help="Cooldown hours")
+
+    sp_acc_dis = account_sub.add_parser("disable", help="Disable an account")
+    sp_acc_dis.add_argument("name", help="Account name")
+
+    sp_acc_en = account_sub.add_parser("enable", help="Re-enable a disabled account")
+    sp_acc_en.add_argument("name", help="Account name")
+
+    sp_account.set_defaults(func=cmd_account)
 
     # campaign
     sp_campaign = subparsers.add_parser("campaign", help="Campaign management")
