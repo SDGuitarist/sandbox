@@ -308,28 +308,48 @@ def generate_messages(campaign_id: int, db_path: Path = DB_PATH, limit: int = 0)
 # Queue review
 # ---------------------------------------------------------------------------
 
-def show_queue(campaign_id: int, db_path: Path = DB_PATH) -> None:
-    """Print all draft messages with hook_source_url for verification."""
+def show_queue(campaign_id: int, status_filter: str | None = None,
+               db_path: Path = DB_PATH) -> None:
+    """Print queue messages with status, skip_reason, and gate_checked_at.
+
+    status_filter: show only this status. Default: all non-sent statuses.
+    """
+    if status_filter:
+        where = "oq.campaign_id = ? AND oq.status = ?"
+        params = [campaign_id, status_filter]
+        label = status_filter
+    else:
+        where = ("oq.campaign_id = ? AND oq.status NOT IN "
+                 "('sent', 'replied', 'booked', 'declined', 'no_response')")
+        params = [campaign_id]
+        label = "pending"
+
     with get_db(db_path) as conn:
         rows = conn.execute(
-            """SELECT oq.id, l.name, l.hook_text, l.hook_source_url, oq.full_message
-               FROM outreach_queue oq
-               JOIN leads l ON oq.lead_id = l.id
-               WHERE oq.campaign_id = ? AND oq.status = 'draft'
-               ORDER BY oq.id""",
-            (campaign_id,),
+            f"""SELECT oq.id, oq.lead_id, l.name, l.hook_text, l.hook_source_url,
+                       oq.full_message, oq.status, oq.skip_reason, oq.gate_checked_at
+                FROM outreach_queue oq
+                JOIN leads l ON oq.lead_id = l.id
+                WHERE {where}
+                ORDER BY oq.status, oq.id""",
+            params,
         ).fetchall()
 
     if not rows:
-        print("No draft messages in queue.")
+        print(f"No {label} messages in queue.")
         return
 
     print(f"\n{'='*60}")
-    print(f"QUEUE: {len(rows)} draft messages (campaign {campaign_id})")
+    print(f"QUEUE: {len(rows)} {label} messages (campaign {campaign_id})")
     print(f"{'='*60}")
 
     for row in rows:
-        print(f"\n--- {row['name']} ---")
+        status_tag = f"[{row['status']}]"
+        print(f"\n--- {row['name']} (lead {row['lead_id']}) {status_tag} ---")
+        if row["skip_reason"]:
+            print(f"Reason: {row['skip_reason']}")
+        if row["gate_checked_at"]:
+            print(f"Gate checked: {row['gate_checked_at']}")
         if row["hook_text"]:
             print(f"Hook: {row['hook_text']}")
         if row["hook_source_url"]:
@@ -616,7 +636,10 @@ def mark_no_response(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) ->
 # ---------------------------------------------------------------------------
 
 def approve_all_messages(campaign_id: int, db_path: Path = DB_PATH) -> int:
-    """Approve all draft messages in a campaign. Returns count approved."""
+    """Approve all draft messages in a campaign. Returns count approved.
+
+    Only transitions draft -> approved. Does NOT touch needs_review items.
+    """
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_db(db_path) as conn:
         cursor = conn.execute(
@@ -625,7 +648,16 @@ def approve_all_messages(campaign_id: int, db_path: Path = DB_PATH) -> int:
             (now, campaign_id),
         )
         count = cursor.rowcount
+
+        needs_review = conn.execute(
+            "SELECT COUNT(*) FROM outreach_queue "
+            "WHERE campaign_id = ? AND status = 'needs_review'",
+            (campaign_id,),
+        ).fetchone()[0]
+
     print(f"Approved {count} messages in campaign {campaign_id}.")
+    if needs_review:
+        print(f"  ({needs_review} needs_review items not touched -- use force-approve)")
     return count
 
 

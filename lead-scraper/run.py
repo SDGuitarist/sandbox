@@ -421,7 +421,7 @@ def cmd_campaign(args):
         limit = getattr(args, "limit", 0) or 0
         generate_messages(args.campaign_id, limit=limit)
     elif action == "queue":
-        show_queue(args.campaign_id)
+        show_queue(args.campaign_id, status_filter=getattr(args, "status", None))
     elif action == "approve":
         approve_message(args.campaign_id, args.lead)
     elif action == "skip":
@@ -568,8 +568,11 @@ def main():
         help="Max leads to generate messages for (default: 50)",
     )
 
-    sp_queue = campaign_sub.add_parser("queue", help="Show draft messages for review")
+    sp_queue = campaign_sub.add_parser("queue", help="Show queue messages for review")
     sp_queue.add_argument("campaign_id", type=int)
+    sp_queue.add_argument("--status",
+                          choices=["draft", "approved", "needs_review", "skipped", "sent"],
+                          help="Filter by status (default: all non-sent)")
 
     sp_approve = campaign_sub.add_parser("approve", help="Approve a draft message")
     sp_approve.add_argument("campaign_id", type=int)
