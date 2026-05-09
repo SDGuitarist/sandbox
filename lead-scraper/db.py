@@ -104,7 +104,7 @@ def _needs_queue_migration(conn):
     already_has_status = "'needs_review'" in create_sql[0]
     already_has_columns = {'skip_reason', 'gate_checked_at', 'sender_account_id'}.issubset(cols)
     already_has_fk = any(
-        'sender_accounts' in str(row)
+        row['table'] == 'sender_accounts'
         for row in conn.execute("PRAGMA foreign_key_list('outreach_queue')").fetchall()
     )
     return not (already_has_status and already_has_columns and already_has_fk)
@@ -151,7 +151,7 @@ def _migrate_needs_review_status(db_path=DB_PATH):
         already_has_status = "'needs_review'" in create_sql[0]
         already_has_columns = {'skip_reason', 'gate_checked_at', 'sender_account_id'}.issubset(cols)
         already_has_fk = any(
-            'sender_accounts' in str(row)
+            row['table'] == 'sender_accounts'
             for row in conn.execute("PRAGMA foreign_key_list('outreach_queue')").fetchall()
         )
 
