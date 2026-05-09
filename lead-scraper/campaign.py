@@ -398,6 +398,116 @@ def mark_sent(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
     return True
 
 
+# ---------------------------------------------------------------------------
+# Quality gate transitions
+# ---------------------------------------------------------------------------
+
+def gate_approve(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
+    """Approve a draft via quality gate. draft -> approved. Sets gate_checked_at."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'approved', approved_at = ?, gate_checked_at = ? "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'draft'",
+            (now, now, campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            return False
+    return True
+
+
+def gate_skip(campaign_id: int, lead_id: int, reason: str,
+              db_path: Path = DB_PATH) -> bool:
+    """Skip a draft via quality gate. draft -> skipped. Sets skip_reason."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'skipped', skip_reason = ?, gate_checked_at = ? "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'draft'",
+            (now, now, campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            return False
+    return True
+
+
+def gate_needs_review(campaign_id: int, lead_id: int, reason: str,
+                      db_path: Path = DB_PATH) -> bool:
+    """Flag a draft for manual review. draft -> needs_review."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'needs_review', skip_reason = ?, gate_checked_at = ? "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'draft'",
+            (now, now, campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            return False
+    return True
+
+
+def force_approve(campaign_id: int, lead_id: int,
+                  db_path: Path = DB_PATH) -> bool:
+    """Manually approve after review. needs_review -> approved."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue SET status = 'approved', approved_at = ? "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'needs_review'",
+            (now, campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Not in needs_review status or not found.")
+            return False
+    print(f"Force-approved lead {lead_id}.")
+    return True
+
+
+def force_skip(campaign_id: int, lead_id: int, reason: str = "",
+               db_path: Path = DB_PATH) -> bool:
+    """Manually reject after review. needs_review -> skipped."""
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'skipped', skip_reason = ? "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'needs_review'",
+            (reason or "manual_reject", campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Not in needs_review status or not found.")
+            return False
+    print(f"Force-skipped lead {lead_id}.")
+    return True
+
+
+def requeue_lead(campaign_id: int, lead_id: int,
+                 db_path: Path = DB_PATH) -> bool:
+    """Move skipped/needs_review back to draft for re-gating.
+
+    Clears skip_reason and gate_checked_at.
+    """
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'draft', skip_reason = NULL, gate_checked_at = NULL "
+            "WHERE campaign_id = ? AND lead_id = ? "
+            "AND status IN ('skipped', 'needs_review')",
+            (campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            print("Not skipped or needs_review, or not found.")
+            return False
+    print(f"Requeued lead {lead_id} as draft.")
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Browser sender transitions
+# ---------------------------------------------------------------------------
+
 def mark_sent_by_sender(campaign_id: int, lead_id: int, account_id: int,
                          db_path: Path = DB_PATH) -> bool:
     """Mark approved message as sent by a specific sender account.
