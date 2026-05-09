@@ -442,6 +442,9 @@ def cmd_campaign(args):
         skip_all_messages(args.campaign_id, getattr(args, "except_leads", None))
     elif action == "status":
         show_status(args.campaign_id)
+    elif action == "send":
+        from browser_sender import run_send
+        run_send(args.campaign_id, args.limit)
 
 
 def cmd_serve(args):
@@ -592,6 +595,11 @@ def main():
 
     sp_status = campaign_sub.add_parser("status", help="Show campaign status")
     sp_status.add_argument("campaign_id", type=int)
+
+    sp_send = campaign_sub.add_parser("send", help="Send approved messages via browser")
+    sp_send.add_argument("campaign_id", type=int)
+    sp_send.add_argument("--limit", type=int, required=True,
+                         help="Max messages to send (required for safety)")
 
     sp_campaign.set_defaults(func=cmd_campaign)
 
