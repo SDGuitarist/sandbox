@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -6,6 +7,26 @@ from datetime import datetime
 
 # Canonical DB path: same directory as this file
 DB_PATH = Path(__file__).parent / "leads.db"
+
+
+def _is_production_db(db_path):
+    """Return True if db_path is the real production leads.db."""
+    return db_path.resolve() == DB_PATH.resolve()
+
+
+def _destructive_migration_allowed(db_path):
+    """Guard: destructive migrations (DROP TABLE) only allowed if:
+    1. Running inside pytest (tmp_path), OR
+    2. ALLOW_PRODUCTION_MIGRATE=1 is set, OR
+    3. db_path is not the production DB
+    """
+    if not _is_production_db(db_path):
+        return True  # Test DB or copy -- always allowed
+    if os.environ.get("ALLOW_PRODUCTION_MIGRATE") == "1":
+        return True  # Explicit override
+    if "pytest" in os.environ.get("_", ""):
+        return True  # Running under pytest
+    return False
 
 
 @contextmanager
@@ -139,6 +160,9 @@ def _migrate_needs_review_status(db_path=DB_PATH):
 
     Recreates outreach_queue (SQLite can't ALTER CHECK constraints).
     Pre/post row count assertion prevents silent data loss.
+
+    DESTRUCTIVE: uses DROP TABLE. Guarded against accidental production runs.
+    Set ALLOW_PRODUCTION_MIGRATE=1 to run against real leads.db.
     """
     with get_db(db_path) as conn:
         create_sql = conn.execute(
@@ -158,6 +182,16 @@ def _migrate_needs_review_status(db_path=DB_PATH):
         if already_has_status and already_has_columns and already_has_fk:
             return  # Already migrated
 
+    # Past this point: DROP TABLE will happen. Block unless explicitly allowed.
+    if not _destructive_migration_allowed(db_path):
+        print(
+            "BLOCKED: destructive migration on production DB.\n"
+            "  To run: ALLOW_PRODUCTION_MIGRATE=1 python run.py ...\n"
+            "  Or copy leads.db to /tmp and test there first."
+        )
+        return
+
+    with get_db(db_path) as conn:
         pre_count = conn.execute("SELECT COUNT(*) FROM outreach_queue").fetchone()[0]
 
         conn.execute("PRAGMA foreign_keys=OFF")
@@ -219,6 +253,8 @@ def _migrate_outreach_statuses(db_path=DB_PATH):
     statuses plus needs_review, skip_reason, gate_checked_at, sender_account_id.
     Kept for backwards compat -- runs first, then _migrate_needs_review_status()
     handles the rest.
+
+    DESTRUCTIVE: uses DROP TABLE.
     """
     if not db_path.exists():
         return
@@ -230,6 +266,11 @@ def _migrate_outreach_statuses(db_path=DB_PATH):
         if not row or "'replied'" in row[0]:
             return  # Table doesn't exist yet or already migrated
 
+    # Past this point: DROP TABLE will happen. Block unless explicitly allowed.
+    if not _destructive_migration_allowed(db_path):
+        return
+
+    with get_db(db_path) as conn:
         conn.execute("PRAGMA foreign_keys=OFF")
         conn.executescript("""
             CREATE TABLE outreach_queue_new (
