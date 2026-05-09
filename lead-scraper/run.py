@@ -445,6 +445,20 @@ def cmd_campaign(args):
     elif action == "send":
         from browser_sender import run_send
         run_send(args.campaign_id, args.limit)
+    elif action == "gate":
+        from quality_gate import run_gate
+        run_gate(args.campaign_id, limit=getattr(args, "limit", 0) or 0,
+                 force=getattr(args, "force", False))
+    elif action == "requeue":
+        from campaign import requeue_lead
+        requeue_lead(args.campaign_id, args.lead)
+    elif action == "force-approve":
+        from campaign import force_approve
+        force_approve(args.campaign_id, args.lead)
+    elif action == "force-skip":
+        from campaign import force_skip
+        force_skip(args.campaign_id, args.lead,
+                   reason=getattr(args, "reason", "") or "")
 
 
 def cmd_serve(args):
@@ -600,6 +614,29 @@ def main():
     sp_send.add_argument("campaign_id", type=int)
     sp_send.add_argument("--limit", type=int, required=True,
                          help="Max messages to send (required for safety)")
+
+    sp_gate = campaign_sub.add_parser("gate", help="Run quality gate on draft messages")
+    sp_gate.add_argument("campaign_id", type=int)
+    sp_gate.add_argument("--limit", type=int, default=0,
+                         help="Max drafts to check (default: all)")
+    sp_gate.add_argument("--force", action="store_true",
+                         help="Re-gate leads that already have gate_checked_at")
+
+    sp_requeue = campaign_sub.add_parser("requeue",
+                                         help="Move skipped/needs_review back to draft")
+    sp_requeue.add_argument("campaign_id", type=int)
+    sp_requeue.add_argument("--lead", type=int, required=True)
+
+    sp_fapprove = campaign_sub.add_parser("force-approve",
+                                          help="Approve a needs_review lead after review")
+    sp_fapprove.add_argument("campaign_id", type=int)
+    sp_fapprove.add_argument("--lead", type=int, required=True)
+
+    sp_fskip = campaign_sub.add_parser("force-skip",
+                                       help="Reject a needs_review lead after review")
+    sp_fskip.add_argument("campaign_id", type=int)
+    sp_fskip.add_argument("--lead", type=int, required=True)
+    sp_fskip.add_argument("--reason", default="", help="Skip reason")
 
     sp_campaign.set_defaults(func=cmd_campaign)
 
