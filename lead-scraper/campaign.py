@@ -398,6 +398,45 @@ def mark_sent(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
     return True
 
 
+def mark_sent_by_sender(campaign_id: int, lead_id: int, account_id: int,
+                         db_path: Path = DB_PATH) -> bool:
+    """Mark approved message as sent by a specific sender account.
+
+    Records sender_account_id for tracking which account sent which message.
+    Only transitions approved -> sent.
+    """
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'sent', sent_at = ?, sender_account_id = ? "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'approved'",
+            (now, account_id, campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            return False
+    return True
+
+
+def skip_dm_restricted(campaign_id: int, lead_id: int,
+                       db_path: Path = DB_PATH) -> bool:
+    """Skip a message because the lead's DMs are restricted (no Message button).
+
+    Sets skip_reason so it's distinguishable from manual skips.
+    Only transitions approved -> skipped.
+    """
+    with get_db(db_path) as conn:
+        cursor = conn.execute(
+            "UPDATE outreach_queue "
+            "SET status = 'skipped', skip_reason = 'dm_restricted' "
+            "WHERE campaign_id = ? AND lead_id = ? AND status = 'approved'",
+            (campaign_id, lead_id),
+        )
+        if cursor.rowcount == 0:
+            return False
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Response tracking (post-send outcomes)
 # ---------------------------------------------------------------------------
