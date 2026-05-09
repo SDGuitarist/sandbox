@@ -60,5 +60,34 @@ The foreground debug test was the cause. Two connections to WAL-mode SQLite, one
 - Incident 1: 772 leads lost. Re-scraped to recover ~734.
 - Incident 2: 1,093 leads lost (734 + 359 new). No backup existed.
 - Incident 3: 484 leads nearly lost. Restored from manual backup.
+- **Incident 4 (May 8-9, 2026):** 1,690 leads lost during migration development. DB wiped multiple times during "verification testing" of new schema migrations. Restored to 1,211 (backup existed) but 2,901-lead state had no backup. Cost: real Apify credits + lost workshop prep time.
 - Apify results vary between runs -- re-scraping does NOT recover identical leads.
-- Total Apify credits wasted on redundant re-scrapes: ~6 runs.
+- Total Apify credits wasted on redundant re-scrapes: ~8 runs.
+
+## Incident 4 Root Cause (May 8-9, 2026)
+
+**Different from incidents 1-3.** This was NOT concurrent access. This was running untested migration code (`init_db()` / `migrate_db()`) directly against the production DB during development.
+
+The migration used `DROP TABLE outreach_queue` + `ALTER TABLE outreach_queue_new RENAME TO outreach_queue` inside `conn.executescript()` (implicit commits). A bug in the FK idempotency check (`str(sqlite3.Row)` returns object repr, not values) caused the migration to fire repeatedly when it should have been a no-op. Repeated migration runs against production with broken idempotency check wiped the DB.
+
+**New failure mode discovered:** `executescript()` with implicit commits means if anything goes wrong mid-script, you get partial state with no rollback. The pre/post row count assertion catches it AFTER the fact but cannot undo it.
+
+**Additional discovery:** Running `init_db()` on every CLI invocation means every `python run.py ...` call runs the full migration chain. If any migration has a bug, it fires on every single CLI call.
+
+## Updated Rules (Combining All 4 Incidents)
+
+1. **One process at a time** (incidents 1-3): Never run foreground commands while background tasks touch leads.db.
+2. **Never run untested code against production** (incident 4): Always copy leads.db to /tmp and test there first. NEVER use default DB_PATH during development verification.
+3. **Destructive migrations must be explicit** (incident 4): DROP TABLE should never fire from ordinary startup. Require an explicit `migrate` command with a flag.
+4. **Back up after every successful operation** and verify the backup has data (all incidents).
+5. **init_db() on every CLI call is dangerous** (incident 4): If it calls migration logic, bugs fire on every invocation.
+
+## Codex Stabilization (May 9, 2026)
+
+After incident 4, Codex hardened the codebase:
+- Tests blocked from touching production leads.db
+- Explicit production migration guard (raises MigrationRequired)
+- Destructive migration removed from ordinary startup flow
+- Explicit `python run.py migrate --allow-destructive-production` required
+- Global DB job lock for write-heavy operations
+- Production DB file checks (refuses to proceed if DB is missing or empty)
