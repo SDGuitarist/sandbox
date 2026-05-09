@@ -1,5 +1,8 @@
 import os
+import json
+from copy import deepcopy
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Load .env file if it exists (project-local, sibling to this file).
 # No python-dotenv dependency needed.
@@ -31,6 +34,7 @@ def get_perplexity_key() -> str | None:
 
 # Template discovery uses repo-relative path, not CWD
 TEMPLATES_DIR = Path(__file__).parent / "templates" / "outreach"
+SOURCES_OVERRIDES_PATH = Path(__file__).parent / "sources.overrides.json"
 
 
 def available_segments() -> list[str]:
@@ -39,7 +43,7 @@ def available_segments() -> list[str]:
 
 
 # Source configs -- edit to add/remove groups and keywords
-SOURCES = {
+BASE_SOURCES = {
     "meetup": {
         "enabled": False,  # Requires paid Apify actor rental ($8/mo)
         "actor": "datapilot/meetup-event-scraper",
@@ -121,3 +125,111 @@ SOURCES = {
         ],
     },
 }
+
+_ALLOWED_SOURCE_LIST_FIELDS = {
+    "eventbrite": {"keywords"},
+    "facebook": {"groups"},
+    "instagram": {"hashtags"},
+    "linkedin": {"queries"},
+    "meetup": {"groups"},
+}
+_SOURCE_LIST_LIMITS = {
+    ("eventbrite", "keywords"): 25,
+}
+
+
+def _load_source_overrides() -> dict:
+    if not SOURCES_OVERRIDES_PATH.exists():
+        return {}
+    return json.loads(SOURCES_OVERRIDES_PATH.read_text())
+
+
+def _merge_sources(base_sources: dict, overrides: dict) -> dict:
+    merged = deepcopy(base_sources)
+    for source_name, source_overrides in overrides.items():
+        if source_name not in merged or not isinstance(source_overrides, dict):
+            continue
+        for key, value in source_overrides.items():
+            if key.endswith("_add"):
+                field_name = key[:-4]
+                if field_name not in merged[source_name] or not isinstance(value, list):
+                    continue
+                existing = list(merged[source_name][field_name])
+                for item in value:
+                    if item not in existing:
+                        existing.append(item)
+                merged[source_name][field_name] = existing
+            else:
+                merged[source_name][key] = value
+    return merged
+
+
+def get_sources() -> dict:
+    return _merge_sources(BASE_SOURCES, _load_source_overrides())
+
+
+SOURCES = get_sources()
+
+
+def get_sources_overrides_path() -> Path:
+    return SOURCES_OVERRIDES_PATH
+
+
+def save_source_overrides(overrides: dict) -> None:
+    SOURCES_OVERRIDES_PATH.write_text(json.dumps(overrides, indent=2, sort_keys=True) + "\n")
+
+
+def _normalize_source_list_item(source_name: str, field_name: str, item: str) -> str:
+    normalized = item.strip()
+    if field_name == "hashtags":
+        normalized = normalized.lstrip("#")
+    if field_name == "groups":
+        parsed = urlparse(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError(f"Invalid group URL: {item}")
+        if source_name == "facebook" and "facebook.com" not in parsed.netloc:
+            raise ValueError(f"Facebook groups must use facebook.com URLs: {item}")
+        if source_name == "meetup" and "meetup.com" not in parsed.netloc:
+            raise ValueError(f"Meetup groups must use meetup.com URLs: {item}")
+    return normalized
+
+
+def add_source_list_items(source_name: str, field_name: str, items: list[str]) -> list[str]:
+    if source_name not in _ALLOWED_SOURCE_LIST_FIELDS:
+        raise ValueError(f"Unsupported source: {source_name}")
+    if field_name not in _ALLOWED_SOURCE_LIST_FIELDS[source_name]:
+        raise ValueError(f"Unsupported field for {source_name}: {field_name}")
+
+    cleaned = []
+    for item in items:
+        normalized = _normalize_source_list_item(source_name, field_name, item)
+        if normalized and normalized not in cleaned:
+            cleaned.append(normalized)
+    if not cleaned:
+        return []
+
+    overrides = _load_source_overrides()
+    source_overrides = overrides.setdefault(source_name, {})
+    key = f"{field_name}_add"
+    existing = list(source_overrides.get(key, []))
+    current_values = list(get_sources()[source_name][field_name])
+    limit = _SOURCE_LIST_LIMITS.get((source_name, field_name))
+    if limit is not None:
+        projected_total = len(current_values)
+        for item in cleaned:
+            if item not in current_values:
+                projected_total += 1
+                current_values.append(item)
+        if projected_total > limit:
+            raise ValueError(
+                f"{source_name}.{field_name} cannot exceed {limit} items "
+                f"(would become {projected_total})."
+            )
+    added = []
+    for item in cleaned:
+        if item not in existing:
+            existing.append(item)
+            added.append(item)
+    source_overrides[key] = existing
+    save_source_overrides(overrides)
+    return added

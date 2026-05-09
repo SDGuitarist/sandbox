@@ -8,14 +8,15 @@ from flask import Flask, render_template, request, make_response, redirect, url_
 # Ensure imports work when run from any directory
 sys.path.insert(0, str(Path(__file__).parent))
 
-from db import init_db, get_db
+from db import DB_PATH, init_db, get_db
 from models import query_leads, query_leads_scored, delete_lead, VALID_SOURCES
 from utils import sanitize_csv_cell
 
 
-def create_app():
+def create_app(db_path=DB_PATH):
+    db_path = Path(db_path)
     app = Flask(__name__)
-    init_db()
+    init_db(db_path)
 
     @app.get("/")
     def index():
@@ -32,7 +33,13 @@ def create_app():
         if source and source not in VALID_SOURCES:
             source = ""
 
-        leads, total = query_leads_scored(source=source, q=q, limit=per_page, offset=offset)
+        leads, total = query_leads_scored(
+            source=source,
+            q=q,
+            db_path=db_path,
+            limit=per_page,
+            offset=offset,
+        )
         has_next = offset + per_page < total
 
         return render_template(
@@ -54,7 +61,7 @@ def create_app():
         if source and source not in VALID_SOURCES:
             source = ""
 
-        leads, _ = query_leads(source=source, q=q, limit=100000)
+        leads, _ = query_leads(source=source, q=q, db_path=db_path, limit=100000)
 
         fieldnames = ["id", "name", "bio", "location", "email", "phone", "website", "profile_url", "activity", "source", "scraped_at", "enriched_at"]
         si = io.StringIO()
@@ -71,7 +78,7 @@ def create_app():
 
     @app.get("/campaigns")
     def campaigns():
-        with get_db() as conn:
+        with get_db(db_path) as conn:
             rows = conn.execute(
                 "SELECT c.*, "
                 "(SELECT COUNT(*) FROM campaign_leads cl WHERE cl.campaign_id = c.id) as assigned, "
@@ -120,7 +127,7 @@ def create_app():
     def delete(lead_id):
         if request.headers.get("X-Requested-With") != "XMLHttpRequest":
             return "CSRF check failed", 403
-        delete_lead(lead_id)
+        delete_lead(lead_id, db_path)
         return "", 204
 
     return app

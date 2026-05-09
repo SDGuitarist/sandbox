@@ -6,3 +6,5 @@ venv/
 *.csv
 .pytest_cache/
 .browser-profiles/
+sources.overrides.json
+nl_audit.jsonl

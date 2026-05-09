@@ -162,22 +162,28 @@ def test_stale_lock_overwritten(tmp_path):
 # run_send integration (mocked Playwright)
 # ---------------------------------------------------------------------------
 
-def test_run_send_no_approved_messages(setup_db, capsys):
+def test_run_send_no_approved_messages(setup_db, tmp_path, capsys, monkeypatch):
     """run_send with no approved messages should exit cleanly."""
-    from browser_sender import run_send
+    import browser_sender
     from campaign import create_campaign
 
+    monkeypatch.setattr(browser_sender, "LOCKFILE", tmp_path / "send.lock")
+    monkeypatch.setattr(browser_sender, "STOPFILE", tmp_path / "send.stop")
     cid = create_campaign("Test", None, None, None, setup_db)
-    run_send(cid, limit=5, db_path=setup_db)
+    browser_sender.run_send(cid, limit=5, db_path=setup_db)
     output = capsys.readouterr().out
     assert "No approved messages" in output
 
 
-def test_run_send_no_risk_acknowledged_account(setup_db, insert_lead, capsys):
+def test_run_send_no_risk_acknowledged_account(setup_db, insert_lead, tmp_path,
+                                               capsys, monkeypatch):
     """run_send should refuse if no risk-acknowledged accounts."""
-    from browser_sender import run_send
+    import browser_sender
     from campaign import create_campaign, approve_message
     from account import add_account
+
+    monkeypatch.setattr(browser_sender, "LOCKFILE", tmp_path / "send.lock")
+    monkeypatch.setattr(browser_sender, "STOPFILE", tmp_path / "send.stop")
 
     # Create campaign with an approved message
     lid = insert_lead(setup_db, "Alice", profile_url="https://www.facebook.com/alice")
@@ -193,6 +199,6 @@ def test_run_send_no_risk_acknowledged_account(setup_db, insert_lead, capsys):
     # Add account but don't confirm risk
     add_account("notrisk", db_path=setup_db)
 
-    run_send(cid, limit=5, db_path=setup_db)
+    browser_sender.run_send(cid, limit=5, db_path=setup_db)
     output = capsys.readouterr().out
     assert "No risk-acknowledged accounts" in output

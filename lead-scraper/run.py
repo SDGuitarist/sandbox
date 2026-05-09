@@ -3,18 +3,38 @@
 
 import argparse
 import csv
+import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Ensure lead-scraper/ is on the import path when run from any directory
 sys.path.insert(0, str(Path(__file__).parent))
 
-from db import init_db, DB_PATH
-from config import SOURCES, get_apify_token
+from db import (
+    DB_JOB_LOCKFILE,
+    DB_PATH,
+    MigrationRequired,
+    MigrationSafetyError,
+    create_backup,
+    db_job_lock,
+    get_db,
+    init_db,
+)
+from config import (
+    add_source_list_items,
+    get_apify_token,
+    get_sources,
+    get_sources_overrides_path,
+)
 from ingest import ingest_leads
 from models import query_leads
 from utils import sanitize_csv_cell
+
+
+DEFAULT_EVENTBRITE_SOURCE = "eventbrite"
+NL_AUDIT_LOG_PATH = Path(__file__).parent / "nl_audit.jsonl"
 
 
 def cmd_scrape(args):
@@ -27,7 +47,7 @@ def cmd_scrape(args):
         sys.exit(1)
 
     results = []
-    for source_name, source_config in SOURCES.items():
+    for source_name, source_config in get_sources().items():
         if not source_config.get("enabled"):
             continue
 
@@ -67,6 +87,31 @@ def cmd_scrape(args):
         from enrich import enrich_leads
         print()
         enrich_leads()
+
+
+def _print_db_status(db_path=DB_PATH) -> None:
+    """Print a compact production DB summary."""
+    with get_db(db_path) as conn:
+        lead_count = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+        campaign_count = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+        queue_count = conn.execute("SELECT COUNT(*) FROM outreach_queue").fetchone()[0]
+        approved_count = conn.execute(
+            "SELECT COUNT(*) FROM outreach_queue WHERE status = 'approved'"
+        ).fetchone()[0]
+        draft_count = conn.execute(
+            "SELECT COUNT(*) FROM outreach_queue WHERE status = 'draft'"
+        ).fetchone()[0]
+        review_count = conn.execute(
+            "SELECT COUNT(*) FROM outreach_queue WHERE status = 'needs_review'"
+        ).fetchone()[0]
+
+    print("Database status:")
+    print(f"  Leads:         {lead_count}")
+    print(f"  Campaigns:     {campaign_count}")
+    print(f"  Queue rows:    {queue_count}")
+    print(f"  Drafts:        {draft_count}")
+    print(f"  Approved:      {approved_count}")
+    print(f"  Needs review:  {review_count}")
 
 
 def cmd_enrich(args):
@@ -300,6 +345,366 @@ def cmd_cleanup(args):
         print(f"\nDeleted {len(to_delete)} backups, freed ~{freed // 1024 // 1024}MB.")
 
 
+def cmd_migrate(args):
+    """Run explicit schema migrations."""
+    init_db(DB_PATH, allow_destructive=args.allow_destructive_production)
+    print("Database schema is current.")
+
+
+def cmd_workflow(args):
+    """Run a safe high-level workflow for natural-language usage."""
+    from campaign import assign_leads, generate_messages
+    from quality_gate import run_gate
+
+    action = args.action
+
+    if action == "status":
+        _print_db_status()
+        return
+
+    if action == "daily":
+        cmd_scrape(args)
+        assign_leads(args.campaign_id, args.min_hook_quality)
+        generate_messages(args.campaign_id, limit=args.generate_limit)
+        if not args.skip_gate:
+            run_gate(args.campaign_id, limit=args.gate_limit, force=args.force_gate)
+        _print_db_status()
+        return
+
+    if action == "scrape-only":
+        cmd_scrape(args)
+        _print_db_status()
+        return
+
+    if action == "outreach-prep":
+        if getattr(args, "run_enrich", False):
+            cmd_enrich(args)
+        assign_leads(args.campaign_id, args.min_hook_quality)
+        generate_messages(args.campaign_id, limit=args.generate_limit)
+        if not args.skip_gate:
+            run_gate(args.campaign_id, limit=args.gate_limit, force=args.force_gate)
+        _print_db_status()
+        return
+
+
+def _join_nl_text(text_parts) -> str:
+    if isinstance(text_parts, str):
+        return text_parts.strip()
+    return " ".join(text_parts).strip()
+
+
+def _extract_campaign_id(text: str) -> int | None:
+    match = re.search(r"\bcampaign\s+(\d+)\b", text, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"\bfor\s+(\d+)\b", text, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _default_location() -> str:
+    eventbrite = get_sources().get(DEFAULT_EVENTBRITE_SOURCE, {})
+    city = eventbrite.get("city")
+    if city:
+        return f"{city}, CA" if "," not in city else city
+    return "San Diego, CA"
+
+
+def _extract_location(text: str) -> str | None:
+    match = re.search(
+        r"\b(?:in|for|around)\s+([A-Za-z .'-]+,\s*[A-Za-z]{2})\b",
+        text,
+        re.IGNORECASE,
+    )
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def _extract_list_after_keyword(text: str, anchor: str) -> list[str]:
+    pattern = rf"{anchor}\s+(.+?)(?:[.?!]|$)"
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return []
+    raw = match.group(1).strip()
+    raw = re.sub(r"^(like|such as)\s+", "", raw, flags=re.IGNORECASE)
+    raw = raw.replace(" and ", ", ")
+    items = []
+    for piece in raw.split(","):
+        cleaned = piece.strip().strip("\"'")
+        if cleaned:
+            items.append(cleaned)
+    deduped = []
+    for item in items:
+        if item not in deduped:
+            deduped.append(item)
+    return deduped
+
+
+def _extract_list_after_anchor_to_end(text: str, anchor: str) -> list[str]:
+    pattern = rf"{anchor}\s+(.+)$"
+    match = re.search(pattern, text, re.IGNORECASE)
+    if not match:
+        return []
+    raw = match.group(1).strip()
+    raw = raw.replace(" and ", ", ")
+    items = []
+    for piece in raw.split(","):
+        cleaned = piece.strip().strip("\"'")
+        if cleaned:
+            items.append(cleaned)
+    return items
+
+
+def _infer_mutation_source(normalized_text: str, field_name: str) -> str:
+    if field_name == "hashtags":
+        return "instagram"
+    if field_name == "queries":
+        return "linkedin"
+    if field_name == "keywords":
+        return "eventbrite"
+    if "facebook" in normalized_text:
+        return "facebook"
+    if "meetup" in normalized_text:
+        return "meetup"
+    return "facebook"
+
+
+def _append_mutation(plan: dict, normalized_text: str, field_name: str, items: list[str]) -> None:
+    if not items:
+        return
+    cleaned_items = []
+    for item in items:
+        cleaned = item.strip()
+        if field_name == "hashtags":
+            cleaned = cleaned.lstrip("#")
+        if cleaned and cleaned not in cleaned_items:
+            cleaned_items.append(cleaned)
+    if not cleaned_items:
+        return
+    source_name = _infer_mutation_source(normalized_text, field_name)
+    plan["mutations"].append(
+        {
+            "source_name": source_name,
+            "field_name": field_name,
+            "items": cleaned_items,
+        }
+    )
+
+
+def _parse_nl_mutations(prompt: str, normalized: str, plan: dict) -> None:
+    if "keyword" in normalized and any(word in normalized for word in ("add", "include", "use", "with")):
+        for anchor in ("keywords", "keyword"):
+            keywords = _extract_list_after_keyword(prompt, anchor)
+            if keywords:
+                _append_mutation(plan, normalized, "keywords", keywords)
+                break
+
+    if "hashtag" in normalized and any(word in normalized for word in ("add", "include", "use", "with")):
+        for anchor in ("hashtags", "hashtag"):
+            hashtags = _extract_list_after_keyword(prompt, anchor)
+            if hashtags:
+                _append_mutation(plan, normalized, "hashtags", hashtags)
+                break
+
+    if "group" in normalized and any(word in normalized for word in ("add", "include", "use", "with")):
+        for anchor in ("groups", "group"):
+            groups = _extract_list_after_anchor_to_end(prompt, anchor)
+            if groups:
+                _append_mutation(plan, normalized, "groups", groups)
+                break
+
+    if "query" in normalized and any(word in normalized for word in ("add", "include", "use", "with")):
+        for anchor in ("queries", "query"):
+            queries = _extract_list_after_keyword(prompt, anchor)
+            if queries:
+                _append_mutation(plan, normalized, "queries", queries)
+                break
+
+
+def _parse_nl_request(text: str) -> dict:
+    prompt = text.strip()
+    if not prompt:
+        raise ValueError("Natural-language request is empty.")
+
+    normalized = re.sub(r"\s+", " ", prompt.lower())
+    plan = {
+        "raw_text": prompt,
+        "action": None,
+        "location": None,
+        "campaign_id": None,
+        "mutations": [],
+        "needs_lock": False,
+        "needs_backup": False,
+    }
+
+    if any(phrase in normalized for phrase in ("status", "how many leads", "database summary", "db summary")):
+        plan["action"] = "status"
+        return plan
+
+    _parse_nl_mutations(prompt, normalized, plan)
+    if any(word in normalized for word in ("keyword", "hashtag", "group", "query")) and not plan["mutations"]:
+        raise ValueError("I could not safely extract the items to add.")
+
+    campaign_id = _extract_campaign_id(prompt)
+    location = _extract_location(prompt) or _default_location()
+    plan["campaign_id"] = campaign_id
+    plan["location"] = location
+
+    if any(phrase in normalized for phrase in ("daily workflow", "full workflow", "run the pipeline")):
+        if campaign_id is None:
+            raise ValueError("Campaign ID is required for the daily workflow.")
+        plan["action"] = "daily"
+    elif any(phrase in normalized for phrase in ("outreach prep", "prepare outreach", "prep outreach")):
+        if campaign_id is None:
+            raise ValueError("Campaign ID is required for outreach prep.")
+        plan["action"] = "outreach-prep"
+    elif "scrape" in normalized or "search for leads" in normalized:
+        plan["action"] = "scrape-only"
+
+    if plan["action"] is None and plan["mutations"]:
+        plan["action"] = "config-only"
+
+    if plan["action"] is None:
+        raise ValueError(
+            "Unsupported request. I can safely translate status checks, scrape requests, "
+            "campaign outreach prep, daily workflow runs, and source-list additions "
+            "(Eventbrite keywords, Instagram hashtags, Facebook/Meetup groups, LinkedIn queries)."
+        )
+
+    plan["needs_lock"] = plan["action"] != "status"
+    plan["needs_backup"] = plan["action"] != "status"
+    return plan
+
+
+def _nl_plan_from_args(args) -> dict | None:
+    if getattr(args, "command", None) != "nl":
+        return None
+    cached = getattr(args, "_nl_plan", None)
+    if cached is not None:
+        return cached
+    try:
+        plan = _parse_nl_request(_join_nl_text(args.text))
+    except ValueError:
+        return None
+    args._nl_plan = plan
+    return plan
+
+
+def _confirm_nl_mutations(plan: dict, *, assume_yes: bool = False) -> bool:
+    if assume_yes or not plan["mutations"]:
+        return True
+
+    print("Planned config changes:")
+    for mutation in plan["mutations"]:
+        print(
+            f"  Add to {mutation['source_name']}.{mutation['field_name']}: "
+            f"{', '.join(mutation['items'])}"
+        )
+    response = input("Apply these config changes? [y/N]: ").strip().lower()
+    return response in {"y", "yes"}
+
+
+def _print_nl_plan(plan: dict) -> None:
+    print(f"Translated request: {plan['action']}")
+    if plan["location"]:
+        print(f"  Location: {plan['location']}")
+    if plan["campaign_id"] is not None:
+        print(f"  Campaign: {plan['campaign_id']}")
+    for mutation in plan["mutations"]:
+        print(
+            f"  Add to {mutation['source_name']}.{mutation['field_name']}: "
+            f"{', '.join(mutation['items'])}"
+        )
+
+
+def _append_nl_audit_log(plan: dict, *, status: str) -> None:
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": status,
+        "action": plan["action"],
+        "location": plan["location"],
+        "campaign_id": plan["campaign_id"],
+        "mutations": plan["mutations"],
+        "raw_text": plan["raw_text"],
+    }
+    with NL_AUDIT_LOG_PATH.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, sort_keys=True) + "\n")
+
+
+def _apply_nl_mutations(plan: dict) -> None:
+    for mutation in plan["mutations"]:
+        added = add_source_list_items(
+            mutation["source_name"],
+            mutation["field_name"],
+            mutation["items"],
+        )
+        if added:
+            print(
+                f"Added {len(added)} item(s) to "
+                f"{mutation['source_name']}.{mutation['field_name']}: {', '.join(added)}"
+            )
+        else:
+            print(
+                f"No new items were added to "
+                f"{mutation['source_name']}.{mutation['field_name']}."
+            )
+    if plan["mutations"]:
+        print(f"Overrides saved to {get_sources_overrides_path()}")
+
+
+def cmd_nl(args):
+    """Translate restricted natural language into safe workflow actions."""
+    try:
+        plan = _parse_nl_request(_join_nl_text(args.text))
+    except ValueError as e:
+        print(f"Could not safely translate request: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    args._nl_plan = plan
+
+    _print_nl_plan(plan)
+
+    if getattr(args, "preview", False):
+        _append_nl_audit_log(plan, status="preview")
+        return
+
+    if plan["mutations"]:
+        if not _confirm_nl_mutations(plan, assume_yes=getattr(args, "yes", False)):
+            _append_nl_audit_log(plan, status="cancelled")
+            print("Cancelled.")
+            return
+        _apply_nl_mutations(plan)
+
+    if plan["action"] == "status":
+        _append_nl_audit_log(plan, status="executed")
+        _print_db_status()
+        return
+
+    if plan["action"] == "config-only":
+        _append_nl_audit_log(plan, status="executed")
+        return
+
+    workflow_args = argparse.Namespace(
+        action=plan["action"],
+        location=plan["location"],
+        campaign_id=plan["campaign_id"],
+        min_hook_quality=3,
+        generate_limit=50,
+        gate_limit=0,
+        skip_gate=False,
+        force_gate=False,
+        run_enrich=False,
+        step="all",
+        limit=50,
+        refresh=False,
+        days=30,
+    )
+    _append_nl_audit_log(plan, status="executed")
+    cmd_workflow(workflow_args)
+
+
 def cmd_schedule(args):
     """Print crontab setup for automatic scraping."""
     script = Path(__file__).resolve()
@@ -469,6 +874,34 @@ def cmd_serve(args):
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
     app = create_app()
     app.run(host="127.0.0.1", port=5000, debug=debug)
+
+
+def _command_needs_db_lock(args) -> bool:
+    if args.command == "nl":
+        plan = _nl_plan_from_args(args)
+        return bool(plan and plan["needs_lock"])
+    if args.command in {"scrape", "enrich", "import", "dedup", "migrate"}:
+        return True
+    if args.command == "workflow" and args.action != "status":
+        return True
+    if args.command == "campaign" and args.action not in {"queue", "status"}:
+        return True
+    if args.command == "account":
+        return True
+    if args.command == "leads" and args.action == "unhold":
+        return True
+    return False
+
+
+def _command_needs_backup(args) -> bool:
+    if args.command == "nl":
+        plan = _nl_plan_from_args(args)
+        return bool(plan and plan["needs_backup"])
+    if args.command in {"scrape", "enrich", "import", "dedup", "migrate"}:
+        return True
+    if args.command == "workflow" and args.action != "status":
+        return True
+    return False
 
 
 def main():
@@ -657,6 +1090,84 @@ def main():
                             help="Show what would be deleted without deleting")
     sp_cleanup.set_defaults(func=cmd_cleanup)
 
+    # migrate
+    sp_migrate = subparsers.add_parser(
+        "migrate",
+        help="Run explicit schema migrations",
+    )
+    sp_migrate.add_argument(
+        "--allow-destructive-production",
+        action="store_true",
+        help="Allow the production outreach_queue table recreation migration",
+    )
+    sp_migrate.set_defaults(func=cmd_migrate)
+
+    # workflow
+    sp_workflow = subparsers.add_parser(
+        "workflow",
+        help="Run a safe high-level production workflow",
+    )
+    workflow_sub = sp_workflow.add_subparsers(dest="action", required=True)
+
+    sp_daily = workflow_sub.add_parser(
+        "daily",
+        help="Scrape, assign, generate, and optionally gate in one safe run",
+    )
+    sp_daily.add_argument("--location", required=True, help='Target location, e.g. "San Diego, CA"')
+    sp_daily.add_argument("--campaign-id", type=int, required=True)
+    sp_daily.add_argument("--min-hook-quality", type=int, default=3)
+    sp_daily.add_argument("--generate-limit", type=int, default=50)
+    sp_daily.add_argument("--gate-limit", type=int, default=0)
+    sp_daily.add_argument("--skip-gate", action="store_true")
+    sp_daily.add_argument("--force-gate", action="store_true")
+
+    sp_scrape_only = workflow_sub.add_parser(
+        "scrape-only",
+        help="Run only the scrape step under the global DB lock",
+    )
+    sp_scrape_only.add_argument("--location", required=True, help='Target location, e.g. "San Diego, CA"')
+
+    sp_outreach = workflow_sub.add_parser(
+        "outreach-prep",
+        help="Assign, generate, and optionally gate for a campaign",
+    )
+    sp_outreach.add_argument("--campaign-id", type=int, required=True)
+    sp_outreach.add_argument("--min-hook-quality", type=int, default=3)
+    sp_outreach.add_argument("--generate-limit", type=int, default=50)
+    sp_outreach.add_argument("--gate-limit", type=int, default=0)
+    sp_outreach.add_argument("--skip-gate", action="store_true")
+    sp_outreach.add_argument("--force-gate", action="store_true")
+    sp_outreach.add_argument("--run-enrich", action="store_true")
+    sp_outreach.add_argument(
+        "--step",
+        choices=["bio", "website", "crawl", "hunter", "segment", "hook", "verify", "screen", "consistency", "all"],
+        default="all",
+    )
+    sp_outreach.add_argument("--limit", type=int, default=50)
+    sp_outreach.add_argument("--refresh", action="store_true")
+    sp_outreach.add_argument("--days", type=int, default=30)
+
+    workflow_sub.add_parser("status", help="Show a compact DB status summary")
+    sp_workflow.set_defaults(func=cmd_workflow)
+
+    # nl
+    sp_nl = subparsers.add_parser(
+        "nl",
+        help="Translate a restricted natural-language request into a safe workflow action",
+    )
+    sp_nl.add_argument("text", nargs="+", help="Natural-language request")
+    sp_nl.add_argument(
+        "--yes",
+        action="store_true",
+        help="Apply allowed config changes without confirmation",
+    )
+    sp_nl.add_argument(
+        "--preview",
+        action="store_true",
+        help="Show the translated action without applying changes or running workflows",
+    )
+    sp_nl.set_defaults(func=cmd_nl)
+
     # dedup
     sp_dedup = subparsers.add_parser("dedup", help="Find and merge duplicate leads")
     sp_dedup.add_argument("--apply", action="store_true",
@@ -675,10 +1186,30 @@ def main():
 
     args = parser.parse_args()
 
-    # Always bootstrap the database
-    init_db()
+    try:
+        if args.command == "migrate":
+            with db_job_lock():
+                create_backup()
+                args.func(args)
+            return
 
-    args.func(args)
+        # Always bootstrap non-destructive schema changes before normal commands.
+        init_db()
+    except (MigrationRequired, MigrationSafetyError) as e:
+        print(f"Database safety check failed: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    try:
+        if _command_needs_db_lock(args):
+            with db_job_lock():
+                if _command_needs_backup(args):
+                    create_backup()
+                args.func(args)
+        else:
+            args.func(args)
+    except MigrationSafetyError as e:
+        print(f"Database safety check failed: {e}", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

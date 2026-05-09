@@ -3,35 +3,72 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import time
 from datetime import datetime
 
 # Canonical DB path: same directory as this file
 DB_PATH = Path(__file__).parent / "leads.db"
+DB_JOB_LOCKFILE = Path.home() / ".lead-scraper-db.lock"
+
+
+class MigrationRequired(RuntimeError):
+    """Raised when a normal startup sees a migration that must be run explicitly."""
+
+
+class MigrationSafetyError(RuntimeError):
+    """Raised when a database operation would risk the production database."""
 
 
 def _is_production_db(db_path):
     """Return True if db_path is the real production leads.db."""
-    return db_path.resolve() == DB_PATH.resolve()
+    return Path(db_path).resolve() == DB_PATH.resolve()
 
 
-def _destructive_migration_allowed(db_path):
+def _running_under_pytest():
+    return bool(os.environ.get("PYTEST_CURRENT_TEST"))
+
+
+def _assert_not_pytest_production(db_path):
+    if _running_under_pytest() and _is_production_db(db_path):
+        raise MigrationSafetyError(
+            "Tests may not open the production leads.db. Pass a tmp_path database instead."
+        )
+
+
+def _assert_production_file_ready(db_path, *, allow_create=False):
+    if not _is_production_db(db_path):
+        return
+    if allow_create:
+        return
+    path = Path(db_path)
+    if not path.exists():
+        raise MigrationSafetyError(
+            f"Production database is missing: {path}. Restore from backup; "
+            "normal startup will not create an empty leads.db."
+        )
+    if path.stat().st_size == 0:
+        raise MigrationSafetyError(
+            f"Production database is empty: {path}. Restore from backup; "
+            "normal startup will not bootstrap a blank leads.db."
+        )
+
+
+def _destructive_migration_allowed(db_path, *, allow_production=False):
     """Guard: destructive migrations (DROP TABLE) only allowed if:
-    1. Running inside pytest (tmp_path), OR
-    2. ALLOW_PRODUCTION_MIGRATE=1 is set, OR
-    3. db_path is not the production DB
+    1. db_path is not the production DB, OR
+    2. production destruction was explicitly requested by a migration command.
     """
     if not _is_production_db(db_path):
         return True  # Test DB or copy -- always allowed
-    if os.environ.get("ALLOW_PRODUCTION_MIGRATE") == "1":
-        return True  # Explicit override
-    if "pytest" in os.environ.get("_", ""):
-        return True  # Running under pytest
-    return False
+    return allow_production
 
 
 @contextmanager
-def get_db(db_path=DB_PATH):
+def get_db(db_path=DB_PATH, *, allow_create=False):
     """Context manager for SQLite connections. Works from CLI and Flask."""
+    db_path = Path(db_path)
+    _assert_not_pytest_production(db_path)
+    _assert_production_file_ready(db_path, allow_create=allow_create)
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -63,8 +100,54 @@ def _backup_wal_safe(db_path):
     print(f"Backup created: {backup.name}")
 
 
-def migrate_db(db_path=DB_PATH):
+def create_backup(db_path=DB_PATH):
+    """Create a WAL-safe backup of the given database."""
+    db_path = Path(db_path)
+    _assert_not_pytest_production(db_path)
+    _assert_production_file_ready(db_path)
+    _backup_wal_safe(db_path)
+
+
+def acquire_db_job_lock(lock_path=DB_JOB_LOCKFILE):
+    """Acquire a global DB job lock. Returns True if acquired."""
+    lock_path = Path(lock_path)
+    if lock_path.exists():
+        try:
+            old_pid = int(lock_path.read_text().strip())
+            os.kill(old_pid, 0)
+            return False
+        except (ValueError, ProcessLookupError, PermissionError):
+            pass
+
+    lock_path.write_text(str(os.getpid()))
+    return True
+
+
+def release_db_job_lock(lock_path=DB_JOB_LOCKFILE):
+    """Release the global DB job lock."""
+    lock_path = Path(lock_path)
+    if lock_path.exists():
+        lock_path.unlink()
+
+
+@contextmanager
+def db_job_lock(lock_path=DB_JOB_LOCKFILE):
+    """Context manager for the global DB job lock."""
+    if not acquire_db_job_lock(lock_path):
+        raise MigrationSafetyError(
+            f"Another DB job is running. Wait or remove stale lock: {lock_path}"
+        )
+    try:
+        yield
+    finally:
+        release_db_job_lock(lock_path)
+
+
+def migrate_db(db_path=DB_PATH, *, allow_destructive=False):
     """Run all schema migrations. Idempotent and safe to re-run."""
+    db_path = Path(db_path)
+    _assert_not_pytest_production(db_path)
+    _assert_production_file_ready(db_path)
     if not db_path.exists():
         return  # No DB to migrate; init_db will create fresh schema
 
@@ -97,6 +180,12 @@ def migrate_db(db_path=DB_PATH):
         ).fetchone()
         needs_queue_migration = _needs_queue_migration(conn)
 
+        if needs_queue_migration and _is_production_db(db_path) and not allow_destructive:
+            raise MigrationRequired(
+                "Production outreach_queue needs a destructive schema migration. "
+                "Run: python run.py migrate --allow-destructive-production"
+            )
+
         needs_backup = to_add or not sender_table_exists or needs_queue_migration
 
         if needs_backup:
@@ -110,7 +199,7 @@ def migrate_db(db_path=DB_PATH):
 
     # --- sender module migrations (always run, independent of leads) ---
     _create_sender_accounts(db_path)
-    _migrate_needs_review_status(db_path)
+    _migrate_needs_review_status(db_path, allow_destructive=allow_destructive)
 
 
 def _needs_queue_migration(conn):
@@ -155,15 +244,18 @@ def _create_sender_accounts(db_path=DB_PATH):
         """)
 
 
-def _migrate_needs_review_status(db_path=DB_PATH):
+def _migrate_needs_review_status(db_path=DB_PATH, *, allow_destructive=False):
     """Add needs_review status, skip_reason, gate_checked_at, sender_account_id FK.
 
     Recreates outreach_queue (SQLite can't ALTER CHECK constraints).
-    Pre/post row count assertion prevents silent data loss.
+    Stages and validates the replacement table before dropping the old table.
 
     DESTRUCTIVE: uses DROP TABLE. Guarded against accidental production runs.
-    Set ALLOW_PRODUCTION_MIGRATE=1 to run against real leads.db.
+    Use `python run.py migrate --allow-destructive-production` for production.
     """
+    db_path = Path(db_path)
+    _assert_not_pytest_production(db_path)
+    _assert_production_file_ready(db_path)
     with get_db(db_path) as conn:
         create_sql = conn.execute(
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='outreach_queue'"
@@ -183,19 +275,22 @@ def _migrate_needs_review_status(db_path=DB_PATH):
             return  # Already migrated
 
     # Past this point: DROP TABLE will happen. Block unless explicitly allowed.
-    if not _destructive_migration_allowed(db_path):
-        print(
-            "BLOCKED: destructive migration on production DB.\n"
-            "  To run: ALLOW_PRODUCTION_MIGRATE=1 python run.py ...\n"
-            "  Or copy leads.db to /tmp and test there first."
+    if not _destructive_migration_allowed(db_path, allow_production=allow_destructive):
+        raise MigrationRequired(
+            "Production outreach_queue needs a destructive schema migration. "
+            "Run: python run.py migrate --allow-destructive-production"
         )
-        return
 
     with get_db(db_path) as conn:
         pre_count = conn.execute("SELECT COUNT(*) FROM outreach_queue").fetchone()[0]
+        cols = {row[1] for row in conn.execute("PRAGMA table_info('outreach_queue')")}
+        skip_reason_expr = "skip_reason" if "skip_reason" in cols else "NULL"
+        gate_checked_at_expr = "gate_checked_at" if "gate_checked_at" in cols else "NULL"
+        sender_account_expr = "sender_account_id" if "sender_account_id" in cols else "NULL"
 
-        conn.execute("PRAGMA foreign_keys=OFF")
-        conn.executescript("""
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("DROP TABLE IF EXISTS outreach_queue_new")
+        conn.execute("""
             CREATE TABLE outreach_queue_new (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 lead_id         INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
@@ -213,100 +308,93 @@ def _migrate_needs_review_status(db_path=DB_PATH):
                 gate_checked_at TEXT,
                 sender_account_id INTEGER REFERENCES sender_accounts(id) ON DELETE SET NULL,
                 UNIQUE(lead_id, campaign_id)
-            );
+            )
+        """)
 
+        conn.execute(f"""
             INSERT INTO outreach_queue_new
                 (id, lead_id, campaign_id, opener_text, template_text, full_message,
                  status, generated_at, approved_at, sent_at,
                  skip_reason, gate_checked_at, sender_account_id)
             SELECT id, lead_id, campaign_id, opener_text, template_text, full_message,
                    status, generated_at, approved_at, sent_at,
-                   NULL, NULL, NULL
-            FROM outreach_queue;
-
-            DROP TABLE outreach_queue;
-            ALTER TABLE outreach_queue_new RENAME TO outreach_queue;
-
-            CREATE INDEX IF NOT EXISTS idx_outreach_queue_campaign_status
-                ON outreach_queue(campaign_id, status);
+                   {skip_reason_expr}, {gate_checked_at_expr}, {sender_account_expr}
+            FROM outreach_queue
         """)
-        conn.execute("PRAGMA foreign_keys=ON")
 
-        # Post-migration verification
-        post_cols = {row[1] for row in conn.execute("PRAGMA table_info('outreach_queue')")}
-        assert 'skip_reason' in post_cols, "Migration failed: skip_reason missing"
-        assert 'gate_checked_at' in post_cols, "Migration failed: gate_checked_at missing"
-        assert 'sender_account_id' in post_cols, "Migration failed: sender_account_id missing"
+        staged_count = conn.execute(
+            "SELECT COUNT(*) FROM outreach_queue_new"
+        ).fetchone()[0]
+        if staged_count != pre_count:
+            raise MigrationSafetyError(
+                f"Migration staged data loss: {pre_count} rows before, "
+                f"{staged_count} staged"
+            )
+
+        staged_cols = {
+            row[1] for row in conn.execute("PRAGMA table_info('outreach_queue_new')")
+        }
+        missing = {'skip_reason', 'gate_checked_at', 'sender_account_id'} - staged_cols
+        if missing:
+            raise MigrationSafetyError(
+                f"Migration failed before table swap; missing columns: {sorted(missing)}"
+            )
+
+        conn.execute("DROP TABLE outreach_queue")
+        conn.execute("ALTER TABLE outreach_queue_new RENAME TO outreach_queue")
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_outreach_queue_campaign_status
+                ON outreach_queue(campaign_id, status)
+        """)
 
         post_count = conn.execute("SELECT COUNT(*) FROM outreach_queue").fetchone()[0]
-        assert post_count == pre_count, (
-            f"Migration data loss: {pre_count} rows before, {post_count} after"
-        )
+        if post_count != pre_count:
+            raise MigrationSafetyError(
+                f"Migration data loss after table swap: {pre_count} rows before, "
+                f"{post_count} after"
+            )
+
         print(f"outreach_queue migrated: {post_count} rows preserved (== {pre_count}), "
               f"needs_review status + 3 columns + FK added")
 
 
-def _migrate_outreach_statuses(db_path=DB_PATH):
+def _migrate_outreach_statuses(db_path=DB_PATH, *, allow_destructive=False):
     """Expand outreach_queue status CHECK to include response tracking statuses.
 
     NOTE: Superseded by _migrate_needs_review_status() which adds the same
     statuses plus needs_review, skip_reason, gate_checked_at, sender_account_id.
-    Kept for backwards compat -- runs first, then _migrate_needs_review_status()
-    handles the rest.
-
-    DESTRUCTIVE: uses DROP TABLE.
+    Kept for backwards compatibility; delegates to the safer combined migration.
     """
-    if not db_path.exists():
-        return
-
-    with get_db(db_path) as conn:
-        row = conn.execute(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name='outreach_queue'"
-        ).fetchone()
-        if not row or "'replied'" in row[0]:
-            return  # Table doesn't exist yet or already migrated
-
-    # Past this point: DROP TABLE will happen. Block unless explicitly allowed.
-    if not _destructive_migration_allowed(db_path):
-        return
-
-    with get_db(db_path) as conn:
-        conn.execute("PRAGMA foreign_keys=OFF")
-        conn.executescript("""
-            CREATE TABLE outreach_queue_new (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                lead_id         INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-                campaign_id     INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
-                opener_text     TEXT,
-                template_text   TEXT,
-                full_message    TEXT,
-                status          TEXT NOT NULL DEFAULT 'draft'
-                                CHECK(status IN ('draft', 'approved', 'sent', 'skipped',
-                                                 'replied', 'booked', 'declined', 'no_response')),
-                generated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%S', 'now')),
-                approved_at     TEXT,
-                sent_at         TEXT,
-                UNIQUE(lead_id, campaign_id)
-            );
-            INSERT INTO outreach_queue_new SELECT * FROM outreach_queue;
-            DROP TABLE outreach_queue;
-            ALTER TABLE outreach_queue_new RENAME TO outreach_queue;
-            CREATE INDEX IF NOT EXISTS idx_outreach_queue_campaign_status
-                ON outreach_queue(campaign_id, status);
-        """)
-        conn.execute("PRAGMA foreign_keys=ON")
+    _migrate_needs_review_status(db_path, allow_destructive=allow_destructive)
 
 
-def init_db(db_path=DB_PATH):
+def init_db(db_path=DB_PATH, *, allow_destructive=False, allow_create_production=False):
     """Create tables from schema.sql and schema_campaigns.sql. Safe to call repeatedly."""
+    db_path = Path(db_path)
+    _assert_not_pytest_production(db_path)
+    _assert_production_file_ready(db_path, allow_create=allow_create_production)
+
+    ran_pre_schema_migration = False
+    if _is_production_db(db_path) and db_path.exists():
+        with get_db(db_path) as conn:
+            needs_queue_migration = _needs_queue_migration(conn)
+        if needs_queue_migration:
+            if not allow_destructive:
+                raise MigrationRequired(
+                    "Production outreach_queue needs a destructive schema migration. "
+                    "Run: python run.py migrate --allow-destructive-production"
+                )
+            migrate_db(db_path, allow_destructive=True)
+            ran_pre_schema_migration = True
+
     base_dir = Path(__file__).parent
-    with get_db(db_path) as conn:
+    with get_db(db_path, allow_create=allow_create_production) as conn:
         conn.executescript((base_dir / "schema.sql").read_text())
         campaigns_schema = base_dir / "schema_campaigns.sql"
         if campaigns_schema.exists():
             conn.executescript(campaigns_schema.read_text())
-    migrate_db(db_path)  # Ensure existing DBs get new columns
-    _migrate_outreach_statuses(db_path)  # Expand status CHECK constraint
+    if not ran_pre_schema_migration:
+        migrate_db(db_path, allow_destructive=allow_destructive)
     # Index on leads columns added by migrate_db (must run after migration)
     with get_db(db_path) as conn:
         conn.execute(
