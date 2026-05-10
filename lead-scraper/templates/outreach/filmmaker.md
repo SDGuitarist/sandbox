@@ -1,12 +1,8 @@
 ---
 segment: filmmaker
-evidence: new segment (split from creative May 2026), untested
+evidence: direct-relevance framing. Updated May 9 2026 -- tools+voice+rights positioning.
 cta_style: direct-relevance
 ---
-Hey. I've been building AI ethics frameworks specifically for filmmakers. Not the hype conversation. The practical one: what protections actually exist for your work, where the gaps are, and how to document your process so your creative decisions stay yours.
+I'm running a hands-on AI workshop for filmmakers {{date}}. Four hours -- you bring your laptop and a real project. We cover where AI tools actually fit in your workflow, how to prompt them like an expert instead of a beginner, and how to document your process so your creative decisions stay yours. You leave with working tools configured for your specific projects, not generic demos.
 
-I boiled it down to consent, compensation, credit, and how they play out differently for writers, directors, composers, and post.
-
-{{format}} on {{date}}, {{seat_count}} seats, hands-on. You bring your laptop and your real projects.
-
-amplifyai.to
+{{seat_count}} seats, $175. amplifyai.to

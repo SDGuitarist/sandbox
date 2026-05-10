@@ -1,14 +1,12 @@
 ---
 segment: small_biz
-evidence: referral framing (33% connector conversion rate). 0/6 with direct pitch. Rewritten May 2026.
+evidence: referral framing (0/6 direct pitch). Updated May 9 2026 -- tools+voice+rights positioning.
 cta_style: referral
 ---
-I've been building AI ethics frameworks for creatives and small businesses. The core question is how you use AI tools without training a competitor on your process, your clients, your voice.
+I'm running a hands-on AI workshop on {{date}}. Four hours -- you bring your laptop and a real project. We cover where AI tools fit in your workflow, how to use them without training a competitor on your process, and how to keep your creative decisions and business IP documented.
 
-Started in film because that's where the ethics debate got loud first, but every business owner I've talked to has the same concerns.
+Started in film because that's where the conversation got loud first, but every business owner I've talked to has the same concerns.
 
-{{format}} on {{date}}, {{seat_count}} seats, hands-on. San Diego.
-
-Not sure if it's your thing, but I bet you know someone who's been trying to figure out the AI side of their business.
+{{seat_count}} seats, $175, San Diego. Not sure if it's your thing, but I bet you know someone who's been trying to figure out the AI side of their business.
 
 amplifyai.to

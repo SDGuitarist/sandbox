@@ -1,14 +1,12 @@
 ---
 segment: writer
-evidence: referral framing (33% connector conversion rate). Rewritten May 2026.
+evidence: referral framing. Updated May 9 2026 -- tools+voice+rights positioning.
 cta_style: referral
 ---
-I've been building AI ethics frameworks for filmmakers. The core question is what protections actually exist for your work when AI gets involved. Consent, compensation, credit.
+I'm running a hands-on AI workshop for creatives and filmmakers on {{date}}. Four hours -- you bring your laptop and a real project. We cover where AI tools fit in your workflow, how to prompt them like a professional instead of a beginner, and how to keep your creative voice and authorship documented.
 
-Started in film because that's where the WGA fights kicked off, but the authorship and voice questions apply to every writer I've talked to.
+The WGA fights kicked this off in film, but the authorship and voice questions apply to every writer I've talked to.
 
-{{format}} on {{date}}, {{seat_count}} seats, hands-on. San Diego.
-
-Not sure if it's your thing, but I bet you know a writer or filmmaker who'd want to be in the room for this.
+{{seat_count}} seats, $175, San Diego. Not sure if it's your thing, but I bet you know a writer or filmmaker who'd want to be in the room.
 
 amplifyai.to

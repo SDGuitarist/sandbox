@@ -1,14 +1,12 @@
 ---
 segment: musician
-evidence: referral framing (33% connector conversion rate). Rewritten May 2026.
+evidence: referral framing. Updated May 9 2026 -- tools+voice+rights positioning.
 cta_style: referral
 ---
-I've been building AI ethics frameworks for filmmakers. The core question is what protections actually exist for your work when AI gets involved. Consent, compensation, credit.
+I'm running a hands-on AI workshop for creatives and filmmakers on {{date}}. Four hours -- you bring your laptop and a real project. We cover where AI tools fit in your workflow, how to prompt them like a professional instead of a beginner, and how to keep your creative decisions documented and protected.
 
-The conversation started in film, but musicians came up constantly in the research. Less protection than almost any other creative role right now.
+Musicians came up constantly in the research. Less protection than almost any other creative role right now, and the tools are moving fastest in music.
 
-{{format}} on {{date}}, {{seat_count}} seats, hands-on. San Diego.
-
-Not sure if it's your thing, but I bet you know someone in music or film who'd want to be in the room for this.
+{{seat_count}} seats, $175, San Diego. Not sure if it's your thing, but I bet you know someone in music or film who'd want to be in the room.
 
 amplifyai.to
