@@ -418,6 +418,24 @@ def mark_sent(campaign_id: int, lead_id: int, db_path: Path = DB_PATH) -> bool:
     return True
 
 
+def mark_sent_batch(campaign_id: int, lead_ids: list[int],
+                    db_path: Path = DB_PATH) -> int:
+    """Mark multiple leads as sent in one transaction. Returns count marked."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    count = 0
+    with get_db(db_path) as conn:
+        for lead_id in lead_ids:
+            cursor = conn.execute(
+                "UPDATE outreach_queue SET status = 'sent', sent_at = ? "
+                "WHERE campaign_id = ? AND lead_id = ? "
+                "AND status IN ('approved', 'draft')",
+                (now, campaign_id, lead_id),
+            )
+            count += cursor.rowcount
+    print(f"Marked {count}/{len(lead_ids)} leads as sent in campaign {campaign_id}.")
+    return count
+
+
 # ---------------------------------------------------------------------------
 # Quality gate transitions
 # ---------------------------------------------------------------------------

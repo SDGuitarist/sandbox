@@ -15,12 +15,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 from db import (
     DB_JOB_LOCKFILE,
     DB_PATH,
+    DatabaseHealthError,
     MigrationRequired,
     MigrationSafetyError,
     create_backup,
     db_job_lock,
     get_db,
     init_db,
+    run_db_health_check,
 )
 from config import (
     add_source_list_items,
@@ -728,6 +730,37 @@ def cmd_schedule(args):
     print("  crontab -l    # view current crontab")
 
 
+def cmd_db_check(args):
+    """Run a DB health check and optionally refresh the baseline snapshot."""
+    health, warnings = run_db_health_check(
+        refresh_snapshot=args.refresh_snapshot,
+        notify=not args.no_notify,
+    )
+    print("Database health:")
+    print(f"  File exists:   {health['exists']}")
+    print(f"  File size:     {health['file_size']}")
+    print(f"  Integrity:     {health['integrity_message']}")
+    print(f"  Leads:         {health['lead_count']}")
+    print(f"  Campaigns:     {health['campaign_count']}")
+    print(f"  Queue rows:    {health['queue_count']}")
+    if warnings:
+        print("\nWarnings:")
+        for warning in warnings:
+            print(f"  - {warning}")
+    if args.refresh_snapshot:
+        print("\nBaseline snapshot updated.")
+
+
+def _command_needs_db_health_check(args) -> bool:
+    if args.command == "db-check":
+        return True
+    return _command_needs_db_lock(args)
+
+
+def _command_allows_expected_drop(args) -> bool:
+    return args.command == "dedup"
+
+
 def cmd_account(args):
     """Dispatch account subcommands."""
     from account import (
@@ -833,6 +866,9 @@ def cmd_campaign(args):
         skip_message(args.campaign_id, args.lead)
     elif action == "sent":
         mark_sent(args.campaign_id, args.lead)
+    elif action == "sent-batch":
+        from campaign import mark_sent_batch
+        mark_sent_batch(args.campaign_id, args.leads)
     elif action == "replied":
         mark_replied(args.campaign_id, args.lead)
     elif action == "booked":
@@ -1019,6 +1055,12 @@ def main():
     sp_sent.add_argument("campaign_id", type=int)
     sp_sent.add_argument("--lead", type=int, required=True)
 
+    sp_sent_batch = campaign_sub.add_parser("sent-batch",
+                                            help="Mark multiple leads as sent (bulk)")
+    sp_sent_batch.add_argument("campaign_id", type=int)
+    sp_sent_batch.add_argument("--leads", type=int, nargs="+", required=True,
+                               help="Lead IDs to mark as sent")
+
     sp_replied = campaign_sub.add_parser("replied", help="Mark a sent message as replied")
     sp_replied.add_argument("campaign_id", type=int)
     sp_replied.add_argument("--lead", type=int, required=True)
@@ -1180,6 +1222,23 @@ def main():
                              help='Target location, e.g. "San Diego, CA"')
     sp_schedule.set_defaults(func=cmd_schedule)
 
+    # db-check
+    sp_db_check = subparsers.add_parser(
+        "db-check",
+        help="Check DB file, integrity, counts, and regression warnings",
+    )
+    sp_db_check.add_argument(
+        "--refresh-snapshot",
+        action="store_true",
+        help="Save the current DB state as the new baseline snapshot",
+    )
+    sp_db_check.add_argument(
+        "--no-notify",
+        action="store_true",
+        help="Skip macOS notifications for warnings and hard failures",
+    )
+    sp_db_check.set_defaults(func=cmd_db_check)
+
     # serve
     sp_serve = subparsers.add_parser("serve", help="Start Flask web UI")
     sp_serve.set_defaults(func=cmd_serve)
@@ -1195,19 +1254,27 @@ def main():
 
         # Always bootstrap non-destructive schema changes before normal commands.
         init_db()
-    except (MigrationRequired, MigrationSafetyError) as e:
+    except (MigrationRequired, MigrationSafetyError, DatabaseHealthError) as e:
         print(f"Database safety check failed: {e}", file=sys.stderr)
         sys.exit(2)
 
     try:
         if _command_needs_db_lock(args):
             with db_job_lock():
+                if _command_needs_db_health_check(args):
+                    run_db_health_check(notify=True)
                 if _command_needs_backup(args):
                     create_backup()
                 args.func(args)
+                if _command_needs_db_health_check(args):
+                    run_db_health_check(
+                        refresh_snapshot=True,
+                        expected_drop_allowed=_command_allows_expected_drop(args),
+                        notify=True,
+                    )
         else:
             args.func(args)
-    except MigrationSafetyError as e:
+    except (MigrationSafetyError, DatabaseHealthError) as e:
         print(f"Database safety check failed: {e}", file=sys.stderr)
         sys.exit(2)
 
