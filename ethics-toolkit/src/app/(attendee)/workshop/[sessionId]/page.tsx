@@ -57,7 +57,7 @@ export default function WorkshopLivePage() {
         .from("workshop_sessions")
         .select("id, status")
         .eq("id", sessionId)
-        .single();
+        .single() as { data: { id: string; status: string } | null };
 
       if (!mounted) return;
 

@@ -46,7 +46,7 @@ export function QnaList({ channel, workshopSessionId }: QnaListProps) {
       const { data: votes } = await supabase
         .from("qna_votes")
         .select("question_id")
-        .eq("anonymous_session_id", anonymousSessionId);
+        .eq("anonymous_session_id", anonymousSessionId) as { data: { question_id: string }[] | null };
 
       if (votes) {
         setVotedQuestionIds(new Set(votes.map((v) => v.question_id)));

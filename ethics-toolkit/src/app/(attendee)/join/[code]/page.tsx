@@ -20,7 +20,7 @@ export default function JoinPage() {
           .from("workshop_sessions")
           .select("id, status")
           .eq("session_code", params.code)
-          .single();
+          .single() as { data: { id: string; status: string } | null; error: unknown };
 
         if (error || !data) {
           setState("invalid");

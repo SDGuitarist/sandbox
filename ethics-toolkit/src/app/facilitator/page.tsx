@@ -56,9 +56,8 @@ export default function FacilitatorPage() {
   async function handleEndSession(sessionId: string) {
     try {
       const supabase = createBrowserClient();
-      await supabase
-        .from("workshop_sessions")
-        .update({ status: "ended", ended_at: new Date().toISOString() })
+      await (supabase.from("workshop_sessions") as ReturnType<typeof supabase.from>)
+        .update({ status: "ended", ended_at: new Date().toISOString() } as never)
         .eq("id", sessionId);
 
       await loadSessions();

@@ -45,7 +45,7 @@ export default function FacilitatorDashboardPage() {
           .from("workshop_sessions")
           .select("id, session_code, status, started_at")
           .eq("status", "active")
-          .order("started_at", { ascending: false });
+          .order("started_at", { ascending: false }) as { data: WorkshopSession[] | null };
 
         const activeSessions = data ?? [];
         setSessions(activeSessions);

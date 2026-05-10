@@ -1,33 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 
 const COOKIE_NAME = 'facilitator_session';
 
-function verifySignedValue(signedValue: string, secret: string): boolean {
+async function verifySignedValue(signedValue: string, secret: string): Promise<boolean> {
   const lastDotIndex = signedValue.lastIndexOf('.');
-  if (lastDotIndex === -1) {
-    return false;
-  }
+  if (lastDotIndex === -1) return false;
 
   const value = signedValue.substring(0, lastDotIndex);
   const signature = signedValue.substring(lastDotIndex + 1);
 
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(value)
-    .digest('hex');
+  // Web Crypto API HMAC (Edge Runtime compatible)
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sigBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(value));
+  const expectedSignature = Array.from(new Uint8Array(sigBytes))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 
-  const sigBuffer = Buffer.from(signature, 'hex');
-  const expectedBuffer = Buffer.from(expectedSignature, 'hex');
-
-  if (sigBuffer.length !== expectedBuffer.length) {
-    return false;
+  // Constant-time comparison
+  if (signature.length !== expectedSignature.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < signature.length; i++) {
+    mismatch |= signature.charCodeAt(i) ^ expectedSignature.charCodeAt(i);
   }
-
-  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+  return mismatch === 0;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (!pathname.startsWith('/facilitator')) {
@@ -51,7 +56,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const valid = verifySignedValue(cookie.value, secret);
+  const valid = await verifySignedValue(cookie.value, secret);
   if (!valid) {
     const loginUrl = new URL('/facilitator/login', request.url);
     return NextResponse.redirect(loginUrl);
