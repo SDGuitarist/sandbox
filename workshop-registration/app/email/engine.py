@@ -116,10 +116,8 @@ WORKSHOP_LOCATION = "Amplify AI Studio, Los Angeles"
 
 
 def _build_checkout_url(registrant):
-    order_id = registrant["square_order_id"] if registrant["square_order_id"] else None
-    if order_id:
-        return f"https://amplifyai.to/checkout/{order_id}"
-    return None
+    base = os.environ.get("SQUARE_REDIRECT_BASE", "http://localhost:3000")
+    return f"{base}/register"
 
 
 def send_email(registrant_id: int, template_type: str) -> bool:
@@ -127,6 +125,7 @@ def send_email(registrant_id: int, template_type: str) -> bool:
         logger.error("Unknown template_type: %s", template_type)
         return False
 
+    # --- Phase 1: Read DB, build email content, then close connection ---
     with get_db() as conn:
         row = conn.execute(
             "SELECT 1 FROM email_log WHERE registrant_id = ? AND template_type = ? "
@@ -141,6 +140,9 @@ def send_email(registrant_id: int, template_type: str) -> bool:
             logger.error("Registrant %d not found", registrant_id)
             return False
 
+        # Copy registrant data we need so we don't depend on the connection
+        email_to = reg["email"]
+
         template = TEMPLATES[template_type]
         variables = {
             "name": reg["name"],
@@ -153,56 +155,63 @@ def send_email(registrant_id: int, template_type: str) -> bool:
             variables["queue_position"] = str(reg["queue_position"])
 
         if template_type in ("waitlist_promotion", "payment_failed"):
-            checkout_url = _build_checkout_url(reg)
-            if checkout_url:
-                variables["checkout_url"] = checkout_url
-            else:
-                variables["checkout_url"] = "https://amplifyai.to/register"
+            variables["checkout_url"] = _build_checkout_url(reg)
 
         subject = template["subject"].format(**variables)
         html = template["html"].format(**variables)
+    # Connection is now closed -- safe to do network I/O
 
-        backoff = [1, 2, 4]
-        last_error = None
-        for attempt, delay in enumerate(backoff):
-            try:
-                result = resend.Emails.send(
-                    {
-                        "from": FROM_EMAIL,
-                        "to": reg["email"],
-                        "subject": subject,
-                        "html": html,
-                    }
-                )
-                message_id = result.get("id", "") if isinstance(result, dict) else getattr(result, "id", "")
-                conn.execute(
-                    "INSERT INTO email_log (registrant_id, template_type, resend_message_id, status, sent_at) "
-                    "VALUES (?, ?, ?, 'sent', datetime('now'))",
-                    (registrant_id, template_type, message_id),
-                )
-                conn.commit()
-                return True
-            except Exception as exc:
-                last_error = exc
-                logger.warning(
-                    "Email send attempt %d failed for registrant %d: %s",
-                    attempt + 1,
-                    registrant_id,
-                    exc,
-                )
-                if attempt < len(backoff) - 1:
-                    time.sleep(delay)
+    # --- Phase 2: Send email via Resend API (no DB connection held) ---
+    backoff = [1, 2, 4]
+    last_error = None
+    message_id = ""
+    send_succeeded = False
 
-        conn.execute(
-            "INSERT INTO email_log (registrant_id, template_type, resend_message_id, status, sent_at) "
-            "VALUES (?, ?, '', 'failed', datetime('now'))",
-            (registrant_id, template_type),
-        )
-        conn.commit()
-        logger.error(
-            "All retries exhausted for registrant %d, template %s: %s",
-            registrant_id,
-            template_type,
-            last_error,
-        )
-        return False
+    for attempt, delay in enumerate(backoff):
+        try:
+            result = resend.Emails.send(
+                {
+                    "from": FROM_EMAIL,
+                    "to": email_to,
+                    "subject": subject,
+                    "html": html,
+                }
+            )
+            message_id = result.get("id", "") if isinstance(result, dict) else getattr(result, "id", "")
+            send_succeeded = True
+            break
+        except Exception as exc:
+            last_error = exc
+            logger.warning(
+                "Email send attempt %d failed for registrant %d: %s",
+                attempt + 1,
+                registrant_id,
+                exc,
+            )
+            if attempt < len(backoff) - 1:
+                time.sleep(delay)
+
+    # --- Phase 3: Log result to DB with a new connection ---
+    with get_db() as conn:
+        if send_succeeded:
+            conn.execute(
+                "INSERT INTO email_log (registrant_id, template_type, resend_message_id, status, sent_at) "
+                "VALUES (?, ?, ?, 'sent', datetime('now'))",
+                (registrant_id, template_type, message_id),
+            )
+            conn.commit()
+            return True
+        else:
+            conn.execute(
+                "INSERT INTO email_log (registrant_id, template_type, resend_message_id, status, sent_at) "
+                "VALUES (?, ?, '', 'failed', datetime('now'))",
+                (registrant_id, template_type),
+            )
+            conn.commit()
+            logger.error(
+                "All retries exhausted for registrant %d, template %s: %s",
+                registrant_id,
+                template_type,
+                last_error,
+            )
+            return False

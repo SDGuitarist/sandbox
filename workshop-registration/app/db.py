@@ -20,4 +20,5 @@ def init_db():
     with open(SCHEMA_PATH, "r") as f:
         schema = f.read()
     with get_db() as conn:
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(schema)

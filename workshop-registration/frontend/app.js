@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const helmet = require('helmet');
+const compression = require('compression');
 const flaskProxy = require('./middleware/flask-proxy');
 
 function createApp() {
@@ -11,7 +12,16 @@ function createApp() {
 
   app.use(express.static(path.join(__dirname, 'public')));
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+        connectSrc: ["'self'", "wss://*.supabase.co", "https://*.supabase.co"],
+      }
+    }
+  }));
+  app.use(compression());
 
   app.use(flaskProxy);
 

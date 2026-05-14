@@ -69,14 +69,23 @@
 
 <script>
 function renderStats(data) {
-  document.getElementById('stat-total').textContent = data.total || 0;
-  document.getElementById('stat-paid').textContent = data.paid || 0;
-  document.getElementById('stat-waitlisted').textContent = data.waitlisted || 0;
-  document.getElementById('stat-pending').textContent = data.pending || 0;
-  document.getElementById('stat-cancelled').textContent = data.cancelled || 0;
-  document.getElementById('stat-payment_failed').textContent = data.payment_failed || 0;
+  // data comes from /api/admin/registrants which returns paid_count, waitlist_count
+  // Derive per-status counts from the registrants array for detailed breakdown
+  var registrants = data.registrants || [];
+  var counts = { paid: 0, waitlisted: 0, pending_payment: 0, cancelled: 0, payment_failed: 0 };
+  registrants.forEach(function (r) {
+    var s = r.status || '';
+    if (s in counts) counts[s]++;
+  });
 
-  var paid = data.paid || 0;
+  document.getElementById('stat-total').textContent = data.total || registrants.length || 0;
+  document.getElementById('stat-paid').textContent = data.paid_count || counts.paid || 0;
+  document.getElementById('stat-waitlisted').textContent = data.waitlist_count || counts.waitlisted || 0;
+  document.getElementById('stat-pending').textContent = counts.pending_payment || 0;
+  document.getElementById('stat-cancelled').textContent = counts.cancelled || 0;
+  document.getElementById('stat-payment_failed').textContent = counts.payment_failed || 0;
+
+  var paid = data.paid_count || counts.paid || 0;
   var capacity = data.capacity || 0;
   var pct = capacity > 0 ? Math.min((paid / capacity) * 100, 100) : 0;
   document.getElementById('capacity-bar').style.width = pct + '%';
