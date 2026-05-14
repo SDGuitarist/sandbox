@@ -407,7 +407,7 @@ exist. If ANY check fails, the run fails with the specific error shown.
    Then re-check.
 
 4. **Agent-pitfalls ID uniqueness:** Run this check:
-   `grep -oP '## Failure Class \K\d+' ~/.claude/docs/agent-pitfalls.md | sort -n | uniq -d`
+   `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d`
    If this returns ANY output, FAIL with:
    `"DUPLICATE FAILURE CLASS IDs DETECTED: [list]. Fix before proceeding."`
 

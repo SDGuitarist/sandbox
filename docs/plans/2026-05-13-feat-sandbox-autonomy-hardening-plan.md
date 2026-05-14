@@ -71,7 +71,7 @@ Three risks:
 - `grep -c "FAIL\|fails the run" /Users/alejandroguillen/Projects/sandbox/.claude/skills/autopilot/SKILL.md` — confirms artifact gates exist (should be higher than current count)
 
 **Phase 3 — Failure registry integrity:**
-- `grep -oP '## Failure Class \K\d+' ~/.claude/docs/agent-pitfalls.md | sort -n | uniq -d` — must return empty (no duplicate numeric IDs)
+- `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d` — must return empty (no duplicate numeric IDs)
 - `grep -c '{#fc' ~/.claude/docs/agent-pitfalls.md` — returns 23 (every class has a semantic slug)
 - `grep -c '## Failure Class 22\|## Failure Class 23' ~/.claude/docs/agent-pitfalls.md` — returns 2 (duplicates were reassigned, not deleted)
 
@@ -279,7 +279,7 @@ Add to the autopilot skill's "Verify Agent Pitfalls Updated" step:
 
 ```
 After confirming the Update Log entry, extract all Failure Class numbers:
-  grep -oP '## Failure Class \K\d+' ~/.claude/docs/agent-pitfalls.md | sort -n | uniq -d
+  grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d
 If this returns any output, FAIL with: "DUPLICATE FAILURE CLASS IDs DETECTED: [list]. Fix before proceeding."
 ```
 
@@ -293,7 +293,7 @@ Editing `agent-pitfalls.md` is a global change. This is intentional — the dupl
 
 ### Success criteria
 
-- `grep -oP '## Failure Class \K\d+' ~/.claude/docs/agent-pitfalls.md | sort -n | uniq -d` returns empty.
+- `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d` returns empty.
 - Every failure class has a numeric ID AND a semantic slug.
 - The autopilot skill's pitfalls gate catches future duplicates automatically.
 - All existing solution doc references (FC1, FC3, FC4, FC5, FC6, FC11) still point to the correct definitions.
@@ -373,7 +373,7 @@ When work starts, verify in this order:
 2. **Root contract:** `head -20 /Users/alejandroguillen/Projects/sandbox/CLAUDE.md` — exists and describes autonomy classes.
 3. **Non-interactive tail (behavioral):** Run a solo autopilot build on a trivial app. Capture full output. Verify: (a) "Want to run code-explainer" does NOT appear as an interactive question, (b) "Learnings Propagated" summary table DOES appear, (c) BUILD_TRACKING.md has all required sections filled.
 4. **Missing artifact gate (behavioral):** Manually delete HANDOFF.md before the tail step runs. The run must fail with a specific error naming HANDOFF.md, not silently succeed.
-5. **Failure registry integrity:** `grep -oP '## Failure Class \K\d+' ~/.claude/docs/agent-pitfalls.md | sort -n | uniq -d` — must return empty.
+5. **Failure registry integrity:** `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d` — must return empty.
 6. **Spec gate (behavioral):** Create a minimal test spec with a seeded contradiction (schema defines `user_id`, route handler references `userId`). Run the spec-consistency-checker agent. Verify output contains FAIL and names the specific field mismatch.
 7. **Scope audit — sandbox repo:** `git -C ~/Projects/sandbox diff --stat` after all changes. Confirm changes are limited to expected files (CLAUDE.md, .claude/skills/, .claude/agents/, docs/reports/).
 8. **Scope audit — global files (blast radius check):**
