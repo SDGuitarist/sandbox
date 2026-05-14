@@ -4,6 +4,7 @@ const FLASK_URL = process.env.FLASK_API_URL || 'http://127.0.0.1:5000';
 
 const flaskProxy = createProxyMiddleware({
   target: FLASK_URL,
+  pathFilter: '/api',
   changeOrigin: true,
   timeout: 30000,
   proxyTimeout: 30000,

@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import threading
@@ -16,6 +17,8 @@ from app.models import (
 )
 from app.supabase_sync import sync_registrant
 from app.email import send_email
+
+logger = logging.getLogger(__name__)
 
 registration_bp = Blueprint("registration", __name__, url_prefix="/api")
 
@@ -89,7 +92,11 @@ def register():
                 return jsonify({"error": "Already registered", "code": "DUPLICATE_EMAIL"}), 409
 
             if status == "pending_payment":
-                checkout_url, _ = create_checkout_link(existing["id"], email)
+                try:
+                    checkout_url, _ = create_checkout_link(existing["id"], email)
+                except Exception as e:
+                    logger.error(f"Square checkout creation failed: {e}")
+                    return jsonify({"error": "Payment link creation failed", "code": "INTERNAL_ERROR"}), 500
                 return jsonify({
                     "error": "Registration pending payment",
                     "code": "DUPLICATE_EMAIL",
@@ -108,7 +115,11 @@ def register():
 
             if paid_count < capacity:
                 update_status(conn, registrant_id, "pending_payment")
-                checkout_url, order_id = create_checkout_link(registrant_id, email)
+                try:
+                    checkout_url, order_id = create_checkout_link(registrant_id, email)
+                except Exception as e:
+                    logger.error(f"Square checkout creation failed: {e}")
+                    return jsonify({"error": "Payment link creation failed", "code": "INTERNAL_ERROR"}), 500
                 conn.execute(
                     "UPDATE registrants SET name=?, role=?, square_order_id=? WHERE id=?",
                     (name, role, order_id, registrant_id),
@@ -147,7 +158,11 @@ def register():
 
         if paid_count < capacity:
             update_status(conn, rid, "pending_payment")
-            checkout_url, order_id = create_checkout_link(rid, email)
+            try:
+                checkout_url, order_id = create_checkout_link(rid, email)
+            except Exception as e:
+                logger.error(f"Square checkout creation failed: {e}")
+                return jsonify({"error": "Payment link creation failed", "code": "INTERNAL_ERROR"}), 500
             conn.execute(
                 "UPDATE registrants SET square_order_id=? WHERE id=?",
                 (order_id, rid),

@@ -13,7 +13,7 @@ function createApp() {
 
   app.use(helmet());
 
-  app.use('/api', flaskProxy);
+  app.use(flaskProxy);
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));

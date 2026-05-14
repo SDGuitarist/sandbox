@@ -1,4 +1,15 @@
-<% layout('admin/layout') -%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="supabase-url" content="<%= process.env.SUPABASE_URL %>">
+  <meta name="supabase-anon-key" content="<%= process.env.SUPABASE_ANON_KEY %>">
+  <title>Admin Dashboard - Workshop Registration</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
 <div class="admin-dashboard">
   <h1>Workshop Registration Admin</h1>
 
@@ -119,3 +130,6 @@ function renderRegistrantTable(registrants) {
   });
 }
 </script>
+<script src="/js/admin-realtime.js"></script>
+</body>
+</html>
