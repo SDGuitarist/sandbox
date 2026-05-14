@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registration Confirmed - Amplify AI Workshop</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Amplify AI Workshop</h1>
+      <p class="subtitle">May 30, 2026</p>
+    </header>
+    <main>
+      <div class="success-card">
+        <h2>Your registration is confirmed!</h2>
+        <p>Thank you for registering for the Amplify AI Workshop.</p>
+        <% if (registrant_id) { %>
+          <p class="registrant-id">Registration ID: <%= registrant_id %></p>
+        <% } %>
+        <a href="/register" class="btn">Back to Home</a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
