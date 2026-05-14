@@ -376,25 +376,42 @@ proceeding.
 **WARNING: This is FC11 from agent-pitfalls.md. The orchestrator has skipped
 this step in 2 of 3 recent builds. It is a SEPARATE step from Compound.**
 
-Run `/update-learnings`
+Run `/update-learnings-noninteractive`
 
-Verify it completes by checking that it outputs the "Learnings Propagated"
-table. If it does not run or errors, run it again manually.
+This is the sandbox-local non-interactive variant. It runs Steps 0-6 of
+the global update-learnings command without the code-explainer prompt.
+See: docs/reports/spike-update-learnings-noninteractive.md
 
-### Verify Agent Pitfalls Updated (MANDATORY GATE)
+### Verify Learnings Artifacts (MANDATORY GATE)
 
-`/update-learnings` Step 6 should have updated `~/.claude/docs/agent-pitfalls.md`.
-Verify by checking the Update Log table at the bottom of the file:
+After `/update-learnings-noninteractive` completes, verify these artifacts
+exist. If ANY check fails, the run fails with the specific error shown.
 
-1. Read the last row of the Update Log in `~/.claude/docs/agent-pitfalls.md`
-2. Confirm it contains today's date AND the current build name
-3. If missing: the update-learnings step failed or was skipped. Run the
-   agent-pitfalls update manually:
+1. **Learnings Propagated table:** The skill must have output the
+   "Learnings Propagated" summary table. If it did not appear, FAIL with:
+   `"LEARNINGS PROPAGATION FAILED: Summary table not output. Re-run /update-learnings-noninteractive manually."`
+
+2. **HANDOFF.md timestamp:** Read the project root `HANDOFF.md`. The
+   `**Date:**` line must contain today's date. If missing or stale, FAIL with:
+   `"LEARNINGS PROPAGATION INCOMPLETE: HANDOFF.md not updated (date mismatch)."`
+
+3. **Agent-pitfalls Update Log:** Read the last row of the Update Log
+   table at the bottom of `~/.claude/docs/agent-pitfalls.md`. It must
+   contain today's date AND the current build name. If missing, FAIL with:
+   `"LEARNINGS PROPAGATION INCOMPLETE: agent-pitfalls.md Update Log missing entry for this build."`
+   Recovery: run the agent-pitfalls update manually:
    - Read the solution doc's review findings
    - Trace each finding to existing failure class or create new one
    - Update per-agent-type rules
    - Add Update Log entry
-4. Do NOT proceed to BUILD_TRACKING until this gate passes
+   Then re-check.
+
+4. **Agent-pitfalls ID uniqueness:** Run this check:
+   `grep -oP '## Failure Class \K\d+' ~/.claude/docs/agent-pitfalls.md | sort -n | uniq -d`
+   If this returns ANY output, FAIL with:
+   `"DUPLICATE FAILURE CLASS IDs DETECTED: [list]. Fix before proceeding."`
+
+Do NOT proceed to BUILD_TRACKING until ALL four checks pass.
 
 ### Update BUILD_TRACKING.md (MANDATORY -- DO NOT SKIP)
 
@@ -406,6 +423,16 @@ Fill in the remaining sections of BUILD_TRACKING.md:
 4. Lessons for Next Build: list what was added to agent-pitfalls.md
 
 Commit BUILD_TRACKING.md with the final metrics.
+
+### Verify BUILD_TRACKING.md Completeness (MANDATORY GATE)
+
+Read BUILD_TRACKING.md and verify these sections are non-empty:
+- `## AGENT_STATUS` -- must have at least one agent block
+- `## FAILURES` -- must exist (can say "None" if no failures)
+- `## RUN_METRICS` -- must have the final metrics table
+
+If any section is missing or empty, FAIL with:
+`"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty. Fill it before marking done."`
 
 ### Done
 
