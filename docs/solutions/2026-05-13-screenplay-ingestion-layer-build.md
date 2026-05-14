@@ -91,8 +91,12 @@ Files: `src/lib/ingestion/` (8 files), `src/lib/schemas/ingestion.ts`, `src/lib/
 
 ## What Would Be Different Next Time
 
-1. **Start with the prompt injection surface.** The P0 was in the prompt-builder, not the parsers. Next time a pipeline feeds user content into LLM prompts, lead with the sandboxing implementation, not the parsing.
+1. **Read one existing route before writing a new one (FC27).** Auth, rate limiting, and ApiError were on every adjacent route. I skipped all three. The spec describes what's new; the neighbors describe what's standard. Both are requirements.
 
-2. **Install rate limiting from the start.** The existing `withRateLimit` utility was right there. Should have been wired in during initial implementation, not flagged during review.
+2. **Verify comments claiming mitigations are implemented (FC26).** I wrote "XML-sandboxed per brainstorm Gap 2" as a comment, then shipped the tag wrapper without the escape function. The comment created false confidence that the mitigation existed. Comments claiming completion of unwritten code are bugs.
 
-3. **Use a proper HTML parser for DOCX.** The regex approach works for simple cases but is known to be fragile. Should have used `htmlparser2` or `cheerio` from the start.
+3. **Start with the prompt injection surface.** The P0 was in the prompt-builder, not the parsers. Next time a pipeline feeds user content into LLM prompts, lead with the sandboxing implementation, not the parsing.
+
+4. **Wait for research agents before writing parsers.** The Fountain, FDX, and pdf-parse research all completed after implementation was done. The Fountain spec research uncovered edge cases (boneyard handling, block splitting, emphasis rules) that the custom parser doesn't handle yet. Should have blocked on research or started with non-parser work.
+
+5. **Use a proper HTML parser for DOCX.** The regex approach works for simple cases but is known to be fragile. Should have used `htmlparser2` or `cheerio` from the start.
