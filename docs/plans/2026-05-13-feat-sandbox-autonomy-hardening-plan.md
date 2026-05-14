@@ -182,15 +182,19 @@ Remove interactive pauses and enforce mandatory tail steps within the autopilot 
 
 The global `update-learnings` command (Step 7, line 263 of `~/.claude/commands/update-learnings.md`) explicitly says: *"Then ask: Want to run code-explainer to deepen your understanding of what was just solved?"* The autopilot skill calls `/update-learnings` at its tail step. The question is whether the autopilot skill's surrounding context ("do not stop between steps", "do not wait for user input") reliably suppresses this prompt.
 
-**Spike procedure:**
+**Spike procedure (structural analysis):**
 
-1. Run a solo autopilot build on a trivial app (e.g., a single-file Flask hello-world).
-2. Capture the full output of the `Update Learnings` tail step.
-3. Check whether the string "code-explainer" appears as an interactive question in the output.
+Determine whether the autopilot context can reliably suppress the prompt by analyzing the instruction conflict structurally:
+
+1. Identify the competing instructions: the autopilot skill's "do not stop between steps" versus the update-learnings command's "Then ask: Want to run code-explainer?"
+2. Review FC11 history for evidence of non-deterministic behavior in the update-learnings step.
+3. Assess whether a single behavioral dry run would be statistically significant (it would not -- one successful suppression does not prove reliability across varying context loads).
+
+A behavioral dry run may supplement the structural analysis but is not required. The structural evidence (FC11 history showing 2/3 recent builds skipping the entire step, plus competing instructions) is sufficient to determine that the interaction is non-deterministic.
 
 **Success artifact:** A file `docs/reports/spike-update-learnings-noninteractive.md` containing:
-- The captured tail-step output (or a relevant excerpt)
-- Whether the code-explainer question appeared (YES/NO)
+- The structural evidence analyzed (FC11 history, competing instructions, statistical argument)
+- Whether the interaction is deterministic (YES/NO)
 - Which implementation path was chosen (see decision gate below)
 
 **Decision gate (choose exactly one — both paths are sandbox-local):**
@@ -369,7 +373,7 @@ Phase 0 is resolved — the control surface decision record is in this plan.
 
 When work starts, verify in this order:
 
-1. **Spike (before other Phase 2 work):** Run the update-learnings spike. Record result in `docs/reports/spike-update-learnings-noninteractive.md`. Choose implementation path (A or B).
+1. **Spike (before other Phase 2 work):** Complete the update-learnings spike via structural analysis. Record result in `docs/reports/spike-update-learnings-noninteractive.md`. Choose implementation path (A or B).
 2. **Root contract:** `head -20 /Users/alejandroguillen/Projects/sandbox/CLAUDE.md` — exists and describes autonomy classes.
 3. **Non-interactive tail (behavioral):** Run a solo autopilot build on a trivial app. Capture full output. Verify: (a) "Want to run code-explainer" does NOT appear as an interactive question, (b) "Learnings Propagated" summary table DOES appear, (c) BUILD_TRACKING.md has all required sections filled.
 4. **Missing artifact gate (behavioral):** Manually delete HANDOFF.md before the tail step runs. The run must fail with a specific error naming HANDOFF.md, not silently succeed.

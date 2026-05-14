@@ -10,8 +10,10 @@ suppress the code-explainer prompt in `/update-learnings` Step 7?
 
 ## Method
 
-Structural analysis instead of a full autopilot dry run. A single run
-would not prove reliability -- it would only prove it worked once.
+Structural analysis of the instruction conflict, supplemented by FC11
+historical evidence. A single behavioral dry run would not prove
+reliability -- it would only prove it worked once. The plan accepts
+structural analysis as the spike method (see plan Phase 2 spike procedure).
 
 ## Evidence
 
@@ -29,11 +31,12 @@ would not prove reliability -- it would only prove it worked once.
    suppression is reliable across future builds with different context
    loads, different app sizes, and different positions in the context window.
 
-## Code-explainer question appeared?
+## Is the interaction deterministic?
 
-Not tested via live run. Structural analysis shows the outcome is
-non-deterministic, which is equivalent to YES for planning purposes --
-you cannot rely on behavior that sometimes works.
+NO. Structural analysis shows the autopilot-context-vs-update-learnings
+interaction is non-deterministic. FC11 confirms inconsistent execution
+of the entire step. A non-deterministic interaction is equivalent to
+UNRELIABLE for planning purposes.
 
 ## Decision
 

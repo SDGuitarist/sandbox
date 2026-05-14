@@ -17,8 +17,17 @@ These apply to all autonomy classes:
 - No production database access. Sandbox apps use local SQLite or dev-only Supabase projects.
 - No `git push --force` or `git reset --hard` without human confirmation.
 - No external API calls without explicit declaration in the plan or spec.
-- No edits to files outside `~/Projects/sandbox/` except `~/.claude/docs/agent-pitfalls.md` (cross-project failure registry, append-only during learnings propagation).
+- No edits to files outside `~/Projects/sandbox/` except during learnings propagation (see below).
 - No deleting solution docs, prior run reports, or BUILD_TRACKING files.
+
+**Allowed out-of-repo writes (learnings propagation only):**
+These files are written by `/update-learnings-noninteractive` (autopilot) or `/update-learnings` (manual) during the compound phase tail:
+- `~/.claude/docs/agent-pitfalls.md` -- cross-project failure registry (append-only)
+- `~/Documents/dev-notes/LESSONS_LEARNED.md` -- cumulative cross-project lessons
+- `~/Documents/dev-notes/YYYY-MM-DD.md` -- daily journal entry (append-only)
+- `~/.claude/projects/[project-key]/memory/MEMORY.md` -- auto-memory project state
+- `~/.claude/projects/[project-key]/memory/workflow.md` -- workflow lessons
+- `~/.claude/projects/[project-key]/memory/patterns.md` -- code patterns
 
 ## Required Artifacts
 
@@ -26,7 +35,7 @@ Every completed autopilot run must produce:
 
 1. **BUILD_TRACKING.md** -- Copied from `~/.claude/docs/autopilot-tracking-template.md` at run start. Must contain filled AGENT_STATUS, FAILURES, and RUN_METRICS sections at run end.
 2. **Solution doc** -- Written during the compound phase to `docs/solutions/` with YAML frontmatter.
-3. **Learnings propagation** -- `/update-learnings` must run and produce the "Learnings Propagated" summary table. Agent-pitfalls Update Log must have an entry for today's build.
+3. **Learnings propagation** -- `/update-learnings-noninteractive` (autopilot) or `/update-learnings` (manual) must run and produce the "Learnings Propagated" summary table. Agent-pitfalls Update Log must have an entry for today's build.
 4. **HANDOFF.md** -- Updated with current project state, key artifacts, and next-session prompt.
 
 Missing any of these artifacts fails the run.
@@ -62,11 +71,15 @@ Not all autonomy controls live in this repo. Know what is local and what is glob
 - This file (`CLAUDE.md`) -- operating contract
 
 **Global (owned by `~/.claude/`, not editable from this repo):**
-- `~/.claude/commands/update-learnings.md` -- learnings propagation command
+- `~/.claude/commands/update-learnings.md` -- learnings propagation command (never modified; sandbox uses a local non-interactive variant)
 - `~/.claude/hooks/` -- feed-forward check, commit-size guard, phase-doc naming, etc.
 - `~/.claude/settings.json` -- base permissions and hook definitions
 - `~/.claude/docs/agent-pitfalls.md` -- cross-project failure registry (append-only from this repo)
 - `~/.claude/docs/autopilot-tracking-template.md` -- BUILD_TRACKING template
+
+**Written during learnings propagation (cross-project by design):**
+- `~/Documents/dev-notes/LESSONS_LEARNED.md`, `~/Documents/dev-notes/YYYY-MM-DD.md`
+- `~/.claude/projects/[project-key]/memory/` (MEMORY.md, workflow.md, patterns.md)
 
 ## Bash Command Rules
 

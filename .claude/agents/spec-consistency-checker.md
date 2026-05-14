@@ -1,7 +1,7 @@
 ---
 name: spec-consistency-checker
 description: Pre-swarm gate that checks a spec for internal contradictions across sections before worker agents launch. Catches mechanical mismatches that humans and AI reviewers miss because each section looks correct in isolation.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, Write
 model: sonnet
 ---
 
