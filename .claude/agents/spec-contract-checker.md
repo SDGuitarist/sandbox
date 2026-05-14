@@ -30,7 +30,12 @@ Read:
 6. Do not modify any source code. Report all FAIL items for the assembly-fix agent.
 7. Do not change the spec. The spec is the source of truth.
 8. Data ownership violations and scalar-return misuse are the highest-priority FAIL items -- flag them prominently.
-9. If the report file already exists, overwrite it entirely.
+9. **Missing commit lint (FC31 prevention):** For every Python file that uses `with get_db() as conn:`, check that every INSERT or UPDATE inside the block has a matching `conn.commit()` on every code path before the block exits. Specifically:
+   - Grep for `conn.execute("INSERT` and `conn.execute("UPDATE` inside `with get_db()` blocks
+   - For each write, trace forward to verify `conn.commit()` is called before every `return` statement and before the `with` block ends
+   - If an exception handler (`except`) returns early (e.g., `return "", 200`) without committing, and there was a preceding uncommitted write, mark as FAIL: "Uncommitted write on exception path at [file:line]"
+   - If a write is followed by an external API call that could fail, and the commit is after the API call, mark as WARN: "Write committed only on API success at [file:line] -- data lost if API fails"
+10. If the report file already exists, overwrite it entirely.
 
 ## Output Contract
 
