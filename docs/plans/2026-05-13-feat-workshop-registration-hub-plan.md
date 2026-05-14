@@ -126,7 +126,7 @@ Note: `CAPACITY_FULL` and `PAYMENT_REQUIRED` are intentionally absent. When capa
 | POST | /api/register | `{"name": "str", "email": "str", "role": "str"}` | See full contract below | `400 VALIDATION_FAILED` | None | Agent 2 |
 | POST | /api/webhooks/square | Square webhook payload | `200 ""` | `403` (invalid signature) | Square HMAC | Agent 3 |
 | GET | /api/admin/registrants | -- | `200 {"registrants": [...], "total": int, "capacity": 35, "paid_count": int, "waitlist_count": int}` | `401 UNAUTHORIZED` | Basic auth | Agent 2 |
-| GET | /api/admin/stats | -- | `200 {"total": int, "paid": int, "waitlisted": int, "cancelled": int, "pending": int, "payment_failed": int}` | `401 UNAUTHORIZED` | Basic auth | Agent 2 |
+| GET | /api/admin/stats | -- | `200 {"total": int, "paid": int, "waitlisted": int, "cancelled": int, "pending_payment": int, "payment_failed": int}` | `401 UNAUTHORIZED` | Basic auth | Agent 2 |
 | GET | /api/admin/export | -- | `200 text/csv` | `401 UNAUTHORIZED` | Basic auth | Agent 2 |
 | GET | /api/health | -- | `200 {"status": "ok", "db": "connected", "supabase": "connected"\|"disconnected"}` | -- | None | Agent 1 |
 
@@ -270,7 +270,8 @@ CREATE POLICY "anon_read_registrants"
 | `get_paid_count` | function | `app/models.py` | Agents 2, 5 | Returns `int`. Usage: `count = get_paid_count(conn)` |
 | `get_next_waitlisted` | function | `app/models.py` | Agent 5 | Returns `sqlite3.Row \| None` (lowest queue_position) |
 | `send_email` | function | `app/email/engine.py` (re-exported via `app/email/__init__.py`) | Agents 2, 3, 5, 6 | `send_email(registrant_id: int, template_type: str) -> bool`. Import: `from app.email import send_email` |
-| `create_checkout_link` | function | `app/registration/routes.py` | Agent 2 only | `create_checkout_link(registrant_id: int, email: str) -> tuple[str, str]` Returns `(checkout_url, order_id)`. |
+| `create_checkout_link` | function | `app/registration/routes.py` | Agents 2, 5 | `create_checkout_link(registrant_id: int, email: str) -> tuple[str, str]` Returns `(checkout_url, order_id)`. |
+| `try_promote_next` | function | `app/waitlist/routes.py` | Agent 3 | `try_promote_next(conn) -> None`. Called after refund to auto-promote next waitlisted. Handles checkout link + email internally. |
 | `verify_square_signature` | function | `app/webhooks.py` | Agent 3 | Returns `bool` |
 | `registration_bp` | Blueprint | `app/registration/routes.py` | `create_app()` | url_prefix="/api" |
 | `payments_bp` | Blueprint | `app/payments/routes.py` | `create_app()` | url_prefix="/api" |
@@ -301,6 +302,7 @@ CREATE POLICY "anon_read_registrants"
 | `register_attendee` | `app/models.py` | `app/registration/routes.py` (Agent 2) | `from app.models import register_attendee` | `(conn, name, email, role)` |
 | `verify_square_signature` | `app/webhooks.py` | `app/payments/routes.py` (Agent 3) | `from app.webhooks import verify_square_signature` | `(body, signature)` |
 | `try_promote_next` | `app/waitlist/routes.py` | `app/payments/routes.py` (Agent 3) | `from app.waitlist.routes import try_promote_next` | `(conn)` |
+| `create_checkout_link` | `app/registration/routes.py` | `app/waitlist/routes.py` (Agent 5) | `from app.registration.routes import create_checkout_link` | `(registrant_id, email)` |
 | `send_email` | `app/email` | `app/registration/routes.py` (Agent 2) | `from app.email import send_email` | `(registrant_id, "waitlist_confirmation")` |
 | `send_email` | `app/email` | `app/payments/routes.py` (Agent 3) | `from app.email import send_email` | `(registrant_id, "payment_failed")` |
 
@@ -320,7 +322,8 @@ def register_attendee(conn, name, email, role):
             "SELECT COUNT(*) FROM registrants WHERE status = 'paid'"
         ).fetchone()[0]
 
-        if paid_count >= 35:
+        capacity = int(os.environ.get("WORKSHOP_CAPACITY", 35))
+        if paid_count >= capacity:
             conn.execute(
                 "INSERT INTO registrants (name, email, role, status, queue_position) "
                 "VALUES (?, ?, ?, 'waitlisted', "
@@ -731,7 +734,9 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, threaded=True)
 ```
 
-**Gate 1:** `models.py` exists with all exported functions. `get_db` is importable. `schema.sql` creates all tables.
+Agent 1 also implements the `GET /api/health` endpoint directly in `create_app()` (no blueprint needed -- simple inline route returning `{"status": "ok", "db": "connected", "supabase": "connected"|"disconnected"}`).
+
+**Gate 1:** `models.py` exists with all exported functions. `get_db` is importable. `schema.sql` creates all tables. `GET /api/health` returns 200.
 
 ### Phase 2: Backend APIs (Agents 2, 3, 4, 5, 6 -- parallel)
 
@@ -805,82 +810,258 @@ Runs after all other agents complete.
 
 ## Swarm Agent Assignment
 
-### Agent 1: Core + DB + Models
-**Role:** core
-**Stack:** Python/Flask
-**Files:** run.py, requirements.txt, app/__init__.py, app/db.py, app/models.py, schema.sql, app/supabase_sync.py, app/webhooks.py, .env.example
-**Phase:** 1 (runs first, all others depend on this)
+**Total agents:** 9
+**Total files:** 37
+**Validation:** No file appears in multiple assignments
 
-### Agent 2: Registration + Admin API
-**Role:** api-route
-**Stack:** Python/Flask
-**Files:** app/registration/__init__.py, app/registration/routes.py, app/admin/__init__.py, app/admin/routes.py
-**Phase:** 2
+### Shared Interface Spec
 
-### Agent 3: Payment Webhooks
-**Role:** api-route
-**Stack:** Python/Flask
-**Files:** app/payments/__init__.py, app/payments/routes.py
-**Phase:** 2
+Every agent receives this complete spec. Do not implement anything that contradicts it.
 
-### Agent 4: Email Engine
-**Role:** api-route
-**Stack:** Python/Flask
-**Files:** app/email/__init__.py, app/email/engine.py
-**Phase:** 2
+**Valid statuses:** `pending_payment`, `paid`, `waitlisted`, `cancelled`, `payment_failed`
 
-### Agent 5: Waitlist + Capacity
-**Role:** api-route
-**Stack:** Python/Flask
-**Files:** app/waitlist/__init__.py, app/waitlist/routes.py
-**Phase:** 2
+**Capacity rule:** Only `paid` counts against the 35-seat cap. `pending_payment` does NOT count.
 
-### Agent 6: Notification Scheduler
-**Role:** api-route
-**Stack:** Python/Flask
-**Files:** app/scheduler/__init__.py, app/scheduler/jobs.py
-**Phase:** 2
+**Error response shape (all Flask endpoints):**
+```json
+{"error": "Human-readable message", "code": "MACHINE_CODE"}
+```
+Valid codes: `VALIDATION_FAILED`, `DUPLICATE_EMAIL`, `UNAUTHORIZED`, `NOT_FOUND`, `INTERNAL_ERROR`
 
-### Agent 7: Public Registration Page
-**Role:** ui-component
-**Stack:** Node/Express
-**Files:** frontend/package.json, frontend/server.js, frontend/app.js, frontend/middleware/flask-proxy.js, frontend/views/register.ejs, frontend/views/success.ejs, frontend/public/css/style.css, frontend/public/js/validation.js
-**Phase:** 3
+**Flask Export Names (exact -- do not rename):**
 
-### Agent 8: Admin UI
-**Role:** ui-component
-**Stack:** Node/Express
-**Files:** frontend/middleware/auth.js, frontend/views/admin/dashboard.ejs, frontend/views/admin/layout.ejs, frontend/public/js/admin-realtime.js, frontend/routes/admin.js
-**Phase:** 3
+| Name | Signature | File |
+|------|-----------|------|
+| `create_app` | `() -> Flask` | `app/__init__.py` |
+| `get_db` | context manager | `app/db.py` |
+| `init_db` | `() -> None` | `app/db.py` |
+| `sync_registrant` | `(registrant_id: int) -> None` | `app/supabase_sync.py` |
+| `register_attendee` | `(conn, name, email, role) -> int` | `app/models.py` |
+| `get_registrant` | `(conn, id) -> sqlite3.Row \| None` | `app/models.py` |
+| `get_registrant_by_email` | `(conn, email) -> sqlite3.Row \| None` | `app/models.py` |
+| `update_status` | `(conn, registrant_id, new_status, **kwargs) -> None` | `app/models.py` |
+| `get_paid_count` | `(conn) -> int` | `app/models.py` |
+| `get_next_waitlisted` | `(conn) -> sqlite3.Row \| None` | `app/models.py` |
+| `send_email` | `(registrant_id: int, template_type: str) -> bool` | `app/email/__init__.py` (re-export from engine.py) |
+| `create_checkout_link` | `(registrant_id: int, email: str) -> tuple[str, str]` | `app/registration/routes.py` |
+| `verify_square_signature` | `(body: str, signature: str) -> bool` | `app/webhooks.py` |
+| `try_promote_next` | `(conn) -> None` | `app/waitlist/routes.py` |
+| `registration_bp` | Blueprint | `app/registration/routes.py` (url_prefix="/api") |
+| `payments_bp` | Blueprint | `app/payments/routes.py` (url_prefix="/api") |
+| `waitlist_bp` | Blueprint | `app/waitlist/routes.py` (url_prefix="/api") |
+| `admin_bp` | Blueprint | `app/admin/routes.py` (url_prefix="/api/admin") |
 
-### Agent 9: Wiring Agent
-**Role:** integration
-**Stack:** Both
-**Files:** Any file needing import fixes, route registration, startup wiring
-**Phase:** 4
+**Express Export Names (exact -- do not rename):**
 
-### Cross-Phase File Ownership Summary
+| Name | Type | File |
+|------|------|------|
+| `createApp` | function | `frontend/app.js` |
+| `flaskProxy` | middleware | `frontend/middleware/flask-proxy.js` |
+| `basicAuth` | middleware | `frontend/middleware/auth.js` |
 
-| File | Owner Agent | Phase |
-|------|------------|-------|
-| run.py | 1 | 1 |
-| requirements.txt | 1 | 1 |
-| schema.sql | 1 | 1 |
-| .env.example | 1 | 1 |
-| app/__init__.py | 1 (wiring by 9) | 1, 4 |
-| app/db.py | 1 | 1 |
-| app/models.py | 1 | 1 |
-| app/supabase_sync.py | 1 | 1 |
-| app/webhooks.py | 1 | 1 |
-| app/registration/* | 2 | 2 |
-| app/admin/* | 2 | 2 |
-| app/payments/* | 3 | 2 |
-| app/email/* | 4 | 2 |
-| app/waitlist/* | 5 | 2 |
-| app/scheduler/* | 6 | 2 |
-| frontend/* (app, server, proxy, register views) | 7 | 3 |
-| frontend/* (auth, admin views, admin routes) | 8 | 3 |
-| Any wiring fixes | 9 | 4 |
+**Cross-boundary imports (use these exact paths):**
+- `from app.email import send_email`
+- `from app.supabase_sync import sync_registrant`
+- `from app.models import register_attendee, get_registrant, get_registrant_by_email, update_status, get_paid_count, get_next_waitlisted`
+- `from app.webhooks import verify_square_signature`
+- `from app.waitlist.routes import try_promote_next`
+- `from app.db import get_db`
+
+**Data ownership (no agent may write outside its assigned tables):**
+- `registrants` table: Agents 2 (insert/update), 3 (status update), 5 (status update)
+- `email_log` table: Agent 4 only
+- `webhook_events` table: Agent 3 only
+- `registrants_realtime` (Supabase): Agent 1 sync function only
+
+**Middleware order in Express `app.js`:** (1) express.static, (2) helmet, (3) `/api` proxy, (4) express.json + urlencoded, (5) EJS page routes, (6) 404 handler, (7) error handler. The proxy MUST mount before body parsing.
+
+**SQLite connection:** Always use `with get_db() as conn:`. Connection requires `timeout=5`.
+
+**Flask startup:** `app.run(host='0.0.0.0', port=5000, threaded=True)`
+
+**Supabase realtime rule:** `admin-realtime.js` uses Supabase as a change signal only. On any event, call `fetch('/api/admin/registrants')` and re-render. Never render Supabase payload data directly.
+
+---
+
+### Agent: core-foundation
+
+**Files:**
+- `workshop-registration/run.py`
+- `workshop-registration/requirements.txt`
+- `workshop-registration/schema.sql`
+- `workshop-registration/.env.example`
+- `workshop-registration/.gitignore`
+- `workshop-registration/app/__init__.py`
+- `workshop-registration/app/db.py`
+- `workshop-registration/app/models.py`
+- `workshop-registration/app/supabase_sync.py`
+- `workshop-registration/app/webhooks.py`
+
+**Responsibility:** Build the entire Flask foundation -- app factory, DB layer, all model functions, Supabase sync, and webhook signature verification -- so all Phase 2 agents can import from these files without modification.
+
+**Phase:** 1 (all other agents depend on this agent completing first)
+
+**Gate:** `models.py` exports all functions in the shared spec table above. `get_db` is importable. `schema.sql` creates all three tables. `run.py` starts Flask with `threaded=True`.
+
+---
+
+### Agent: registration-admin-api
+
+**Files:**
+- `workshop-registration/app/registration/__init__.py`
+- `workshop-registration/app/registration/routes.py`
+- `workshop-registration/app/admin/__init__.py`
+- `workshop-registration/app/admin/routes.py`
+
+**Responsibility:** Implement `POST /api/register` with atomic capacity check and Square checkout creation, plus the three admin read endpoints (`/api/admin/registrants`, `/api/admin/stats`, `/api/admin/export`) protected by basic auth header validation against `ADMIN_PASSWORD` env var.
+
+**Phase:** 2 (parallel with Agents 3, 4, 5, 6)
+
+**Key constraints:**
+- `register_attendee` must use `BEGIN IMMEDIATE` transaction (prescribed SQL in plan)
+- `create_checkout_link` uses Square Payment Links API `quick_pay` pattern (prescribed in plan)
+- Re-registration for `cancelled` or `payment_failed` status updates the existing row, returns 201
+- Rate limit `POST /api/register` to 5 per minute per IP using `limiter` from `app/__init__.py`
+
+---
+
+### Agent: payment-webhooks
+
+**Files:**
+- `workshop-registration/app/payments/__init__.py`
+- `workshop-registration/app/payments/routes.py`
+
+**Responsibility:** Implement `POST /api/webhooks/square` with HMAC signature verification, idempotency via `webhook_events` insert-first pattern, payment amount validation, status transitions (`pending_payment` -> `paid` or `payment_failed`), and waitlist promotion trigger on refund.
+
+**Phase:** 2 (parallel with Agents 2, 4, 5, 6)
+
+**Key constraints:**
+- Call `request.get_data(as_text=True)` for signature verification, NOT `request.json`
+- Insert into `webhook_events` first; on `IntegrityError` return `"", 200` immediately
+- Subscribe to `payment.updated` event (not `payment.completed` -- that event does not exist)
+- Validate `amount_money.amount == WORKSHOP_PRICE_CENTS` before marking `paid`
+- After marking `cancelled` on refund events (`refund.created`), call `try_promote_next(conn)` to auto-promote next waitlisted
+- Rate limit this endpoint to 30 per minute per IP
+
+---
+
+### Agent: email-engine
+
+**Files:**
+- `workshop-registration/app/email/__init__.py`
+- `workshop-registration/app/email/engine.py`
+
+**Responsibility:** Implement `send_email(registrant_id, template_type) -> bool` using the Resend API with idempotency check, 3-retry exponential backoff, and all 7 email templates; re-export `send_email` from `__init__.py` so callers use `from app.email import send_email`.
+
+**Phase:** 2 (parallel with Agents 2, 3, 5, 6)
+
+**Key constraints:**
+- This is the ONLY module that imports `resend`
+- Idempotency: query `email_log` for sent within last 24 hours for this `(registrant_id, template_type)` before sending
+- Retries: 3 attempts at 1s, 2s, 4s backoff
+- Look up registrant data internally using `get_db` + `get_registrant` -- callers pass only `registrant_id`
+- Valid `template_type` values: `confirmation`, `reminder_7d`, `reminder_1d`, `post_workshop`, `waitlist_confirmation`, `waitlist_promotion`, `payment_failed`
+
+---
+
+### Agent: waitlist-capacity
+
+**Files:**
+- `workshop-registration/app/waitlist/__init__.py`
+- `workshop-registration/app/waitlist/routes.py`
+
+**Responsibility:** Implement `try_promote_next(conn)` using the atomic claim UPDATE pattern and export it for Agent 3 to call; also expose `waitlist_bp` Blueprint for blueprint registration.
+
+**Phase:** 2 (parallel with Agents 2, 3, 4, 6)
+
+**Key constraints:**
+- Atomic claim pattern (prescribed in plan): single UPDATE with subquery, check `cursor.rowcount == 0` to detect race
+- After promotion: call `create_checkout_link` from `app.registration.routes`, update row with new `square_order_id`, then call `send_email(registrant_id, "waitlist_promotion")` via `threading.Thread`
+- Call `sync_registrant(registrant_id)` after status change
+
+---
+
+### Agent: notification-scheduler
+
+**Files:**
+- `workshop-registration/app/scheduler/__init__.py`
+- `workshop-registration/app/scheduler/jobs.py`
+
+**Responsibility:** Implement a Flask CLI command `send-reminders` that queries paid registrants and sends time-windowed reminder and post-workshop emails using `send_email`, respecting idempotency so re-runs are safe.
+
+**Phase:** 2 (parallel with Agents 2, 3, 4, 5)
+
+**Key constraints:**
+- Register CLI command via `@app.cli.command("send-reminders")` in `jobs.py`, called from `create_app()` in `app/__init__.py`
+- Reminder windows (UTC): 7-day on/after `2026-05-23T17:00:00Z`, 1-day on/after `2026-05-29T17:00:00Z`, post-workshop on/after `2026-06-01T17:00:00Z`
+- Only target registrants with `status = 'paid'`
+- `send_email` idempotency handles re-runs -- no extra dedup logic needed here
+
+---
+
+### Agent: public-registration-ui
+
+**Files:**
+- `workshop-registration/frontend/package.json`
+- `workshop-registration/frontend/server.js`
+- `workshop-registration/frontend/app.js`
+- `workshop-registration/frontend/middleware/flask-proxy.js`
+- `workshop-registration/frontend/views/register.ejs`
+- `workshop-registration/frontend/views/success.ejs`
+- `workshop-registration/frontend/public/css/style.css`
+- `workshop-registration/frontend/public/js/validation.js`
+
+**Responsibility:** Build the Express app factory, proxy middleware, public registration form (EJS), success page, client-side validation, and all static assets; wire middleware in the correct order so POST bodies reach Flask.
+
+**Phase:** 3 (parallel with Agent 8)
+
+**Key constraints:**
+- Mount `/api` proxy BEFORE `express.json()` (prescribed middleware order above)
+- `app.js` exports `createApp` function; `server.js` calls it
+- `flask-proxy.js` exports `flaskProxy` middleware, targets `FLASK_API_URL` env var
+- `validation.js` enforces shared validation rules: name 1-100 chars, valid email, role from enum
+- Success page renders `registrant_id` from query string
+- Node packages: `express`, `ejs`, `http-proxy-middleware`, `helmet`, `compression`, `dotenv`
+
+---
+
+### Agent: admin-ui
+
+**Files:**
+- `workshop-registration/frontend/middleware/auth.js`
+- `workshop-registration/frontend/routes/admin.js`
+- `workshop-registration/frontend/views/admin/dashboard.ejs`
+- `workshop-registration/frontend/views/admin/layout.ejs`
+- `workshop-registration/frontend/public/js/admin-realtime.js`
+
+**Responsibility:** Build the Express basic-auth middleware, admin route handler, dashboard EJS template with registrant table and capacity meter, and the Supabase realtime change-signal script that refetches full data from Flask on each event.
+
+**Phase:** 3 (parallel with Agent 7)
+
+**Key constraints:**
+- `auth.js` exports `basicAuth` middleware; returns 401 + `WWW-Authenticate: Basic` if `Authorization` header is absent or credentials do not match `ADMIN_PASSWORD` env var
+- `admin-realtime.js` subscribes to `registrants_realtime` table via `@supabase/supabase-js@2` CDN script; on any event calls `fetch('/api/admin/registrants')` and re-renders the table -- never renders Supabase payload directly
+- Supabase client uses `{ realtime: { worker: true } }` option
+- No `ADMIN_PASSWORD` in browser JavaScript; credentials flow only through the browser's cached `Authorization` header
+
+---
+
+### Agent: integration-wiring
+
+**Files:** (no new files -- patches wiring into files owned by earlier agents)
+
+**Responsibility:** Verify all 4 Flask blueprints are registered in `create_app()`, the scheduler CLI command is registered, Express `app.js` mounts all routes in the correct middleware order, all cross-boundary imports resolve per the Wiring Table, and run the three smoke tests from the plan's Gate 3 checklist.
+
+**Phase:** 4 (runs after all other agents complete)
+
+**Key constraints:**
+- Must not introduce new files -- only patch `app/__init__.py` (owned by Agent core-foundation) and `frontend/app.js` (owned by Agent public-registration-ui) if wiring gaps are found
+- Use the Agent 9 checklist from the Implementation Phases section as the verification list
+- If a smoke test fails, fix the import/wiring gap and re-run before marking complete
+
+---
+
+STATUS: PASS
 
 ## Acceptance Tests (EARS Format)
 
