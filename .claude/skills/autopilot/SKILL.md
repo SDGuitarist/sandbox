@@ -184,6 +184,23 @@ Then follow the **Shared Tail** below.
 
 ## Swarm Path
 
+### Step 7w-pre: Pre-Swarm Spec Consistency Gate
+
+Use the **spec-consistency-checker** agent. Pass:
+1. The path to the plan document
+2. The reports directory path (e.g., `docs/reports/<run-id>/` -- create the
+   reports directory first if it doesn't exist yet; use the run-id from the
+   plan or generate it now per Step 8w logic)
+
+Read `docs/reports/<run-id>/spec-consistency-check.md`. Check STATUS.
+- If PASS: continue to Swarm Planner.
+- If FAIL: abort the swarm path. Output the contradiction list. The spec
+  author must fix the contradictions and re-run. Do not proceed.
+
+This gate catches mechanical contradictions (schema vs route names, SQL vs
+app types) that are invisible to human reviewers because each section looks
+correct in isolation.
+
 ### Step 7w: Swarm Planner
 
 Use the **swarm-planner** agent. Pass the path to the plan document.
