@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="supabase-url" content="<%= process.env.SUPABASE_URL %>">
+  <meta name="supabase-anon-key" content="<%= process.env.SUPABASE_ANON_KEY %>">
+  <title>Admin Dashboard - Workshop Registration</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="admin-dashboard">
+  <h1>Workshop Registration Admin</h1>
+
+  <div class="stats-section" id="stats-section">
+    <div class="stat-card">
+      <span class="stat-label">Total</span>
+      <span class="stat-value" id="stat-total">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Paid</span>
+      <span class="stat-value" id="stat-paid">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Waitlisted</span>
+      <span class="stat-value" id="stat-waitlisted">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Pending</span>
+      <span class="stat-value" id="stat-pending">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Cancelled</span>
+      <span class="stat-value" id="stat-cancelled">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Payment Failed</span>
+      <span class="stat-value" id="stat-payment_failed">0</span>
+    </div>
+  </div>
+
+  <div class="capacity-meter" id="capacity-meter">
+    <h2>Capacity</h2>
+    <div class="capacity-bar-container">
+      <div class="capacity-bar" id="capacity-bar" style="width: 0%"></div>
+    </div>
+    <span class="capacity-label" id="capacity-label">0/0 seats filled</span>
+  </div>
+
+  <div class="registrant-table-container">
+    <h2>Registrants</h2>
+    <table class="registrant-table" id="registrant-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Paid At</th>
+          <th>Created At</th>
+        </tr>
+      </thead>
+      <tbody id="registrant-tbody">
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function renderStats(data) {
+  document.getElementById('stat-total').textContent = data.total || 0;
+  document.getElementById('stat-paid').textContent = data.paid || 0;
+  document.getElementById('stat-waitlisted').textContent = data.waitlisted || 0;
+  document.getElementById('stat-pending').textContent = data.pending || 0;
+  document.getElementById('stat-cancelled').textContent = data.cancelled || 0;
+  document.getElementById('stat-payment_failed').textContent = data.payment_failed || 0;
+
+  var paid = data.paid || 0;
+  var capacity = data.capacity || 0;
+  var pct = capacity > 0 ? Math.min((paid / capacity) * 100, 100) : 0;
+  document.getElementById('capacity-bar').style.width = pct + '%';
+  document.getElementById('capacity-label').textContent = paid + '/' + capacity + ' seats filled';
+}
+
+function renderRegistrantTable(registrants) {
+  var tbody = document.getElementById('registrant-tbody');
+  tbody.innerHTML = '';
+  if (!registrants || registrants.length === 0) {
+    var row = document.createElement('tr');
+    var cell = document.createElement('td');
+    cell.colSpan = 6;
+    cell.textContent = 'No registrants found';
+    row.appendChild(cell);
+    tbody.appendChild(row);
+    return;
+  }
+  registrants.forEach(function (r) {
+    var row = document.createElement('tr');
+
+    var nameCell = document.createElement('td');
+    nameCell.textContent = r.name || '';
+    row.appendChild(nameCell);
+
+    var emailCell = document.createElement('td');
+    emailCell.textContent = r.email || '';
+    row.appendChild(emailCell);
+
+    var roleCell = document.createElement('td');
+    roleCell.textContent = r.role || '';
+    row.appendChild(roleCell);
+
+    var statusCell = document.createElement('td');
+    var badge = document.createElement('span');
+    var status = r.status || 'unknown';
+    badge.textContent = status;
+    badge.className = 'status-badge status-' + status.replace('_', '-');
+    statusCell.appendChild(badge);
+    row.appendChild(statusCell);
+
+    var paidAtCell = document.createElement('td');
+    paidAtCell.textContent = r.paid_at || '-';
+    row.appendChild(paidAtCell);
+
+    var createdAtCell = document.createElement('td');
+    createdAtCell.textContent = r.created_at || '-';
+    row.appendChild(createdAtCell);
+
+    tbody.appendChild(row);
+  });
+}
+</script>
+<script src="/js/admin-realtime.js"></script>
+</body>
+</html>

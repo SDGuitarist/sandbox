@@ -1,0 +1,7 @@
+flask
+flask-limiter
+resend
+squareup
+supabase
+email-validator
+python-dotenv
