@@ -1,5 +1,6 @@
 import base64
 import csv
+import hmac
 import io
 import os
 from flask import Blueprint, Response, jsonify, make_response, request
@@ -31,7 +32,7 @@ def require_admin(req):
         return resp
 
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
-    if not admin_password or password != admin_password:
+    if not admin_password or not hmac.compare_digest(password, admin_password):
         resp = make_response(
             jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
         )
