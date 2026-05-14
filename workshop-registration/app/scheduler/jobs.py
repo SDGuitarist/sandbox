@@ -1,0 +1,35 @@
+import click
+from flask import current_app
+from datetime import datetime, timezone
+
+from app.db import get_db
+from app.email import send_email
+
+WINDOW_7D = datetime(2026, 5, 23, 17, 0, 0, tzinfo=timezone.utc)
+WINDOW_1D = datetime(2026, 5, 29, 17, 0, 0, tzinfo=timezone.utc)
+WORKSHOP = datetime(2026, 5, 30, 17, 0, 0, tzinfo=timezone.utc)
+WINDOW_POST = datetime(2026, 6, 1, 17, 0, 0, tzinfo=timezone.utc)
+
+
+def register_commands(app):
+    @app.cli.command("send-reminders")
+    def send_reminders():
+        """Send time-windowed reminder and post-workshop emails."""
+        now = datetime.now(timezone.utc)
+
+        with get_db() as conn:
+            registrants = conn.execute(
+                "SELECT id FROM registrations WHERE status = 'paid'"
+            ).fetchall()
+
+        templates = []
+        if now >= WINDOW_POST:
+            templates.append("post_workshop")
+        if now >= WINDOW_1D and now < WORKSHOP:
+            templates.append("reminder_1d")
+        if now >= WINDOW_7D and now < WINDOW_1D:
+            templates.append("reminder_7d")
+
+        for row in registrants:
+            for template in templates:
+                send_email(row["id"], template)
