@@ -1,26 +1,24 @@
-# Review Context — Ethics Toolkit
+# Review Context -- Sandbox
 
 ## Risk Chain
 
-**Brainstorm risk:** "Cross-cutting concerns (auth, realtime, LLM, payments, email) at platform scale have never been tested in a swarm."
+**Brainstorm risk:** N/A (no brainstorm phase -- control-plane hardening derived from analysis)
 
-**Plan mitigation:** 4-phase sequential build (foundation -> tools -> realtime -> integration) with schema pre-gate. Export Name Table + Cross-Boundary Wiring Section prescribed.
+**Plan mitigation:** Autopilot skill complexity identified as primary risk. 500-line extraction threshold established. Phase 0 resolved control surface scope before implementation.
 
-**Work risk (from Feed-Forward):** Integration seam failures despite prescriptive spec -- agents produced correct isolated code but wrong imports, dead wiring, and non-atomic operations at boundaries.
+**Work risk (from Feed-Forward):** "Autopilot skill complexity after this work. If it exceeds ~500 lines, extract verification gates into a separate helper skill."
 
-**Review resolution:** 28 unique findings (12 P0, 12 P1-R1, 4 P1-R2) from 5 agents. All P0/P1 resolved across 3 commits. 15 P2s deferred. Top finding: import mismatches (13 files) from agents making independently reasonable naming decisions.
+**Review resolution:** 4 findings from Codex (all fixed in one commit): tool mismatch in spec gate agent, sequencing bug in autopilot skill, CLAUDE.md inaccuracy for out-of-repo writes, spike artifact vs plan mismatch. 0 findings on second pass.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| lib/ai/route-factory.ts | NEW: extracted from 3 duplicate routes | Single point of failure for all AI calls |
-| lib/realtime/use-workshop-channel.ts | NEW: shared channel hook | Channel lifecycle management |
-| lib/email/send.ts | HMAC token signing + retry fix | Crypto correctness, timing safety |
-| supabase/migrations/005_p1_fixes.sql | RLS, FKs, triggers, constraints | Data integrity, cascading effects |
-| supabase/migrations/004_atomic_upvote_and_claim.sql | Atomic RPCs | Concurrency correctness |
-| app/api/cron/process-emails/route.ts | Atomic claim-before-send | Double-send prevention |
+| .claude/skills/autopilot/SKILL.md | +65 lines (gates, spec gate step, non-interactive learnings call) | Complexity -- 455/500 lines. Next addition may trigger extraction. |
+| .claude/skills/update-learnings-noninteractive/SKILL.md | New 292-line skill duplicating global command | Duplication drift -- if global command changes, this copy diverges |
+| CLAUDE.md | New root operating contract | Accuracy -- must stay in sync with actual skill behavior |
+| .claude/agents/spec-consistency-checker.md | New pre-swarm gate agent | Untested in live swarm -- first real test is next swarm build |
 
 ## Plan Reference
 
-`docs/plans/2026-04-30-ethics-toolkit-platform-spec.md`
+`docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md`
