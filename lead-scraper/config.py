@@ -32,6 +32,34 @@ def get_perplexity_key() -> str | None:
     return os.getenv("PERPLEXITY_API_KEY")
 
 
+def get_alert_email_to() -> str:
+    return os.getenv("ALERT_EMAIL_TO", "alex@alexguillenmusic.com")
+
+
+def get_alert_email_from() -> str | None:
+    return os.getenv("ALERT_EMAIL_FROM")
+
+
+def get_smtp_host() -> str | None:
+    return os.getenv("SMTP_HOST")
+
+
+def get_smtp_port() -> int:
+    return int(os.getenv("SMTP_PORT", "587"))
+
+
+def get_smtp_username() -> str | None:
+    return os.getenv("SMTP_USERNAME")
+
+
+def get_smtp_password() -> str | None:
+    return os.getenv("SMTP_PASSWORD")
+
+
+def get_smtp_use_tls() -> bool:
+    return os.getenv("SMTP_USE_TLS", "1") != "0"
+
+
 # Template discovery uses repo-relative path, not CWD
 TEMPLATES_DIR = Path(__file__).parent / "templates" / "outreach"
 SOURCES_OVERRIDES_PATH = Path(__file__).parent / "sources.overrides.json"
@@ -66,6 +94,9 @@ BASE_SOURCES = {
             # Bucket 5: Filmmaker tools expansion (2026-05-08)
             "screenwriting San Diego", "cinematography San Diego", "filmmaking San Diego",
             "documentary San Diego", "short film San Diego", "video editing San Diego",
+            # Bucket 6: Filmmaker-adjacent expansion (2026-05-10)
+            "film networking San Diego", "acting workshop San Diego", "film premiere San Diego",
+            "casting call San Diego", "improv San Diego",
         ],
         "country": "united-states",
         "city": "San Diego",
@@ -96,6 +127,9 @@ BASE_SOURCES = {
             "https://www.facebook.com/groups/sdmediapros/",
             "https://www.facebook.com/groups/257380068144396/",
             "https://www.facebook.com/groups/SanDiegoPhotographers/",
+            # Film community expansion (2026-05-10)
+            "https://www.facebook.com/groups/sandiegofilmsociety/",
+            "https://www.facebook.com/groups/SDSUCastingCalls/",
         ],
     },
     "instagram": {
@@ -112,8 +146,11 @@ BASE_SOURCES = {
             "SDCreatives", "SanDiegoCreative", "SanDiegoArtist",
             # Bucket 5: Filmmaker tools expansion (2026-05-08)
             "SanDiegoFilmCommunity", "SanDiegoCinematography", "SanDiegoDocumentary", "SDIndieFilm",
+            # Bucket 6: Actors/Directors/Crew expansion (2026-05-10)
+            "SanDiegoActor", "SanDiegoActing", "SanDiegoDirector", "SanDiegoProducer",
+            "SanDiegoEditor", "SDShortFilm", "SanDiegoScreenwriter", "SanDiegoFilmAwards", "FilmConSD",
         ],
-        "max_profiles": 400,
+        "max_profiles": 700,
     },
     "linkedin": {
         "enabled": False,  # Requires paid Apify actor rental

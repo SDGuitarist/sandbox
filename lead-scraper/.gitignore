@@ -8,3 +8,6 @@ venv/
 .browser-profiles/
 sources.overrides.json
 nl_audit.jsonl
+*.health.json
+*.db-shm
+*.db-wal

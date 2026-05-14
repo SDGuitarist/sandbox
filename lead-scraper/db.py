@@ -1,14 +1,31 @@
 from contextlib import contextmanager
+import json
 import os
 from pathlib import Path
 import re
 import sqlite3
+import smtplib
+import subprocess
 import time
-from datetime import datetime
+from datetime import datetime, timezone
+from email.message import EmailMessage
+
+from config import (
+    get_alert_email_from,
+    get_alert_email_to,
+    get_smtp_host,
+    get_smtp_password,
+    get_smtp_port,
+    get_smtp_use_tls,
+    get_smtp_username,
+)
 
 # Canonical DB path: same directory as this file
 DB_PATH = Path(__file__).parent / "leads.db"
 DB_JOB_LOCKFILE = Path.home() / ".lead-scraper-db.lock"
+DB_HEALTH_DROP_WARN_FRACTION = 0.20
+DB_HEALTH_DROP_WARN_MIN_LEADS = 100
+DB_HEALTH_DROP_WARN_MIN_BYTES = 256 * 1024
 
 
 class MigrationRequired(RuntimeError):
@@ -17,6 +34,10 @@ class MigrationRequired(RuntimeError):
 
 class MigrationSafetyError(RuntimeError):
     """Raised when a database operation would risk the production database."""
+
+
+class DatabaseHealthError(MigrationSafetyError):
+    """Raised when the database is missing, corrupted, or looks wiped."""
 
 
 def _is_production_db(db_path):
@@ -98,6 +119,214 @@ def _backup_wal_safe(db_path):
     dst_conn.close()
     src_conn.close()
     print(f"Backup created: {backup.name}")
+
+
+def get_db_health_snapshot_path(db_path=DB_PATH) -> Path:
+    db_path = Path(db_path)
+    return db_path.with_suffix(".health.json")
+
+
+def _load_db_health_snapshot(db_path=DB_PATH) -> dict | None:
+    snapshot_path = get_db_health_snapshot_path(db_path)
+    if not snapshot_path.exists():
+        return None
+    return json.loads(snapshot_path.read_text())
+
+
+def write_db_health_snapshot(db_path=DB_PATH, health=None) -> dict:
+    if health is None:
+        health = collect_db_health(db_path)
+    snapshot_path = get_db_health_snapshot_path(db_path)
+    snapshot_path.write_text(json.dumps(health, indent=2, sort_keys=True) + "\n")
+    return health
+
+
+def _send_macos_notification(title: str, message: str) -> None:
+    script = (
+        'display notification '
+        f'"{message.replace(chr(34), chr(39))}" '
+        f'with title "{title.replace(chr(34), chr(39))}"'
+    )
+    try:
+        subprocess.run(
+            ["osascript", "-e", script],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return
+
+
+def _send_email_notification(subject: str, message: str) -> None:
+    smtp_host = get_smtp_host()
+    smtp_from = get_alert_email_from()
+    smtp_to = get_alert_email_to()
+    if not smtp_host or not smtp_from or not smtp_to:
+        return
+
+    email = EmailMessage()
+    email["Subject"] = subject
+    email["From"] = smtp_from
+    email["To"] = smtp_to
+    email.set_content(message)
+
+    with smtplib.SMTP(smtp_host, get_smtp_port(), timeout=10) as server:
+        if get_smtp_use_tls():
+            server.starttls()
+        username = get_smtp_username()
+        password = get_smtp_password()
+        if username and password:
+            server.login(username, password)
+        server.send_message(email)
+
+
+def collect_db_health(db_path=DB_PATH) -> dict:
+    db_path = Path(db_path)
+    health = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "db_path": str(db_path),
+        "exists": db_path.exists(),
+        "file_size": db_path.stat().st_size if db_path.exists() else 0,
+        "integrity_ok": False,
+        "integrity_message": "missing",
+        "missing_tables": [],
+        "lead_count": None,
+        "campaign_count": None,
+        "queue_count": None,
+    }
+    if not health["exists"]:
+        return health
+    if health["file_size"] == 0:
+        health["integrity_message"] = "empty"
+        return health
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        core_tables = {"leads", "campaigns", "outreach_queue"}
+        missing_tables = sorted(core_tables - tables)
+        health["missing_tables"] = missing_tables
+        if missing_tables:
+            health["integrity_message"] = "missing core tables"
+            return health
+
+        integrity_row = conn.execute("PRAGMA integrity_check").fetchone()
+        integrity_message = integrity_row[0] if integrity_row else "unknown"
+        health["integrity_message"] = integrity_message
+        health["integrity_ok"] = integrity_message == "ok"
+        health["lead_count"] = conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0]
+        health["campaign_count"] = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+        health["queue_count"] = conn.execute("SELECT COUNT(*) FROM outreach_queue").fetchone()[0]
+        return health
+    finally:
+        conn.close()
+
+
+def evaluate_db_health(health: dict, previous: dict | None = None, *, expected_drop_allowed=False):
+    hard_errors = []
+    warnings = []
+
+    if not health["exists"]:
+        hard_errors.append(f"Database file is missing: {health['db_path']}")
+        return hard_errors, warnings
+    if health["file_size"] == 0:
+        hard_errors.append(f"Database file is empty: {health['db_path']}")
+        return hard_errors, warnings
+    if health["missing_tables"]:
+        hard_errors.append(
+            "Core tables are missing: " + ", ".join(health["missing_tables"])
+        )
+    if not health["integrity_ok"]:
+        hard_errors.append(
+            f"SQLite integrity check failed: {health['integrity_message']}"
+        )
+
+    if previous is None:
+        return hard_errors, warnings
+
+    previous_leads = previous.get("lead_count")
+    current_leads = health.get("lead_count")
+    if (
+        not expected_drop_allowed
+        and previous_leads is not None
+        and current_leads is not None
+        and previous_leads >= DB_HEALTH_DROP_WARN_MIN_LEADS
+    ):
+        drop = previous_leads - current_leads
+        if current_leads == 0 and previous_leads > 0:
+            hard_errors.append(
+                f"Lead count collapsed from {previous_leads} to 0 since the last snapshot."
+            )
+        elif drop > 0 and (drop / previous_leads) >= DB_HEALTH_DROP_WARN_FRACTION:
+            warnings.append(
+                f"Lead count dropped from {previous_leads} to {current_leads} "
+                f"({drop} fewer, {drop / previous_leads:.0%} drop)."
+            )
+
+    previous_size = previous.get("file_size")
+    current_size = health.get("file_size")
+    if (
+        previous_size
+        and current_size is not None
+        and previous_size >= DB_HEALTH_DROP_WARN_MIN_BYTES
+        and current_size < previous_size
+    ):
+        byte_drop = previous_size - current_size
+        if (byte_drop / previous_size) >= DB_HEALTH_DROP_WARN_FRACTION:
+            warnings.append(
+                f"Database file size dropped from {previous_size} bytes to "
+                f"{current_size} bytes ({byte_drop / previous_size:.0%} drop)."
+            )
+
+    for label, key in (("campaign count", "campaign_count"), ("queue count", "queue_count")):
+        previous_value = previous.get(key)
+        current_value = health.get(key)
+        if (
+            previous_value is not None
+            and current_value is not None
+            and previous_value > 0
+            and current_value < previous_value
+        ):
+            drop = previous_value - current_value
+            if (drop / previous_value) >= DB_HEALTH_DROP_WARN_FRACTION:
+                warnings.append(
+                    f"{label.capitalize()} dropped from {previous_value} to {current_value}."
+                )
+
+    return hard_errors, warnings
+
+
+def run_db_health_check(
+    db_path=DB_PATH,
+    *,
+    refresh_snapshot=False,
+    expected_drop_allowed=False,
+    notify=False,
+):
+    health = collect_db_health(db_path)
+    previous = _load_db_health_snapshot(db_path)
+    hard_errors, warnings = evaluate_db_health(
+        health,
+        previous,
+        expected_drop_allowed=expected_drop_allowed,
+    )
+    if hard_errors:
+        if notify:
+            _send_macos_notification("Lead Scraper DB Alert", hard_errors[0])
+            _send_email_notification("Lead Scraper DB Alert", hard_errors[0])
+        raise DatabaseHealthError(" ; ".join(hard_errors))
+    if warnings and notify:
+        _send_macos_notification("Lead Scraper DB Warning", warnings[0])
+        _send_email_notification("Lead Scraper DB Warning", warnings[0])
+    if refresh_snapshot:
+        write_db_health_snapshot(db_path, health)
+    return health, warnings
 
 
 def create_backup(db_path=DB_PATH):
