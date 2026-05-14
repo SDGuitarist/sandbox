@@ -93,10 +93,15 @@ def register():
 
             if status == "pending_payment":
                 try:
-                    checkout_url, _ = create_checkout_link(existing["id"], email)
+                    checkout_url, order_id = create_checkout_link(existing["id"], email)
                 except Exception as e:
                     logger.error(f"Square checkout creation failed: {e}")
                     return jsonify({"error": "Payment link creation failed", "code": "INTERNAL_ERROR"}), 500
+                conn.execute(
+                    "UPDATE registrants SET square_order_id = ? WHERE id = ?",
+                    (order_id, existing["id"]),
+                )
+                conn.commit()
                 return jsonify({
                     "error": "Registration pending payment",
                     "code": "DUPLICATE_EMAIL",

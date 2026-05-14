@@ -40,6 +40,7 @@ def square_webhook():
                 "INSERT INTO webhook_events (square_event_id, event_type, payload) VALUES (?, ?, ?)",
                 (event["event_id"], event["type"], json.dumps(event)),
             )
+            conn.commit()
         except sqlite3.IntegrityError:
             return "", 200
 
