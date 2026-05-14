@@ -2,41 +2,55 @@
 
 **Date:** 2026-05-13
 **Branch:** master
-**Phase:** Compound complete (Sandbox Autonomy Hardening)
+**Phase:** Plan complete -- READY FOR AUTOPILOT LAUNCH
 
 ## Current State
 
-Autonomy hardening is complete. The autopilot control plane now has a root operating contract (CLAUDE.md), non-interactive learnings propagation, 4 artifact gates in the tail, normalized failure registry IDs (FC22/FC23), and a pre-swarm spec consistency gate. Codex review returned 4 findings on first pass (all fixed), 0 on second pass. Autopilot skill is at 455 lines (45 under the 500-line extraction threshold).
+Workshop Registration Hub plan is spec-converged and ready for autopilot launch. 4 Codex passes, 11 total findings, all resolved. Zero P0 contradictions remain. This is a 9-agent cross-stack swarm build (Flask + Express, SQLite + Supabase, Square + Resend) -- the most ambitious sandbox build to date.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Plan | docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md |
-| Spike | docs/reports/spike-update-learnings-noninteractive.md |
-| Solution | docs/solutions/2026-05-13-sandbox-autonomy-hardening.md |
+| Brainstorm | docs/brainstorms/2026-05-13-workshop-registration-hub-brainstorm.md |
+| Plan (deepened + converged) | docs/plans/2026-05-13-feat-workshop-registration-hub-plan.md |
 
-## Review Fixes Pending
+## Convergence History
 
-None. All 4 Codex findings fixed. Second pass clean.
+| Pass | Findings | Status |
+|------|----------|--------|
+| 1st Codex | 7 (admin ownership, Square ID, proxy codes, register contract, webhook idempotency, cancel flow, minor fixes) | All resolved |
+| 2nd Codex | 3 (admin realtime P0, register_attendee docstring, webhook payload) | All resolved |
+| 3rd Codex | 1 (ADMIN_PASSWORD leaked to browser JS) | Resolved |
+| 4th Codex | 0 | **CLEAN -- GO for autopilot** |
 
-## Deferred Items
+## Pre-Build Setup Required
 
-- Safety profiles (offline-safe, online-build, prod-sensitive) -- Docker run scripts already handle this
-- Project-local hooks -- Claude Code may support in future
-- Project-local command overrides -- .claude/commands/ exists but unused
-- `--no-prompt` flag for global update-learnings -- would eliminate Path B duplication
-- spec-contract-checker tool mismatch -- pre-existing, same read-only vs write-report issue
+Before launching autopilot, set up these external services:
 
-## Three Questions
+1. **Square sandbox credentials** -- Create app in Square Developer Console, get sandbox access token, location ID, webhook signature key
+2. **Resend API key** -- Create account at resend.com, get API key
+3. **Supabase project** -- Create NEW project, get URL + service role key + anon key, run the Supabase schema SQL from the plan
 
-1. **Hardest decision?** Using structural analysis instead of a behavioral dry run for the Phase 2 spike. The plan originally prescribed a live build, but the structural evidence was stronger.
-2. **What was rejected?** Editing the global update-learnings command (contradicted "no global command edits" constraint). Inlining Steps 0-6 into the autopilot skill (would push past 600 lines). Shifting duplicate FC IDs (breaks historical references).
-3. **Least confident about?** Whether the 292-line duplication in update-learnings-noninteractive will diverge from the global command over time. The correct future fix is a --no-prompt flag on the global command.
+## Deferred Items (from prior work)
+
+- Safety profiles (offline-safe, online-build, prod-sensitive)
+- Project-local hooks
+- `--no-prompt` flag for global update-learnings
+- spec-contract-checker tool mismatch (read-only vs write-report)
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is sandbox, the autopilot testbed.
-Autonomy hardening complete (4 phases, 6 commits, review clean). Next: run the first swarm build with the new spec consistency gate, or pick the next app from the sequencing plan.
+Read HANDOFF.md and docs/plans/2026-05-13-feat-workshop-registration-hub-plan.md.
+
+This is a 9-agent cross-stack swarm build -- Workshop Registration Hub.
+Plan is spec-converged (4 Codex passes, 0 P0s). Ready for autopilot launch.
+
+Pre-build: set up Square sandbox, Resend API key, and new Supabase project
+(see plan Dependencies section). Then run autopilot with swarm: true.
+
+Key risk (Feed-Forward): Cross-stack API contract between Flask and Express
+is novel. The spec convergence loop scrutinized it hard -- contract is clean
+but this is the first cross-stack swarm build ever attempted.
 ```
