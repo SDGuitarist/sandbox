@@ -1,12 +1,11 @@
 import os
 import re
 import threading
-import time
 import uuid
-from collections import defaultdict
 from flask import Blueprint, jsonify, request
 from square import Square
 from square.environment import SquareEnvironment
+from app import limiter
 from app.db import get_db
 from app.models import (
     register_attendee,
@@ -27,22 +26,6 @@ square_client = Square(
     token=os.environ.get("SQUARE_ACCESS_TOKEN"),
     environment=SquareEnvironment.SANDBOX,
 )
-
-_rate_limit_store = defaultdict(list)
-_rate_lock = threading.Lock()
-RATE_LIMIT = 5
-RATE_WINDOW = 60
-
-
-def _check_rate_limit(ip):
-    now = time.time()
-    with _rate_lock:
-        timestamps = _rate_limit_store[ip]
-        _rate_limit_store[ip] = [t for t in timestamps if now - t < RATE_WINDOW]
-        if len(_rate_limit_store[ip]) >= RATE_LIMIT:
-            return False
-        _rate_limit_store[ip].append(now)
-        return True
 
 
 def create_checkout_link(registrant_id: int, email: str) -> tuple[str, str]:
@@ -67,10 +50,8 @@ def create_checkout_link(registrant_id: int, email: str) -> tuple[str, str]:
 
 
 @registration_bp.route("/register", methods=["POST"])
+@limiter.limit("5 per minute")
 def register():
-    if not _check_rate_limit(request.remote_addr):
-        return jsonify({"error": "Rate limit exceeded", "code": "VALIDATION_FAILED"}), 429
-
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Request body must be JSON", "code": "VALIDATION_FAILED"}), 400

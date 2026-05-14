@@ -7,9 +7,10 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
+from app import limiter
 from app.db import get_db
 from app.email import send_email
-from app.models import get_registrant, update_status
+from app.models import update_status
 from app.supabase_sync import sync_registrant
 from app.waitlist.routes import try_promote_next
 from app.webhooks import verify_square_signature
@@ -20,12 +21,13 @@ payments_bp = Blueprint("payments", __name__, url_prefix="/api")
 
 
 @payments_bp.route("/webhooks/square", methods=["POST"])
+@limiter.limit("30 per minute")
 def square_webhook():
     body = request.get_data(as_text=True)
     signature = request.headers.get("x-square-hmacsha256-signature", "")
 
     if not verify_square_signature(body, signature):
-        return jsonify({"error": "Forbidden", "code": "INVALID_SIGNATURE"}), 403
+        return "", 403
 
     try:
         event = json.loads(body)
@@ -68,7 +70,9 @@ def _handle_payment_updated(conn, event):
             )
             return
 
-        registrant = get_registrant(conn, square_order_id=payment["order_id"])
+        registrant = conn.execute(
+            "SELECT * FROM registrants WHERE square_order_id = ?", (payment["order_id"],)
+        ).fetchone()
         if registrant is None:
             logger.warning(
                 "No registrant found for order_id %s", payment["order_id"]
@@ -89,7 +93,9 @@ def _handle_payment_updated(conn, event):
         ).start()
 
     elif status == "FAILED":
-        registrant = get_registrant(conn, square_order_id=payment["order_id"])
+        registrant = conn.execute(
+            "SELECT * FROM registrants WHERE square_order_id = ?", (payment["order_id"],)
+        ).fetchone()
         if registrant is None:
             logger.warning(
                 "No registrant found for order_id %s", payment["order_id"]
@@ -106,7 +112,9 @@ def _handle_payment_updated(conn, event):
 
 def _handle_refund_created(conn, event):
     refund = event["data"]["object"]["refund"]
-    registrant = get_registrant(conn, square_order_id=refund["order_id"])
+    registrant = conn.execute(
+        "SELECT * FROM registrants WHERE square_order_id = ?", (refund["order_id"],)
+    ).fetchone()
     if registrant is None:
         logger.warning("No registrant found for order_id %s", refund["order_id"])
         return

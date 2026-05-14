@@ -2,27 +2,41 @@ import base64
 import csv
 import io
 import os
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, jsonify, make_response, request
 from app.db import get_db
 from app.models import get_paid_count
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
+_WWW_AUTH = 'Basic realm="Workshop Admin"'
+
 
 def require_admin(req):
     auth_header = req.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Basic "):
-        return jsonify({"error": "Authentication required", "code": "UNAUTHORIZED"}), 401
+        resp = make_response(
+            jsonify({"error": "Authentication required", "code": "UNAUTHORIZED"}), 401
+        )
+        resp.headers["WWW-Authenticate"] = _WWW_AUTH
+        return resp
 
     try:
         decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
         _, password = decoded.split(":", 1)
     except Exception:
-        return jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
+        resp = make_response(
+            jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
+        )
+        resp.headers["WWW-Authenticate"] = _WWW_AUTH
+        return resp
 
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
     if not admin_password or password != admin_password:
-        return jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
+        resp = make_response(
+            jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
+        )
+        resp.headers["WWW-Authenticate"] = _WWW_AUTH
+        return resp
 
     return None
 

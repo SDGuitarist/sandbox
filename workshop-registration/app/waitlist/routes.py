@@ -3,6 +3,7 @@ import threading
 from flask import Blueprint
 
 from app.email import send_email
+from app.models import get_next_waitlisted
 from app.registration.routes import create_checkout_link
 from app.supabase_sync import sync_registrant
 
@@ -11,17 +12,20 @@ waitlist_bp = Blueprint('waitlist', __name__, url_prefix="/api")
 
 def try_promote_next(conn):
     """Promote next waitlisted registrant. Handles checkout link + email internally."""
-    cursor = conn.execute(
-        "UPDATE registrants SET status = 'pending_payment', queue_position = NULL "
-        "WHERE id = (SELECT id FROM registrants WHERE status = 'waitlisted' "
-        "ORDER BY queue_position ASC LIMIT 1) AND status = 'waitlisted'"
-    )
-    if cursor.rowcount == 0:
+    next_candidate = get_next_waitlisted(conn)
+    if next_candidate is None:
         return
 
+    cursor = conn.execute(
+        "UPDATE registrants SET status = 'pending_payment', queue_position = NULL "
+        "WHERE id = ? AND status = 'waitlisted'",
+        (next_candidate["id"],),
+    )
+    if cursor.rowcount == 0:
+        return  # Another promotion claimed it
+
     promoted = conn.execute(
-        "SELECT id, email FROM registrants WHERE status = 'pending_payment' "
-        "AND queue_position IS NULL ORDER BY id DESC LIMIT 1"
+        "SELECT id, email FROM registrants WHERE id = ?", (next_candidate["id"],)
     ).fetchone()
 
     if promoted is None:

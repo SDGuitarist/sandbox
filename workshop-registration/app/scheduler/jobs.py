@@ -19,7 +19,7 @@ def register_commands(app):
 
         with get_db() as conn:
             registrants = conn.execute(
-                "SELECT id FROM registrations WHERE status = 'paid'"
+                "SELECT id FROM registrants WHERE status = 'paid'"
             ).fetchall()
 
         templates = []

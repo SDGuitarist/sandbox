@@ -9,6 +9,8 @@ from flask_limiter.util import get_remote_address
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+limiter = Limiter(get_remote_address, default_limits=["60 per minute"])
+
 
 def create_app():
     load_dotenv()
@@ -19,11 +21,7 @@ def create_app():
     from app.db import init_db
     init_db()
 
-    Limiter(
-        key_func=get_remote_address,
-        app=app,
-        default_limits=["60 per minute"],
-    )
+    limiter.init_app(app)
 
     try:
         from app.registration.routes import registration_bp
@@ -73,8 +71,9 @@ def create_app():
 
         return jsonify({"status": "ok", "db": db_status, "supabase": supabase_status})
 
-    @app.errorhandler(500)
-    def internal_error(e):
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        logger.error(f"Unhandled exception: {e}", exc_info=True)
         return jsonify({"error": "Internal server error", "code": "INTERNAL_ERROR"}), 500
 
     return app
