@@ -8,6 +8,7 @@ Delegates all DB writes to campaign.py (outreach_queue) and account.py
 import os
 import random
 import signal
+import subprocess
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -167,95 +168,181 @@ def send_facebook_dm(page, profile_url, message):
     """Send a DM via Facebook Messenger.
 
     Returns: 'sent', 'dm_restricted', or 'send_failed'.
-    Selectors are initial guesses -- update after spike test.
+    Updated after spike test #1: clipboard paste, role-based selectors.
     """
     try:
         page.goto(profile_url, wait_until="networkidle", timeout=30000)
     except Exception:
         page.goto(profile_url, timeout=30000)
 
-    # Look for "Message" button
-    msg_button = page.locator(
-        'div[aria-label="Message"], '
-        'a[aria-label="Message"], '
-        'div[role="button"]:has-text("Message")'
-    ).first
+    time.sleep(2)  # Let Facebook JS finish rendering
+
+    # Find "Message" button
+    msg_button = page.get_by_role("button", name="Message", exact=True)
     try:
         msg_button.wait_for(state="visible", timeout=10000)
     except Exception:
-        return "dm_restricted"
+        # Fallback: aria-label and CSS selectors
+        msg_button = page.locator(
+            'div[aria-label="Message"], '
+            'a[aria-label="Message"], '
+            'div[role="button"]:has-text("Message")'
+        ).first
+        try:
+            msg_button.wait_for(state="visible", timeout=5000)
+        except Exception:
+            return "dm_restricted"
 
     msg_button.click()
 
-    # Wait for Messenger input
-    chat_input = page.locator(
-        'div[aria-label="Message"], '
-        'div[role="textbox"][contenteditable="true"]'
-    ).last
+    # Wait for Messenger chat input
+    chat_input = page.get_by_role("textbox")
     try:
         chat_input.wait_for(state="visible", timeout=15000)
     except Exception:
-        return "send_failed"
+        chat_input = page.locator(
+            'div[role="textbox"][contenteditable="true"]'
+        ).last
+        try:
+            chat_input.wait_for(state="visible", timeout=5000)
+        except Exception:
+            return "send_failed"
 
-    # Type message with human-like delays
     chat_input.click()
-    try:
-        chat_input.fill(message)
-    except Exception:
-        # Fallback: type character by character
-        chat_input.type(message, delay=30)
-
     time.sleep(0.5)
+
+    # Clipboard paste (same fix as Instagram)
+    subprocess.run(
+        ["pbcopy"],
+        input=message.encode("utf-8"),
+        check=True,
+    )
+    page.keyboard.press("Meta+v")
+    time.sleep(1)
+
+    # Verify text appeared before sending
+    try:
+        input_text = chat_input.inner_text()
+        if not input_text.strip():
+            chat_input.type(message, delay=30)
+            time.sleep(0.5)
+    except Exception:
+        pass
+
     page.keyboard.press("Enter")
     time.sleep(3)
 
-    return "sent"
+    # Verify message appeared in conversation
+    try:
+        snippet = message[:50]
+        if page.locator(f"text={snippet}").count() > 0:
+            return "sent"
+        remaining = chat_input.inner_text()
+        if not remaining.strip():
+            return "sent"
+    except Exception:
+        pass
+
+    return "send_failed"
 
 
 def send_instagram_dm(page, profile_url, message):
     """Send a DM via Instagram.
 
     Returns: 'sent', 'dm_restricted', or 'send_failed'.
-    Selectors are initial guesses -- update after spike test.
+    Updated after spike test #1: use get_by_role for resilience,
+    clipboard paste for contenteditable, verify message appeared.
     """
     try:
         page.goto(profile_url, wait_until="networkidle", timeout=30000)
     except Exception:
         page.goto(profile_url, timeout=30000)
 
-    # Look for "Message" button
-    msg_button = page.locator(
-        'div:has-text("Message")[role="button"], '
-        'button:has-text("Message")'
-    ).first
+    time.sleep(2)  # Let Instagram JS finish rendering
+
+    # Find "Message" button using role-based selector (resilient to DOM changes)
+    msg_button = page.get_by_role("button", name="Message", exact=True)
     try:
         msg_button.wait_for(state="visible", timeout=10000)
     except Exception:
-        return "dm_restricted"
+        # Fallback: broader CSS selector
+        msg_button = page.locator(
+            'div[role="button"]:has-text("Message"), '
+            'button:has-text("Message"), '
+            'a:has-text("Message")'
+        ).first
+        try:
+            msg_button.wait_for(state="visible", timeout=5000)
+        except Exception:
+            return "dm_restricted"
 
     msg_button.click()
 
-    # Wait for DM input (Instagram redirects to /direct/t/...)
-    chat_input = page.locator(
-        'div[role="textbox"][contenteditable="true"], '
-        'textarea[placeholder*="Message"]'
-    ).first
+    # Wait for navigation to DM thread
+    try:
+        page.wait_for_url("**/direct/**", timeout=15000)
+    except Exception:
+        # May already be on direct page or URL pattern differs
+        time.sleep(3)
+
+    # Find chat input using role-based selector
+    chat_input = page.get_by_role("textbox")
     try:
         chat_input.wait_for(state="visible", timeout=15000)
     except Exception:
-        return "send_failed"
+        # Fallback: CSS selectors for contenteditable
+        chat_input = page.locator(
+            'div[contenteditable="true"], '
+            'p[contenteditable="true"]'
+        ).last
+        try:
+            chat_input.wait_for(state="visible", timeout=5000)
+        except Exception:
+            return "send_failed"
 
+    # Click to focus the input
     chat_input.click()
-    try:
-        chat_input.fill(message)
-    except Exception:
-        chat_input.type(message, delay=30)
-
     time.sleep(0.5)
+
+    # Use clipboard paste -- fill()/type() don't work on Instagram's
+    # contenteditable React inputs (discovered in spike test #1)
+    subprocess.run(
+        ["pbcopy"],
+        input=message.encode("utf-8"),
+        check=True,
+    )
+    # Cmd+V on macOS to paste
+    page.keyboard.press("Meta+v")
+    time.sleep(1)
+
+    # Verify text appeared in the input before sending
+    try:
+        input_text = chat_input.inner_text()
+        if not input_text.strip():
+            # Paste didn't work -- try type() as last resort
+            chat_input.type(message, delay=30)
+            time.sleep(0.5)
+    except Exception:
+        pass  # Can't verify, proceed anyway
+
     page.keyboard.press("Enter")
     time.sleep(3)
 
-    return "sent"
+    # Verify: check if our message text appears in the conversation
+    try:
+        # Look for our message in the thread (first 50 chars to avoid partial matches)
+        snippet = message[:50]
+        if page.locator(f"text={snippet}").count() > 0:
+            return "sent"
+        # Fallback: if we can't find the text, check if the input cleared
+        # (Instagram clears input after successful send)
+        remaining = chat_input.inner_text()
+        if not remaining.strip():
+            return "sent"  # Input cleared = likely sent
+    except Exception:
+        pass
+
+    return "send_failed"
 
 
 # ---------------------------------------------------------------------------
