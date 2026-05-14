@@ -56,7 +56,6 @@ def update_status(conn, registrant_id, new_status, **kwargs):
         f"UPDATE registrants SET {', '.join(fields)} WHERE id = ?",
         values,
     )
-    conn.commit()
 
 
 def get_paid_count(conn):

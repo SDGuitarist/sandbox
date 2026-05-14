@@ -12,37 +12,31 @@ waitlist_bp = Blueprint('waitlist', __name__, url_prefix="/api")
 
 def try_promote_next(conn):
     """Promote next waitlisted registrant. Handles checkout link + email internally."""
-    next_candidate = get_next_waitlisted(conn)
-    if next_candidate is None:
+    next_reg = get_next_waitlisted(conn)
+    if next_reg is None:
         return
 
     cursor = conn.execute(
         "UPDATE registrants SET status = 'pending_payment', queue_position = NULL "
         "WHERE id = ? AND status = 'waitlisted'",
-        (next_candidate["id"],),
+        (next_reg["id"],),
     )
     if cursor.rowcount == 0:
         return  # Another promotion claimed it
 
-    promoted = conn.execute(
-        "SELECT id, email FROM registrants WHERE id = ?", (next_candidate["id"],)
-    ).fetchone()
-
-    if promoted is None:
-        return
-
-    conn.commit()
-
-    checkout_url, order_id = create_checkout_link(promoted["id"], promoted["email"])
-    conn.execute(
-        "UPDATE registrants SET square_order_id = ? WHERE id = ?",
-        (order_id, promoted["id"])
-    )
-    conn.commit()
-
-    sync_registrant(promoted["id"])
-    threading.Thread(
-        target=send_email,
-        args=(promoted["id"], "waitlist_promotion"),
-        daemon=True
-    ).start()
+    try:
+        checkout_url, order_id = create_checkout_link(next_reg["id"], next_reg["email"])
+        conn.execute(
+            "UPDATE registrants SET square_order_id = ? WHERE id = ?",
+            (order_id, next_reg["id"]),
+        )
+        conn.commit()
+        sync_registrant(next_reg["id"])
+        threading.Thread(
+            target=send_email,
+            args=(next_reg["id"], "waitlist_promotion"),
+            daemon=True,
+        ).start()
+    except Exception:
+        conn.rollback()
+        raise

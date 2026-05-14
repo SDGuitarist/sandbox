@@ -87,6 +87,7 @@ def _handle_payment_updated(conn, event):
             square_payment_id=payment["id"],
             paid_at=datetime.now(timezone.utc).isoformat(),
         )
+        conn.commit()
         sync_registrant(registrant_id)
         threading.Thread(
             target=send_email, args=(registrant_id, "confirmation"), daemon=True
@@ -104,6 +105,7 @@ def _handle_payment_updated(conn, event):
 
         registrant_id = registrant["id"]
         update_status(conn, registrant_id, "payment_failed")
+        conn.commit()
         sync_registrant(registrant_id)
         threading.Thread(
             target=send_email, args=(registrant_id, "payment_failed"), daemon=True
@@ -126,5 +128,6 @@ def _handle_refund_created(conn, event):
         "cancelled",
         cancelled_at=datetime.now(timezone.utc).isoformat(),
     )
+    conn.commit()
     sync_registrant(registrant_id)
     try_promote_next(conn)

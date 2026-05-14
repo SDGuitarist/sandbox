@@ -111,53 +111,59 @@ def register():
                 }), 409
 
             registrant_id = existing["id"]
-            paid_count = get_paid_count(conn)
 
-            if paid_count < capacity:
-                update_status(conn, registrant_id, "pending_payment")
-                try:
-                    checkout_url, order_id = create_checkout_link(registrant_id, email)
-                except Exception as e:
-                    logger.error(f"Square checkout creation failed: {e}")
-                    return jsonify({"error": "Payment link creation failed", "code": "INTERNAL_ERROR"}), 500
-                conn.execute(
-                    "UPDATE registrants SET name=?, role=?, square_order_id=? WHERE id=?",
-                    (name, role, order_id, registrant_id),
-                )
-                conn.commit()
-                sync_registrant(registrant_id)
-                return jsonify({
-                    "registrant_id": registrant_id,
-                    "status": "pending_payment",
-                    "checkout_url": checkout_url,
-                    "queue_position": None,
-                }), 201
-            else:
-                update_status(conn, registrant_id, "waitlisted")
-                conn.execute(
-                    "UPDATE registrants SET name=?, role=? WHERE id=?",
-                    (name, role, registrant_id),
-                )
-                conn.commit()
-                updated = get_registrant(conn, registrant_id)
-                threading.Thread(
-                    target=send_email,
-                    args=(registrant_id, "waitlist_confirmation"),
-                    daemon=True,
-                ).start()
-                sync_registrant(registrant_id)
-                return jsonify({
-                    "registrant_id": registrant_id,
-                    "status": "waitlisted",
-                    "checkout_url": None,
-                    "queue_position": updated["queue_position"],
-                }), 201
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                paid_count = get_paid_count(conn)
 
-        paid_count = get_paid_count(conn)
+                if paid_count < capacity:
+                    update_status(conn, registrant_id, "pending_payment")
+                    try:
+                        checkout_url, order_id = create_checkout_link(registrant_id, email)
+                    except Exception as e:
+                        conn.rollback()
+                        logger.error(f"Square checkout creation failed: {e}")
+                        return jsonify({"error": "Payment link creation failed", "code": "INTERNAL_ERROR"}), 500
+                    conn.execute(
+                        "UPDATE registrants SET name=?, role=?, square_order_id=? WHERE id=?",
+                        (name, role, order_id, registrant_id),
+                    )
+                    conn.commit()
+                    sync_registrant(registrant_id)
+                    return jsonify({
+                        "registrant_id": registrant_id,
+                        "status": "pending_payment",
+                        "checkout_url": checkout_url,
+                        "queue_position": None,
+                    }), 201
+                else:
+                    update_status(conn, registrant_id, "waitlisted")
+                    conn.execute(
+                        "UPDATE registrants SET name=?, role=? WHERE id=?",
+                        (name, role, registrant_id),
+                    )
+                    conn.commit()
+                    updated = get_registrant(conn, registrant_id)
+                    threading.Thread(
+                        target=send_email,
+                        args=(registrant_id, "waitlist_confirmation"),
+                        daemon=True,
+                    ).start()
+                    sync_registrant(registrant_id)
+                    return jsonify({
+                        "registrant_id": registrant_id,
+                        "status": "waitlisted",
+                        "checkout_url": None,
+                        "queue_position": updated["queue_position"],
+                    }), 201
+            except Exception:
+                conn.rollback()
+                raise
+
         rid = register_attendee(conn, name, email, role)
+        registrant = get_registrant(conn, rid)
 
-        if paid_count < capacity:
-            update_status(conn, rid, "pending_payment")
+        if registrant["status"] == "pending_payment":
             try:
                 checkout_url, order_id = create_checkout_link(rid, email)
             except Exception as e:
@@ -175,9 +181,7 @@ def register():
                 "checkout_url": checkout_url,
                 "queue_position": None,
             }), 201
-        else:
-            update_status(conn, rid, "waitlisted")
-            registrant = get_registrant(conn, rid)
+        elif registrant["status"] == "waitlisted":
             threading.Thread(
                 target=send_email,
                 args=(rid, "waitlist_confirmation"),
