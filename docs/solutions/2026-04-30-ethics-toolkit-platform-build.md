@@ -105,7 +105,7 @@ Phase 2.0 (Zod schemas + fixture tests) runs before any tool agent starts. This 
 
 ## Deferred Items
 
-- P1 issues from review (16 items): RLS tightening, seed idempotency, FK cascading, facilitator login rate limiting, unsubscribe token signing, mock deduplication, API shape standardization
+- ~~P1 issues from review (16 items)~~: **All resolved** across 3 commits (524bfe2, 5a95867, 2476db0). See [Review Fix Cycle](2026-05-06-ethics-toolkit-review-fix-cycle.md).
 - P2 issues from review (15 items): `as any` cleanup, security headers, quote style, button styling
 - Pre-workshop gate: load test on Vercel, iPhone Safari + Android Chrome testing, projector setup
 - Post-launch: Square webhook automation, behavior-triggered email, festival auto-scraping
