@@ -174,6 +174,17 @@ Read the plan's YAML frontmatter. Check the `swarm:` field.
 
 ## Solo Path
 
+### Step 7s.0: Generate Run ID and Reports Directory
+
+Same logic as swarm Steps 8w/9w. Count the files in `docs/solutions/` and add
+1. Zero-pad to 3 digits. This is the `run-id` (e.g., 21 solutions = run `022`).
+
+Create `docs/reports/<run-id>/` for this run's reports. Do NOT delete prior
+run directories -- they serve as audit trail.
+
+This ensures solo runs have the same canonical report location as swarm runs,
+so the self-audit step in the Shared Tail works identically for both paths.
+
 ### Step 7s: Work
 
 Run `/workflows:work`
@@ -437,6 +448,7 @@ Fill in the remaining sections of BUILD_TRACKING.md:
 2. FAILURES: one block per P0/P1 finding with failure class reference
 3. RUN_METRICS: final build metrics table + agent performance summary
 4. Lessons for Next Build: list what was added to agent-pitfalls.md
+5. Add a line to Run Info: `| Self-Audit | docs/reports/<run-id>/self-audit.md |`
 
 Commit BUILD_TRACKING.md with the final metrics.
 
@@ -449,6 +461,37 @@ Read BUILD_TRACKING.md and verify these sections are non-empty:
 
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty. Fill it before marking done."`
+
+### Self-Audit (MANDATORY -- DO NOT SKIP)
+
+**WARNING: This is the final honesty gate. It catches documentation gaps,
+undisposed warnings, and false success claims before the run is marked done.**
+
+Use the **self-audit-reviewer** agent. Pass these six arguments:
+1. The run-id (from Step 8w for swarm, Step 7s.0 for solo)
+2. The reports directory path (`docs/reports/<run-id>/`)
+3. The plan document path
+4. The solution doc path (the file created during Compound)
+5. `BUILD_TRACKING.md`
+6. `HANDOFF.md`
+
+The agent writes `docs/reports/<run-id>/self-audit.md`. Read that file and
+check STATUS.
+
+- If STATUS: PASS -- proceed to the self-audit verification gate.
+- If STATUS: FAIL -- the agent could not produce a complete report. FAIL the
+  run with: `"SELF-AUDIT AGENT FAILED: <reason from agent output>"`
+
+### Verify Self-Audit (MANDATORY GATE)
+
+Run `/verify-self-audit <run-id> docs/reports/<run-id>/`
+
+This helper skill runs 8 hard gates on the self-audit report: report exists,
+WARN keys valid and dispositions correct, deferred items tracked by key in
+HANDOFF.md, source reconciliation complete, honest success claim, and
+section completeness (What Was Missed, skeptical questions, promotions).
+
+Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.
 
 ### Done
 

@@ -37,6 +37,7 @@ Every completed autopilot run must produce:
 2. **Solution doc** -- Written during the compound phase to `docs/solutions/` with YAML frontmatter.
 3. **Learnings propagation** -- `/update-learnings-noninteractive` (autopilot) or `/update-learnings` (manual) must run and produce the "Learnings Propagated" summary table. Agent-pitfalls Update Log must have an entry for today's build.
 4. **HANDOFF.md** -- Updated with current project state, key artifacts, and next-session prompt.
+5. **Self-audit report** -- Written by the self-audit-reviewer agent to `docs/reports/<run-id>/self-audit.md`. Must include: final run status, WARN disposition table (every WARN disposed), "What Was Missed" analysis, skeptical reviewer Q&A, and promotion decisions. Every DEFERRED disposition must have a matching HANDOFF.md entry.
 
 Missing any of these artifacts fails the run.
 
@@ -52,6 +53,7 @@ Missing any of these artifacts fails the run.
 - If smoke tests fail after one retry, continue to review with the failure noted.
 - If the spec contract check fails after one retry, abort the pipeline.
 - If any mandatory tail artifact is missing, fail the run -- do not silently succeed.
+- If the self-audit report has undisposed WARNs or claims PIPELINE_PASS with deferred risks, fail the run.
 
 ## Review Expectations
 
@@ -66,7 +68,7 @@ Not all autonomy controls live in this repo. Know what is local and what is glob
 **Project-local (this repo owns these):**
 - `.claude/settings.local.json` -- project permissions
 - `.claude/skills/` -- autopilot, resolve-todos, and any future skills
-- `.claude/agents/` -- swarm and verification agents
+- `.claude/agents/` -- swarm, verification, and self-audit agents
 - `.claude/agent-memory/` -- per-agent persistent state
 - This file (`CLAUDE.md`) -- operating contract
 
