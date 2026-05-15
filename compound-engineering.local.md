@@ -1,25 +1,24 @@
-# Review Context -- Sandbox (Workshop Registration Hub)
+# Review Context -- Sandbox (Autonomy Hardening)
 
 ## Risk Chain
 
-**Brainstorm risk:** Cross-stack API contract between Flask and Express is novel -- no prior swarm build has bridged two stacks.
+**Brainstorm risk:** Autopilot skill complexity -- all enforcement in one 413-line file.
 
-**Plan mitigation:** Detailed cross-stack API contract with endpoint table, response shapes, registrant object shape, error codes. Express proxy prescribed as http-proxy-middleware with exact middleware order.
+**Plan mitigation:** Extract verification gates to a helper skill if the skill exceeds ~500 lines.
 
-**Work risk (from Feed-Forward):** http-proxy-middleware body parsing order interaction untested. Exact field name consumption by Express not specified.
+**Work risk (from Feed-Forward):** Self-audit agent quality -- whether "What Was Missed" and "Skeptical Questions" are consistently substantive.
 
-**Review resolution:** 30 findings from 4 agents (8 P1, 12 P2, 8 P3). Top findings: transaction safety (4 related P1s), admin dashboard field name mismatches, Helmet CSP blocking scripts, timing-vulnerable password comparison.
+**Review resolution:** 3 Codex rounds found 9 issues (2H, 2M, 1L + 4 round 2). Key fixes: stable WARN keys replaced prose matching, current-run scoping excluded pre-existing debt, gate logic extracted to verify-self-audit helper skill. All issues resolved. LGTM round 3.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/models.py | Removed conn.commit() from update_status() | All callers must now commit explicitly |
-| app/waitlist/routes.py | try_promote_next defers commit, rolls back on Square failure | Square API timeout could leave uncommitted state |
-| app/registration/routes.py | Re-registration wrapped in BEGIN IMMEDIATE, reads status from DB | Complex branching on duplicate email statuses |
-| frontend/app.js | Helmet CSP configured, compression added, proxy at root | CSP directives may need tuning for production |
-| app/email/engine.py | DB connection separated from network I/O | 3-phase pattern must be maintained on future changes |
+| .claude/agents/self-audit-reviewer.md | New -- post-run self-audit agent | WARN scope boundary (lines 40-61), key format, section completeness |
+| .claude/skills/verify-self-audit/SKILL.md | New -- 8 hard gates | Gate 4 solo edge case (sparse dir), Gate 6 leniency |
+| .claude/skills/autopilot/SKILL.md | +43 lines (498 total) | Solo run-id (Step 7s.0), delegation to helper skill |
+| CLAUDE.md | +3 lines | Self-audit as required artifact #5 |
 
 ## Plan Reference
 
-`docs/plans/2026-05-13-feat-workshop-registration-hub-plan.md`
+`docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md`
