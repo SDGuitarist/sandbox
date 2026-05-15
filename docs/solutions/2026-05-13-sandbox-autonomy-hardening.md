@@ -1,10 +1,10 @@
 ---
 title: "Sandbox Autonomy Hardening"
 date: 2026-05-13
-tags: [autonomy, control-plane, autopilot, agent-pitfalls, spec-gate]
+tags: [autonomy, control-plane, autopilot, agent-pitfalls, spec-gate, self-audit]
 module: .claude/skills/autopilot
-problem: "Autopilot tail steps were reminder-driven (skipped in 2/3 builds), control surface scope was undocumented, failure registry had duplicate IDs, and no pre-swarm spec consistency gate existed."
-lesson: "Enforcement belongs in the skill (the execution engine), not in prose instructions or global hooks. Structural analysis beats single behavioral tests for proving non-deterministic interactions."
+problem: "Autopilot tail steps were reminder-driven (skipped in 2/3 builds), control surface scope was undocumented, failure registry had duplicate IDs, no pre-swarm spec consistency gate existed, and no post-run self-audit verified the system's own documentation honesty."
+lesson: "Enforcement belongs in the skill (the execution engine), not in prose instructions or global hooks. Structural analysis beats single behavioral tests for proving non-deterministic interactions. Self-audit gates must use stable keys, scope WARNs to current-run artifacts only, and extract verification logic into helper skills when the host file crosses its complexity budget."
 severity: P1
 root_cause: "Four structural weaknesses: (1) FC11 -- learnings propagation was prose, not a gate. (2) No root operating contract separated local from global control surfaces. (3) Failure registry had duplicate FC13/FC14 from unsynchronized manual edits. (4) Spec contradictions could only be caught by humans post-assembly."
 origin_plan: docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md
@@ -71,44 +71,65 @@ Checks: schema vs route names, SQL vs app types, export vs import references, mo
 
 **Key fix during review:** Original implementation had a sequencing bug (gate ran before run-id existed) and a tool mismatch (agent had read-only tools but needed to write the report). Both fixed in the review cycle.
 
+### Phase 2b: Post-Run Self-Audit Layer (added 2026-05-14)
+
+Added a self-audit step to the autopilot shared tail after BUILD_TRACKING verification and before Done. Three components:
+
+**1. self-audit-reviewer agent** (215 lines): Reads all run artifacts, collects WARNs scoped to current-run sources only, assigns stable keys (`<run-id>-W<N>`), writes a canonical report with 7 sections: Final Run Status, WARN Disposition Table, Source Reconciliation, What Was Missed, Skeptical Reviewer Questions, Promotion Decisions, Unresolved Risk.
+
+**2. verify-self-audit helper skill** (176 lines): 8 hard gates run after the agent produces its report. Extracted from the autopilot skill because Phase 2's gates pushed it past the 500-line complexity threshold.
+
+**3. Solo path run-id** (Step 7s.0): Solo runs now generate a run-id and create `docs/reports/<run-id>/` so both paths share the same canonical report location.
+
+**Key design decisions from 3 Codex review rounds:**
+- WARNs scoped to current-run artifacts only (HANDOFF.md "Review Fixes Pending" is current-run; "Deferred Items (from prior work)" is excluded). Prevents clean runs from being downgraded by pre-existing project debt.
+- Stable `<run-id>-W<N>` keys shared between self-audit.md and HANDOFF.md. Gate 3 greps for the exact key string instead of prose matching.
+- Source Reconciliation table proves the agent scanned every report file. Gate 4 cross-checks the table against the actual directory listing.
+- Gate 5 checks both directions: PIPELINE_PASS must have no deferred items; PIPELINE_PASS_WITH_DEFERRED_RISK must have a non-empty Unresolved Risk section.
+- Gate 6 enforces section completeness: What Was Missed exists, at least 3 skeptical questions, at least 1 promotion decision row.
+
 ## What Worked
 
 | Pattern | Evidence |
 |---------|----------|
-| Enforcement in the skill, not in prose | 4 gates added, all scoped to autopilot skill only -- manual workflows unaffected |
+| Enforcement in the skill, not in prose | 4 tail gates + 8 self-audit gates, all scoped to autopilot skill -- manual workflows unaffected |
 | Structural analysis over behavioral testing | Spike correctly identified non-deterministic interaction without burning an expensive autopilot run |
 | Freeze-and-assign for ID migration | Zero backward-compatibility breakage; all existing solution doc references (FC1, FC3, FC4, FC5, FC6, FC11) still valid |
-| Plan-then-review-then-fix cycle | Codex review caught 4 real issues (tool mismatch, sequencing bug, CLAUDE.md inaccuracy, spike/plan misalignment) |
-| Incremental commits | 6 commits, each under 100 lines changed, each independently reviewable |
+| Iterative Codex review cycle | 3 rounds on self-audit: round 1 found 5 issues (2 High), round 2 found 4 issues, round 3 LGTM. Each round made the gates more precise. |
+| Extract when complexity budget triggers | Autopilot skill hit 516 lines; extracted verify-self-audit helper skill, brought it to 498 |
+| Stable keys over prose matching | `<run-id>-W<N>` keys eliminated false positives from wording drift between self-audit and HANDOFF.md |
+| Current-run scoping | Excluding pre-existing HANDOFF debt from WARN collection prevents clean builds from inheriting prior debt |
 
 ## What to Watch
 
 | Risk | Status | Mitigation |
 |------|--------|------------|
-| Autopilot skill complexity | 455 lines (45 under 500-line threshold) | Measure after each future phase; extract verification gates to helper skill if threshold crossed |
+| Autopilot skill complexity | 498 lines (extraction triggered at 516, brought under 500) | verify-self-audit helper absorbed the overflow. Future additions may need further extraction. |
 | Path B duplication | 292 lines duplicate global update-learnings Steps 0-6 | Deliberate technical debt; future plan should add `--no-prompt` flag to global command |
-| Spec consistency gate untested in live swarm | Agent exists, sequencing verified, but no real swarm run yet | Next swarm build is the real test; seeded contradiction test is prescribed in verification plan |
-| spec-contract-checker has same tool mismatch | Pre-existing issue, out of scope | Flag for future fix |
+| WARN scope coupled to HANDOFF section names | Agent references exact names "Review Fixes Pending (P2)" and "Deferred Items (from prior work)" | If HANDOFF.md is reformatted, update agent-reviewer lines 41/50 |
+| Gate 6 "What Was Missed" check is lenient | Presence check only; rubber-stamp "no omissions found" passes | Acceptable: external gates catch structure, agent judgment handles content quality |
+| Self-audit untested in live build | Agent + gates exist, 3 Codex reviews passed, but no real autopilot run yet | Next autopilot build is the real test |
 
 ## Risk Resolution
 
 | Flagged Risk | Status | Resolution |
 |-------------|--------|------------|
-| Autopilot skill complexity (Feed-Forward "least confident") | Controlled | Skill grew from 412 to 455 lines (+43). Well under 500-line threshold. Reordering during review fix actually reduced by 1 line. |
+| Autopilot skill complexity (Feed-Forward "least confident") | Resolved | Skill hit 516 lines when self-audit gates were inlined. Plan's mitigation triggered: extracted verify-self-audit helper skill (176 lines). Autopilot now 498 lines. |
 | Over-hardening manual workflows | Resolved | All gates scoped to autopilot skill only. Hooks remain reminders. Manual `/update-learnings` unchanged. |
 | Global blast radius | Resolved | Only agent-pitfalls.md edited globally (additive). Global commands, hooks, settings verified untouched via md5/mtime checks. |
 | Dual-source-of-truth | Resolved | No JSON manifest created. BUILD_TRACKING.md remains the single tracking artifact. |
+| False-positive gate risk (self-audit) | Resolved | 3 Codex rounds: (1) stable keys replaced prose matching, (2) current-run scoping excluded pre-existing debt, (3) Gate 2 validates key format/disposition enum. |
 
 ## Stats
 
-- **Commits:** 6 (5 work + 1 review fix)
-- **Files changed:** 6 (1 new CLAUDE.md, 1 new skill, 1 new agent, 1 modified skill, 1 spike report, 1 plan)
-- **Lines added:** 539 net
-- **Review findings:** 4 from Codex (all fixed), 0 on second pass
+- **Commits:** 7 (5 work + 1 review fix + 1 self-audit layer)
+- **Files changed:** 8 (1 new CLAUDE.md, 2 new skills, 2 new agents, 1 modified skill, 1 spike report, 1 plan)
+- **Lines added:** 976 net (539 original + 437 self-audit layer)
+- **Review findings:** Phases 1-4: 4 from Codex (all fixed). Self-audit: 5 round 1 + 4 round 2 + LGTM round 3.
 - **Global file edits:** 1 (agent-pitfalls.md, additive only)
 
 ## Feed-Forward
 
-- **Hardest decision:** Using structural analysis instead of a behavioral dry run for the Phase 2 spike. The plan originally prescribed a live autopilot build, but the structural evidence (FC11 history + competing instructions + statistical insignificance of a single run) was stronger than any single behavioral test. Updated the plan to accept this standard.
-- **Rejected alternatives:** (1) Editing the global `update-learnings` command -- removed from the plan because it contradicted the "no global command edits" constraint. (2) Inlining Steps 0-6 into the autopilot skill -- rejected because it would push the skill past 600 lines. (3) Shifting duplicate FC IDs -- rejected because it breaks historical references. (4) Adding project-local hooks -- deferred because Claude Code doesn't currently support them and the autopilot skill is the right enforcement point.
-- **Least confident:** Whether the 292-line duplication in `update-learnings-noninteractive` will diverge from the global command over time. If the global command adds new propagation targets, the sandbox-local copy won't pick them up automatically. The correct future fix is adding a `--no-prompt` flag to the global command, not maintaining two copies indefinitely.
+- **Hardest decision:** Using structural analysis instead of a behavioral dry run for the Phase 2 spike. The plan originally prescribed a live autopilot build, but the structural evidence (FC11 history + competing instructions + statistical insignificance of a single run) was stronger than any single behavioral test. For the self-audit, the hardest call was scoping WARNs to current-run only -- it required 3 Codex rounds to get the boundary right (pre-existing HANDOFF debt was contaminating clean builds).
+- **Rejected alternatives:** (1) Editing the global `update-learnings` command -- contradicted "no global edits" constraint. (2) Inlining Steps 0-6 into the autopilot skill -- would push past 600 lines. (3) Shifting duplicate FC IDs -- breaks historical references. (4) Prose matching for deferred items between self-audit and HANDOFF -- replaced by stable `<run-id>-W<N>` keys after Codex round 1 found it was a false-positive risk. (5) Keeping all 8 self-audit gates inline in the autopilot skill -- extraction triggered by the plan's own 500-line mitigation.
+- **Least confident:** Whether the self-audit agent will produce consistently high-quality "What Was Missed" and "Skeptical Questions" sections across varying build complexity. Gate 6 checks presence but not substance. The first few real builds will reveal whether the agent's judgment is reliable or whether tighter structural checks are needed.

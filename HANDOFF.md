@@ -1,25 +1,27 @@
 # HANDOFF -- Sandbox
 
-**Date:** 2026-05-13
+**Date:** 2026-05-15
 **Branch:** master
-**Phase:** Compound complete -- Workshop Registration Hub build finished
+**Phase:** Compound complete -- Autonomy Hardening plan fully implemented
 
 ## Current State
 
-Workshop Registration Hub build (run 042) complete. 8-agent cross-stack swarm (Flask + Express), 35 files, ~1,750 lines. All verification gates passed. Review found 30 issues (8 P1, 12 P2, 8 P3); all P1s fixed, 4 P2s fixed. 3 new failure classes added to agent-pitfalls.md. Learnings propagated.
+Sandbox Autonomy Hardening plan (docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md) fully implemented across all 4 phases + self-audit extension. The autopilot pipeline now has: root operating contract (CLAUDE.md), hardened tail with artifact gates, normalized failure registry (FC22/FC23 assigned, semantic slugs, uniqueness gate), pre-swarm spec consistency gate, and a post-run self-audit layer with 8 hard verification gates.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-05-13-workshop-registration-hub-brainstorm.md |
-| Plan (deepened + converged) | docs/plans/2026-05-13-feat-workshop-registration-hub-plan.md |
-| Reports | docs/reports/042/ (ownership-gate, contract-check, smoke-test, spec-consistency-check) |
-| Solution | docs/solutions/2026-05-13-workshop-registration-hub-swarm-build.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
+| Plan | docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md |
+| Solution | docs/solutions/2026-05-13-sandbox-autonomy-hardening.md |
+| Root Contract | CLAUDE.md |
+| Self-Audit Agent | .claude/agents/self-audit-reviewer.md |
+| Verify Self-Audit Skill | .claude/skills/verify-self-audit/SKILL.md |
+| Spike Report | docs/reports/spike-update-learnings-noninteractive.md |
 
 ## Review Fixes Pending (P2)
 
+From Workshop Registration Hub (run 042) -- still pending:
 1. Admin brute-force protection (rate limiting on admin endpoints)
 2. CSRF protection on registration form
 3. Send-reminders CLI parallelization (ThreadPoolExecutor)
@@ -38,15 +40,18 @@ Workshop Registration Hub build (run 042) complete. 8-agent cross-stack swarm (F
 
 ## Three Questions
 
-1. **Hardest decision?** Whether to run Agent 9 (integration-wiring) in a worktree or defer to post-assembly. Deferred -- spec-contract-checker and assembly-fix agents served the same purpose.
-2. **What was rejected?** Running agents in phased order (1, then 2-6, then 7-8) -- launched all 8 in parallel since worktrees provide isolation.
-3. **Least confident about?** Transaction boundary fixes. Removing conn.commit() from update_status() changes the contract for ALL callers. If any caller forgot to add their own commit, data silently stays uncommitted.
+1. **Hardest decision?** Scoping WARNs to current-run artifacts only. Required 3 Codex rounds to get the boundary right -- pre-existing HANDOFF debt was contaminating clean builds.
+2. **What was rejected?** Prose matching for deferred items (replaced by stable `<run-id>-W<N>` keys), inlining all 8 gates in the autopilot skill (extracted to helper skill at 516 lines).
+3. **Least confident about?** Whether the self-audit agent produces consistently high-quality "What Was Missed" and "Skeptical Questions" sections. Gate 6 checks presence but not substance. First real build will reveal.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md for context. This is the sandbox project.
-Workshop Registration Hub (run 042) is complete with 8 remaining P2 review items.
-Next: either fix P2s or move to a new build. The Square webhook
-signature key still needs ngrok setup for end-to-end payment testing.
+Autonomy Hardening plan is fully implemented. Self-audit layer is untested
+in a live build -- the next autopilot run (solo or swarm) will be the real
+validation.
+8 P2 review items from Workshop Registration Hub (run 042) are still pending.
+Next: either fix P2s, run a new build to validate the self-audit layer, or
+move to a different project.
 ```
