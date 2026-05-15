@@ -1,5 +1,5 @@
 import click
-from flask import current_app
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from app.db import get_db
@@ -30,6 +30,6 @@ def register_commands(app):
         if now >= WINDOW_7D and now < WINDOW_1D:
             templates.append("reminder_7d")
 
-        for row in registrants:
-            for template in templates:
-                send_email(row["id"], template)
+        tasks = [(row["id"], t) for row in registrants for t in templates]
+        with ThreadPoolExecutor(max_workers=5) as pool:
+            pool.map(lambda args: send_email(*args), tasks)

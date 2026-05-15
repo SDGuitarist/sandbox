@@ -7,15 +7,18 @@ from supabase import create_client
 
 logger = logging.getLogger(__name__)
 _client = None
+_client_lock = threading.Lock()
 
 
 def _get_client():
     global _client
     if _client is None:
-        url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_SERVICE_KEY")
-        if url and key:
-            _client = create_client(url, key)
+        with _client_lock:
+            if _client is None:
+                url = os.environ.get("SUPABASE_URL")
+                key = os.environ.get("SUPABASE_SERVICE_KEY")
+                if url and key:
+                    _client = create_client(url, key)
     return _client
 
 

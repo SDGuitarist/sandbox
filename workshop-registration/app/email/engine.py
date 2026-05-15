@@ -1,3 +1,4 @@
+import html
 import os
 import time
 import logging
@@ -145,7 +146,7 @@ def send_email(registrant_id: int, template_type: str) -> bool:
 
         template = TEMPLATES[template_type]
         variables = {
-            "name": reg["name"],
+            "name": html.escape(reg["name"]),
             "workshop_date": WORKSHOP_DATE,
             "time": WORKSHOP_TIME,
             "location": WORKSHOP_LOCATION,

@@ -4,8 +4,8 @@ import hmac
 import io
 import os
 from flask import Blueprint, Response, jsonify, make_response, request
+from app import limiter
 from app.db import get_db
-from app.models import get_paid_count
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
@@ -43,6 +43,7 @@ def require_admin(req):
 
 
 @admin_bp.route("/registrants")
+@limiter.limit("10 per minute")
 def list_registrants():
     auth_error = require_admin(request)
     if auth_error:
@@ -52,9 +53,9 @@ def list_registrants():
 
     with get_db() as conn:
         rows = conn.execute("SELECT * FROM registrants ORDER BY id").fetchall()
-        paid_count = get_paid_count(conn)
 
     registrants = []
+    paid_count = 0
     waitlist_count = 0
     for row in rows:
         registrant = {
@@ -70,7 +71,9 @@ def list_registrants():
             "paid_at": row["paid_at"],
         }
         registrants.append(registrant)
-        if row["status"] == "waitlisted":
+        if row["status"] == "paid":
+            paid_count += 1
+        elif row["status"] == "waitlisted":
             waitlist_count += 1
 
     return jsonify({
@@ -83,6 +86,7 @@ def list_registrants():
 
 
 @admin_bp.route("/stats")
+@limiter.limit("10 per minute")
 def stats():
     auth_error = require_admin(request)
     if auth_error:
@@ -112,6 +116,7 @@ def stats():
 
 
 @admin_bp.route("/export")
+@limiter.limit("10 per minute")
 def export_csv():
     auth_error = require_admin(request)
     if auth_error:

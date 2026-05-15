@@ -28,6 +28,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 square_client = Square(
     token=os.environ.get("SQUARE_ACCESS_TOKEN"),
     environment=SquareEnvironment.SANDBOX,
+    timeout=10,
 )
 
 
@@ -55,6 +56,11 @@ def create_checkout_link(registrant_id: int, email: str) -> tuple[str, str]:
 @registration_bp.route("/register", methods=["POST"])
 @limiter.limit("5 per minute")
 def register():
+    origin = request.headers.get("Origin", "")
+    allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+    if origin and origin not in allowed_origins:
+        return jsonify({"error": "Forbidden", "code": "CSRF_REJECTED"}), 403
+
     data = request.get_json(silent=True)
     if not data:
         return jsonify({"error": "Request body must be JSON", "code": "VALIDATION_FAILED"}), 400
