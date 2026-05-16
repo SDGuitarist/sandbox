@@ -349,7 +349,7 @@ def send_instagram_dm(page, profile_url, message):
 # Main send loop
 # ---------------------------------------------------------------------------
 
-def run_send(campaign_id, limit, db_path=DB_PATH):
+def run_send(campaign_id, limit, db_path=DB_PATH, headless=True):
     """Send approved messages via Playwright browser automation.
 
     Requires: at least one risk-acknowledged account, approved messages in queue.
@@ -361,7 +361,7 @@ def run_send(campaign_id, limit, db_path=DB_PATH):
         return
 
     try:
-        _run_send_inner(campaign_id, limit, db_path)
+        _run_send_inner(campaign_id, limit, db_path, headless=headless)
     finally:
         release_lock()
         # Clean up stop file if it was used
@@ -369,7 +369,173 @@ def run_send(campaign_id, limit, db_path=DB_PATH):
             STOPFILE.unlink()
 
 
-def _run_send_inner(campaign_id, limit, db_path):
+def run_send_all(limit, db_path=DB_PATH, headless=True):
+    """Send approved messages across ALL campaigns in one run.
+
+    Pulls approved messages from every campaign, sends up to limit total.
+    One command, walk away.
+    """
+    if not acquire_lock():
+        print("Another send session is running. Remove ~/.browser-sender.lock if stale.")
+        return
+
+    try:
+        _run_send_all_inner(limit, db_path, headless=headless)
+    finally:
+        release_lock()
+        if STOPFILE.exists():
+            STOPFILE.unlink()
+
+
+def _run_send_all_inner(limit, db_path, headless=True):
+    """Inner send-all loop (lockfile already acquired)."""
+    from playwright.sync_api import sync_playwright
+
+    check_cooldown_expired(db_path)
+
+    # Pull approved messages across ALL campaigns
+    with get_db(db_path) as conn:
+        rows = conn.execute(
+            "SELECT oq.lead_id, oq.campaign_id, oq.full_message, "
+            "l.name, l.profile_url "
+            "FROM outreach_queue oq "
+            "JOIN leads l ON oq.lead_id = l.id "
+            "WHERE oq.status = 'approved' "
+            "ORDER BY oq.campaign_id, oq.id "
+            "LIMIT ?",
+            (limit,),
+        ).fetchall()
+
+    if not rows:
+        print("No approved messages to send across any campaign.")
+        return
+
+    print(f"Found {len(rows)} approved messages across all campaigns.\n")
+
+    # GO/NO-GO
+    test_account = get_active_account("facebook", db_path)
+    if not test_account:
+        test_account = get_active_account("instagram", db_path)
+    if not test_account:
+        print("No risk-acknowledged accounts available.")
+        print("Run: python run.py account confirm-risk <name>")
+        return
+
+    should_stop = setup_kill_switch()
+    delay = AdaptiveDelay()
+
+    sent_count = 0
+    skipped_count = 0
+    failed_count = 0
+    active_browsers = {}
+
+    try:
+        pw = sync_playwright().start()
+
+        for i, row in enumerate(rows):
+            if should_stop():
+                print("\nStopping gracefully...")
+                break
+
+            lead_id = row["lead_id"]
+            campaign_id = row["campaign_id"]
+            lead_name = row["name"][:30]
+            profile_url = row["profile_url"]
+            message = row["full_message"]
+
+            platform = detect_platform(profile_url) if profile_url else None
+            if not platform:
+                print(f"  {i+1}/{len(rows)} {lead_name}: no valid profile URL, skipping")
+                skip_dm_restricted(campaign_id, lead_id, db_path)
+                skipped_count += 1
+                continue
+
+            account = get_active_account(platform, db_path)
+            if not account:
+                print(f"\nNo eligible account for {platform}. Stopping.")
+                break
+
+            account_id = account["id"]
+
+            if account_id not in active_browsers:
+                profile_dir = account["profile_dir"]
+                Path(profile_dir).mkdir(parents=True, exist_ok=True)
+                context = pw.chromium.launch_persistent_context(
+                    user_data_dir=profile_dir,
+                    headless=headless,
+                    viewport={"width": 1280, "height": 800},
+                )
+                active_browsers[account_id] = context
+                mode = "headless" if headless else "headed"
+                print(f"  Opened {mode} browser for account '{account['name']}'")
+
+            context = active_browsers[account_id]
+            page = context.pages[0] if context.pages else context.new_page()
+
+            print(f"  {i+1}/{len(rows)} {lead_name} (c{campaign_id}, {platform})...",
+                  end=" ", flush=True)
+
+            if platform == "facebook":
+                result = send_facebook_dm(page, profile_url, message)
+            else:
+                result = send_instagram_dm(page, profile_url, message)
+
+            if result == "sent":
+                mark_sent_by_sender(campaign_id, lead_id, account_id, db_path)
+                increment_sends(account_id, db_path)
+                delay.on_success()
+                sent_count += 1
+                print("sent")
+            elif result == "dm_restricted":
+                skip_dm_restricted(campaign_id, lead_id, db_path)
+                skipped_count += 1
+                print("DM restricted")
+            else:
+                failed_count += 1
+                print("send failed")
+                delay.on_warning()
+
+            restriction = check_for_restriction(page, platform)
+            if restriction:
+                print(f"\n  RESTRICTION DETECTED: {restriction}")
+                print(f"  Marking account '{account['name']}' as restricted.")
+                mark_restricted(account_id, db_path)
+                if account_id in active_browsers:
+                    active_browsers[account_id].close()
+                    del active_browsers[account_id]
+                continue
+
+            if delay.should_batch_pause(sent_count):
+                pause = delay.batch_pause_duration
+                print(f"\n  Batch pause: {pause // 60} minutes...")
+                time.sleep(pause)
+
+            if i < len(rows) - 1:
+                wait = delay.next_delay()
+                print(f"  Waiting {wait:.0f}s...", end=" ", flush=True)
+                time.sleep(wait)
+                print("ok")
+
+    finally:
+        for ctx in active_browsers.values():
+            try:
+                ctx.close()
+            except Exception:
+                pass
+        try:
+            pw.stop()
+        except Exception:
+            pass
+
+    print(f"\n{'='*40}")
+    print(f"Send-all complete:")
+    print(f"  Sent:    {sent_count}")
+    print(f"  Skipped: {skipped_count}")
+    print(f"  Failed:  {failed_count}")
+    print(f"{'='*40}")
+
+
+def _run_send_inner(campaign_id, limit, db_path, headless=True):
     """Inner send loop (lockfile already acquired)."""
     from playwright.sync_api import sync_playwright
 
@@ -447,11 +613,12 @@ def _run_send_inner(campaign_id, limit, db_path):
                 Path(profile_dir).mkdir(parents=True, exist_ok=True)
                 context = pw.chromium.launch_persistent_context(
                     user_data_dir=profile_dir,
-                    headless=False,
+                    headless=headless,
                     viewport={"width": 1280, "height": 800},
                 )
                 active_browsers[account_id] = context
-                print(f"  Opened browser for account '{account['name']}'")
+                mode = "headless" if headless else "headed"
+                print(f"  Opened {mode} browser for account '{account['name']}'")
 
             context = active_browsers[account_id]
             page = context.pages[0] if context.pages else context.new_page()

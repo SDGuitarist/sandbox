@@ -1,72 +1,72 @@
-# Browser Outreach Sender -- Work Phase Handoff
+# Browser Outreach Sender -- Operational Ramp
 
-**Phase:** Work (Phase 1 of 4)
-**Date:** 2026-05-08
+**Phase:** Operational (all code phases complete)
+**Date:** 2026-05-14
 **Plan:** docs/plans/2026-05-08-feat-browser-outreach-sender-plan.md
 **Brainstorm:** docs/brainstorms/2026-05-08-browser-outreach-sender-brainstorm.md
 
+## Current State
+
+All 4 implementation phases are complete. The system is operational and has sent 82 messages (May 7-10). Sending has been idle since May 10.
+
+**Database snapshot (May 14):**
+- 4,198 total leads, 989 high-quality sendable (verified + quality >= 3)
+- 60 approved messages sitting unsent across wave2 campaigns
+- 20 needs_review messages awaiting manual triage
+- 82 sent, 226 skipped, 1 declined
+- 1 sender account ("personal"), 30/day cap, risk acknowledged
+
+**Deadline:** May 30 workshop (16 days). At 30/day with 1 account, max ~480 more sends. Need a second account to reach 1,000.
+
 ## Next Action
 
-Implement Phase 1: Foundation (Days 1-2).
+Resume daily sending operations. Follow the Daily Operational Playbook in the plan (Phase 4c).
 
 ## Prompt for New Session
 
-Read docs/plans/2026-05-08-feat-browser-outreach-sender-plan.md.
+Read docs/plans/2026-05-08-feat-browser-outreach-sender-plan.md (Phase 4c: Daily Operational Playbook).
 
-Implement Phase 1: Foundation (Days 1-2).
-
-**Scope:**
-1. Schema migration in db.py: _create_sender_accounts(), _migrate_needs_review_status(), restructure migrate_db() so sender migrations run independently
-2. account.py (new module): CRUD + state machine for sender_accounts table
-3. Account CLI in run.py: account add/list/login/confirm-risk/cooldown/disable/enable subcommands
-4. Playwright setup: Add playwright>=1.40 to requirements.txt, add ~/.browser-profiles/ to .gitignore
+Resume operational sending. The code is complete. Focus on:
+1. Send the 60 approved messages (`campaign send <id> --limit 30` per session)
+2. Run quality gate on campaigns with remaining drafts
+3. Force-approve or force-skip the 20 needs_review items
+4. Generate new drafts for wave2 campaigns with unqueued leads
+5. Consider adding a second sender account for throughput
 
 **Critical rules:**
-- NEVER run concurrent processes on leads.db (lost 1,093 leads TWICE previously)
-- Back up before migration -- WAL-safe via sqlite3.backup()
-- Pre-migration row count must equal post-migration row count (assert)
-- Commit each file separately (~50-100 lines each). Do NOT start Phase 2 (browser_sender.py) this session.
-- Follow existing patterns: _migrate_outreach_statuses() for table recreation, cmd_campaign() for CLI dispatch, get_db() context manager for DB access
-- All state transitions use atomic UPDATE WHERE status=X + rowcount > 0 assertion
+- NEVER run concurrent processes on leads.db
+- Always use `--limit` with campaign send (no unlimited sends)
+- Watch the headed browser during sends for restriction signals
+- If account gets restricted: `account cooldown personal --hours 48`
 
-**Key files to read first:**
-- docs/plans/2026-05-08-feat-browser-outreach-sender-plan.md (Phase 1 section, lines 98-333)
-- db.py (migration patterns, get_db context manager, _migrate_outreach_statuses)
-- run.py (CLI dispatch pattern, cmd_campaign subcommand structure, argparse subparsers)
-- campaign.py (atomic update pattern with WHERE + rowcount check, approve_message example)
-
-**Feed-Forward risk (from plan):**
-"Meta publishes no safe DM thresholds. Restriction signals must be discovered during spike test. Playwright selectors are fragile against Meta UI changes."
-
-This applies to Phase 2+. Phase 1 is schema/account setup and manual login only -- no automated sends yet.
-
-**Done when:**
-- db.py migrations complete with pre/post row count assertions
-- account.py module has all 10 functions (add, list, get_active, increment_sends, mark_restricted, set_cooldown, check_cooldown_expired, disable, enable, confirm_risk)
-- run.py account command group fully wired with help text
-- requirements.txt updated
-- .gitignore updated
-- First schema migration runs without error
-- Second migration run is idempotent (verified by print output)
-- All atomic UPDATEs in account.py use rowcount > 0 check
-
-## Solution Docs to Reference During Implementation
-
-- **Schema migration chains** (gigprep): key-existence checks, pre/post row count assertions
-- **Atomic claim** (gig-lead-responder): UPDATE WHERE status=X + rowcount > 0
-- **DB Safety** (memory): NEVER concurrent on leads.db. Back up before every op.
-- **Reliability hardening** (lead-scraper): inline retry, tier=-1 sentinel, never persist transient failures
+**Key commands:**
+```
+python run.py account list                          # check account status
+python run.py campaign status <id>                  # campaign metrics
+python run.py campaign queue <id> --status approved # see what's ready
+python run.py campaign send <id> --limit 30         # send a batch
+python run.py campaign gate <id>                    # verify drafts
+python run.py campaign queue <id> --status needs_review  # triage
+python run.py campaign force-approve <id> --lead <id>    # approve after review
+python run.py campaign force-skip <id> --lead <id>       # reject after review
+```
 
 ## Phase Sequence
 
 - [x] Brainstorm (2 Codex reviews, all blockers fixed)
 - [x] Plan (3 Codex reviews, all blockers fixed)
-- [ ] **Work Phase 1: Foundation** <-- YOU ARE HERE
-- [ ] Work Phase 2: Minimal Sender + Spike Test
-- [ ] Work Phase 3: Quality Gate
-- [ ] Work Phase 4: Full CLI Integration + Ramp
+- [x] Work Phase 1: Foundation (May 8)
+- [x] Work Phase 2: Minimal Sender + Spike Test (May 8-10, 82 sent)
+- [x] Work Phase 3: Quality Gate (May 8)
+- [x] Work Phase 4: Full CLI Integration + Ramp (May 8)
 - [ ] Review
 - [ ] Compound
+
+## Deferred Items
+
+- Add second sender account (needed for 1,000 target by May 30)
+- Haiku accuracy audit (plan says: after 50 AI-gated leads, spot-check 10 approved + 10 skipped)
+- AUTO_APPROVE_LOGIN_WALLED toggle (currently 0, switch to 1 after confirming <10% error rate on login-walled leads)
 
 ## Prior Handoff (Reliability Hardening -- 2026-05-06)
 

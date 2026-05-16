@@ -373,6 +373,10 @@ def cmd_workflow(args):
         _print_db_status()
         return
 
+    if action == "daily-send":
+        _workflow_daily_send(args)
+        return
+
     if action == "scrape-only":
         cmd_scrape(args)
         _print_db_status()
@@ -387,6 +391,75 @@ def cmd_workflow(args):
             run_gate(args.campaign_id, limit=args.gate_limit, force=args.force_gate)
         _print_db_status()
         return
+
+
+def _workflow_daily_send(args):
+    """One command: generate drafts, gate them, send approved. All campaigns."""
+    from campaign import generate_messages
+    from quality_gate import run_gate
+    from browser_sender import run_send_all
+
+    send_limit = args.send_limit
+    headless = not getattr(args, "headed", False)
+
+    # Get all active wave2 campaigns (the ones with target_date)
+    with get_db() as conn:
+        campaigns = conn.execute(
+            "SELECT id, name, segment_filter FROM campaigns "
+            "WHERE target_date IS NOT NULL ORDER BY id"
+        ).fetchall()
+
+    if not campaigns:
+        print("No campaigns found.")
+        return
+
+    # Step 1: Generate drafts for campaigns that have unqueued assigned leads
+    print("=" * 50)
+    print("STEP 1: Generating drafts for all campaigns")
+    print("=" * 50)
+    total_generated = 0
+    for c in campaigns:
+        count = generate_messages(c["id"], limit=args.generate_limit)
+        total_generated += count
+    print(f"\nGenerated {total_generated} new drafts total.\n")
+
+    # Step 2: Run quality gate on all drafts
+    print("=" * 50)
+    print("STEP 2: Running quality gate on all drafts")
+    print("=" * 50)
+    for c in campaigns:
+        with get_db() as conn:
+            draft_count = conn.execute(
+                "SELECT COUNT(*) FROM outreach_queue "
+                "WHERE campaign_id = ? AND status = 'draft' "
+                "AND gate_checked_at IS NULL",
+                (c["id"],),
+            ).fetchone()[0]
+        if draft_count > 0:
+            print(f"\nGating {c['name']} ({draft_count} drafts)...")
+            run_gate(c["id"])
+    print()
+
+    # Step 3: Send all approved messages
+    with get_db() as conn:
+        approved_count = conn.execute(
+            "SELECT COUNT(*) FROM outreach_queue WHERE status = 'approved'"
+        ).fetchone()[0]
+
+    print("=" * 50)
+    print(f"STEP 3: Sending approved messages ({approved_count} available, limit {send_limit})")
+    print("=" * 50)
+
+    if approved_count == 0:
+        print("No approved messages to send.")
+    else:
+        run_send_all(send_limit, headless=headless)
+
+    # Summary
+    print("\n" + "=" * 50)
+    print("DAILY SEND COMPLETE")
+    print("=" * 50)
+    _print_db_status()
 
 
 def _join_nl_text(text_parts) -> str:
@@ -885,7 +958,12 @@ def cmd_campaign(args):
         show_status(args.campaign_id)
     elif action == "send":
         from browser_sender import run_send
-        run_send(args.campaign_id, args.limit)
+        headless = not getattr(args, "headed", False)
+        run_send(args.campaign_id, args.limit, headless=headless)
+    elif action == "send-all":
+        from browser_sender import run_send_all
+        headless = not getattr(args, "headed", False)
+        run_send_all(args.limit, headless=headless)
     elif action == "gate":
         from quality_gate import run_gate
         run_gate(args.campaign_id, limit=getattr(args, "limit", 0) or 0,
@@ -1092,6 +1170,15 @@ def main():
     sp_send.add_argument("campaign_id", type=int)
     sp_send.add_argument("--limit", type=int, required=True,
                          help="Max messages to send (required for safety)")
+    sp_send.add_argument("--headed", action="store_true",
+                         help="Show browser window (default: headless)")
+
+    sp_send_all = campaign_sub.add_parser("send-all",
+                                          help="Send approved messages across ALL campaigns")
+    sp_send_all.add_argument("--limit", type=int, required=True,
+                             help="Max total messages to send (required for safety)")
+    sp_send_all.add_argument("--headed", action="store_true",
+                             help="Show browser window (default: headless)")
 
     sp_gate = campaign_sub.add_parser("gate", help="Run quality gate on draft messages")
     sp_gate.add_argument("campaign_id", type=int)
@@ -1162,6 +1249,17 @@ def main():
     sp_daily.add_argument("--gate-limit", type=int, default=0)
     sp_daily.add_argument("--skip-gate", action="store_true")
     sp_daily.add_argument("--force-gate", action="store_true")
+
+    sp_daily_send = workflow_sub.add_parser(
+        "daily-send",
+        help="One command: generate drafts, gate, send across all campaigns",
+    )
+    sp_daily_send.add_argument("--send-limit", type=int, default=30,
+                               help="Max messages to send (default: 30, your daily cap)")
+    sp_daily_send.add_argument("--generate-limit", type=int, default=50,
+                               help="Max drafts to generate per campaign (default: 50)")
+    sp_daily_send.add_argument("--headed", action="store_true",
+                               help="Show browser window (default: headless)")
 
     sp_scrape_only = workflow_sub.add_parser(
         "scrape-only",
