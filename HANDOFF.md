@@ -29,6 +29,7 @@ flow trace). All P1s fixed. 3 pre-existing issues deferred.
 - [043-W3] PATCH endpoint for editing overrides post-creation (next iteration)
 - [043-W4] `string | null` narrowing for description/intent/protecting (type-safety PR)
 - [043-W5] Route-level regression test (voice-merge-regression.test.ts) not built
+- [043-W6] Self-audit key format divergence (043-D vs 043-W, now reconciled)
 - Safety profiles (from prior work)
 - Project-local hooks (from prior work)
 - Square webhook signature key (from prior work)
