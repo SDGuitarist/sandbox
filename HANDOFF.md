@@ -30,7 +30,7 @@ Two features shipped this session:
 ## Deferred Items
 
 - [043-W1] Opening tag escaping in escape.ts (pre-existing gap, future hardening)
-- [043-W2] Unescaped draft/userResponse in council.ts fallback path (pre-existing, HIGH)
+- [043-W2] ~~Unescaped draft/userResponse in council.ts fallback path~~ RESOLVED (commit d2133bc, merged to WRC main)
 - [043-W3] PATCH endpoint for editing overrides post-creation (next iteration)
 - [043-W4] `string | null` narrowing for description/intent/protecting (type-safety PR)
 - [043-W5] Route-level regression test (voice-merge-regression.test.ts) not built
