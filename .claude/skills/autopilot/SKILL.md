@@ -489,7 +489,8 @@ Run `/verify-self-audit <run-id> docs/reports/<run-id>/`
 This helper skill runs 9 hard gates on the self-audit report: report exists,
 WARN keys valid and dispositions correct, deferred items tracked by key in
 HANDOFF.md, source reconciliation complete, honest success claim,
-section completeness (What Was Missed, skeptical questions, promotions).
+section completeness (What Was Missed, skeptical questions, promotions),
+and run quality grading (6 scored dimensions with artifact-backed evidence).
 
 Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.
 

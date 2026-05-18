@@ -257,7 +257,11 @@ Invalid: `the tests all passed` (no artifact keyword)
 | 5 | Honesty | X/5 | self-audit WARN table: all dispositions justified; status matches deferred count |
 | 6 | Compounding Quality | X/5 | agent-pitfalls Update Log: entry present; solution doc: reusable pattern documented |
 
-**Overall: X.X/5.0 ([A/B/C/D])**
+**Overall: X.X/5.0 (A)**
+
+The letter grade MUST be exactly one of `(A)`, `(B)`, `(C)`, or `(D)` —
+Gate 7d greps for the literal parenthesized letter. Use the thresholds
+below to determine which one to output.
 
 **Justification:** [2-3 sentences citing the strongest and weakest dimensions
 with specific artifact references. If the overall grade is A and any DEFERRED
