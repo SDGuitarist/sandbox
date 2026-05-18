@@ -31,5 +31,20 @@ def register_commands(app):
             templates.append("reminder_7d")
 
         tasks = [(row["id"], t) for row in registrants for t in templates]
+        if not tasks:
+            click.echo("No emails to send.")
+            return
+
+        sent = 0
+        failed = 0
         with ThreadPoolExecutor(max_workers=5) as pool:
-            pool.map(lambda args: send_email(*args), tasks)
+            futures = {pool.submit(send_email, rid, tmpl): (rid, tmpl) for rid, tmpl in tasks}
+            for future in futures:
+                try:
+                    if future.result():
+                        sent += 1
+                    else:
+                        failed += 1
+                except Exception:
+                    failed += 1
+        click.echo(f"Done: {sent} sent, {failed} failed out of {len(tasks)} total.")
