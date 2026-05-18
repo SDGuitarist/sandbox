@@ -37,7 +37,7 @@ Every completed autopilot run must produce:
 2. **Solution doc** -- Written during the compound phase to `docs/solutions/` with YAML frontmatter.
 3. **Learnings propagation** -- `/update-learnings-noninteractive` (autopilot) or `/update-learnings` (manual) must run and produce the "Learnings Propagated" summary table. Agent-pitfalls Update Log must have an entry for today's build.
 4. **HANDOFF.md** -- Updated with current project state, key artifacts, and next-session prompt.
-5. **Self-audit report** -- Written by the self-audit-reviewer agent to `docs/reports/<run-id>/self-audit.md`. Must include: final run status, WARN disposition table (every WARN disposed), "What Was Missed" analysis, skeptical reviewer Q&A, and promotion decisions. Every DEFERRED disposition must have a matching HANDOFF.md entry.
+5. **Self-audit report** -- Written by the self-audit-reviewer agent to `docs/reports/<run-id>/self-audit.md`. Must include: final run status, WARN disposition table (every WARN disposed), "What Was Missed" analysis, skeptical reviewer Q&A, promotion decisions, and Run Quality Grade (6 dimensions scored 1-5 with artifact-backed evidence). Every DEFERRED disposition must have a matching HANDOFF.md entry.
 
 Missing any of these artifacts fails the run.
 
@@ -54,6 +54,7 @@ Missing any of these artifacts fails the run.
 - If the spec contract check fails after one retry, abort the pipeline.
 - If any mandatory tail artifact is missing, fail the run -- do not silently succeed.
 - If the self-audit report has undisposed WARNs or claims PIPELINE_PASS with deferred risks, fail the run.
+- If the self-audit report claims an A quality grade while DEFERRED WARNs carry HIGH severity, the justification must contain `HIGH` and every such WARN's key. Gate 7f checks each DEFERRED+HIGH WARN independently and fails on the first missing key.
 
 ## Review Expectations
 

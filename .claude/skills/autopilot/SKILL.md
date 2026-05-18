@@ -486,9 +486,9 @@ check STATUS.
 
 Run `/verify-self-audit <run-id> docs/reports/<run-id>/`
 
-This helper skill runs 8 hard gates on the self-audit report: report exists,
+This helper skill runs 9 hard gates on the self-audit report: report exists,
 WARN keys valid and dispositions correct, deferred items tracked by key in
-HANDOFF.md, source reconciliation complete, honest success claim, and
+HANDOFF.md, source reconciliation complete, honest success claim,
 section completeness (What Was Missed, skeptical questions, promotions).
 
 Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.

@@ -188,7 +188,95 @@ For each unresolved risk:
 - **Severity for next session:** LOW / MEDIUM / HIGH
 ```
 
-### Step 5: Validate Your Own Report
+### Step 5: Score Run Quality
+
+After writing all sections above, add a `## Run Quality Grade` section at
+the end of the report (before Step 6 validation). This section is MANDATORY.
+
+Score each of these 6 dimensions from 1-5. For each score, cite 1-2 specific
+artifacts as evidence using the format below. Do not score from memory — grep
+or read the artifact to verify.
+
+| # | Dimension | What to Check | Evidence Source |
+|---|-----------|---------------|----------------|
+| 1 | Plan Adherence | Did all plan phases ship? Were required deliverables built? Deductions for skipped items. | Plan doc vs BUILD_TRACKING |
+| 2 | Review Responsiveness | Were P1s fixed? P2s addressed or justified? Was agent selection appropriate? | BUILD_TRACKING FAILURES + RUN_METRICS |
+| 3 | Risk Handling | Was Feed-Forward risk addressed? Were wrong-path recoveries fast? Check "What Was Missed" for FC26/FC27 proxy signals (see scoring guide below). | Plan Feed-Forward + solution doc Risk Resolution + "What Was Missed" section |
+| 4 | Documentation Quality | Were HANDOFF/solution/BUILD_TRACKING accurate on first pass? Key formats correct? Counts correct? | Cross-compare artifacts for internal consistency |
+| 5 | Honesty | Are WARN dispositions defensible? Does status claim match reality? No inflated claims? | WARN Disposition Table + Unresolved Risk section |
+| 6 | Compounding Quality | Did solution doc capture reusable lessons? Were pitfalls updated? Learnings propagated? | Solution doc + agent-pitfalls Update Log + HANDOFF |
+
+**Scoring scale:**
+- 5 = Exemplary (zero issues, proactive beyond requirements)
+- 4 = Strong (minor issues only, all requirements met)
+- 3 = Adequate (some gaps but nothing critical missed)
+- 2 = Below standard (significant gaps, required corrections)
+- 1 = Poor (major failures, multiple requirements missed)
+
+**Risk Handling scoring guide (dimension 3):**
+
+This dimension detects context waste and wrong-path recovery from artifacts.
+Apply these deductions:
+
+| Signal | Where to Find It | Deduction |
+|--------|------------------|-----------|
+| "What Was Missed" lists items the orchestrator failed to surface | This report, "What Was Missed" section | -1 per substantive miss |
+| FC26 pattern: comment/doc claims implementation that code doesn't have | Solution doc or review findings referencing FC26 | -1 per instance |
+| FC27 pattern: new code skips patterns present in neighboring files | Review findings referencing FC27 | -1 per instance |
+| Feed-Forward "least confident" item not addressed in solution doc | Plan Feed-Forward vs solution doc Risk Resolution | -1 |
+| Feed-Forward risk addressed but conclusion contradicts evidence | Plan vs solution doc vs review findings | -2 |
+
+Start at 5 and subtract. Floor is 1.
+
+**Evidence format (machine-checkable — Gate 7 validates this):**
+
+Each Evidence cell must contain one or more artifact references in this
+exact format: `<ARTIFACT> <detail-text>`, separated by `; ` when multiple.
+
+Rules:
+- Each reference MUST start with a recognized artifact keyword: BUILD_TRACKING,
+  HANDOFF, plan, solution doc, self-audit, or agent-pitfalls
+- Each reference MUST have detail text after the keyword (not just the keyword alone)
+- Multiple references are separated by `; ` (semicolon space)
+
+Valid: `BUILD_TRACKING FAILURES: 1 P1 fixed; plan Required Tests: 4 of 4 built`
+Invalid: `BUILD_TRACKING; plan` (keywords only, no detail)
+Invalid: `the tests all passed` (no artifact keyword)
+
+**Output format (exact shape — Gate 7 greps for these markers):**
+
+```markdown
+## Run Quality Grade
+
+| # | Dimension | Score | Evidence |
+|---|-----------|-------|----------|
+| 1 | Plan Adherence | X/5 | BUILD_TRACKING AGENT_STATUS: all phases shipped; plan Acceptance Tests: 6 of 7 verified |
+| 2 | Review Responsiveness | X/5 | BUILD_TRACKING FAILURES: 1 P1 fixed; BUILD_TRACKING RUN_METRICS: 0 P2 deferred |
+| 3 | Risk Handling | X/5 | plan Feed-Forward: risk addressed in solution doc Risk Resolution; self-audit What Was Missed: no FC26/FC27 signals |
+| 4 | Documentation Quality | X/5 | HANDOFF date correct; solution doc commit count matches BUILD_TRACKING |
+| 5 | Honesty | X/5 | self-audit WARN table: all dispositions justified; status matches deferred count |
+| 6 | Compounding Quality | X/5 | agent-pitfalls Update Log: entry present; solution doc: reusable pattern documented |
+
+**Overall: X.X/5.0 ([A/B/C/D])**
+
+**Justification:** [2-3 sentences citing the strongest and weakest dimensions
+with specific artifact references. If the overall grade is A and any DEFERRED
+WARNs have severity HIGH, this line MUST contain the literal string `HIGH`
+and EVERY such WARN's key (e.g., `043-W2`, `043-W5`). Gate 7f checks each
+DEFERRED+HIGH WARN independently and fails on the first missing key.
+Example: "Despite 043-W2 and 043-W5 carrying HIGH severity, the grade is
+justified because..."]
+```
+
+**Letter grade thresholds:** 4.5+ = A, 3.5+ = B, 2.5+ = C, below 2.5 = D
+
+**Integrity rule:** If the overall grade is A, Gate 7f iterates over every
+DEFERRED WARN with HIGH severity. For each one, the Justification line MUST
+contain both: (a) the literal string `HIGH` and (b) that WARN's specific key.
+Gate 7f fails on the first WARN whose key is missing from the Justification.
+A justification that addresses some risks but omits a key will fail.
+
+### Step 6: Validate Your Own Report
 
 Before finishing, check your report against these rules:
 
@@ -203,6 +291,21 @@ Before finishing, check your report against these rules:
 6. The "What Was Missed" section has substantive content (not a rubber stamp)
 7. At least 3 skeptical questions with honest, evidence-backed answers
 8. The Promotion Decisions table has at least one row (even if "Not promoted")
+9. The Run Quality Grade section passes all of these (mirroring Gate 7):
+   a. Section heading `## Run Quality Grade` exists
+   b. Table has exactly 6 data rows, each with a score in N/5 format
+      where N is 1-5
+   c. Each Evidence cell contains one or more `; `-separated segments.
+      Every segment starts with a recognized artifact keyword
+      (BUILD_TRACKING, HANDOFF, plan, solution doc, self-audit, or
+      agent-pitfalls) followed by non-whitespace detail text
+   d. An `**Overall:` line exists with a numeric score and letter grade
+      `(A)`, `(B)`, `(C)`, or `(D)`
+   e. A `**Justification:**` line exists with non-empty content
+   f. If the Overall line contains `(A)`, for EVERY DEFERRED WARN
+      with severity HIGH, the Justification line contains both the
+      literal string `HIGH` and that WARN's specific key. Check each
+      DEFERRED+HIGH WARN independently.
 
 If any check fails, fix your report before writing it.
 
