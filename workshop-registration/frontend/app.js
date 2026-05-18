@@ -17,6 +17,7 @@ function createApp() {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "cdn.jsdelivr.net", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
         connectSrc: ["'self'", "wss://*.supabase.co", "https://*.supabase.co"],
       }
     }
