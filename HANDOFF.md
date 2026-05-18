@@ -1,57 +1,49 @@
 # HANDOFF -- Sandbox
 
-**Date:** 2026-05-15
-**Branch:** master
-**Phase:** Compound complete -- Autonomy Hardening plan fully implemented
+**Date:** 2026-05-17
+**Branch:** master (writers-room-council: feat/per-project-voice-override)
+**Phase:** Compound complete -- Per-Project Voice Override build (run 043)
 
 ## Current State
 
-Sandbox Autonomy Hardening plan (docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md) fully implemented across all 4 phases + self-audit extension. The autopilot pipeline now has: root operating contract (CLAUDE.md), hardened tail with artifact gates, normalized failure registry (FC22/FC23 assigned, semantic slugs, uniqueness gate), pre-swarm spec consistency gate, and a post-run self-audit layer with 8 hard verification gates.
+Per-Project Voice Override feature implemented for Writers Room Council app.
+11 commits on `feat/per-project-voice-override` branch in `writers-room-council/`.
+401 tests passing. 4 review agents ran (security, TypeScript, data integrity,
+flow trace). All P1s fixed. 3 pre-existing issues deferred.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Plan | docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md |
-| Solution | docs/solutions/2026-05-13-sandbox-autonomy-hardening.md |
-| Root Contract | CLAUDE.md |
-| Self-Audit Agent | .claude/agents/self-audit-reviewer.md |
-| Verify Self-Audit Skill | .claude/skills/verify-self-audit/SKILL.md |
-| Spike Report | docs/reports/spike-update-learnings-noninteractive.md |
+| Plan | writers-room-council/docs/plans/2026-05-17-feat-per-project-voice-override-plan.md |
+| Brainstorm | writers-room-council/docs/brainstorms/2026-05-17-per-project-fingerprint-and-flow-fix-brainstorm.md |
+| Solution | docs/solutions/2026-05-17-per-project-voice-override-build.md |
+| BUILD_TRACKING | BUILD_TRACKING.md |
+| Reports | docs/reports/043/ |
+| Self-Audit | docs/reports/043/self-audit.md |
 
-## Review Fixes Resolved (P2)
+## Deferred Items
 
-From Workshop Registration Hub (run 042) -- all resolved 2026-05-17:
-1. Admin brute-force protection -- in-memory failed-attempt tracker (5 failures/60s lockout)
-2. CSRF protection -- Content-Type enforcement + Referer fallback validation
-3. Send-reminders parallelization -- pool.submit with result collection and reporting
-4. Supabase singleton thread safety -- already correct (double-checked locking verified)
-5. Admin dashboard CSS -- added styleSrc to Helmet CSP for inline styles
-6. HTML-escape in email -- fixed html module shadowing bug (renamed to body_html)
-7. Square API timeout -- configurable via SQUARE_TIMEOUT env var
-8. N+1 query optimization -- all status counts in registrants endpoint response
-
-## Deferred Items (from prior work)
-
-- Safety profiles (offline-safe, online-build, prod-sensitive)
-- Project-local hooks
-- spec-contract-checker tool mismatch (read-only vs write-report)
-- Square webhook signature key (needs ngrok setup)
+- 043-D1: Opening tag escaping in escape.ts (pre-existing gap, future hardening)
+- 043-D2: Unescaped draft/userResponse in council.ts fallback path (pre-existing)
+- 043-D3: PATCH endpoint for editing overrides post-creation (next iteration)
+- 043-D4: `string | null` narrowing for description/intent/protecting (type-safety PR)
+- Safety profiles (from prior work)
+- Project-local hooks (from prior work)
+- Square webhook signature key (from prior work)
 
 ## Three Questions
 
-1. **Hardest decision?** Scoping WARNs to current-run artifacts only. Required 3 Codex rounds to get the boundary right -- pre-existing HANDOFF debt was contaminating clean builds.
-2. **What was rejected?** Prose matching for deferred items (replaced by stable `<run-id>-W<N>` keys), inlining all 8 gates in the autopilot skill (extracted to helper skill at 516 lines).
-3. **Least confident about?** Whether the self-audit agent produces consistently high-quality "What Was Missed" and "Skeptical Questions" sections. Gate 6 checks presence but not substance. First real build will reveal.
+1. **Hardest decision?** NULL-by-default with placeholders vs pre-filled values. Placeholders preserve "skip entirely" UX promise and reduce staleness risk.
+2. **What was rejected?** Snapshot-on-create (contradicts skip-entirely), full per-project fingerprint (too much friction), genre-only override (doesn't solve the real problem).
+3. **Least confident about?** Whether users will discover the collapsed voice section. If beta feedback shows low usage, consider expanding by default or moving above genre.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md for context. This is the sandbox project.
-Autonomy Hardening plan is fully implemented. Self-audit layer is untested
-in a live build -- the next autopilot run (solo or swarm) will be the real
-validation.
-8 P2 review items from Workshop Registration Hub (run 042) are still pending.
-Next: either fix P2s, run a new build to validate the self-audit layer, or
-move to a different project.
+Writers Room Council: feat/per-project-voice-override branch has 11 commits
+ready for merge. Migration 015 needs to be applied to remote Supabase before
+deploy. Pre-existing prompt injection gaps (draft/userResponse in council.ts
+fallback, opening tags) should be addressed in a follow-up hardening pass.
 ```
