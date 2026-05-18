@@ -19,17 +19,17 @@ Sandbox Autonomy Hardening plan (docs/plans/2026-05-13-feat-sandbox-autonomy-har
 | Verify Self-Audit Skill | .claude/skills/verify-self-audit/SKILL.md |
 | Spike Report | docs/reports/spike-update-learnings-noninteractive.md |
 
-## Review Fixes Pending (P2)
+## Review Fixes Resolved (P2)
 
-From Workshop Registration Hub (run 042) -- still pending:
-1. Admin brute-force protection (rate limiting on admin endpoints)
-2. CSRF protection on registration form
-3. Send-reminders CLI parallelization (ThreadPoolExecutor)
-4. Supabase client singleton thread safety (double-checked locking)
-5. Admin dashboard missing CSS styles
-6. HTML-escape user names in email templates
-7. Square API timeout configuration
-8. N+1 query optimization in admin endpoint
+From Workshop Registration Hub (run 042) -- all resolved 2026-05-17:
+1. Admin brute-force protection -- in-memory failed-attempt tracker (5 failures/60s lockout)
+2. CSRF protection -- Content-Type enforcement + Referer fallback validation
+3. Send-reminders parallelization -- pool.submit with result collection and reporting
+4. Supabase singleton thread safety -- already correct (double-checked locking verified)
+5. Admin dashboard CSS -- added styleSrc to Helmet CSP for inline styles
+6. HTML-escape in email -- fixed html module shadowing bug (renamed to body_html)
+7. Square API timeout -- configurable via SQUARE_TIMEOUT env var
+8. N+1 query optimization -- all status counts in registrants endpoint response
 
 ## Deferred Items (from prior work)
 
