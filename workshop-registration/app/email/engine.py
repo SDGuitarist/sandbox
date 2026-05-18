@@ -159,7 +159,7 @@ def send_email(registrant_id: int, template_type: str) -> bool:
             variables["checkout_url"] = _build_checkout_url(reg)
 
         subject = template["subject"].format(**variables)
-        html = template["html"].format(**variables)
+        body_html = template["html"].format(**variables)
     # Connection is now closed -- safe to do network I/O
 
     # --- Phase 2: Send email via Resend API (no DB connection held) ---
@@ -175,7 +175,7 @@ def send_email(registrant_id: int, template_type: str) -> bool:
                     "from": FROM_EMAIL,
                     "to": email_to,
                     "subject": subject,
-                    "html": html,
+                    "html": body_html,
                 }
             )
             message_id = result.get("id", "") if isinstance(result, dict) else getattr(result, "id", "")
