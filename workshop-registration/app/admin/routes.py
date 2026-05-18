@@ -83,8 +83,7 @@ def list_registrants():
         rows = conn.execute("SELECT * FROM registrants ORDER BY id").fetchall()
 
     registrants = []
-    paid_count = 0
-    waitlist_count = 0
+    counts = {"paid": 0, "waitlisted": 0, "pending_payment": 0, "cancelled": 0, "payment_failed": 0}
     for row in rows:
         registrant = {
             "id": row["id"],
@@ -99,17 +98,19 @@ def list_registrants():
             "paid_at": row["paid_at"],
         }
         registrants.append(registrant)
-        if row["status"] == "paid":
-            paid_count += 1
-        elif row["status"] == "waitlisted":
-            waitlist_count += 1
+        status = row["status"]
+        if status in counts:
+            counts[status] += 1
 
     return jsonify({
         "registrants": registrants,
         "total": len(registrants),
         "capacity": capacity,
-        "paid_count": paid_count,
-        "waitlist_count": waitlist_count,
+        "paid_count": counts["paid"],
+        "waitlist_count": counts["waitlisted"],
+        "pending_count": counts["pending_payment"],
+        "cancelled_count": counts["cancelled"],
+        "payment_failed_count": counts["payment_failed"],
     })
 
 
