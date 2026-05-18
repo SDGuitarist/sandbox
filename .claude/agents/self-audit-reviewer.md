@@ -228,16 +228,18 @@ Apply these deductions:
 
 Start at 5 and subtract. Floor is 1.
 
-**Evidence format (machine-checkable — Gate 7 validates this):**
+**Evidence format (machine-checkable — Gate 7c validates this):**
 
-Each Evidence cell must contain one or more artifact references in this
-exact format: `<ARTIFACT> <detail-text>`, separated by `; ` when multiple.
+Gate 7c enforces a keyword-plus-detail contract on each Evidence cell:
 
-Rules:
-- Each reference MUST start with a recognized artifact keyword: BUILD_TRACKING,
-  HANDOFF, plan, solution doc, self-audit, or agent-pitfalls
-- Each reference MUST have detail text after the keyword (not just the keyword alone)
-- Multiple references are separated by `; ` (semicolon space)
+1. Cell is non-empty
+2. Cell contains at least one recognized artifact keyword: BUILD_TRACKING,
+   HANDOFF, plan, solution doc, self-audit, or agent-pitfalls
+3. Each keyword is followed by non-whitespace detail text (not the keyword alone)
+4. If cell contains `; ` (semicolon-space), each segment is validated independently
+
+Write evidence as one or more `<ARTIFACT> <detail>` references separated by
+`; ` when multiple. This is the format Gate 7c expects.
 
 Valid: `BUILD_TRACKING FAILURES: 1 P1 fixed; plan Required Tests: 4 of 4 built`
 Invalid: `BUILD_TRACKING; plan` (keywords only, no detail)
