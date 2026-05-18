@@ -28,7 +28,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 square_client = Square(
     token=os.environ.get("SQUARE_ACCESS_TOKEN"),
     environment=SquareEnvironment.SANDBOX,
-    timeout=10,
+    timeout=int(os.environ.get("SQUARE_TIMEOUT", 10)),
 )
 
 
