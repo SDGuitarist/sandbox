@@ -107,7 +107,7 @@ feature.
 
 ## Commits
 
-10 commits on `feat/per-project-voice-override`:
+11 commits on `feat/per-project-voice-override`:
 1. Shared XML escape module
 2. Migration + types
 3. Merge utility
