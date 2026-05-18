@@ -3,6 +3,8 @@ import csv
 import hmac
 import io
 import os
+import time
+from collections import defaultdict
 from flask import Blueprint, Response, jsonify, make_response, request
 from app import limiter
 from app.db import get_db
@@ -11,8 +13,32 @@ admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
 _WWW_AUTH = 'Basic realm="Workshop Admin"'
 
+# Brute-force protection: track failed auth attempts per IP
+_failed_attempts = defaultdict(list)
+_MAX_FAILURES = 5
+_WINDOW_SECONDS = 60
+
+
+def _is_locked_out(ip):
+    now = time.time()
+    attempts = _failed_attempts[ip]
+    _failed_attempts[ip] = [t for t in attempts if now - t < _WINDOW_SECONDS]
+    return len(_failed_attempts[ip]) >= _MAX_FAILURES
+
+
+def _record_failure(ip):
+    _failed_attempts[ip].append(time.time())
+
 
 def require_admin(req):
+    ip = req.remote_addr or "unknown"
+    if _is_locked_out(ip):
+        resp = make_response(
+            jsonify({"error": "Too many failed attempts, try again later", "code": "UNAUTHORIZED"}), 429
+        )
+        resp.headers["Retry-After"] = str(_WINDOW_SECONDS)
+        return resp
+
     auth_header = req.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Basic "):
         resp = make_response(
@@ -25,6 +51,7 @@ def require_admin(req):
         decoded = base64.b64decode(auth_header[6:]).decode("utf-8")
         _, password = decoded.split(":", 1)
     except Exception:
+        _record_failure(ip)
         resp = make_response(
             jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
         )
@@ -33,6 +60,7 @@ def require_admin(req):
 
     admin_password = os.environ.get("ADMIN_PASSWORD", "")
     if not admin_password or not hmac.compare_digest(password, admin_password):
+        _record_failure(ip)
         resp = make_response(
             jsonify({"error": "Invalid credentials", "code": "UNAUTHORIZED"}), 401
         )
