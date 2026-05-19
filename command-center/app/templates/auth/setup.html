@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Set Up Your Business{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-6">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h2 class="card-title text-center mb-2">Set Up Your Business</h2>
+        <p class="text-muted text-center mb-4">Tell us about your business to get started.</p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('auth.setup') }}">
+          {{ csrf_token() }}
+
+          <div class="mb-3">
+            <label for="business_name" class="form-label">Business Name</label>
+            <input type="text" class="form-control" id="business_name" name="business_name"
+                   required autofocus placeholder="My Awesome Business">
+          </div>
+
+          <div class="mb-3">
+            <label for="owner_name" class="form-label">Owner Name</label>
+            <input type="text" class="form-control" id="owner_name" name="owner_name"
+                   required placeholder="Your full name">
+          </div>
+
+          <div class="mb-3">
+            <label for="industry" class="form-label">Industry</label>
+            <select class="form-select" id="industry" name="industry" required>
+              <option value="" disabled selected>Select your industry</option>
+              {% for ind in industries %}
+                <option value="{{ ind }}">{{ ind|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="currency_symbol" class="form-label">Currency Symbol</label>
+            <input type="text" class="form-control" id="currency_symbol" name="currency_symbol"
+                   value="$" maxlength="5" placeholder="$">
+          </div>
+
+          <div class="mb-3">
+            <label for="fiscal_year_start" class="form-label">Fiscal Year Start Month</label>
+            <select class="form-select" id="fiscal_year_start" name="fiscal_year_start" required>
+              <option value="1">January</option>
+              <option value="2">February</option>
+              <option value="3">March</option>
+              <option value="4">April</option>
+              <option value="5">May</option>
+              <option value="6">June</option>
+              <option value="7">July</option>
+              <option value="8">August</option>
+              <option value="9">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Save & Continue</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
