@@ -1,0 +1,100 @@
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <h5 class="sidebar-brand mb-0">
+            <i class="bi bi-command"></i> Command Center
+        </h5>
+    </div>
+
+    <!-- Search bar -->
+    <div class="sidebar-search px-3 py-2">
+        <div class="position-relative">
+            <input type="text"
+                   id="global-search"
+                   class="form-control form-control-sm sidebar-search-input"
+                   placeholder="Search... (/)"
+                   autocomplete="off">
+            <div id="search-results" class="search-results-dropdown d-none"></div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <ul class="nav flex-column sidebar-nav">
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'dashboard' %}active{% endif %}"
+               href="{{ url_for('dashboard.index') }}">
+                <i class="bi bi-grid"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'contacts' %}active{% endif %}"
+               href="{{ url_for('contacts.index') }}">
+                <i class="bi bi-people"></i>
+                <span>Contacts</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'pipeline' %}active{% endif %}"
+               href="{{ url_for('pipeline.board') }}">
+                <i class="bi bi-funnel"></i>
+                <span>Pipeline</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'projects' %}active{% endif %}"
+               href="{{ url_for('projects.index') }}">
+                <i class="bi bi-kanban"></i>
+                <span>Projects</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'tasks' %}active{% endif %}"
+               href="{{ url_for('tasks.index') }}">
+                <i class="bi bi-check2-square"></i>
+                <span>Tasks</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'time_tracking' %}active{% endif %}"
+               href="{{ url_for('time_tracking.index') }}">
+                <i class="bi bi-clock"></i>
+                <span>Time</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'revenue' %}active{% endif %}"
+               href="{{ url_for('revenue.index') }}">
+                <i class="bi bi-currency-dollar"></i>
+                <span>Revenue</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'reports' %}active{% endif %}"
+               href="{{ url_for('reports.index') }}">
+                <i class="bi bi-bar-chart"></i>
+                <span>Reports</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'settings' %}active{% endif %}"
+               href="{{ url_for('settings.profile') }}">
+                <i class="bi bi-gear"></i>
+                <span>Settings</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Quick Actions -->
+    <div class="sidebar-footer px-3 py-2">
+        <button class="btn btn-sm btn-outline-light w-100 mb-1"
+                data-bs-toggle="modal"
+                data-bs-target="#quickAddContactModal">
+            <i class="bi bi-person-plus"></i> Quick Add Contact
+        </button>
+        <button class="btn btn-sm btn-outline-light w-100"
+                data-bs-toggle="modal"
+                data-bs-target="#quickAddTaskModal">
+            <i class="bi bi-plus-square"></i> Quick Add Task
+        </button>
+    </div>
+</nav>
