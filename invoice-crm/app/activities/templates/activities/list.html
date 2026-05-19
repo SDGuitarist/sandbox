@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Activities for {{ client['name'] }}</h2>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('activities.create_activity', client_id=client['id']) }}" class="btn btn-primary">New Activity</a>
+      <a href="{{ url_for('clients.view_client', client_id=client['id']) }}" class="btn btn-secondary">Back to Client</a>
+    </div>
+  </div>
+
+  {% if activities %}
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Notes</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for activity in activities %}
+        <tr>
+          <td><span class="badge bg-secondary text-capitalize">{{ activity['type'] }}</span></td>
+          <td>{{ activity['notes'] }}</td>
+          <td>{{ activity['activity_date'] | format_date }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('activities.delete_activity', client_id=client['id'], activity_id=activity['id']) }}" style="display:inline;" onsubmit="return confirm('Delete this activity?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="alert alert-info">No activities recorded for this client yet.</div>
+  {% endif %}
+</div>
+{% endblock %}
