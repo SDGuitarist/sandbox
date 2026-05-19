@@ -16,11 +16,11 @@ class TestCreateInvoice:
             'issue_date': '2026-05-19',
             'due_date': '2026-06-18',
             'notes': 'Test invoice',
-            'descriptions': ['Web Development', 'Design Work'],
-            'quantities': ['10', '5'],
-            'unit_prices': ['150.00', '100.00'],
-            'tax_rates': ['0', '0'],
-            'catalog_item_ids': ['', '']
+            'descriptions[]': ['Web Development', 'Design Work'],
+            'quantities[]': ['10', '5'],
+            'unit_prices[]': ['150.00', '100.00'],
+            'tax_rates[]': ['0', '0'],
+            'catalog_item_ids[]': ['', '']
         })
         # Should redirect after creation
         assert response.status_code == 302
@@ -98,7 +98,7 @@ class TestInvoiceStatus:
 
         response = auth_client.post(
             f'/invoices/{invoice_id}/status',
-            data={'status': 'sent'}
+            data={'new_status': 'sent'}
         )
         assert response.status_code == 302
 

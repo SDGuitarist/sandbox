@@ -59,7 +59,7 @@ class TestMoveDealStage:
 
         response = auth_client.post(
             f'/pipeline/{deal_id}/move',
-            data={'stage': 'qualified'}
+            data={'new_stage': 'qualified'}
         )
         assert response.status_code == 302
 
@@ -91,7 +91,7 @@ class TestDealWon:
 
         response = auth_client.post(
             f'/pipeline/{deal_id}/move',
-            data={'stage': 'won'}
+            data={'new_stage': 'won'}
         )
         assert response.status_code == 302
         location = response.headers.get('Location', '')
