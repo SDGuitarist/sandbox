@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Projects</h1>
+    <div>
+        <a href="{{ url_for('projects.templates') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-clipboard"></i> Templates
+        </a>
+        <a href="{{ url_for('projects.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Project
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Statuses</option>
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>
+                        {{ s | replace('_', ' ') | title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <select name="type" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Types</option>
+                    {% for t in types %}
+                    <option value="{{ t }}" {% if request.args.get('type') == t %}selected{% endif %}>
+                        {{ t | replace('_', ' ') | title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if status_filter or request.args.get('type') %}
+            <div class="col-auto">
+                <a href="{{ url_for('projects.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Projects Table -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Client</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Value</th>
+                    <th>Start</th>
+                    <th>Target End</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in projects %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('projects.detail', id=p.id) }}" class="text-decoration-none fw-medium">
+                            {{ p.name }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if p.contact_name %}
+                            {{ p.contact_name }}
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.type | replace('_', ' ') | title }}</td>
+                    <td>
+                        {% if p.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                        {% elif p.status == 'in_progress' %}
+                            <span class="badge bg-warning text-dark">In Progress</span>
+                        {% elif p.status == 'on_hold' %}
+                            <span class="badge bg-secondary">On Hold</span>
+                        {% elif p.status == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Not Started</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.value | dollars }}</td>
+                    <td>{{ p.start_date or '--' }}</td>
+                    <td>{{ p.target_end_date or '--' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        No projects yet.
+                        <a href="{{ url_for('projects.create') }}">Create your first project</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

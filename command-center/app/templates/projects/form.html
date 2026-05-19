@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}{% if project %}Edit Project{% else %}New Project{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3">{% if project %}Edit Project{% else %}New Project{% endif %}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post"
+              action="{% if project %}{{ url_for('projects.edit', id=project.id) }}{% else %}{{ url_for('projects.create') }}{% endif %}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            {% if deal_id %}
+            <input type="hidden" name="deal_id" value="{{ deal_id }}">
+            {% endif %}
+
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <label for="name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="{{ project.name if project else '' }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="contact_id" class="form-label">Client</label>
+                    <select class="form-select" id="contact_id" name="contact_id">
+                        <option value="">-- No Client --</option>
+                        {% for c in contacts %}
+                        <option value="{{ c.id }}"
+                            {% if project and project.contact_id == c.id %}selected{% endif %}>
+                            {{ c.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        {% for s in statuses %}
+                        <option value="{{ s }}"
+                            {% if project and project.status == s %}selected{% endif %}
+                            {% if not project and s == 'not_started' %}selected{% endif %}>
+                            {{ s | replace('_', ' ') | title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="type" class="form-label">Type</label>
+                    <select class="form-select" id="type" name="type">
+                        {% for t in types %}
+                        <option value="{{ t }}"
+                            {% if project and project.type == t %}selected{% endif %}
+                            {% if not project and t == 'hourly' %}selected{% endif %}>
+                            {{ t | replace('_', ' ') | title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="hourly_rate" class="form-label">Hourly Rate ($)</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="hourly_rate" name="hourly_rate"
+                           value="{{ '%.2f' % (project.hourly_rate / 100) if project and project.hourly_rate else '0.00' }}">
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="value" class="form-label">Value / Budget ($)</label>
+                    <input type="number" step="0.01" min="0" class="form-control" id="value" name="value"
+                           value="{{ '%.2f' % (project.value / 100) if project and project.value else '0.00' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date"
+                           value="{{ project.start_date if project and project.start_date else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="target_end_date" class="form-label">Target End Date</label>
+                    <input type="date" class="form-control" id="target_end_date" name="target_end_date"
+                           value="{{ project.target_end_date if project and project.target_end_date else '' }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description"
+                          rows="3">{{ project.description if project else '' }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes"
+                          rows="2">{{ project.notes if project else '' }}</textarea>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{% if project %}{{ url_for('projects.detail', id=project.id) }}{% else %}{{ url_for('projects.index') }}{% endif %}"
+                   class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    {% if project %}Save Changes{% else %}Create Project{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
