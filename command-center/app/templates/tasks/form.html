@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'Edit Task' if task else 'New Task' }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="bi bi-{{ 'pencil' if task else 'plus-lg' }} me-2"></i>
+        {{ 'Edit Task' if task else 'New Task' }}
+    </h2>
+    <a href="{{ url_for('tasks.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Title -->
+            <div class="mb-3">
+                <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="title" name="title"
+                       value="{{ task.title if task else '' }}" required autofocus>
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">{{ task.description if task else '' }}</textarea>
+            </div>
+
+            <div class="row">
+                <!-- Project -->
+                <div class="col-md-6 mb-3">
+                    <label for="project_id" class="form-label">Project</label>
+                    <select class="form-select" id="project_id" name="project_id">
+                        <option value="">No Project</option>
+                        {% for proj in projects %}
+                        <option value="{{ proj.id }}"
+                                {% if task and task.project_id == proj.id %}selected{% endif %}>
+                            {{ proj.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Priority -->
+                <div class="col-md-3 mb-3">
+                    <label for="priority" class="form-label">Priority</label>
+                    <select class="form-select" id="priority" name="priority">
+                        {% for p in priorities %}
+                        <option value="{{ p }}"
+                                {% if (task and task.priority == p) or (not task and p == 'medium') %}selected{% endif %}>
+                            {{ p|capitalize }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div class="col-md-3 mb-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        {% for s in statuses %}
+                        <option value="{{ s }}"
+                                {% if (task and task.status == s) or (not task and s == 'todo') %}selected{% endif %}>
+                            {{ s|replace('_', ' ')|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Due Date -->
+                <div class="col-md-4 mb-3">
+                    <label for="due_date" class="form-label">Due Date</label>
+                    <input type="date" class="form-control" id="due_date" name="due_date"
+                           value="{{ task.due_date if task and task.due_date else '' }}">
+                </div>
+
+                <!-- Estimated Hours -->
+                <div class="col-md-4 mb-3">
+                    <label for="estimated_hours" class="form-label">Estimated Hours</label>
+                    <input type="number" class="form-control" id="estimated_hours" name="estimated_hours"
+                           step="0.5" min="0" value="{{ task.estimated_hours if task and task.estimated_hours else '0' }}">
+                </div>
+
+                <!-- Tags -->
+                <div class="col-md-4 mb-3">
+                    <label for="tags" class="form-label">Tags</label>
+                    <input type="text" class="form-control" id="tags" name="tags"
+                           placeholder="comma-separated"
+                           value="{{ task.tags if task else '' }}">
+                </div>
+            </div>
+
+            <!-- Recurring Task Section -->
+            <div class="card bg-light mb-3">
+                <div class="card-body">
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring"
+                               {% if task and task.is_recurring %}checked{% endif %}
+                               onchange="toggleRecurrence()">
+                        <label class="form-check-label" for="is_recurring">
+                            <i class="bi bi-arrow-repeat"></i> Recurring Task
+                        </label>
+                    </div>
+
+                    <div id="recurrence-options" style="display: {% if task and task.is_recurring %}block{% else %}none{% endif %};">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="recurrence_interval" class="form-label">Repeat Every</label>
+                                <select class="form-select" id="recurrence_interval" name="recurrence_interval"
+                                        onchange="toggleCustomDays()">
+                                    <option value="">Select interval</option>
+                                    <option value="daily" {% if task and task.recurrence_interval == 'daily' %}selected{% endif %}>Daily</option>
+                                    <option value="weekly" {% if task and task.recurrence_interval == 'weekly' %}selected{% endif %}>Weekly</option>
+                                    <option value="monthly" {% if task and task.recurrence_interval == 'monthly' %}selected{% endif %}>Monthly</option>
+                                    <option value="custom" {% if task and task.recurrence_interval == 'custom' %}selected{% endif %}>Custom</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3" id="custom-days-wrapper"
+                                 style="display: {% if task and task.recurrence_interval == 'custom' %}block{% else %}none{% endif %};">
+                                <label for="recurrence_days" class="form-label">Every N Days</label>
+                                <input type="number" class="form-control" id="recurrence_days" name="recurrence_days"
+                                       min="1" value="{{ task.recurrence_days if task and task.recurrence_days else '0' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ 'Update Task' if task else 'Create Task' }}
+                </button>
+            </div>
+        </form>
+
+        {% if task %}
+        <hr>
+        <form method="post" action="{{ url_for('tasks.delete', id=task.id) }}"
+              onsubmit="return confirm('Delete this task?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="bi bi-trash"></i> Delete Task
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function toggleRecurrence() {
+    var checked = document.getElementById('is_recurring').checked;
+    document.getElementById('recurrence-options').style.display = checked ? 'block' : 'none';
+}
+function toggleCustomDays() {
+    var val = document.getElementById('recurrence_interval').value;
+    document.getElementById('custom-days-wrapper').style.display = val === 'custom' ? 'block' : 'none';
+}
+</script>
+{% endblock %}
