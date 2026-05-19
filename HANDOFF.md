@@ -25,7 +25,10 @@ payments, reports, and global search.
 
 ## Deferred Items
 
-- [046-D1] Full multi-agent review not run (review was inline during assembly)
+- [046-W1] (HIGH) Full multi-agent `/workflows:review` not run. 80 files / ~6,000 lines have never been formally reviewed. Must run before any feature additions. Prior builds found ~7 issues per 1,000 lines -- estimate 30-42 unreviewed findings.
+- [046-W2] (MEDIUM) spec-consistency-check.md and swarm-assignments.md were generated against `docs/plans/solopreneur-command-center.md` (wrong plan -- a different future project). Invoice-crm plan structural consistency was never verified. Re-run spec-consistency-check against `docs/plans/invoice-crm-plan.md` before any extension work.
+- [046-W3] (LOW) Agent-pitfalls Update Log has no entry for run 046. FC9-at-15-agent-scale lesson and transitive-dependency pitfall (WTForms Email() requires email_validator) are stranded in BUILD_TRACKING only. Must propagate via `/update-learnings` before next swarm build.
+- [046-D1] Same as [046-W1] above (pre-audit label) -- full multi-agent review not run (review was inline during assembly)
 - [046-D2] PDF invoice export (v2 feature, out of scope for MVP)
 - [046-D3] Email sending (v2 feature)
 - [046-D4] Multi-user / team features (v2)
@@ -47,8 +50,14 @@ Read HANDOFF.md and docs/solutions/2026-05-19-invoice-crm-15-agent-swarm-build.m
 Invoice & CRM app (run 046) is complete. 37/37 tests pass.
 The app is at invoice-crm/. Run with: cd invoice-crm && .venv/bin/python run.py
 
+IMPORTANT -- Three deferred risks from run 046 must be addressed before feature work:
+1. [046-W1] HIGH: Run /workflows:review against invoice-crm/ (review was never run)
+2. [046-W2] MEDIUM: Re-run spec-consistency-check against docs/plans/invoice-crm-plan.md
+3. [046-W3] LOW: Run /update-learnings to propagate FC9-at-scale + transitive-dep lessons to agent-pitfalls.md
+
 Options:
-1. Run full /workflows:review for comprehensive code review
-2. Add deferred features (PDF export, email)
-3. Start a new project
+1. Resolve [046-W1]: Run full /workflows:review for comprehensive code review
+2. Resolve [046-W3]: Run /update-learnings for learnings propagation
+3. Add deferred features (PDF export, email) -- only after [046-W1] is resolved
+4. Start a new project (solopreneur-command-center.md is ready -- spec-consistency pre-check ran and found 3 FAILs + 4 WARNs to fix first)
 ```
