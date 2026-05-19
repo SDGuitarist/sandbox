@@ -27,6 +27,16 @@ ABORT: Autopilot requires unattended permissions. Run from the project
 directory with dangerouslySkipPermissions enabled in settings.local.json.
 ```
 
+## Agent Permission Mode (MANDATORY)
+
+ALL agents spawned during this pipeline MUST use `mode: "bypassPermissions"`.
+This includes verification agents (spec-consistency-checker, spec-contract-checker),
+test runners (smoke-test-runner, test-suite-runner), fix agents (assembly-fix),
+review agents (brainstorm-refinement, flow-trace-reviewer), and the self-audit
+agent -- not just swarm workers. Without this, spawned agents inherit the
+session's permission mode and may prompt for tool approval, breaking the
+zero-prompt guarantee.
+
 ## Bash Command Rules (MANDATORY -- read before any Bash call)
 
 Security heuristics fire on compound commands regardless of permissions. One command per Bash call. Always.
