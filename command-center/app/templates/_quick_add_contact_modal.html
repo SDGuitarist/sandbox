@@ -1,0 +1,44 @@
+<div class="modal fade" id="quickAddContactModal" tabindex="-1" aria-labelledby="quickAddContactModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="quickAddContactForm" method="POST" action="{{ url_for('contacts.quick_add') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="quickAddContactModalLabel">
+                        <i class="bi bi-person-plus me-1"></i> Quick Add Contact
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="contact-name" class="form-label form-label-sm">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="contact-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact-email" class="form-label form-label-sm">Email</label>
+                        <input type="email" class="form-control form-control-sm" id="contact-email" name="email">
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact-phone" class="form-label form-label-sm">Phone</label>
+                        <input type="tel" class="form-control form-control-sm" id="contact-phone" name="phone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="contact-status" class="form-label form-label-sm">Status</label>
+                        <select class="form-select form-select-sm" id="contact-status" name="status">
+                            <option value="lead">Lead</option>
+                            <option value="prospect">Prospect</option>
+                            <option value="active">Active Client</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i> Add Contact
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
