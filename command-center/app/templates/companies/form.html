@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ 'Edit ' + company['name'] if company else 'New Company' }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a href="{{ url_for('companies.index') }}">Companies</a></li>
+            {% if company %}
+            <li class="breadcrumb-item"><a href="{{ url_for('companies.detail', id=company['id']) }}">{{ company['name'] }}</a></li>
+            <li class="breadcrumb-item active">Edit</li>
+            {% else %}
+            <li class="breadcrumb-item active">New Company</li>
+            {% endif %}
+        </ol>
+    </nav>
+    <h1 class="h3 mb-0">{{ 'Edit ' + company['name'] if company else 'New Company' }}</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Company Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ company['name'] if company else '' }}" required autofocus>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="website" class="form-label">Website</label>
+                        <input type="url" class="form-control" id="website" name="website"
+                               value="{{ company['website'] if company else '' }}"
+                               placeholder="https://example.com">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="industry" class="form-label">Industry</label>
+                        <input type="text" class="form-control" id="industry" name="industry"
+                               value="{{ company['industry'] if company else '' }}"
+                               placeholder="e.g., Technology, Consulting, Design">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Address</label>
+                        <textarea class="form-control" id="address" name="address" rows="2">{{ company['address'] if company else '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4">{{ company['notes'] if company else '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            {{ 'Update Company' if company else 'Create Company' }}
+                        </button>
+                        <a href="{{ url_for('companies.detail', id=company['id']) if company else url_for('companies.index') }}"
+                           class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
