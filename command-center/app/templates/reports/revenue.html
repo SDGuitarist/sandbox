@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Revenue Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-cash-stack"></i> Revenue Report</h1>
+    <a href="{{ url_for('reports.export_csv', module='income') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-download"></i> Export CSV
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control form-control-sm" id="start_date" name="start_date" value="{{ start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control form-control-sm" id="end_date" name="end_date" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3">
+                <label for="client" class="form-label">Client</label>
+                <select class="form-select form-select-sm" id="client" name="client">
+                    <option value="">All Clients</option>
+                    {% for c in contacts %}
+                    <option value="{{ c.id }}" {% if client_filter == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                <a href="{{ url_for('reports.revenue_report') }}" class="btn btn-outline-secondary btn-sm">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Revenue Table -->
+<div class="card">
+    <div class="card-body">
+        {% if months %}
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Month</th>
+                    <th class="text-end">Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set ns = namespace(grand_total=0) %}
+                {% for m in months %}
+                <tr>
+                    <td>{{ m.month }}</td>
+                    <td class="text-end">{{ m.total|dollars }}</td>
+                </tr>
+                {% set ns.grand_total = ns.grand_total + m.total %}
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="table-active fw-bold">
+                    <td>Total</td>
+                    <td class="text-end">{{ ns.grand_total|dollars }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No revenue data found for the selected filters.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to Reports
+    </a>
+</div>
+{% endblock %}
