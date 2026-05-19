@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ deal['title'] }}</h1>
+    <div>
+        <a href="{{ url_for('pipeline.edit_deal', deal_id=deal['id']) }}" class="btn btn-outline-primary me-2">Edit</a>
+        <a href="{{ url_for('pipeline.list_deals') }}" class="btn btn-outline-secondary">Back to Pipeline</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Deal Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Client</dt>
+                    <dd class="col-sm-8">
+                        {% if deal['client_id'] %}
+                        <a href="{{ url_for('clients.view_client', client_id=deal['client_id']) }}">
+                            {{ deal['client_name'] }}
+                        </a>
+                        {% else %}
+                        <span class="text-muted">No client</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">Value</dt>
+                    <dd class="col-sm-8">{{ deal['value_cents'] | dollars }}</dd>
+
+                    <dt class="col-sm-4">Stage</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-{% if deal['stage'] == 'won' %}success{% elif deal['stage'] == 'lost' %}danger{% elif deal['stage'] == 'negotiation' %}warning text-dark{% else %}primary{% endif %}">
+                            {{ deal['stage'] | title }}
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-4">Probability</dt>
+                    <dd class="col-sm-8">{{ deal['probability'] }}%</dd>
+
+                    <dt class="col-sm-4">Expected Close</dt>
+                    <dd class="col-sm-8">{{ deal['expected_close_date'] | format_date or '—' }}</dd>
+
+                    <dt class="col-sm-4">Created</dt>
+                    <dd class="col-sm-8">{{ deal['created_at'] | format_date }}</dd>
+
+                    <dt class="col-sm-4">Last Updated</dt>
+                    <dd class="col-sm-8">{{ deal['updated_at'] | format_date }}</dd>
+
+                    {% if deal['notes'] %}
+                    <dt class="col-sm-4">Notes</dt>
+                    <dd class="col-sm-8">{{ deal['notes'] }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Move Stage</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('pipeline.move_deal', deal_id=deal['id']) }}">
+                    {{ move_form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="new_stage" class="form-label">New Stage</label>
+                        <select name="new_stage" id="new_stage" class="form-select">
+                            {% for value, label in stages %}
+                            <option value="{{ value }}" {% if value == deal['stage'] %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Move Deal</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('pipeline.delete_deal', deal_id=deal['id']) }}"
+                      onsubmit="return confirm('Are you sure you want to delete this deal?');">
+                    {{ move_form.hidden_tag() }}
+                    <button type="submit" class="btn btn-danger w-100">Delete Deal</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

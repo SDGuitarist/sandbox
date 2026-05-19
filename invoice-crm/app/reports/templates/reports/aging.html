@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1>Aging Report</h1>
+  <a href="{{ url_for('reports.export_csv', report_type='aging') }}" class="btn btn-outline-secondary">Export CSV</a>
+</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Bucket</th>
+      <th class="text-end">Count</th>
+      <th class="text-end">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for bucket in buckets %}
+    <tr>
+      <td>{{ bucket['bucket'] }}</td>
+      <td class="text-end">{{ bucket['count'] }}</td>
+      <td class="text-end">{{ bucket['total_cents'] | dollars }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="{{ url_for('reports.index') }}" class="btn btn-link">Back to Reports</a>
+{% endblock %}

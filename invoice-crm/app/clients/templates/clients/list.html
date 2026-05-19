@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1>Clients</h1>
+  <a href="{{ url_for('clients.create_client') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> New Client
+  </a>
+</div>
+
+<!-- Search & Filters -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('clients.list_clients') }}" class="row g-3">
+      <div class="col-md-4">
+        <label for="q" class="form-label">Search</label>
+        <input type="text" class="form-control" id="q" name="q"
+               placeholder="Search by name or email..." value="{{ q }}">
+      </div>
+      <div class="col-md-3">
+        <label for="status" class="form-label">Status</label>
+        <select class="form-select" id="status" name="status">
+          <option value="">All Statuses</option>
+          <option value="active" {{ 'selected' if current_status == 'active' }}>Active</option>
+          <option value="inactive" {{ 'selected' if current_status == 'inactive' }}>Inactive</option>
+          <option value="lead" {{ 'selected' if current_status == 'lead' }}>Lead</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label for="tag" class="form-label">Tag</label>
+        <select class="form-select" id="tag" name="tag">
+          <option value="">All Tags</option>
+          {% for t in all_tags %}
+            <option value="{{ t['name'] }}" {{ 'selected' if current_tag == t['name'] }}>{{ t['name'] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button type="submit" class="btn btn-outline-secondary w-100">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Sort Options -->
+<div class="mb-3">
+  <span class="text-muted">Sort by:</span>
+  <a href="{{ url_for('clients.list_clients', q=q, tag=current_tag, status=current_status, sort='name') }}"
+     class="btn btn-sm {{ 'btn-primary' if current_sort == 'name' else 'btn-outline-primary' }}">
+    Name
+  </a>
+  <a href="{{ url_for('clients.list_clients', q=q, tag=current_tag, status=current_status, sort='created_at') }}"
+     class="btn btn-sm {{ 'btn-primary' if current_sort == 'created_at' else 'btn-outline-primary' }}">
+    Date Created
+  </a>
+</div>
+
+<!-- Client List -->
+{% if clients %}
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Company</th>
+        <th>Status</th>
+        <th>Tags</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for client in clients %}
+      <tr>
+        <td>
+          <a href="{{ url_for('clients.view_client', client_id=client['id']) }}">
+            {{ client['name'] }}
+          </a>
+        </td>
+        <td>{{ client['email'] }}</td>
+        <td>{{ client['company'] }}</td>
+        <td>
+          {% if client['status'] == 'active' %}
+            <span class="badge bg-success">Active</span>
+          {% elif client['status'] == 'inactive' %}
+            <span class="badge bg-secondary">Inactive</span>
+          {% else %}
+            <span class="badge bg-info">Lead</span>
+          {% endif %}
+        </td>
+        <td>
+          {% for tag_name in tags_map.get(client['id'], []) %}
+            <a href="{{ url_for('clients.list_clients', tag=tag_name) }}"
+               class="badge bg-light text-dark text-decoration-none">{{ tag_name }}</a>
+          {% endfor %}
+        </td>
+        <td>{{ client['created_at'] | format_date }}</td>
+        <td>
+          <a href="{{ url_for('clients.edit_client', client_id=client['id']) }}"
+             class="btn btn-sm btn-outline-primary">Edit</a>
+          <form method="POST" action="{{ url_for('clients.delete_client', client_id=client['id']) }}"
+                class="d-inline" onsubmit="return confirm('Delete this client?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+  <p class="text-muted mb-3">No clients found.</p>
+  <a href="{{ url_for('clients.create_client') }}" class="btn btn-primary">Add Your First Client</a>
+</div>
+{% endif %}
+{% endblock %}

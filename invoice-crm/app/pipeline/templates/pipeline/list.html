@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>All Deals</h1>
+    <div>
+        <a href="{{ url_for('pipeline.list_deals') }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-kanban"></i> Kanban View
+        </a>
+        <a href="{{ url_for('pipeline.create_deal') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Deal
+        </a>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Client</th>
+                <th>Value</th>
+                <th>Stage</th>
+                <th>Probability</th>
+                <th>Expected Close</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for deal in deals %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('pipeline.view_deal', deal_id=deal['id']) }}">
+                        {{ deal['title'] }}
+                    </a>
+                </td>
+                <td>{{ deal['client_name'] or '—' }}</td>
+                <td>{{ deal['value_cents'] | dollars }}</td>
+                <td>
+                    <span class="badge bg-{% if deal['stage'] == 'won' %}success{% elif deal['stage'] == 'lost' %}danger{% elif deal['stage'] == 'negotiation' %}warning text-dark{% else %}primary{% endif %}">
+                        {{ deal['stage'] | title }}
+                    </span>
+                </td>
+                <td>{{ deal['probability'] }}%</td>
+                <td>{{ deal['expected_close_date'] | format_date }}</td>
+                <td>
+                    <a href="{{ url_for('pipeline.edit_deal', deal_id=deal['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not deals %}
+            <tr>
+                <td colspan="7" class="text-center text-muted">No deals yet. Create your first deal to get started.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('invoices.list_invoices') }}">Invoices</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('invoices.view_invoice', invoice_id=invoice['id']) }}">{{ invoice['invoice_number'] }}</a></li>
+            <li class="breadcrumb-item active">Recurring Settings</li>
+        </ol>
+    </nav>
+
+    <h2>Recurring Settings for {{ invoice['invoice_number'] }}</h2>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('recurring.set_recurring', invoice_id=invoice['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="is_recurring" name="is_recurring"
+                           {{ 'checked' if invoice['is_recurring'] }}>
+                    <label class="form-check-label" for="is_recurring">Enable Recurring</label>
+                </div>
+
+                <div class="mb-3">
+                    <label for="recurrence_interval" class="form-label">Recurrence Interval</label>
+                    <select class="form-select" id="recurrence_interval" name="recurrence_interval">
+                        <option value="weekly" {{ 'selected' if invoice['recurrence_interval'] == 'weekly' }}>Weekly</option>
+                        <option value="monthly" {{ 'selected' if invoice['recurrence_interval'] == 'monthly' }}>Monthly</option>
+                        <option value="quarterly" {{ 'selected' if invoice['recurrence_interval'] == 'quarterly' }}>Quarterly</option>
+                        <option value="annually" {{ 'selected' if invoice['recurrence_interval'] == 'annually' }}>Annually</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="next_recurrence_date" class="form-label">Next Recurrence Date</label>
+                    <input type="date" class="form-control" id="next_recurrence_date" name="next_recurrence_date"
+                           value="{{ invoice['next_recurrence_date'] or '' }}">
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <a href="{{ url_for('invoices.view_invoice', invoice_id=invoice['id']) }}" class="btn btn-secondary">Cancel</a>
+                    {% if invoice['is_recurring'] %}
+                    <a href="{{ url_for('recurring.view_history', invoice_id=invoice['id']) }}" class="btn btn-outline-info">View History</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

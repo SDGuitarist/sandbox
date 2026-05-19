@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Payments{% if client_id %} (Filtered){% endif %}</h2>
+        {% if client_id %}
+            <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary btn-sm">Clear Filter</a>
+        {% endif %}
+    </div>
+
+    {% if payments %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Invoice</th>
+                        <th>Client</th>
+                        <th>Method</th>
+                        <th class="text-end">Amount</th>
+                        <th>Notes</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments %}
+                    <tr>
+                        <td>{{ payment.payment_date | format_date }}</td>
+                        <td>{{ payment.invoice_number }}</td>
+                        <td>{{ payment.client_name or 'N/A' }}</td>
+                        <td>
+                            {% if payment.method == 'bank_transfer' %}
+                                Bank Transfer
+                            {% else %}
+                                {{ payment.method | capitalize }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ payment.amount_cents | dollars }}</td>
+                        <td>{{ payment.notes or '' }}</td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('payments.delete_payment', payment_id=payment.id) }}"
+                                  onsubmit="return confirm('Are you sure you want to delete this payment?');"
+                                  class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No payments recorded yet.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

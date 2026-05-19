@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1>{{ client['name'] }}</h1>
+  <div>
+    <a href="{{ url_for('clients.edit_client', client_id=client['id']) }}" class="btn btn-outline-primary">Edit</a>
+    <a href="{{ url_for('clients.list_clients') }}" class="btn btn-outline-secondary">Back to List</a>
+  </div>
+</div>
+
+<!-- Client Info -->
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Client Information</h5>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Email</dt>
+          <dd class="col-sm-8">{{ client['email'] or 'N/A' }}</dd>
+
+          <dt class="col-sm-4">Phone</dt>
+          <dd class="col-sm-8">{{ client['phone'] or 'N/A' }}</dd>
+
+          <dt class="col-sm-4">Company</dt>
+          <dd class="col-sm-8">{{ client['company'] or 'N/A' }}</dd>
+
+          <dt class="col-sm-4">Address</dt>
+          <dd class="col-sm-8">{{ client['address'] or 'N/A' }}</dd>
+
+          <dt class="col-sm-4">Status</dt>
+          <dd class="col-sm-8">
+            {% if client['status'] == 'active' %}
+              <span class="badge bg-success">Active</span>
+            {% elif client['status'] == 'inactive' %}
+              <span class="badge bg-secondary">Inactive</span>
+            {% else %}
+              <span class="badge bg-info">Lead</span>
+            {% endif %}
+          </dd>
+
+          <dt class="col-sm-4">Tags</dt>
+          <dd class="col-sm-8">
+            {% if tags_str %}
+              {% for tag_name in tags_str.split(', ') %}
+                <span class="badge bg-light text-dark">{{ tag_name }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted">None</span>
+            {% endif %}
+          </dd>
+
+          <dt class="col-sm-4">Notes</dt>
+          <dd class="col-sm-8">{{ client['notes'] or 'N/A' }}</dd>
+
+          <dt class="col-sm-4">Created</dt>
+          <dd class="col-sm-8">{{ client['created_at'] | format_date }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Revenue Summary</h5>
+      </div>
+      <div class="card-body text-center">
+        <h2 class="text-success">{{ total_revenue | dollars }}</h2>
+        <p class="text-muted mb-0">Total Payments Received</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent Invoices -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Recent Invoices</h5>
+    <a href="{{ url_for('invoices.create_invoice') }}?client_id={{ client['id'] }}" class="btn btn-sm btn-outline-primary">
+      New Invoice
+    </a>
+  </div>
+  <div class="card-body">
+    {% if invoices %}
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Number</th>
+            <th>Status</th>
+            <th>Issue Date</th>
+            <th>Due Date</th>
+            <th>Total</th>
+            <th>Paid</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td>
+              <a href="{{ url_for('invoices.view_invoice', invoice_id=inv['id']) }}">
+                {{ inv['invoice_number'] }}
+              </a>
+            </td>
+            <td>
+              {% if inv['status'] == 'paid' %}
+                <span class="badge bg-success">Paid</span>
+              {% elif inv['status'] == 'overdue' %}
+                <span class="badge bg-danger">Overdue</span>
+              {% elif inv['status'] == 'sent' %}
+                <span class="badge bg-primary">Sent</span>
+              {% elif inv['status'] == 'viewed' %}
+                <span class="badge bg-info">Viewed</span>
+              {% else %}
+                <span class="badge bg-secondary">Draft</span>
+              {% endif %}
+            </td>
+            <td>{{ inv['issue_date'] | format_date }}</td>
+            <td>{{ inv['due_date'] | format_date }}</td>
+            <td>{{ inv['total_cents'] | dollars }}</td>
+            <td>{{ inv['paid_cents'] | dollars }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No invoices yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Recent Activities -->
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Recent Activities</h5>
+    <a href="{{ url_for('activities.create_activity', client_id=client['id']) }}" class="btn btn-sm btn-outline-primary">
+      Log Activity
+    </a>
+  </div>
+  <div class="card-body">
+    {% if activities %}
+    <ul class="list-group list-group-flush">
+      {% for act in activities %}
+      <li class="list-group-item d-flex justify-content-between align-items-start">
+        <div>
+          <span class="badge bg-secondary me-2">{{ act['type'] }}</span>
+          {{ act['notes'] }}
+        </div>
+        <small class="text-muted">{{ act['activity_date'] | format_date }}</small>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-muted mb-0">No activities recorded yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Delete -->
+<div class="mt-4">
+  <form method="POST" action="{{ url_for('clients.delete_client', client_id=client['id']) }}"
+        onsubmit="return confirm('Are you sure you want to delete this client? This cannot be undone.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-outline-danger">Delete Client</button>
+  </form>
+</div>
+{% endblock %}

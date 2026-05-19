@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h1 class="mb-4">Dashboard</h1>
+
+    <!-- Revenue Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md">
+            <div class="card text-bg-primary mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Revenue This Month</h6>
+                    <h3 class="card-text">{{ revenue_this_month | dollars }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-bg-secondary mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Revenue Last Month</h6>
+                    <h3 class="card-text">{{ revenue_last_month | dollars }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-bg-success mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Revenue YTD</h6>
+                    <h3 class="card-text">{{ revenue_ytd | dollars }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-bg-warning mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Outstanding</h6>
+                    <h3 class="card-text">{{ outstanding | dollars }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-bg-danger mb-3">
+                <div class="card-body">
+                    <h6 class="card-title">Overdue</h6>
+                    <h3 class="card-text">{{ overdue_total | dollars }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Invoices Alert Section -->
+    {% if overdue_invoices %}
+    <div class="card border-danger mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">Overdue Invoices</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Client</th>
+                        <th>Due Date</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in overdue_invoices %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('invoices.view_invoice', invoice_id=inv['id']) }}">
+                                {{ inv['invoice_number'] }}
+                            </a>
+                        </td>
+                        <td>{{ inv['client_name'] or 'N/A' }}</td>
+                        <td>{{ inv['due_date'] | format_date }}</td>
+                        <td>{{ inv['total_cents'] | dollars }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Recent Invoices -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Invoices</h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_invoices %}
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Client</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inv in recent_invoices %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('invoices.view_invoice', invoice_id=inv['id']) }}">
+                                        {{ inv['invoice_number'] }}
+                                    </a>
+                                </td>
+                                <td>{{ inv['client_name'] or 'N/A' }}</td>
+                                <td>
+                                    {% if inv['status'] == 'paid' %}
+                                    <span class="badge bg-success">Paid</span>
+                                    {% elif inv['status'] == 'overdue' %}
+                                    <span class="badge bg-danger">Overdue</span>
+                                    {% elif inv['status'] == 'sent' %}
+                                    <span class="badge bg-primary">Sent</span>
+                                    {% elif inv['status'] == 'viewed' %}
+                                    <span class="badge bg-info">Viewed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ inv['total_cents'] | dollars }}</td>
+                                <td>{{ inv['issue_date'] | format_date }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">No invoices yet. <a href="{{ url_for('invoices.create_invoice') }}">Create your first invoice</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 5 Clients by Revenue -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top 5 Clients by Revenue</h5>
+                </div>
+                <div class="card-body">
+                    {% if top_clients %}
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for client in top_clients %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('clients.view_client', client_id=client['id']) }}">
+                                        {{ client['name'] }}
+                                    </a>
+                                </td>
+                                <td>{{ client['total_revenue'] | dollars }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">No payment data yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pipeline Summary -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Pipeline Summary</h5>
+                </div>
+                <div class="card-body">
+                    {% if pipeline_stages %}
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Stage</th>
+                                <th>Deals</th>
+                                <th>Total Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stage in pipeline_stages %}
+                            <tr>
+                                <td>{{ stage['stage'] | capitalize }}</td>
+                                <td>{{ stage['deal_count'] }}</td>
+                                <td>{{ stage['total_value'] | dollars }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">No deals in the pipeline yet. <a href="{{ url_for('pipeline.create_deal') }}">Create a deal</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Recurring Invoices -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Upcoming Recurring Invoices (Next 7 Days)</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_recurring %}
+                    <ul class="list-group list-group-flush">
+                        {% for inv in upcoming_recurring %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{{ url_for('invoices.view_invoice', invoice_id=inv['id']) }}">
+                                    {{ inv['invoice_number'] }}
+                                </a>
+                                <small class="text-muted ms-2">{{ inv['client_name'] or 'N/A' }}</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-info me-2">{{ inv['recurrence_interval'] }}</span>
+                                <span>{{ inv['next_recurrence_date'] | format_date }}</span>
+                                <span class="ms-2">{{ inv['total_cents'] | dollars }}</span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">No recurring invoices due in the next 7 days.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
