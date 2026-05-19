@@ -1,24 +1,25 @@
-# Review Context -- Sandbox (Autonomy Hardening)
+# Review Context -- Sandbox (Feedback Board, Run 045)
 
 ## Risk Chain
 
-**Brainstorm risk:** Autopilot skill complexity -- all enforcement in one 413-line file.
+**Brainstorm risk:** Denormalized vote_count consistency under concurrent upvotes.
 
-**Plan mitigation:** Extract verification gates to a helper skill if the skill exceeds ~500 lines.
+**Plan mitigation:** BEGIN IMMEDIATE + SQL atomic increment (vote_count = vote_count + 1). Confirmed INSERT OR IGNORE rowcount=0 during plan deepening.
 
-**Work risk (from Feed-Forward):** Self-audit agent quality -- whether "What Was Missed" and "Skeptical Questions" are consistently substantive.
+**Work risk (from Feed-Forward):** before_request admin auth hook interaction with Flask-WTF CSRF on admin POST routes.
 
-**Review resolution:** 3 Codex rounds found 9 issues (2H, 2M, 1L + 4 round 2). Key fixes: stable WARN keys replaced prose matching, current-run scoping excluded pre-existing debt, gate logic extracted to verify-self-audit helper skill. All issues resolved. LGTM round 3.
+**Review resolution:** 3 agents found 2 P1, 5 P2, 7 P3. All P1/P2 fixed. Key fixes: init_db try/finally, deduplicated query builder, typed return values, documented CSRF/auth hook ordering. Zero learnings violations. Security false positive on blocklist check.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| .claude/agents/self-audit-reviewer.md | New -- post-run self-audit agent | WARN scope boundary (lines 40-61), key format, section completeness |
-| .claude/skills/verify-self-audit/SKILL.md | New -- 8 hard gates | Gate 4 solo edge case (sparse dir), Gate 6 leniency |
-| .claude/skills/autopilot/SKILL.md | +43 lines (498 total) | Solo run-id (Step 7s.0), delegation to helper skill |
-| CLAUDE.md | +3 lines | Self-audit as required artifact #5 |
+| feedback-board/app/db.py | New -- DB layer with get_db + init_db | init_db connection leak (fixed), WAL placement |
+| feedback-board/app/models.py | New -- 7 model functions | Upvote dedup atomicity, query builder extraction |
+| feedback-board/app/__init__.py | New -- App factory | SECRET_KEY fail-closed, CSRF/auth ordering |
+| feedback-board/app/blueprints/admin/routes.py | New -- Admin with brute-force | Hook ordering comment, eviction cap |
+| feedback-board/app/blueprints/public/routes.py | New -- Public routes | Input validation, CSRF on upvote forms |
 
 ## Plan Reference
 
-`docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md`
+`docs/plans/2026-05-18-feat-feedback-board-plan.md`
