@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Journal - {{ date }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-journal-text"></i> Journal</h2>
+        <div>
+            <a href="{{ url_for('notes.note_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-sticky"></i> Notes
+            </a>
+            <a href="{{ url_for('notes.search_notes') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-search"></i> Search
+            </a>
+        </div>
+    </div>
+
+    <!-- Date picker -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('notes.journal') }}" class="d-flex align-items-center gap-3">
+                <label for="date" class="form-label mb-0 fw-bold">Date:</label>
+                <input type="date" id="date" name="date" class="form-control" style="max-width: 200px;"
+                       value="{{ date }}">
+                <button type="submit" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-arrow-right"></i> Go
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Journal entry form -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">{{ date }}</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('notes.save_journal') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="date" value="{{ date }}">
+                <div class="mb-3">
+                    <textarea name="content" id="journal-content" class="form-control"
+                              rows="15" placeholder="Write your journal entry for today...">{{ entry['content'] if entry else '' }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Entry
+                </button>
+            </form>
+        </div>
+        {% if entry %}
+        <div class="card-footer text-muted">
+            Last updated: {{ entry['updated_at'] }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
