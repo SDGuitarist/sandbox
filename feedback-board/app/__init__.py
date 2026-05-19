@@ -20,7 +20,7 @@ def create_app(db_path: str | None = None) -> Flask:
     # SECRET_KEY: fail-closed in production
     secret = os.environ.get("SECRET_KEY")
     if not secret:
-        if app.debug or os.environ.get("FLASK_ENV") == "development":
+        if app.debug:
             secret = "dev-only-not-for-production"
         else:
             raise RuntimeError("SECRET_KEY environment variable must be set")

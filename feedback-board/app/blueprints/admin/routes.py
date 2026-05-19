@@ -41,7 +41,7 @@ def _record_failure(ip: str) -> None:
     _failed_attempts[ip].append(time.time())
 
 
-def _require_admin():
+def _require_admin() -> Response | None:
     ip = request.remote_addr or "unknown"
     if _is_locked_out(ip):
         resp = make_response("Too many failed attempts, try again later", 429)
@@ -73,6 +73,10 @@ def _require_admin():
     return None
 
 
+# NOTE: Flask-WTF CSRFProtect registers its check via app.before_request,
+# which runs BEFORE blueprint before_request hooks. This means CSRF validation
+# fires before auth -- the correct order. If auth is ever moved to app-level,
+# verify CSRF still runs first.
 @admin_bp.before_request
 def check_admin_auth():
     error_response = _require_admin()

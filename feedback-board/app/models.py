@@ -16,33 +16,32 @@ def create_feedback(conn: sqlite3.Connection, title: str, description: str,
     return cursor.lastrowid
 
 
-def get_all_feedback(conn: sqlite3.Connection, status: str | None = None,
-                     category: str | None = None) -> list[sqlite3.Row]:
-    """Get feedback with optional filters. Public sort: vote_count DESC, created_at DESC."""
+def _build_feedback_query(status: str | None, category: str | None,
+                          order_by: str) -> tuple[str, list[str]]:
+    """Build a filtered feedback query. Shared by public and admin views."""
     query = "SELECT * FROM feedback WHERE 1=1"
-    params: list = []
+    params: list[str] = []
     if status:
         query += " AND status = ?"
         params.append(status)
     if category:
         query += " AND category = ?"
         params.append(category)
-    query += " ORDER BY vote_count DESC, created_at DESC"
+    query += f" ORDER BY {order_by}"
+    return query, params
+
+
+def get_all_feedback(conn: sqlite3.Connection, status: str | None = None,
+                     category: str | None = None) -> list[sqlite3.Row]:
+    """Get feedback with optional filters. Public sort: vote_count DESC, created_at DESC."""
+    query, params = _build_feedback_query(status, category, "vote_count DESC, created_at DESC")
     return conn.execute(query, params).fetchall()
 
 
 def get_all_feedback_admin(conn: sqlite3.Connection, status: str | None = None,
                            category: str | None = None) -> list[sqlite3.Row]:
     """Get feedback for admin view. Admin sort: created_at DESC."""
-    query = "SELECT * FROM feedback WHERE 1=1"
-    params: list = []
-    if status:
-        query += " AND status = ?"
-        params.append(status)
-    if category:
-        query += " AND category = ?"
-        params.append(category)
-    query += " ORDER BY created_at DESC"
+    query, params = _build_feedback_query(status, category, "created_at DESC")
     return conn.execute(query, params).fetchall()
 
 
@@ -79,7 +78,7 @@ def update_feedback_status(conn: sqlite3.Connection, feedback_id: int,
     return cursor.rowcount > 0
 
 
-def get_feedback_stats(conn: sqlite3.Connection) -> dict:
+def get_feedback_stats(conn: sqlite3.Connection) -> dict[str, int]:
     """Get counts by status. Returns dict with total and per-status counts."""
     rows = conn.execute(
         "SELECT status, COUNT(*) as cnt FROM feedback GROUP BY status"

@@ -32,7 +32,9 @@ def init_db(app):
     schema_path = Path(__file__).resolve().parent.parent / "schema.sql"
     db_path = app.config["DB_PATH"]
     conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA journal_mode=WAL")
-    with open(schema_path) as f:
-        conn.executescript(f.read())
-    conn.close()
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        with open(schema_path) as f:
+            conn.executescript(f.read())
+    finally:
+        conn.close()
