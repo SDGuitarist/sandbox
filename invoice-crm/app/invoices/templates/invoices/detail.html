@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Invoice {{ invoice.invoice_number }}</h1>
+    <div>
+        {% if invoice.status == 'draft' %}
+        <a href="{{ url_for('invoices.edit_invoice', invoice_id=invoice.id) }}"
+           class="btn btn-outline-primary">Edit</a>
+        {% endif %}
+        <form method="POST" action="{{ url_for('invoices.duplicate_invoice', invoice_id=invoice.id) }}"
+              class="d-inline">
+            {{ status_form.hidden_tag() }}
+            <button type="submit" class="btn btn-outline-secondary">Duplicate</button>
+        </form>
+        <a href="{{ url_for('recurring.set_recurring', invoice_id=invoice.id) }}"
+           class="btn btn-outline-info">Recurring</a>
+        <a href="{{ url_for('payments.create_payment', invoice_id=invoice.id) }}"
+           class="btn btn-outline-success">Record Payment</a>
+        <form method="POST" action="{{ url_for('invoices.delete_invoice', invoice_id=invoice.id) }}"
+              class="d-inline" onsubmit="return confirm('Delete this invoice?');">
+            {{ status_form.hidden_tag() }}
+            <button type="submit" class="btn btn-outline-danger">Delete</button>
+        </form>
+    </div>
+</div>
+
+{# Status and transition buttons #}
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between">
+        <div>
+            <strong>Status:</strong>
+            <span class="badge bg-{% if invoice.status == 'draft' %}secondary{% elif invoice.status == 'sent' %}primary{% elif invoice.status == 'viewed' %}info{% elif invoice.status == 'paid' %}success{% elif invoice.status == 'overdue' %}danger{% endif %} fs-6">
+                {{ invoice.status | capitalize }}
+            </span>
+        </div>
+        <div>
+            {% for next_status in allowed_next %}
+            <form method="POST" action="{{ url_for('invoices.update_status', invoice_id=invoice.id) }}"
+                  class="d-inline">
+                {{ status_form.hidden_tag() }}
+                <input type="hidden" name="new_status" value="{{ next_status }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    Mark as {{ next_status | capitalize }}
+                </button>
+            </form>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# Business header + client info #}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">From</div>
+            <div class="card-body">
+                {% if user_info %}
+                <strong>{{ user_info.company_name or 'Your Company' }}</strong><br>
+                {{ user_info.address or '' }}<br>
+                {{ user_info.phone or '' }}<br>
+                {{ user_info.business_email or '' }}<br>
+                {% if user_info.tax_id %}Tax ID: {{ user_info.tax_id }}{% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">Bill To</div>
+            <div class="card-body">
+                {% if client %}
+                <strong>{{ client.name }}</strong><br>
+                {% if client.company %}{{ client.company }}<br>{% endif %}
+                {{ client.address or '' }}<br>
+                {{ client.email or '' }}<br>
+                {{ client.phone or '' }}
+                {% else %}
+                <em>No client assigned</em>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Invoice dates #}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <strong>Invoice #:</strong> {{ invoice.invoice_number }}
+    </div>
+    <div class="col-md-4">
+        <strong>Issue Date:</strong> {{ invoice.issue_date | format_date }}
+    </div>
+    <div class="col-md-4">
+        <strong>Due Date:</strong> {{ invoice.due_date | format_date }}
+    </div>
+</div>
+
+{# Line items table #}
+<div class="card mb-4">
+    <div class="card-header">Line Items</div>
+    <div class="table-responsive">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th class="text-end">Qty</th>
+                    <th class="text-end">Unit Price</th>
+                    <th class="text-end">Tax Rate</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in line_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.description }}</td>
+                    <td class="text-end">{{ item.quantity }}</td>
+                    <td class="text-end">{{ item.unit_price_cents | dollars }}</td>
+                    <td class="text-end">{{ item.tax_rate }}%</td>
+                    <td class="text-end">{{ item.line_total_cents | dollars }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" class="text-end"><strong>Subtotal:</strong></td>
+                    <td class="text-end">{{ invoice.subtotal_cents | dollars }}</td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="text-end"><strong>Tax:</strong></td>
+                    <td class="text-end">{{ invoice.tax_cents | dollars }}</td>
+                </tr>
+                <tr class="table-active">
+                    <td colspan="5" class="text-end"><strong>Total:</strong></td>
+                    <td class="text-end"><strong>{{ invoice.total_cents | dollars }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+{# Notes #}
+{% if invoice.notes %}
+<div class="card mb-4">
+    <div class="card-header">Notes</div>
+    <div class="card-body">
+        {{ invoice.notes }}
+    </div>
+</div>
+{% endif %}
+
+{# Payment summary #}
+<div class="card mb-4">
+    <div class="card-header">Payments</div>
+    <div class="card-body">
+        {% if payments %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th class="text-end">Amount</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr>
+                        <td>{{ p.payment_date | format_date }}</td>
+                        <td>{{ p.method | capitalize }}</td>
+                        <td class="text-end">{{ p.amount_cents | dollars }}</td>
+                        <td>{{ p.notes }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No payments recorded yet.</p>
+        {% endif %}
+
+        <hr>
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Total:</strong> {{ invoice.total_cents | dollars }}
+            </div>
+            <div class="col-md-4">
+                <strong>Paid:</strong> {{ total_paid | dollars }}
+            </div>
+            <div class="col-md-4">
+                <strong>Remaining:</strong>
+                <span class="{% if remaining > 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ remaining | dollars }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary">Back to Invoices</a>
+{% endblock %}

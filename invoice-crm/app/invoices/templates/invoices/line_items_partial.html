@@ -1,0 +1,42 @@
+{# Single line item row -- used as a template for JS cloning and for rendering existing items #}
+<tr class="line-item-row">
+    <td>
+        <select name="catalog_item_ids[]" class="form-select catalog-item-select">
+            <option value="">-- Custom --</option>
+            {% for ci in catalog_items %}
+            <option value="{{ ci.id }}"
+                    data-description="{{ ci.description }}"
+                    data-unit-price="{{ '%.2f' % (ci.unit_price_cents / 100) }}"
+                    {% if item and item.catalog_item_id == ci.id %}selected{% endif %}>
+                {{ ci.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </td>
+    <td>
+        <input type="text" name="descriptions[]" class="form-control"
+               value="{{ item.description if item else '' }}" required>
+    </td>
+    <td>
+        <input type="number" name="quantities[]" class="form-control" step="0.01" min="0.01"
+               value="{{ item.quantity if item else '1' }}" required>
+    </td>
+    <td>
+        <input type="number" name="unit_prices[]" class="form-control" step="0.01" min="0"
+               value="{{ '%.2f' % (item.unit_price_cents / 100) if item else '0.00' }}" required>
+    </td>
+    <td>
+        <input type="number" name="tax_rates[]" class="form-control" step="0.01" min="0"
+               value="{{ item.tax_rate if item else default_tax_rate }}" required>
+    </td>
+    <td class="text-end align-middle line-total">
+        {% if item %}
+            {{ item.line_total_cents | dollars }}
+        {% else %}
+            $0.00
+        {% endif %}
+    </td>
+    <td>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-line-item">&times;</button>
+    </td>
+</tr>

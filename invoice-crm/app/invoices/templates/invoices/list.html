@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Invoices</h1>
+    <a href="{{ url_for('invoices.create_invoice') }}" class="btn btn-primary">New Invoice</a>
+</div>
+
+{# Filters #}
+<form method="GET" action="{{ url_for('invoices.list_invoices') }}" class="card card-body mb-4">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-2">
+            <label for="status" class="form-label">Status</label>
+            <select name="status" id="status" class="form-select">
+                <option value="">All</option>
+                {% for s in ['draft', 'sent', 'viewed', 'paid', 'overdue'] %}
+                <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>
+                    {{ s|capitalize }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="client_id" class="form-label">Client</label>
+            <select name="client_id" id="client_id" class="form-select">
+                <option value="">All Clients</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}" {% if client_id_filter == c.id %}selected{% endif %}>
+                    {{ c.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="start_date" class="form-label">From</label>
+            <input type="date" name="start_date" id="start_date" class="form-control"
+                   value="{{ start_date }}">
+        </div>
+        <div class="col-md-2">
+            <label for="end_date" class="form-label">To</label>
+            <input type="date" name="end_date" id="end_date" class="form-control"
+                   value="{{ end_date }}">
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-outline-primary me-2">Filter</button>
+            <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-outline-secondary">Clear</a>
+        </div>
+    </div>
+</form>
+
+{% if invoices %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Invoice #</th>
+                <th>Client</th>
+                <th>Issue Date</th>
+                <th>Due Date</th>
+                <th class="text-end">Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr class="{% if inv.status == 'overdue' %}table-danger{% elif inv.status == 'paid' %}table-success{% endif %}">
+                <td>
+                    <a href="{{ url_for('invoices.view_invoice', invoice_id=inv.id) }}">
+                        {{ inv.invoice_number }}
+                    </a>
+                </td>
+                <td>{{ inv.client_name or 'N/A' }}</td>
+                <td>{{ inv.issue_date | format_date }}</td>
+                <td>{{ inv.due_date | format_date }}</td>
+                <td class="text-end">{{ inv.total_cents | dollars }}</td>
+                <td>
+                    <span class="badge bg-{% if inv.status == 'draft' %}secondary{% elif inv.status == 'sent' %}primary{% elif inv.status == 'viewed' %}info{% elif inv.status == 'paid' %}success{% elif inv.status == 'overdue' %}danger{% endif %}">
+                        {{ inv.status | capitalize }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ url_for('invoices.view_invoice', invoice_id=inv.id) }}"
+                       class="btn btn-sm btn-outline-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No invoices found. <a href="{{ url_for('invoices.create_invoice') }}">Create your first invoice</a>.
+</div>
+{% endif %}
+{% endblock %}
