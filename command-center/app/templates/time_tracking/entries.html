@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Time Entries{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-clock"></i> Time Entries</h2>
+    <div>
+        <a href="{{ url_for('time_tracking.timesheet') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-calendar-week"></i> Timesheet
+        </a>
+        <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#timerModal">
+            <i class="bi bi-play-circle"></i> Start Timer
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newEntryModal">
+            <i class="bi bi-plus-lg"></i> Log Time
+        </button>
+    </div>
+</div>
+
+{% include "_flash_messages.html" %}
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Hours</h6>
+                <h3>{{ total_hours|minutes_to_hours }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Billable Hours</h6>
+                <h3>{{ billable_hours|minutes_to_hours }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Non-Billable</h6>
+                <h3>{{ (total_hours - billable_hours)|minutes_to_hours }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('time_tracking.index') }}" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="project_id" class="form-label">Project</label>
+                <select name="project_id" id="project_id" class="form-select">
+                    <option value="">All Projects</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}" {% if request.args.get('project_id') == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">From</label>
+                <input type="date" name="date_from" id="date_from" class="form-control"
+                       value="{{ request.args.get('date_from', '') }}">
+            </div>
+            <div class="col-md-3">
+                <label for="date_to" class="form-label">To</label>
+                <input type="date" name="date_to" id="date_to" class="form-control"
+                       value="{{ request.args.get('date_to', '') }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-secondary w-100">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Entries Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Project</th>
+                    <th>Task</th>
+                    <th>Description</th>
+                    <th class="text-end">Hours</th>
+                    <th>Billable</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td>{{ entry.date }}</td>
+                    <td>{{ entry.project_name }}</td>
+                    <td>{{ entry.task_title or '-' }}</td>
+                    <td>{{ entry.description or '-' }}</td>
+                    <td class="text-end">{{ entry.minutes|minutes_to_hours }}</td>
+                    <td>
+                        {% if entry.billable %}
+                        <span class="badge bg-success">Yes</span>
+                        {% else %}
+                        <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('time_tracking.edit', id=entry.id) }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="post" action="{{ url_for('time_tracking.delete', id=entry.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('Delete this time entry?')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No time entries found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- New Entry Modal -->
+<div class="modal fade" id="newEntryModal" tabindex="-1" aria-labelledby="newEntryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('time_tracking.create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newEntryModalLabel">Log Time</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="new_date" class="form-label">Date</label>
+                        <input type="date" name="date" id="new_date" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_project_id" class="form-label">Project *</label>
+                        <select name="project_id" id="new_project_id" class="form-select" required>
+                            <option value="">Select project...</option>
+                            {% for p in projects %}
+                            <option value="{{ p.id }}">{{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_task_id" class="form-label">Task</label>
+                        <select name="task_id" id="new_task_id" class="form-select">
+                            <option value="">None</option>
+                            {% for t in tasks %}
+                            <option value="{{ t.id }}">{{ t.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_hours" class="form-label">Hours *</label>
+                        <input type="number" name="hours" id="new_hours" class="form-control"
+                               step="0.1" min="0.1" placeholder="1.5" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_description" class="form-label">Description</label>
+                        <input type="text" name="description" id="new_description" class="form-control"
+                               placeholder="What did you work on?">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="billable" id="new_billable" class="form-check-input" value="1" checked>
+                        <label for="new_billable" class="form-check-label">Billable</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Log Time</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Entry Modal (populated via link, but rendered as page for simplicity) -->
+<!-- Note: Edit uses a separate page load via GET to /time/<id>/edit -->
+
+<!-- Timer Modal -->
+<div class="modal fade" id="timerModal" tabindex="-1" aria-labelledby="timerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="timerModalLabel">Timer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h1 id="timerDisplay" class="display-3 font-monospace">0:00:00</h1>
+                </div>
+                <div class="mb-3">
+                    <label for="timer_project_id" class="form-label">Project *</label>
+                    <select id="timer_project_id" class="form-select" required>
+                        <option value="">Select project...</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="timer_task_id" class="form-label">Task</label>
+                    <select id="timer_task_id" class="form-select">
+                        <option value="">None</option>
+                        {% for t in tasks %}
+                        <option value="{{ t.id }}">{{ t.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="timer_description" class="form-label">Description</label>
+                    <input type="text" id="timer_description" class="form-control"
+                           placeholder="What are you working on?">
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" id="timer_billable" class="form-check-input" value="1" checked>
+                    <label for="timer_billable" class="form-check-label">Billable</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success btn-lg" id="timerStartBtn" onclick="startTimer()">
+                    <i class="bi bi-play-fill"></i> Start
+                </button>
+                <form method="post" action="{{ url_for('time_tracking.stop_timer') }}" id="timerStopForm" style="display:none;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="project_id" id="stop_project_id">
+                    <input type="hidden" name="task_id" id="stop_task_id">
+                    <input type="hidden" name="minutes" id="stop_minutes">
+                    <input type="hidden" name="description" id="stop_description">
+                    <input type="hidden" name="billable" id="stop_billable" value="1">
+                    <button type="submit" class="btn btn-danger btn-lg" onclick="return stopTimer()">
+                        <i class="bi bi-stop-fill"></i> Stop
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set default date to today for the new entry form
+document.addEventListener('DOMContentLoaded', function() {
+    var dateInput = document.getElementById('new_date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    // Restore timer state from localStorage if running
+    var timerStart = localStorage.getItem('timer_start');
+    if (timerStart) {
+        _timerRunning = true;
+        _timerStartTime = parseInt(timerStart, 10);
+        document.getElementById('timerStartBtn').style.display = 'none';
+        document.getElementById('timerStopForm').style.display = 'inline';
+        _timerInterval = setInterval(updateTimerDisplay, 1000);
+        updateTimerDisplay();
+    }
+});
+
+var _timerInterval = null;
+var _timerRunning = false;
+var _timerStartTime = null;
+
+function startTimer() {
+    var projectId = document.getElementById('timer_project_id').value;
+    if (!projectId) {
+        alert('Please select a project first.');
+        return;
+    }
+
+    _timerStartTime = Date.now();
+    _timerRunning = true;
+    localStorage.setItem('timer_start', _timerStartTime.toString());
+
+    // Call start endpoint
+    fetch('{{ url_for("time_tracking.start_timer") }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content
+        }
+    });
+
+    document.getElementById('timerStartBtn').style.display = 'none';
+    document.getElementById('timerStopForm').style.display = 'inline';
+
+    _timerInterval = setInterval(updateTimerDisplay, 1000);
+    updateTimerDisplay();
+}
+
+function stopTimer() {
+    if (!_timerRunning || !_timerStartTime) return true;
+
+    var elapsedMs = Date.now() - _timerStartTime;
+    var elapsedMinutes = Math.round(elapsedMs / 60000);
+    if (elapsedMinutes < 1) elapsedMinutes = 1;
+
+    // Fill hidden form fields
+    document.getElementById('stop_project_id').value = document.getElementById('timer_project_id').value;
+    document.getElementById('stop_task_id').value = document.getElementById('timer_task_id').value;
+    document.getElementById('stop_minutes').value = elapsedMinutes;
+    document.getElementById('stop_description').value = document.getElementById('timer_description').value;
+    document.getElementById('stop_billable').value = document.getElementById('timer_billable').checked ? '1' : '';
+
+    // Clean up
+    clearInterval(_timerInterval);
+    _timerRunning = false;
+    _timerStartTime = null;
+    localStorage.removeItem('timer_start');
+
+    return true;  // Allow form submission
+}
+
+function updateTimerDisplay() {
+    if (!_timerStartTime) return;
+    var elapsed = Math.floor((Date.now() - _timerStartTime) / 1000);
+    var hours = Math.floor(elapsed / 3600);
+    var mins = Math.floor((elapsed % 3600) / 60);
+    var secs = elapsed % 60;
+    document.getElementById('timerDisplay').textContent =
+        hours + ':' + String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+}
+</script>
+{% endblock %}

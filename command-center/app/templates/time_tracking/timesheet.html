@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Timesheet{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-calendar-week"></i> Timesheet</h2>
+    <a href="{{ url_for('time_tracking.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-list"></i> All Entries
+    </a>
+</div>
+
+{% include "_flash_messages.html" %}
+
+<!-- Week Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    {% set current_offset = request.args.get('week_offset', '0')|int %}
+    <a href="{{ url_for('time_tracking.timesheet', week_offset=current_offset - 1) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i> Previous Week
+    </a>
+    <div class="text-center">
+        <h5 class="mb-0">{{ week_start }} &mdash; {{ week_end }}</h5>
+        {% if current_offset != 0 %}
+        <a href="{{ url_for('time_tracking.timesheet') }}" class="small">Back to this week</a>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('time_tracking.timesheet', week_offset=current_offset + 1) }}" class="btn btn-outline-secondary">
+        Next Week <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<!-- Progress Bar -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between mb-1">
+            <span>Weekly Progress</span>
+            <span>{{ total_week|minutes_to_hours }} / {{ target|minutes_to_hours }} hours</span>
+        </div>
+        {% set pct = ((total_week / target * 100) if target > 0 else 0)|round|int %}
+        {% set bar_class = 'bg-success' if pct >= 100 else ('bg-warning' if pct >= 75 else 'bg-info') %}
+        <div class="progress" style="height: 24px;">
+            <div class="progress-bar {{ bar_class }}" role="progressbar"
+                 style="width: {{ [pct, 100]|min }}%"
+                 aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+                {{ pct }}%
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timesheet Grid -->
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th class="text-center">Mon</th>
+                    <th class="text-center">Tue</th>
+                    <th class="text-center">Wed</th>
+                    <th class="text-center">Thu</th>
+                    <th class="text-center">Fri</th>
+                    <th class="text-center">Sat</th>
+                    <th class="text-center">Sun</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for project_name, days in week_data.items() %}
+                {% set row_total = days.mon + days.tue + days.wed + days.thu + days.fri + days.sat + days.sun %}
+                <tr>
+                    <td><strong>{{ project_name }}</strong></td>
+                    <td class="text-center">{{ days.mon|minutes_to_hours if days.mon else '-' }}</td>
+                    <td class="text-center">{{ days.tue|minutes_to_hours if days.tue else '-' }}</td>
+                    <td class="text-center">{{ days.wed|minutes_to_hours if days.wed else '-' }}</td>
+                    <td class="text-center">{{ days.thu|minutes_to_hours if days.thu else '-' }}</td>
+                    <td class="text-center">{{ days.fri|minutes_to_hours if days.fri else '-' }}</td>
+                    <td class="text-center">{{ days.sat|minutes_to_hours if days.sat else '-' }}</td>
+                    <td class="text-center">{{ days.sun|minutes_to_hours if days.sun else '-' }}</td>
+                    <td class="text-end"><strong>{{ row_total|minutes_to_hours }}</strong></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">No time entries this week.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if week_data %}
+            <tfoot>
+                <tr class="table-active">
+                    <th>Total</th>
+                    {% set ns = namespace(mon=0, tue=0, wed=0, thu=0, fri=0, sat=0, sun=0) %}
+                    {% for project_name, days in week_data.items() %}
+                        {% set ns.mon = ns.mon + days.mon %}
+                        {% set ns.tue = ns.tue + days.tue %}
+                        {% set ns.wed = ns.wed + days.wed %}
+                        {% set ns.thu = ns.thu + days.thu %}
+                        {% set ns.fri = ns.fri + days.fri %}
+                        {% set ns.sat = ns.sat + days.sat %}
+                        {% set ns.sun = ns.sun + days.sun %}
+                    {% endfor %}
+                    <th class="text-center">{{ ns.mon|minutes_to_hours if ns.mon else '-' }}</th>
+                    <th class="text-center">{{ ns.tue|minutes_to_hours if ns.tue else '-' }}</th>
+                    <th class="text-center">{{ ns.wed|minutes_to_hours if ns.wed else '-' }}</th>
+                    <th class="text-center">{{ ns.thu|minutes_to_hours if ns.thu else '-' }}</th>
+                    <th class="text-center">{{ ns.fri|minutes_to_hours if ns.fri else '-' }}</th>
+                    <th class="text-center">{{ ns.sat|minutes_to_hours if ns.sat else '-' }}</th>
+                    <th class="text-center">{{ ns.sun|minutes_to_hours if ns.sun else '-' }}</th>
+                    <th class="text-end">{{ total_week|minutes_to_hours }}</th>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- Quick Log from Timesheet -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">Quick Log</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('time_tracking.create') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label for="ql_date" class="form-label">Date</label>
+                    <input type="date" name="date" id="ql_date" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="ql_project" class="form-label">Project</label>
+                    <select name="project_id" id="ql_project" class="form-select" required>
+                        <option value="">Select...</option>
+                        {% for p in projects %}
+                        <option value="{{ p.id }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="ql_hours" class="form-label">Hours</label>
+                    <input type="number" name="hours" id="ql_hours" class="form-control"
+                           step="0.1" min="0.1" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="ql_description" class="form-label">Description</label>
+                    <input type="text" name="description" id="ql_description" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <input type="hidden" name="billable" value="1">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-plus-lg"></i> Log
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var dateInput = document.getElementById('ql_date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+});
+</script>
+{% endblock %}
