@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}{% if deal %}Edit Deal{% else %}New Deal{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('pipeline.board') }}" class="text-muted text-decoration-none small">
+        <i class="bi bi-arrow-left"></i> Back to Pipeline
+    </a>
+    <h1 class="h3 mt-1">{% if deal %}Edit Deal{% else %}New Deal{% endif %}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="title" name="title"
+                       value="{{ deal['title'] if deal else '' }}" required>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="value" class="form-label">Value ($)</label>
+                    <input type="number" class="form-control" id="value" name="value" step="0.01" min="0"
+                           value="{{ '%.2f' % (deal['value'] / 100) if deal and deal['value'] else '0.00' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="stage" class="form-label">Stage</label>
+                    <select class="form-select" id="stage" name="stage">
+                        {% for key, label, prob in stages %}
+                        <option value="{{ key }}"
+                                {% if deal and deal['stage'] == key %}selected{% endif %}
+                                {% if not deal and key == 'lead' %}selected{% endif %}>
+                            {{ label }} ({{ prob }}%)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="contact_id" class="form-label">Contact</label>
+                    <select class="form-select" id="contact_id" name="contact_id">
+                        <option value="">-- None --</option>
+                        {% for c in contacts %}
+                        <option value="{{ c['id'] }}"
+                                {% if deal and deal['contact_id'] == c['id'] %}selected{% endif %}>
+                            {{ c['name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="company_id" class="form-label">Company</label>
+                    <select class="form-select" id="company_id" name="company_id">
+                        <option value="">-- None --</option>
+                        {% for co in companies %}
+                        <option value="{{ co['id'] }}"
+                                {% if deal and deal['company_id'] == co['id'] %}selected{% endif %}>
+                            {{ co['name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="expected_close_date" class="form-label">Expected Close Date</label>
+                    <input type="date" class="form-control" id="expected_close_date" name="expected_close_date"
+                           value="{{ deal['expected_close_date'] if deal and deal['expected_close_date'] else '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="source" class="form-label">Source</label>
+                    <select class="form-select" id="source" name="source">
+                        <option value="">-- None --</option>
+                        {% for s in sources %}
+                        <option value="{{ s }}"
+                                {% if deal and deal['source'] == s %}selected{% endif %}>
+                            {{ s|replace('_', ' ')|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            {% if deal and deal['stage'] == 'lost' %}
+            <div class="mb-3">
+                <label for="loss_reason" class="form-label">Loss Reason</label>
+                <input type="text" class="form-control" id="loss_reason" name="loss_reason"
+                       value="{{ deal['loss_reason'] if deal and deal['loss_reason'] else '' }}">
+            </div>
+            {% endif %}
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3">{{ deal['notes'] if deal else '' }}</textarea>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a href="{{ url_for('pipeline.board') }}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    {% if deal %}Update Deal{% else %}Create Deal{% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

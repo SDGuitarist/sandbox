@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline Board{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Pipeline Board</h1>
+    <div>
+        <a href="{{ url_for('pipeline.list_view') }}" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-list-ul"></i> List View
+        </a>
+        <a href="{{ url_for('pipeline.stats') }}" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-bar-chart"></i> Stats
+        </a>
+        <a href="{{ url_for('pipeline.create') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg"></i> New Deal
+        </a>
+    </div>
+</div>
+
+<div class="pipeline-board" style="display: grid; grid-template-columns: repeat({{ stages|length }}, minmax(220px, 1fr)); gap: 1rem; overflow-x: auto; padding-bottom: 1rem;">
+    {% for stage in stages %}
+    <div class="pipeline-column">
+        <div class="card">
+            <div class="card-header bg-white py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <strong>{{ stage.label }}</strong>
+                    <span class="badge bg-secondary">{{ stage.deals|length }}</span>
+                </div>
+                <small class="text-muted">
+                    {{ stage.total_value|dollars }} total &middot;
+                    {{ stage.weighted_value|dollars }} weighted
+                </small>
+            </div>
+            <div class="card-body p-2" style="min-height: 200px; max-height: 70vh; overflow-y: auto;">
+                {% for deal in stage.deals %}
+                <div class="card mb-2 deal-card" style="cursor: pointer;">
+                    <div class="card-body p-2">
+                        <a href="{{ url_for('pipeline.detail', id=deal['id']) }}" class="text-decoration-none">
+                            <div class="fw-semibold text-dark">{{ deal['title'] }}</div>
+                        </a>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-success fw-bold small">{{ deal['value']|dollars }}</span>
+                            {% if deal['contact_name'] %}
+                            <span class="text-muted small">{{ deal['contact_name'] }}</span>
+                            {% endif %}
+                        </div>
+                        {% if deal['expected_close_date'] %}
+                        <div class="text-muted small mt-1">
+                            <i class="bi bi-calendar-event"></i> {{ deal['expected_close_date'] }}
+                        </div>
+                        {% endif %}
+
+                        {# Move to next stage button #}
+                        {% set stage_keys = ['lead', 'discovery', 'proposal_sent', 'negotiation', 'verbal_yes'] %}
+                        {% set current_idx = stage_keys.index(stage.key) if stage.key in stage_keys else -1 %}
+                        {% if current_idx >= 0 and current_idx < stage_keys|length - 1 %}
+                        {% set next_key = stage_keys[current_idx + 1] %}
+                        {% set next_label = none %}
+                        {% for sk, sl, sp in [('lead','Lead',10),('discovery','Discovery',25),('proposal_sent','Proposal Sent',50),('negotiation','Negotiation',65),('verbal_yes','Verbal Yes',80)] %}
+                            {% if sk == next_key %}{% set next_label = sl %}{% endif %}
+                        {% endfor %}
+                        <form method="POST" action="{{ url_for('pipeline.move_stage', id=deal['id']) }}" class="mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="stage" value="{{ next_key }}">
+                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                                Move to {{ next_label or next_key }}
+                            </button>
+                        </form>
+                        {% elif stage.key == 'verbal_yes' %}
+                        <form method="POST" action="{{ url_for('pipeline.move_stage', id=deal['id']) }}" class="mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="stage" value="won">
+                            <button type="submit" class="btn btn-success btn-sm w-100">
+                                <i class="bi bi-trophy"></i> Mark Won
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not stage.deals %}
+                <div class="text-muted text-center small py-4">No deals</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
