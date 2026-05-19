@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">{% if editing %}Edit Invoice {{ invoice.invoice_number }}{% else %}New Invoice{% endif %}</h1>
+
+<form method="POST"
+      action="{% if editing %}{{ url_for('invoices.edit_invoice', invoice_id=invoice.id) }}{% else %}{{ url_for('invoices.create_invoice') }}{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="client_id" class="form-label">Client</label>
+            <select name="client_id" id="client_id" class="form-select" required>
+                <option value="">-- Select Client --</option>
+                {% for c in clients %}
+                <option value="{{ c.id }}"
+                        {% if prefill_client_id == c.id %}selected{% endif %}>
+                    {{ c.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="issue_date" class="form-label">Issue Date</label>
+            <input type="date" name="issue_date" id="issue_date" class="form-control"
+                   value="{{ issue_date }}" required>
+        </div>
+        <div class="col-md-4">
+            <label for="due_date" class="form-label">Due Date</label>
+            <input type="date" name="due_date" id="due_date" class="form-control"
+                   value="{{ due_date }}" required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea name="notes" id="notes" class="form-control" rows="2">{{ prefill_notes if not editing else invoice.notes }}</textarea>
+    </div>
+
+    {# Line items #}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>Line Items</strong>
+            <button type="button" id="add-line-item" class="btn btn-sm btn-outline-primary">+ Add Row</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table mb-0" id="line-items-table">
+                <thead>
+                    <tr>
+                        <th style="width:18%">Catalog Item</th>
+                        <th style="width:25%">Description</th>
+                        <th style="width:10%">Qty</th>
+                        <th style="width:14%">Unit Price ($)</th>
+                        <th style="width:10%">Tax %</th>
+                        <th style="width:13%" class="text-end">Total</th>
+                        <th style="width:10%"></th>
+                    </tr>
+                </thead>
+                <tbody id="line-items-body">
+                    {% if line_items %}
+                        {% for item in line_items %}
+                        {% with item=item %}
+                        {% include "invoices/line_items_partial.html" %}
+                        {% endwith %}
+                        {% endfor %}
+                    {% else %}
+                        {# One empty row for new invoices #}
+                        {% with item=None %}
+                        {% include "invoices/line_items_partial.html" %}
+                        {% endwith %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('invoices.list_invoices') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+            {% if editing %}Update Invoice{% else %}Create Invoice{% endif %}
+        </button>
+    </div>
+</form>
+
+{# Hidden template row for JS cloning #}
+<table class="d-none">
+    <tbody id="line-item-template">
+        {% with item=None %}
+        {% include "invoices/line_items_partial.html" %}
+        {% endwith %}
+    </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var addBtn = document.getElementById('add-line-item');
+    var tbody = document.getElementById('line-items-body');
+    var template = document.getElementById('line-item-template');
+
+    // Add a new empty line item row
+    addBtn.addEventListener('click', function() {
+        var newRow = template.querySelector('tr').cloneNode(true);
+        tbody.appendChild(newRow);
+        bindRowEvents(newRow);
+    });
+
+    // Remove line item row
+    function bindRowEvents(row) {
+        var removeBtn = row.querySelector('.remove-line-item');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                if (tbody.querySelectorAll('tr').length > 1) {
+                    row.remove();
+                    updateTotals();
+                }
+            });
+        }
+
+        // Catalog item autofill
+        var catalogSelect = row.querySelector('.catalog-item-select');
+        if (catalogSelect) {
+            catalogSelect.addEventListener('change', function() {
+                var opt = this.options[this.selectedIndex];
+                if (opt.value) {
+                    var descInput = row.querySelector('[name="descriptions[]"]');
+                    var priceInput = row.querySelector('[name="unit_prices[]"]');
+                    if (opt.dataset.description) descInput.value = opt.dataset.description;
+                    if (opt.dataset.unitPrice) priceInput.value = opt.dataset.unitPrice;
+                    updateTotals();
+                }
+            });
+        }
+
+        // Recalculate on input change
+        var inputs = row.querySelectorAll('input[type="number"]');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('input', updateTotals);
+        }
+    }
+
+    function updateTotals() {
+        var rows = tbody.querySelectorAll('tr');
+        for (var i = 0; i < rows.length; i++) {
+            var qty = parseFloat(rows[i].querySelector('[name="quantities[]"]').value) || 0;
+            var price = parseFloat(rows[i].querySelector('[name="unit_prices[]"]').value) || 0;
+            var tax = parseFloat(rows[i].querySelector('[name="tax_rates[]"]').value) || 0;
+            var priceCents = Math.round(price * 100);
+            var lineSubtotal = Math.round(qty * priceCents);
+            var lineTax = Math.round(qty * priceCents * (tax / 100));
+            var lineTotal = lineSubtotal + lineTax;
+            var totalCell = rows[i].querySelector('.line-total');
+            if (totalCell) {
+                totalCell.textContent = '$' + (lineTotal / 100).toFixed(2);
+            }
+        }
+    }
+
+    // Bind events for existing rows on page load
+    var existingRows = tbody.querySelectorAll('tr');
+    for (var i = 0; i < existingRows.length; i++) {
+        bindRowEvents(existingRows[i]);
+    }
+})();
+</script>
+{% endblock %}
