@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}{{ contact['name'] }} — Contacts{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('contacts.index') }}" class="text-decoration-none text-muted">
+            <i class="bi bi-arrow-left"></i> Contacts
+        </a>
+        <h1 class="h3 mt-1 mb-0">{{ contact['name'] }}</h1>
+        {% if contact['role_title'] %}
+        <p class="text-muted mb-0">{{ contact['role_title'] }}{% if company %} at {{ company['name'] }}{% endif %}</p>
+        {% elif company %}
+        <p class="text-muted mb-0">{{ company['name'] }}</p>
+        {% endif %}
+    </div>
+    <div>
+        <a href="{{ url_for('contacts.edit', id=contact['id']) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <form method="post" action="{{ url_for('contacts.delete', id=contact['id']) }}" class="d-inline"
+              onsubmit="return confirm('Are you sure you want to delete this contact?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Contact Info Card -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <small class="text-muted d-block">Email</small>
+                        {% if contact['email'] %}
+                        <a href="mailto:{{ contact['email'] }}">{{ contact['email'] }}</a>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <small class="text-muted d-block">Phone</small>
+                        {% if contact['phone'] %}
+                        <a href="tel:{{ contact['phone'] }}">{{ contact['phone'] }}</a>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <small class="text-muted d-block">Status</small>
+                        {% if contact['status'] == 'active_client' %}
+                        <span class="badge bg-success">Active Client</span>
+                        {% elif contact['status'] == 'lead' %}
+                        <span class="badge bg-warning text-dark">Lead</span>
+                        {% elif contact['status'] == 'past_client' %}
+                        <span class="badge bg-secondary">Past Client</span>
+                        {% elif contact['status'] == 'partner' %}
+                        <span class="badge bg-info text-dark">Partner</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ contact['status'] | replace('_', ' ') | title }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <small class="text-muted d-block">Source</small>
+                        {{ contact['source'] | replace('_', ' ') | title }}
+                    </div>
+                    {% if contact['tags'] %}
+                    <div class="col-sm-6 mb-3">
+                        <small class="text-muted d-block">Tags</small>
+                        {% for tag in contact['tags'].split(',') %}
+                        <span class="badge bg-light text-dark">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div class="col-sm-6 mb-3">
+                        <small class="text-muted d-block">Added</small>
+                        {{ contact['created_at'][:10] }}
+                    </div>
+                </div>
+                {% if contact['notes'] %}
+                <div class="mt-2">
+                    <small class="text-muted d-block">Notes</small>
+                    <p class="mb-0">{{ contact['notes'] }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <small class="text-muted d-block">Total Revenue</small>
+                <span class="h4">{{ total_revenue | dollars }}</span>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-body text-center">
+                <small class="text-muted d-block">Total Hours</small>
+                <span class="h4">{{ total_hours | minutes_to_hours }}</span>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body text-center">
+                <small class="text-muted d-block">Projects</small>
+                <span class="h4">{{ projects | length }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactions -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Interactions</h5>
+        <button class="btn btn-sm btn-outline-primary" type="button"
+                data-bs-toggle="collapse" data-bs-target="#addInteractionForm">
+            <i class="bi bi-plus-lg"></i> Add
+        </button>
+    </div>
+
+    <!-- Add Interaction Form (collapsed by default) -->
+    <div class="collapse" id="addInteractionForm">
+        <div class="card-body border-bottom">
+            <form method="post" action="{{ url_for('contacts.add_interaction', id=contact['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" name="date" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" name="type">
+                            <option value="email">Email</option>
+                            <option value="call">Call</option>
+                            <option value="meeting">Meeting</option>
+                            <option value="message">Message</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" name="notes" placeholder="Brief description...">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">Save</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card-body p-0">
+        {% if interactions %}
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in interactions %}
+                <tr>
+                    <td>{{ i['date'] }}</td>
+                    <td>
+                        {% if i['type'] == 'email' %}
+                        <i class="bi bi-envelope"></i>
+                        {% elif i['type'] == 'call' %}
+                        <i class="bi bi-telephone"></i>
+                        {% elif i['type'] == 'meeting' %}
+                        <i class="bi bi-calendar-event"></i>
+                        {% elif i['type'] == 'message' %}
+                        <i class="bi bi-chat-dots"></i>
+                        {% else %}
+                        <i class="bi bi-three-dots"></i>
+                        {% endif %}
+                        {{ i['type'] | title }}
+                    </td>
+                    <td>{{ i['notes'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <p class="mb-0">No interactions yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Projects -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Projects</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if projects %}
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in projects %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('projects.detail', id=p['id']) }}" class="text-decoration-none">
+                            {{ p['name'] }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if p['status'] == 'in_progress' %}
+                        <span class="badge bg-warning text-dark">In Progress</span>
+                        {% elif p['status'] == 'completed' %}
+                        <span class="badge bg-success">Completed</span>
+                        {% elif p['status'] == 'not_started' %}
+                        <span class="badge bg-secondary">Not Started</span>
+                        {% elif p['status'] == 'on_hold' %}
+                        <span class="badge bg-warning text-dark">On Hold</span>
+                        {% elif p['status'] == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ p['status'] | replace('_', ' ') | title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p['type'] | replace('_', ' ') | title }}</td>
+                    <td>{{ p['value'] | dollars }}</td>
+                    <td>{{ p['created_at'][:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <p class="mb-0">No projects linked to this contact.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

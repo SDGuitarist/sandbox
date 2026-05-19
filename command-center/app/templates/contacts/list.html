@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Contacts{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Contacts</h1>
+    <a href="{{ url_for('contacts.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> New Contact
+    </a>
+</div>
+
+<!-- Search and Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" action="{{ url_for('contacts.index') }}" class="row g-3">
+            <div class="col-md-5">
+                <input type="text" class="form-control" name="search"
+                       placeholder="Search by name, email, or phone..."
+                       value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="status">
+                    <option value="">All Statuses</option>
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>
+                        {{ s | replace('_', ' ') | title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-search"></i> Filter
+                </button>
+            </div>
+            {% if search or status_filter %}
+            <div class="col-md-2">
+                <a href="{{ url_for('contacts.index') }}" class="btn btn-outline-danger w-100">
+                    <i class="bi bi-x-lg"></i> Clear
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Contacts Table -->
+<div class="card">
+    <div class="card-body p-0">
+        {% if contacts %}
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                    <th>Source</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in contacts %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('contacts.detail', id=c['id']) }}" class="text-decoration-none fw-medium">
+                            {{ c['name'] }}
+                        </a>
+                        {% if c['role_title'] %}
+                        <br><small class="text-muted">{{ c['role_title'] }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ c['email'] }}</td>
+                    <td>{{ c['phone'] }}</td>
+                    <td>{{ c['company_name'] or '' }}</td>
+                    <td>
+                        {% if c['status'] == 'active_client' %}
+                        <span class="badge bg-success">Active Client</span>
+                        {% elif c['status'] == 'lead' %}
+                        <span class="badge bg-warning text-dark">Lead</span>
+                        {% elif c['status'] == 'past_client' %}
+                        <span class="badge bg-secondary">Past Client</span>
+                        {% elif c['status'] == 'partner' %}
+                        <span class="badge bg-info text-dark">Partner</span>
+                        {% else %}
+                        <span class="badge bg-secondary">{{ c['status'] | replace('_', ' ') | title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ c['source'] | replace('_', ' ') | title }}</td>
+                    <td>{{ c['created_at'][:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-people" style="font-size: 3rem;"></i>
+            <p class="mt-2">No contacts found.</p>
+            <a href="{{ url_for('contacts.create') }}" class="btn btn-primary btn-sm">Add your first contact</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if contacts %}
+<div class="text-muted mt-2">
+    <small>{{ contacts | length }} contact{{ 's' if contacts | length != 1 else '' }} found</small>
+</div>
+{% endif %}
+{% endblock %}
