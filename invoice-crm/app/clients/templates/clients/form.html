@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <h1 class="mb-4">{% if client %}Edit Client{% else %}New Client{% endif %}</h1>
+
+    <form method="POST">
+      {{ form.hidden_tag() }}
+
+      <div class="mb-3">
+        {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), placeholder="Client name") }}
+        {% for error in form.name.errors %}
+          <div class="invalid-feedback">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          {{ form.email.label(class="form-label") }}
+          {{ form.email(class="form-control" + (" is-invalid" if form.email.errors else ""), placeholder="email@example.com") }}
+          {% for error in form.email.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6 mb-3">
+          {{ form.phone.label(class="form-label") }}
+          {{ form.phone(class="form-control" + (" is-invalid" if form.phone.errors else ""), placeholder="(555) 123-4567") }}
+          {% for error in form.phone.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        {{ form.company.label(class="form-label") }}
+        {{ form.company(class="form-control" + (" is-invalid" if form.company.errors else ""), placeholder="Company name") }}
+        {% for error in form.company.errors %}
+          <div class="invalid-feedback">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="mb-3">
+        {{ form.address.label(class="form-label") }}
+        {{ form.address(class="form-control" + (" is-invalid" if form.address.errors else ""), rows="3", placeholder="Street address, city, state, zip") }}
+        {% for error in form.address.errors %}
+          <div class="invalid-feedback">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="mb-3">
+        {{ form.notes.label(class="form-label") }}
+        {{ form.notes(class="form-control" + (" is-invalid" if form.notes.errors else ""), rows="3", placeholder="Any notes about this client...") }}
+        {% for error in form.notes.errors %}
+          <div class="invalid-feedback">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          {{ form.status.label(class="form-label") }}
+          {{ form.status(class="form-select" + (" is-invalid" if form.status.errors else "")) }}
+          {% for error in form.status.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="col-md-6 mb-3">
+          {{ form.tags.label(class="form-label") }}
+          {{ form.tags(class="form-control" + (" is-invalid" if form.tags.errors else ""), placeholder="e.g. VIP, Local, Wholesale") }}
+          <div class="form-text">Separate multiple tags with commas.</div>
+          {% for error in form.tags.errors %}
+            <div class="invalid-feedback">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          {% if client %}Update Client{% else %}Create Client{% endif %}
+        </button>
+        {% if client %}
+          <a href="{{ url_for('clients.view_client', client_id=client['id']) }}" class="btn btn-outline-secondary">Cancel</a>
+        {% else %}
+          <a href="{{ url_for('clients.list_clients') }}" class="btn btn-outline-secondary">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
