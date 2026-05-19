@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - Profile{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<nav class="settings-tabs">
+    <a href="{{ url_for('settings.profile') }}" class="active">Profile</a>
+    <a href="{{ url_for('settings.financial') }}">Financial</a>
+    <a href="{{ url_for('settings.targets') }}">Targets</a>
+    <a href="{{ url_for('settings.categories') }}">Categories</a>
+    <a href="{{ url_for('settings.export_data') }}">Export</a>
+</nav>
+
+<h2>Business Profile</h2>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+        <label for="business_name">Business Name</label>
+        <input type="text" id="business_name" name="business_name"
+               value="{{ profile['business_name'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="owner_name">Owner Name</label>
+        <input type="text" id="owner_name" name="owner_name"
+               value="{{ profile['owner_name'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="logo_url">Logo URL</label>
+        <input type="url" id="logo_url" name="logo_url"
+               value="{{ profile['logo_url'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="tagline">Tagline</label>
+        <input type="text" id="tagline" name="tagline"
+               value="{{ profile['tagline'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email"
+               value="{{ profile['email'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone"
+               value="{{ profile['phone'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="website">Website</label>
+        <input type="url" id="website" name="website"
+               value="{{ profile['website'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="address">Address</label>
+        <textarea id="address" name="address" rows="3">{{ profile['address'] }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="tax_id">Tax ID</label>
+        <input type="text" id="tax_id" name="tax_id"
+               value="{{ profile['tax_id'] }}">
+    </div>
+
+    <button type="submit">Save Profile</button>
+</form>
+{% endblock %}

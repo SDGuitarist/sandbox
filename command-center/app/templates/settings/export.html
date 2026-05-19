@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - Export{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<nav class="settings-tabs">
+    <a href="{{ url_for('settings.profile') }}">Profile</a>
+    <a href="{{ url_for('settings.financial') }}">Financial</a>
+    <a href="{{ url_for('settings.targets') }}">Targets</a>
+    <a href="{{ url_for('settings.categories') }}">Categories</a>
+    <a href="{{ url_for('settings.export_data') }}" class="active">Export</a>
+</nav>
+
+<h2>Export Data</h2>
+
+<p>Download your data as CSV files.</p>
+
+<div class="export-grid">
+    {% for module in modules %}
+    <div class="export-card">
+        <h3>{{ module | replace('_', ' ') | title }}</h3>
+        <a href="{{ url_for('settings.export_module', module=module) }}" class="btn">
+            Download CSV
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
