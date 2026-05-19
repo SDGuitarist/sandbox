@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Companies{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Companies</h1>
+    <a href="{{ url_for('companies.create') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> New Company
+    </a>
+</div>
+
+{% if companies %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Industry</th>
+                    <th>Website</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for company in companies %}
+                <tr onclick="window.location='{{ url_for('companies.detail', id=company['id']) }}'" style="cursor: pointer;">
+                    <td>
+                        <a href="{{ url_for('companies.detail', id=company['id']) }}" class="text-decoration-none fw-semibold">
+                            {{ company['name'] }}
+                        </a>
+                    </td>
+                    <td>{{ company['industry'] or '-' }}</td>
+                    <td>
+                        {% if company['website'] %}
+                        <a href="{{ company['website'] }}" target="_blank" rel="noopener" class="text-decoration-none">
+                            {{ company['website'] }}
+                        </a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td>{{ company['created_at'][:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-building fs-1 text-muted"></i>
+        <p class="mt-3 text-muted">No companies yet.</p>
+        <a href="{{ url_for('companies.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add Your First Company
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
