@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+instance/
+.env
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+test_smoke.py
