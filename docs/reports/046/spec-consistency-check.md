@@ -1,6 +1,6 @@
 # Pre-Swarm Spec Consistency Check
 
-**Plan:** docs/plans/invoice-crm-plan.md
+**Plan:** `docs/plans/solopreneur-command-center.md`
 **Checked:** 2026-05-19
 
 ---
@@ -9,110 +9,151 @@
 
 | # | Category | Left Side | Right Side | Status | Detail |
 |---|----------|-----------|------------|--------|--------|
-| 1 | Blueprint Prefix vs Route Decorator | Endpoint Registry: payments prefix `/payments`, path `/invoice/<int:invoice_id>/new` -> full URL `/payments/invoice/<id>/new` | Transaction Boundary Policy example: `@bp.route('/invoices/<int:invoice_id>/payments/new')` | FAIL | The example route in the Transaction Boundary Policy section uses `/invoices/...` as the relative path, which (a) conflicts with the `invoices` blueprint prefix and (b) the correct relative path for the payments blueprint should be `/invoice/<int:invoice_id>/new` not `/invoices/<int:invoice_id>/payments/new`. Any agent reading the example will implement the wrong route. |
-| 2 | Schema Field vs Code Block Usage | `users.default_payment_terms INTEGER DEFAULT 30` (configurable per user) | `generate_due_invoices` code block hardcodes `30` as the payment terms argument | FAIL | The `generate_due_invoices` function in the Cross-Boundary Wiring section (line 681) passes the literal `30` for due_date calculation instead of reading `user['default_payment_terms']`. The settings agent is told to let users edit `default_payment_terms`, and the schema stores it, but the recurring generation code never reads it. Generated recurring invoices will always use 30-day terms regardless of user settings. |
-| 3 | Endpoint Registry vs Agent Notes (Activities List) | Endpoint Registry for activities blueprint: only `create_activity` and `delete_activity` -- no list route | Agent 4 notes: "list.html is a partial included in client detail page OR a standalone page at `/clients/<id>/activities`" | WARN | The standalone list page option implies a GET route at `/clients/<int:client_id>/activities`, but no such route appears in the Endpoint Registry. If Agent 4 implements the standalone variant, it will add an unregistered route. If it implements the partial-only variant, the `list.html` template exists but has no standalone URL. Agents need to know which variant to build. |
-| 4 | Project Structure vs Agent File Assignments | Project structure tree (lines 40-141): no `tests/` directory listed | Agent 15 (tests) creates 8 files under `invoice-crm/tests/` | WARN | The canonical project structure does not include the `tests/` directory, but Agent 15's file list requires it. This is not a contradiction that will cause a runtime failure, but any agent that uses the project structure tree as the authoritative file map will see an inconsistency. |
-| 5 | activity_date Mixed Formats | `log_activity` function: `activity_date` set to `datetime('now')` (includes time, e.g. `2026-05-19 14:23:01`) | Agent 4 notes: "activity_date (date input, default today)" -- date-only value from HTML input (e.g. `2026-05-19`) | WARN | Two code paths write to the same `activity_date` column in different formats: the `log_activity` helper writes a datetime string, the activities form submits a date-only string. The column is TEXT so SQLite accepts both, but queries that sort or filter by `activity_date` may produce inconsistent ordering when timestamps mix with date-only values. |
-| 6 | Schema vs Route SQL -- activities INSERT column names | Schema: `activities(client_id, user_id, type, notes, activity_date, created_at)` | `log_activity` INSERT: `(client_id, user_id, type, notes, activity_date)` | PASS | All column names match. `created_at` has a DEFAULT so omitting it is valid. |
-| 7 | Schema vs Route SQL -- invoices INSERT column names | Schema: `invoices(user_id, client_id, invoice_number, status, issue_date, due_date, subtotal_cents, tax_cents, total_cents, notes, parent_invoice_id, ...)` | `generate_due_invoices` INSERT: same column list | PASS | All column names in the recurring invoice INSERT match the schema exactly. |
-| 8 | Schema vs Route SQL -- invoice_line_items INSERT column names | Schema: `invoice_line_items(invoice_id, catalog_item_id, description, quantity, unit_price_cents, tax_rate, line_total_cents, sort_order)` | `generate_due_invoices` line items INSERT: same column list | PASS | All column names match. |
-| 9 | Schema vs Route SQL -- payments SELECT column names | Schema: `payments.amount_cents`, `invoices.total_cents` | Payment->Invoice Status Update code: `SUM(amount_cents)` and `SELECT total_cents FROM invoices` | PASS | Column names match schema exactly. |
-| 10 | Export vs Import -- generate_due_invoices | Recurring agent: `def generate_due_invoices(db, user_id)` in `app/recurring/routes.py` | Dashboard agent: `from app.recurring.routes import generate_due_invoices` | PASS | Export name matches import name exactly. Module path matches agent file location. |
-| 11 | Export vs Import -- url_for names in Navigation Links | Navigation Links section defines 9 url_for names | Endpoint Registry defines matching function names and url_for names for all 9 | PASS | `dashboard.index`, `clients.list_clients`, `pipeline.list_deals`, `invoices.list_invoices`, `catalog.list_items`, `reports.index`, `settings_bp.index`, `auth.logout`, `search.search` -- all match registry entries exactly. |
-| 12 | Cross-Boundary Wiring url_for -- Deal Won flow | Pipeline agent notes: `url_for('invoices.create_invoice', from_deal=deal_id)` | Endpoint Registry: invoices.create_invoice listed with function `create_invoice` | PASS | url_for name matches registry. |
-| 13 | Money Convention -- catalog agent | Agent 6 notes: prefill `'%.2f' % (item['unit_price_cents'] / 100)` | Schema: `catalog_items.unit_price_cents INTEGER` | PASS | Field name and cents convention consistent. |
-| 14 | Money Convention -- display filter references | Money Convention section: "Use `{{ value | dollars }}` Jinja2 filter" | `dollars` filter registered in helpers.py as `app.jinja_env.filters['dollars'] = dollars` | PASS | Filter name consistent between convention rule and registration code. |
-| 15 | Blueprint Prefix vs Route Decorator -- activities shares /clients prefix | activities blueprint registered with `url_prefix='/clients'`; endpoint registry paths start with `/<int:client_id>/activities/...` | Blueprint template note: "Route decorators are RELATIVE to the blueprint prefix" | PASS | The activities routes are relative to `/clients` prefix, yielding correct absolute paths `/clients/<id>/activities/new` and `/clients/<id>/activities/<id>/delete`. No conflict with clients blueprint routes which use `/<int:client_id>` (no `/activities/` segment). |
-| 16 | Schema vs Route SQL -- deals SELECT column names | Cross-Boundary Wiring deal prefill: `deal['client_id']`, `deal['title']` | Schema: `deals.client_id INTEGER`, `deals.title TEXT` | PASS | Column names match schema. |
-| 17 | Endpoint Registry Completeness -- recurring blueprint | Registry: `set_recurring`, `view_history`, `generate_recurring` | Agent 8 notes: describes all three routes | PASS | All registry routes are addressed in agent notes. |
-| 18 | Endpoint Registry Completeness -- reports blueprint | Registry: `index`, `revenue_by_month`, `revenue_by_client`, `aging`, `forecast`, `export_csv` | Agent 11 notes and project structure: templates for all 5 report pages present | PASS | `export_csv` has no template (returns CSV response directly) which is correct. All others have templates. |
+| 1 | Schema vs Model | `deal.probability_pct` (SQL) | `create_deal(..., probability_pct=10)` (model) | PASS | Exact name match |
+| 2 | Schema vs Model | `time_entry.minutes` (SQL) | `create_time_entry(..., minutes=0)` (model) | PASS | Exact name match |
+| 3 | Schema vs Model | `task.estimated_hours` (SQL) | `create_task(..., estimated_hours=0)` (model) | PASS | Exact name match |
+| 4 | Schema vs Model | `income.payment_method` (SQL) | `create_income(..., payment_method='bank_transfer')` (model) | PASS | Exact name match |
+| 5 | Schema vs Model | `expense.tax_deductible` (SQL) | `create_expense(..., tax_deductible=0)` (model) | PASS | Exact name match |
+| 6 | Schema vs Model | `project.hourly_rate` (SQL) | `create_project(..., hourly_rate=0)` (model) | PASS | Exact name match |
+| 7 | SQL Type vs App-Layer | `task.estimated_hours REAL` (SQL) | `estimated_hours=0` int default (model) | PASS | SQLite coerces; compatible at runtime |
+| 8 | SQL Type vs App-Layer | `deal.value INTEGER` cents (SQL) | `value=0` in model; money conversion produces int (Coordinated Behaviors) | PASS | Consistent integer-cents convention throughout |
+| 9 | SQL Type vs App-Layer | `goal.revenue_target INTEGER` (SQL) | `revenue_target=revenue_target, # int (cents)` (goals render context) | PASS | Unit explicitly labeled as cents in comment |
+| 10 | SQL Type vs App-Layer | `goal.hours_target INTEGER` (SQL) | `hours_target=hours_target, # int` (goals render context comment) | WARN | Unit not labeled. Time tracking uses minutes everywhere else. If agents store hours_target in hours, it cannot be compared directly to time_entry.minutes values. |
+| 11 | Route Table vs Template | `revenue.by_client GET /by-client` (endpoint registry line 845) | No template render context defined; no template file in directory structure | FAIL | Route exists in endpoint registry but has zero template coverage in spec. No render context block, no template file in directory structure, not listed in revenue agent file assignment. Revenue agent will have no guidance on what to render. |
+| 12 | Route Table vs Template | `revenue.by_month GET /by-month` (endpoint registry line 846) | No template render context defined; no template file in directory structure | FAIL | Same as #11. The variable `by_month` appearing in `pl.html` render context is a data variable, not a template path -- unrelated. Route has no template at all. |
+| 13 | Directory Structure vs render_template() | `reports/index.html` absent from directory structure (lines 165-171) | `render_template('reports/index.html')` in render context; included in swarm agent assignment (line 1144); `reports.index GET /` in endpoint registry | FAIL | Directory structure omits this file. Three other sections agree it must exist. Reports agent must create it, but if agents use the directory structure as the canonical file list, the file will be skipped. |
+| 14 | Export Name vs Import | `bp = Blueprint('time_tracking', ...)` (__init__.py template) | `time_tracking.index`, `time_tracking.create`, etc. in endpoint registry | PASS | Blueprint name matches all url_for prefixes exactly |
+| 15 | Export Name vs Import | `url_for('dashboard.index')` in app factory root redirect | `dashboard.index` in endpoint registry | PASS | Exact match |
+| 16 | Export Name vs Import | `url_for('auth.login')` in decorators.py | `auth.login` in endpoint registry | PASS | Exact match |
+| 17 | Export Name vs Import | `url_for('auth.setup')` in decorators.py | `auth.setup` in endpoint registry | PASS | Exact match |
+| 18 | Blueprint Name vs url_for | 14 blueprints registered in app factory with module-matching names | 14 url_for prefixes in endpoint registry | PASS | auth, contacts, companies, pipeline, projects, tasks, time_tracking, revenue, goals, notes, reports, search, settings, dashboard -- all consistent across registration and registry |
+| 19 | Activity Log entity_type vs Table Names | entity_type values prescribed in Coordinated Behaviors: contact, company, deal, project, task, time_entry, income, expense, journal_entry, note, goal, business_profile | Corresponding SQL table names in schema.sql | PASS | All 12 entity_type strings are exact matches of their SQL table names |
+| 20 | Pipeline Stage Names vs PIPELINE_STAGES | `deal.stage DEFAULT 'lead'` in schema; `stage='lead'` in create_deal() | PIPELINE_STAGES first entry is `('lead', 'Lead', 10)` | PASS | Default stage value matches PIPELINE_STAGES[0][0] |
+| 21 | Pipeline Stage Names vs PIPELINE_STAGES | PIPELINE_STAGES keys: lead, discovery, proposal_sent, negotiation, verbal_yes, won, lost | `deal.stage TEXT` in schema (no CHECK constraint) | PASS | No schema constraint to contradict; stage values are application-enforced via PIPELINE_STAGES |
+| 22 | Data Ownership vs Schema FKs | deal owned by pipeline; projects listed as reader of deal | `project.deal_id REFERENCES deal(id)` in schema | PASS | FK supports projects reading deals for won-deal-to-project flow |
+| 23 | Data Ownership vs Schema FKs | contact owned by contacts; pipeline listed as reader | `deal.contact_id REFERENCES contact(id)` in schema | PASS | FK supports pipeline reading contacts |
+| 24 | Data Ownership vs Schema FKs | project owned by projects; time_tracking listed as reader | `time_entry.project_id REFERENCES project(id)` in schema | PASS | FK supports time_tracking reading projects |
+| 25 | Data Ownership vs Schema FKs | task owned by tasks; time_tracking listed as reader | `time_entry.task_id REFERENCES task(id)` in schema | PASS | FK supports time_tracking reading tasks |
+| 26 | Data Ownership vs Schema FKs | income owned by revenue; goals listed as reader | `income` has no FK to `goal` table | PASS | Goals reads income by date aggregation (no FK required); ownership table is accurate |
+| 27 | Data Ownership vs Schema FKs | milestone owned by projects; dashboard listed as reader | `milestone.project_id REFERENCES project(id)` in schema | PASS | FK supports dashboard reading milestones via project_id |
+| 28 | Mock/Fixture vs Schema | Seed: `INSERT OR IGNORE INTO income_category (name, is_default) VALUES ('project_payment', 1), ('retainer', 1), ('consulting', 1), ('product_sale', 1), ('other', 1)` | `income_category(id, name TEXT UNIQUE, is_default INTEGER)` in schema | PASS | All inserted columns exist; name and is_default match schema; id is AUTOINCREMENT so omitting it is correct |
+| 29 | Mock/Fixture vs Schema | Seed: `INSERT OR IGNORE INTO expense_category (name, is_default)` with 8 values | `expense_category(id, name TEXT UNIQUE, is_default INTEGER)` in schema | PASS | All inserted columns exist and match schema |
+| 30 | Cross-Boundary Wiring | `get_revenue_snapshot(db, user_id)` model function signature | Dashboard render context: `revenue=revenue` with no call-site shown; user_id source not documented | WARN | Dashboard agent must pass `session['user_id']` as the second argument. Spec does not document this at the call site. Agent may call `get_revenue_snapshot(db)` and get TypeError. |
+| 31 | Route Table vs Template | `settings.export_module GET /export/<module>` (endpoint registry line 892) | No template render context defined for this route | WARN | Most likely intentional (file download / CSV response). Spec does not explicitly state this. Agent may attempt to render a template that does not exist. |
+| 32 | Blueprint Count | "14 blueprints" stated in Flask Best Practices note | Actual registrations in app factory: 14 blueprints | PASS | 16 agents minus core-infra and layout-static (no blueprints) equals 14. Matches the note. |
+| 33 | Schema vs Model Enum | `contact.status DEFAULT 'lead'`; app enum `['lead', 'active_client', 'past_client', 'partner']` | `create_contact(..., status='lead')` model default | PASS | Default value is a valid enum member |
+| 34 | Schema vs Model Enum | `project.type DEFAULT 'hourly'`; app enum `['fixed_price', 'hourly', 'retainer', 'pro_bono']` | `create_project(..., type='hourly')` model default | PASS | Default value is a valid enum member |
+| 35 | Cross-Boundary Wiring | `notes_fts` and `journal_fts` virtual tables in Data Ownership table | FTS5 virtual tables defined in schema.sql with correct content table references | PASS | notes_fts maps to note table; journal_fts maps to journal_entry table; both present in schema |
 
 ---
 
 ## Summary
 
-- **Total checks:** 18
-- **PASS:** 13
-- **FAIL:** 2
-- **WARN:** 3
+- **Total checks:** 35
+- **PASS:** 28
+- **FAIL:** 3
+- **WARN:** 4
 - **N/A (section absent):** 0
 
 ---
 
-## FAIL Detail
+## FAIL Details
 
-### FAIL 1 -- Route Path Mismatch: Transaction Boundary Policy Example vs Endpoint Registry
+### FAIL 1 -- `revenue.by_client` route has no template
 
-**Location in spec:** Lines 302-303 (Transaction Boundary Policy code block)
+**Endpoint registry line 845:** `by_client | GET | /by-client | revenue.by_client`
 
-The Transaction Boundary Policy section uses `create_payment` as its example of the "CORRECT" pattern:
+**Problem:** The Template Render Context section covers only five revenue templates: `income_list.html`, `income_form.html`, `expense_list.html`, `expense_form.html`, `pl.html`. Neither `revenue/by_client.html` nor a render context block for `revenue.by_client` exists anywhere in the spec. The directory structure (lines 148-156) lists the same five files and does not include a by_client template. The swarm agent assignment for the revenue agent lists the same five template files only.
 
-```python
-@bp.route('/invoices/<int:invoice_id>/payments/new', methods=['POST'])
-@login_required
-def create_payment(invoice_id):
+The revenue agent will encounter a route with no template guidance. It will likely either return a blank response, guess a template name, or render an existing template with wrong variables.
+
+**Fix options:**
+- Add a `revenue/by_client.html` template file to the directory structure and a render context block to the Template Render Context section. Add the file to the revenue agent's file assignment.
+- If this route is a redirect to `reports.client_report`, replace the route body with `return redirect(url_for('reports.client_report'))` and document that in the spec so agents know no template is needed.
+
+---
+
+### FAIL 2 -- `revenue.by_month` route has no template
+
+**Endpoint registry line 846:** `by_month | GET | /by-month | revenue.by_month`
+
+**Problem:** Identical to FAIL 1. No template render context, no template file in directory structure, not in revenue agent file assignment. The name `by_month` appears only as a context variable inside `pl.html` render context -- that is a data variable, not a template path.
+
+**Fix options:**
+- Add `revenue/by_month.html` template to spec with render context.
+- Or redirect to `revenue.pl` or `reports.revenue_report` and document that explicitly.
+
+---
+
+### FAIL 3 -- `reports/index.html` missing from directory structure
+
+**Directory structure lines 165-171** (under `reports/`):
+```
+revenue.html
+client.html
+time.html
+pipeline.html
+utilization.html
+expense.html
 ```
 
-The Endpoint Registry (payments blueprint, prefix `/payments`) defines:
+**Problem:** `reports/index.html` is absent from the directory structure but present in three other sections:
+- Endpoint registry: `index | GET | / | reports.index`
+- Template Render Context: `render_template('reports/index.html')`
+- Swarm agent assignment: `command-center/app/templates/reports/index.html` in reports agent file list
 
-| Function Name | Method | Path | url_for Name |
-|---|---|---|---|
-| create_payment | GET, POST | /invoice/\<int:invoice_id\>/new | payments.create_payment |
+The directory structure is the odd one out. If the reports agent uses the directory structure as its authoritative file list, it will skip creating `reports/index.html`, leaving the `reports.index` route with no template and causing a TemplateNotFound error at runtime.
 
-There are two contradictions embedded in the example:
-
-1. **Path string mismatch:** The example uses `/invoices/<int:invoice_id>/payments/new` but the correct relative path (relative to `/payments` prefix) is `/invoice/<int:invoice_id>/new`. The example path has `invoices` (plural, matching the invoices blueprint name) and a `payments/new` suffix -- neither matches the registry entry.
-
-2. **Implied absolute URL conflict:** If an agent treats the example's path literally as relative to the `/payments` prefix, the resulting absolute URL would be `/payments/invoices/<id>/payments/new`. If an agent treats it as an absolute path, it conflicts with the invoices blueprint's `/invoices/` prefix.
-
-**Risk:** The payments agent may implement the wrong route path, making `url_for('payments.create_payment', invoice_id=...)` generate a URL that does not match the actual route registration, causing 404s on the payment link from invoice detail pages.
-
-**Recommended fix:** Change the example path to match the registry: `@bp.route('/invoice/<int:invoice_id>/new', methods=['GET', 'POST'])`.
+**Fix:** Add `index.html` as the first entry under the `reports/` section of the directory structure, between lines 165 and 166.
 
 ---
 
-### FAIL 2 -- Hardcoded Payment Terms Ignore User Setting
+## WARN Details
 
-**Location in spec:** Line 681 (`generate_due_invoices` code block in Cross-Boundary Wiring)
+### WARN 1 -- `goal.hours_target` unit is ambiguous
+
+Schema stores `hours_target INTEGER NOT NULL DEFAULT 0`. The goals render context comment says `hours_target=hours_target, # int` with no unit. Every other time-related integer in the spec specifies its unit in the comment (e.g., `total_hours, # int (minutes)`, `billable_hours, # int (minutes)`, `target=target) # int (minutes)`).
+
+If the goals agent stores hours_target in whole hours while the dashboard agent compares it to `get_hours_this_week()` which returns `logged` in minutes, the percentage calculation will be off by a factor of 60.
+
+**Fix:** Change the goals render context comment to `hours_target=hours_target, # int (minutes)` (or `# int (hours)` if intentionally different, with a conversion note for the dashboard agent).
+
+---
+
+### WARN 2 -- `get_revenue_snapshot(db, user_id)` call site undocumented for dashboard agent
+
+The model function signature requires a `user_id` parameter. The dashboard render context shows `revenue=revenue` as the result variable. Neither the render context block nor the model functions section shows the call:
 
 ```python
-db.execute("""
-    INSERT INTO invoices (..., due_date, ...)
-    VALUES (?, ..., date('now', '+' || ? || ' days'), ..., ?)
-""", (user_id, inv['client_id'], new_number,
-      30,  # default payment terms   <-- hardcoded
-      ...))
+revenue = get_revenue_snapshot(db, session['user_id'])
 ```
 
-The `users` table has `default_payment_terms INTEGER DEFAULT 30`, and the settings agent is explicitly told to expose this field for editing. The `generate_due_invoices` function already queries the users table once (to get `invoice_prefix`) but does not retrieve `default_payment_terms`.
+The dashboard agent must infer that `user_id` comes from `session['user_id']`. This is likely but not guaranteed -- an agent that uses `None` or omits the argument will get a TypeError or an empty result.
 
-**Risk:** Any user who changes their payment terms in Settings will find that recurring invoices continue to use 30-day terms. This is a silent behavior mismatch between the settings UI and the generation code.
-
-**Recommended fix:** In `generate_due_invoices`, read `default_payment_terms` from the same `SELECT invoice_prefix FROM users WHERE id = ?` query (add `default_payment_terms` to the SELECT), then use that value instead of `30`.
+**Fix:** Add a usage note in the dashboard render context or in the Dashboard Query Functions section showing the full call with `session['user_id']`.
 
 ---
 
-## WARN Detail
+### WARN 3 -- `settings.export_module` has no render context and no template
 
-### WARN 1 -- Activities List Route Missing from Endpoint Registry
+Endpoint registry line 892: `export_module | GET | /export/<module> | settings.export_module`
 
-Agent 4 notes say `list.html` can be used as "a standalone page at `/clients/<id>/activities`", but no GET route for this URL appears in the activities Endpoint Registry. The registry only has `create_activity` (GET, POST) and `delete_activity` (POST). If this route is intended, it must be added to the registry so other agents (e.g., clients detail template) know the correct `url_for` name to use for linking to it.
+No Template Render Context block is defined for this route. The settings agent owns only `export.html` (for `export_data`). If the agent treats all GET routes as HTML-returning, it will attempt to render a template that does not exist.
 
-**Recommended fix:** Either (a) add `list_activities | GET | /<int:client_id>/activities | activities.list_activities` to the registry, or (b) remove the "standalone page" option from Agent 4 notes and confirm `list.html` is partial-only.
+This is most likely intentional -- the route generates a file download (CSV). If so, the spec should say so explicitly so the agent does not guess.
 
-### WARN 2 -- tests/ Directory Absent from Project Structure Tree
-
-The project structure tree does not include `invoice-crm/tests/`. Agent 15 depends on this directory existing. This is a documentation gap rather than a runtime failure, but it creates inconsistency when agents cross-reference the structure tree.
-
-**Recommended fix:** Add `tests/` with its files to the project structure tree.
-
-### WARN 3 -- Mixed activity_date Formats Across Two Write Paths
-
-The `log_activity` helper writes `datetime('now')` (datetime string with time component) to `activity_date`. The activities form (Agent 4) submits a date-only string from an HTML date input. Both write to `activities.activity_date TEXT NOT NULL`. Queries that sort, filter, or display this field will encounter mixed formats (e.g., `2026-05-19 14:23:01` vs `2026-05-19`), which may produce subtly wrong sort order.
-
-**Recommended fix:** Standardize both write paths. Either change `log_activity` to use `date('now')`, or accept datetime strings from both paths and sort consistently.
+**Fix:** Add a comment to the endpoint registry or Template Render Context section: `# export_module: returns CSV file response (no render_template call)`.
 
 ---
 
-STATUS: FAIL -- 2 contradictions found
+### WARN 4 -- `business_profile` revenue targets lack unit labels in render context
+
+`business_profile.monthly_revenue_target INTEGER` and `business_profile.quarterly_revenue_target INTEGER` are stored in the schema. The settings render context passes the entire `profile` Row to `settings/targets.html`. No unit label comment documents whether these are stored in cents (consistent with all other money fields) or whole dollars.
+
+If the settings agent stores them as whole dollars instead of cents, and the goals agent or dashboard agent reads them as cents, targets will appear 100x larger than intended.
+
+**Fix:** Add `# INTEGER (cents)` labels to the `business_profile.monthly_revenue_target` and `business_profile.quarterly_revenue_target` column definitions in the schema comment block, or add a note in the settings render context.
+
+---
+
+STATUS: FAIL -- 3 contradictions found
