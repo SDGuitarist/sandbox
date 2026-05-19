@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Dashboard</h1>
+    <span class="text-muted">{{ profile.business_name if profile else 'My Business' }}</span>
+</div>
+
+{% set sym = profile.currency_symbol if profile else '$' %}
+
+{# ── Row 1: Revenue, Active Projects, Pipeline ── #}
+<div class="row g-3 mb-4">
+
+    {# Revenue Card #}
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <i class="bi bi-currency-dollar"></i> Revenue
+                </h6>
+                <h4 class="card-title mb-1">{{ revenue.this_month|dollars(sym) }}</h4>
+                <small class="text-muted">This month</small>
+
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Target: {{ revenue.target|dollars(sym) }}</span>
+                        <span>{{ '%.0f'|format(revenue.pct_to_target) }}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success"
+                             role="progressbar"
+                             style="width: {{ [revenue.pct_to_target, 100]|min }}%"
+                             aria-valuenow="{{ revenue.pct_to_target }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                <div class="row mt-3 text-center small">
+                    <div class="col-6">
+                        <div class="text-muted">Last Month</div>
+                        <div class="fw-semibold">{{ revenue.last_month|dollars(sym) }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">YTD</div>
+                        <div class="fw-semibold">{{ revenue.ytd|dollars(sym) }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Active Projects Card #}
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <i class="bi bi-kanban"></i> Active Projects
+                </h6>
+                <h4 class="card-title mb-1">{{ projects.count }}</h4>
+                <small class="text-muted">projects in progress</small>
+                <div class="mt-3">
+                    <span class="text-muted small">Total Value:</span>
+                    <span class="fw-semibold">{{ projects.total_value|dollars(sym) }}</span>
+                </div>
+                <div class="mt-2">
+                    <a href="{{ url_for('projects.index') }}" class="btn btn-sm btn-outline-primary">
+                        View All Projects
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Pipeline Card #}
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <i class="bi bi-funnel"></i> Pipeline
+                </h6>
+                <h4 class="card-title mb-1">{{ pipeline.total_deals }} deals</h4>
+                <small class="text-muted">{{ pipeline.total_value|dollars(sym) }} total value</small>
+                <div class="mt-3">
+                    <span class="badge bg-warning text-dark">
+                        {{ pipeline.closing_this_month }} closing this month
+                    </span>
+                </div>
+                <div class="mt-2">
+                    <a href="{{ url_for('pipeline.board') }}" class="btn btn-sm btn-outline-primary">
+                        View Pipeline
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ── Row 2: Overdue Tasks, Upcoming Deadlines ── #}
+<div class="row g-3 mb-4">
+
+    {# Overdue Tasks #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-exclamation-triangle text-danger"></i> Overdue Tasks
+                </h6>
+                <span class="badge bg-danger">{{ overdue_tasks|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if overdue_tasks %}
+                <ul class="list-group list-group-flush">
+                    {% for task in overdue_tasks %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="{{ url_for('tasks.edit', id=task.id) }}" class="text-decoration-none">
+                                {{ task.title }}
+                            </a>
+                            <br>
+                            <small class="text-danger">Due: {{ task.due_date }}</small>
+                        </div>
+                        <span class="badge bg-danger">Overdue</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-3 text-center text-muted small">
+                    <i class="bi bi-check-circle"></i> No overdue tasks
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{{ url_for('tasks.index') }}" class="small text-decoration-none">View all tasks &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    {# Upcoming Deadlines #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-calendar-event text-warning"></i> Upcoming Deadlines
+                </h6>
+                <span class="badge bg-warning text-dark">{{ upcoming|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if upcoming %}
+                <ul class="list-group list-group-flush">
+                    {% for item in upcoming %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span>{{ item.title if item.title is defined else item.name }}</span>
+                            <br>
+                            <small class="text-muted">Due: {{ item.due_date }}</small>
+                        </div>
+                        <span class="badge bg-warning text-dark">Upcoming</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-3 text-center text-muted small">
+                    <i class="bi bi-calendar-check"></i> No upcoming deadlines
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ── Row 3: Hours This Week, Cash Flow ── #}
+<div class="row g-3 mb-4">
+
+    {# Hours This Week #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <i class="bi bi-clock"></i> Hours This Week
+                </h6>
+                {% set logged_decimal = hours.logged|minutes_to_decimal %}
+                {% set target_decimal = hours.target|minutes_to_decimal %}
+                {% set hours_pct = (hours.logged / hours.target * 100) if hours.target > 0 else 0 %}
+                <h4 class="card-title mb-1">{{ logged_decimal }}h / {{ target_decimal }}h</h4>
+
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-info"
+                         role="progressbar"
+                         style="width: {{ [hours_pct, 100]|min }}%"
+                         aria-valuenow="{{ hours_pct }}"
+                         aria-valuemin="0"
+                         aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">{{ '%.0f'|format(hours_pct) }}% of weekly target</small>
+
+                <div class="mt-2">
+                    <a href="{{ url_for('time_tracking.index') }}" class="btn btn-sm btn-outline-primary">
+                        Log Time
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Cash Flow #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">
+                    <i class="bi bi-cash-stack"></i> Cash Flow (This Month)
+                </h6>
+                <h4 class="card-title mb-1 {{ 'text-success' if cash_flow.net >= 0 else 'text-danger' }}">
+                    {{ cash_flow.net|dollars(sym) }}
+                </h4>
+                <small class="text-muted">Net</small>
+
+                <div class="row mt-3 text-center small">
+                    <div class="col-6">
+                        <div class="text-muted">Income</div>
+                        <div class="fw-semibold text-success">{{ cash_flow.income|dollars(sym) }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted">Expenses</div>
+                        <div class="fw-semibold text-danger">{{ cash_flow.expenses|dollars(sym) }}</div>
+                    </div>
+                </div>
+
+                <div class="mt-2">
+                    <a href="{{ url_for('revenue.index') }}" class="btn btn-sm btn-outline-primary">
+                        View Revenue
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ── Row 4: Charts ── #}
+<div class="row g-3 mb-4">
+
+    {# Revenue Trend Chart #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-graph-up"></i> Revenue Trend (Last 6 Months)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {# Pipeline by Stage Chart #}
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Pipeline by Stage</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="pipelineChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ── Row 5: Activity Feed ── #}
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-activity"></i> Recent Activity</h6>
+                <span class="badge bg-secondary">{{ activity|length }}</span>
+            </div>
+            <div class="card-body p-0">
+                {% if activity %}
+                <ul class="list-group list-group-flush">
+                    {% for item in activity %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span>{{ item.description }}</span>
+                        </div>
+                        <small class="text-muted text-nowrap ms-3">{{ item.created_at }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="p-3 text-center text-muted small">
+                    <i class="bi bi-inbox"></i> No recent activity
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+    // ── Revenue Trend Line Chart ──
+    // Build last-6-months labels dynamically
+    const revenueLabels = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        revenueLabels.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
+    }
+
+    // Revenue data passed from the server.
+    // The revenue dict only has this_month / last_month / ytd — we fill what we can
+    // and show zeros for older months (full historical data would need a dedicated query).
+    const revenueData = [0, 0, 0, 0,
+        {{ revenue.last_month }},
+        {{ revenue.this_month }}
+    ];
+
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: revenueLabels,
+            datasets: [{
+                label: 'Revenue',
+                data: revenueData.map(v => v / 100),
+                borderColor: '#4f8ef7',
+                backgroundColor: 'rgba(79, 142, 247, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: '#4f8ef7'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return '{{ sym }}' + ctx.parsed.y.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '{{ sym }}' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // ── Pipeline Bar Chart (value per stage) ──
+    const pipelineLabels = ['Lead', 'Discovery', 'Proposal', 'Negotiation', 'Verbal Yes', 'Won'];
+    // Pipeline summary only gives totals — we show the total value as a single-bar
+    // placeholder. A full stage breakdown would need a dedicated query.
+    const pipelineData = [0, 0, 0, 0, 0, 0];
+    // Put total pipeline value into the first non-won stage as a visual indicator
+    pipelineData[0] = {{ pipeline.total_value }} / 100;
+
+    const pipelineCtx = document.getElementById('pipelineChart').getContext('2d');
+    new Chart(pipelineCtx, {
+        type: 'bar',
+        data: {
+            labels: pipelineLabels,
+            datasets: [{
+                label: 'Deal Value',
+                data: pipelineData,
+                backgroundColor: [
+                    'rgba(108, 117, 125, 0.7)',
+                    'rgba(13, 202, 240, 0.7)',
+                    'rgba(255, 193, 7, 0.7)',
+                    'rgba(255, 145, 0, 0.7)',
+                    'rgba(79, 142, 247, 0.7)',
+                    'rgba(25, 135, 84, 0.7)'
+                ],
+                borderColor: [
+                    '#6c757d',
+                    '#0dcaf0',
+                    '#ffc107',
+                    '#ff9100',
+                    '#4f8ef7',
+                    '#198754'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return '{{ sym }}' + ctx.parsed.y.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '{{ sym }}' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}
