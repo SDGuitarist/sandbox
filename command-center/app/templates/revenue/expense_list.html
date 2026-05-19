@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Expenses{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-receipt me-2"></i>Expenses</h2>
+    <div>
+        <a href="{{ url_for('revenue.add_expense') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Add Expense
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Total Expenses</h5>
+        <p class="display-6 text-danger">{{ total|dollars }}</p>
+    </div>
+</div>
+
+{% if expenses %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Vendor</th>
+                    <th>Tax Ded.</th>
+                    <th>Notes</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for expense in expenses %}
+                <tr>
+                    <td>{{ expense['date'] }}</td>
+                    <td class="text-danger fw-bold">{{ expense['amount']|dollars }}</td>
+                    <td><span class="badge bg-secondary">{{ expense['category'] }}</span></td>
+                    <td>{{ expense['vendor'] }}</td>
+                    <td>
+                        {% if expense['tax_deductible'] %}
+                        <span class="badge bg-success">Yes</span>
+                        {% else %}
+                        <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ expense['notes'][:50] }}{% if expense['notes']|length > 50 %}...{% endif %}</td>
+                    <td class="text-end">
+                        <a href="{{ url_for('revenue.edit_expense', id=expense['id']) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="POST" action="{{ url_for('revenue.delete_expense', id=expense['id']) }}" class="d-inline"
+                              onsubmit="return confirm('Delete this expense record?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-receipt display-4"></i>
+    <p class="mt-3">No expenses recorded yet. <a href="{{ url_for('revenue.add_expense') }}">Add your first expense</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

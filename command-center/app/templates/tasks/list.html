@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+
+{% block title %}Tasks{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-check2-square me-2"></i>Tasks</h2>
+    <div>
+        <a href="{{ url_for('tasks.my_day') }}" class="btn btn-outline-primary me-2">
+            <i class="bi bi-sun"></i> My Day
+        </a>
+        <a href="{{ url_for('tasks.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> New Task
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="priority" class="form-label">Priority</label>
+                <select name="priority" id="priority" class="form-select form-select-sm">
+                    <option value="">All Priorities</option>
+                    {% for p in priorities %}
+                    <option value="{{ p }}" {% if priority_filter == p %}selected{% endif %}>
+                        {{ p|capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>
+                        {{ s|replace('_', ' ')|title }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="project" class="form-label">Project</label>
+                <select name="project" id="project" class="form-select form-select-sm">
+                    <option value="">All Projects</option>
+                    {% for proj in projects %}
+                    <option value="{{ proj.id }}">{{ proj.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-funnel"></i> Filter
+                </button>
+                <a href="{{ url_for('tasks.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Task List -->
+{% if tasks %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>Title</th>
+                    <th>Project</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                    <th>Est. Hours</th>
+                    <th style="width: 120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in tasks %}
+                <tr class="{% if task.status == 'done' %}text-muted{% endif %}">
+                    <td>
+                        {% if task.status != 'done' %}
+                        <form method="post" action="{{ url_for('tasks.complete', id=task.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="next" value="{{ url_for('tasks.index') }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success p-0 px-1" title="Complete">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        </form>
+                        {% else %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('tasks.edit', id=task.id) }}" class="text-decoration-none {% if task.status == 'done' %}text-muted text-decoration-line-through{% endif %}">
+                            {{ task.title }}
+                        </a>
+                        {% if task.is_recurring %}
+                        <i class="bi bi-arrow-repeat text-muted ms-1" title="Recurring"></i>
+                        {% endif %}
+                    </td>
+                    <td>{{ task.project_name or '—' }}</td>
+                    <td>
+                        {% set badge_map = {'urgent': 'danger', 'high': 'warning', 'medium': 'info', 'low': 'secondary'} %}
+                        <span class="badge bg-{{ badge_map.get(task.priority, 'secondary') }} {% if task.priority == 'high' %}text-dark{% endif %}">
+                            {{ task.priority|capitalize }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge {% if task.status == 'done' %}bg-success{% elif task.status == 'in_progress' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                            {{ task.status|replace('_', ' ')|title }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if task.due_date %}
+                            {% if task.status != 'done' and task.due_date < now_date %}
+                                <span class="text-danger fw-bold">{{ task.due_date }}</span>
+                            {% else %}
+                                {{ task.due_date }}
+                            {% endif %}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ '%.1f'|format(task.estimated_hours) if task.estimated_hours else '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('tasks.edit', id=task.id) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <form method="post" action="{{ url_for('tasks.delete', id=task.id) }}" class="d-inline"
+                              onsubmit="return confirm('Delete this task?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<p class="text-muted mt-2">{{ tasks|length }} task{{ 's' if tasks|length != 1 else '' }}</p>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-check2-square" style="font-size: 3rem;"></i>
+    <p class="mt-3">No tasks found. <a href="{{ url_for('tasks.create') }}">Create your first task</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

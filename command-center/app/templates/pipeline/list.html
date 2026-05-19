@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline - All Deals{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">All Deals</h1>
+    <div>
+        <a href="{{ url_for('pipeline.board') }}" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-kanban"></i> Board View
+        </a>
+        <a href="{{ url_for('pipeline.stats') }}" class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-bar-chart"></i> Stats
+        </a>
+        <a href="{{ url_for('pipeline.create') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg"></i> New Deal
+        </a>
+    </div>
+</div>
+
+{% if deals %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Contact</th>
+                    <th>Company</th>
+                    <th>Value</th>
+                    <th>Stage</th>
+                    <th>Expected Close</th>
+                    <th>Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for deal in deals %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('pipeline.detail', id=deal['id']) }}">
+                            {{ deal['title'] }}
+                        </a>
+                    </td>
+                    <td>{{ deal['contact_name'] or '&mdash;' }}</td>
+                    <td>{{ deal['company_name'] or '&mdash;' }}</td>
+                    <td class="text-success fw-semibold">{{ deal['value']|dollars }}</td>
+                    <td>
+                        {% if deal['stage'] == 'won' %}
+                            <span class="badge bg-success">Won</span>
+                        {% elif deal['stage'] == 'lost' %}
+                            <span class="badge bg-danger">Lost</span>
+                        {% else %}
+                            {% for key, label, prob in stages %}
+                                {% if key == deal['stage'] %}
+                                    <span class="badge bg-primary">{{ label }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td>{{ deal['expected_close_date'] or '&mdash;' }}</td>
+                    <td class="text-muted small">{{ deal['updated_at'][:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-funnel" style="font-size: 3rem;"></i>
+    <p class="mt-3">No deals yet. <a href="{{ url_for('pipeline.create') }}">Create your first deal</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

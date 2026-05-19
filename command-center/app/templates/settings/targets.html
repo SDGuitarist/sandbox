@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - Targets{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<nav class="settings-tabs">
+    <a href="{{ url_for('settings.profile') }}">Profile</a>
+    <a href="{{ url_for('settings.financial') }}">Financial</a>
+    <a href="{{ url_for('settings.targets') }}" class="active">Targets</a>
+    <a href="{{ url_for('settings.categories') }}">Categories</a>
+    <a href="{{ url_for('settings.export_data') }}">Export</a>
+</nav>
+
+<h2>Revenue &amp; Hours Targets</h2>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+        <label for="monthly_revenue_target">Monthly Revenue Target ($)</label>
+        <input type="number" id="monthly_revenue_target" name="monthly_revenue_target"
+               step="0.01" min="0"
+               value="{{ '%.2f' % (profile['monthly_revenue_target'] / 100) }}">
+    </div>
+
+    <div class="form-group">
+        <label for="quarterly_revenue_target">Quarterly Revenue Target ($)</label>
+        <input type="number" id="quarterly_revenue_target" name="quarterly_revenue_target"
+               step="0.01" min="0"
+               value="{{ '%.2f' % (profile['quarterly_revenue_target'] / 100) }}">
+    </div>
+
+    <div class="form-group">
+        <label for="weekly_hours_target">Weekly Hours Target</label>
+        <input type="number" id="weekly_hours_target" name="weekly_hours_target"
+               step="1" min="0"
+               value="{{ profile['weekly_hours_target'] }}">
+    </div>
+
+    <button type="submit">Save Targets</button>
+</form>
+{% endblock %}

@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">{{ project.name }}</h1>
+        <span class="text-muted">
+            {{ project.type | replace('_', ' ') | title }}
+            {% if contact %} &middot; {{ contact.name }}{% endif %}
+        </span>
+    </div>
+    <div>
+        <a href="{{ url_for('projects.edit', id=project.id) }}" class="btn btn-outline-primary btn-sm me-1">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <form method="post" action="{{ url_for('projects.save_template', id=project.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-secondary btn-sm me-1">
+                <i class="bi bi-clipboard"></i> Save as Template
+            </button>
+        </form>
+        <form method="post" action="{{ url_for('projects.delete', id=project.id) }}" class="d-inline"
+              onsubmit="return confirm('Delete this project? This cannot be undone.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Status + Budget Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Status</div>
+                {% if project.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                {% elif project.status == 'in_progress' %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                {% elif project.status == 'on_hold' %}
+                    <span class="badge bg-secondary">On Hold</span>
+                {% elif project.status == 'cancelled' %}
+                    <span class="badge bg-danger">Cancelled</span>
+                {% else %}
+                    <span class="badge bg-secondary">Not Started</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Value / Budget</div>
+                <div class="fw-bold">{{ project.value | dollars }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Hours Logged</div>
+                <div class="fw-bold">{{ total_hours | minutes_to_decimal }}h
+                    <span class="text-muted small">({{ billable_hours | minutes_to_decimal }}h billable)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Budget Spent</div>
+                <div class="fw-bold">{{ budget_spent | dollars }}</div>
+                {% if project.type == 'fixed_price' and project.value > 0 %}
+                    {% set pct = (budget_spent / project.value * 100) | int %}
+                    <div class="progress mt-1" style="height: 6px;">
+                        <div class="progress-bar {% if pct > 90 %}bg-danger{% elif pct > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                             style="width: {{ [pct, 100] | min }}%"></div>
+                    </div>
+                    <small class="text-muted">{{ pct }}% of budget</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Details -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><strong>Details</strong></div>
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted" style="width:140px">Client</td>
+                        <td>
+                            {% if contact %}
+                                <a href="{{ url_for('contacts.detail', id=contact.id) }}">{{ contact.name }}</a>
+                            {% else %}
+                                <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Hourly Rate</td>
+                        <td>{{ project.hourly_rate | dollars }}/hr</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Start Date</td>
+                        <td>{{ project.start_date or '--' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Target End</td>
+                        <td>{{ project.target_end_date or '--' }}</td>
+                    </tr>
+                    {% if project.actual_end_date %}
+                    <tr>
+                        <td class="text-muted">Completed</td>
+                        <td>{{ project.actual_end_date }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header"><strong>Description</strong></div>
+            <div class="card-body">
+                {% if project.description %}
+                    <p>{{ project.description }}</p>
+                {% else %}
+                    <p class="text-muted">No description.</p>
+                {% endif %}
+                {% if project.notes %}
+                    <hr>
+                    <p class="mb-0"><strong>Notes:</strong> {{ project.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Milestones -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Milestones</strong>
+        <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse"
+                data-bs-target="#addMilestoneForm">
+            <i class="bi bi-plus-lg"></i> Add
+        </button>
+    </div>
+    <div class="collapse" id="addMilestoneForm">
+        <div class="card-body border-bottom bg-light">
+            <form method="post" action="{{ url_for('projects.add_milestone', id=project.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" name="name" class="form-control form-control-sm"
+                               placeholder="Milestone name" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" name="due_date" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" name="description" class="form-control form-control-sm"
+                               placeholder="Description">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Add</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th style="width:100px"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ms in milestones %}
+                <tr>
+                    <td>
+                        {{ ms.name }}
+                        {% if ms.description %}
+                            <small class="text-muted d-block">{{ ms.description }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ ms.due_date or '--' }}</td>
+                    <td>
+                        {% if ms.status == 'completed' %}
+                            <span class="badge bg-success">Completed</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if ms.status != 'completed' %}
+                        <form method="post" action="{{ url_for('projects.complete_milestone', id=ms.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-check-lg"></i> Complete
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-3">No milestones yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Tasks -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Tasks</strong>
+        <a href="{{ url_for('tasks.create') }}?project_id={{ project.id }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus-lg"></i> Add Task
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tasks %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('tasks.edit', id=t.id) }}" class="text-decoration-none">
+                            {{ t.title }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if t.priority == 'urgent' %}
+                            <span class="badge bg-danger">Urgent</span>
+                        {% elif t.priority == 'high' %}
+                            <span class="badge bg-warning text-dark">High</span>
+                        {% elif t.priority == 'medium' %}
+                            <span class="badge bg-secondary">Medium</span>
+                        {% else %}
+                            <span class="badge bg-light text-dark">Low</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if t.status == 'done' %}
+                            <span class="badge bg-success">Done</span>
+                        {% elif t.status == 'in_progress' %}
+                            <span class="badge bg-warning text-dark">In Progress</span>
+                        {% else %}
+                            <span class="badge bg-secondary">To Do</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.due_date or '--' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-3">No tasks yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Recent Time Entries -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Recent Time Entries</strong>
+        <a href="{{ url_for('time_tracking.create') }}?project_id={{ project.id }}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-plus-lg"></i> Log Time
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Duration</th>
+                    <th>Description</th>
+                    <th>Billable</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for te in time_entries %}
+                <tr>
+                    <td>{{ te.date }}</td>
+                    <td>{{ te.minutes | minutes_to_hours }}</td>
+                    <td>{{ te.description or '--' }}</td>
+                    <td>
+                        {% if te.billable %}
+                            <i class="bi bi-check-circle text-success"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle text-muted"></i>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-3">No time entries yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

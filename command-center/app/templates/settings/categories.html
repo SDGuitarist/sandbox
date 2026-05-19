@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - Categories{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<nav class="settings-tabs">
+    <a href="{{ url_for('settings.profile') }}">Profile</a>
+    <a href="{{ url_for('settings.financial') }}">Financial</a>
+    <a href="{{ url_for('settings.targets') }}">Targets</a>
+    <a href="{{ url_for('settings.categories') }}" class="active">Categories</a>
+    <a href="{{ url_for('settings.export_data') }}">Export</a>
+</nav>
+
+<h2>Income Categories</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Default</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in income_categories %}
+        <tr>
+            <td>{{ cat['name'] }}</td>
+            <td>{{ 'Yes' if cat['is_default'] else 'No' }}</td>
+            <td>
+                {% if not cat['is_default'] %}
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_income">
+                    <input type="hidden" name="category_id" value="{{ cat['id'] }}">
+                    <button type="submit">Remove</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="add_income">
+    <div class="form-group form-inline">
+        <input type="text" name="name" placeholder="New income category" required>
+        <button type="submit">Add</button>
+    </div>
+</form>
+
+<h2>Expense Categories</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Default</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in expense_categories %}
+        <tr>
+            <td>{{ cat['name'] }}</td>
+            <td>{{ 'Yes' if cat['is_default'] else 'No' }}</td>
+            <td>
+                {% if not cat['is_default'] %}
+                <form method="post" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_expense">
+                    <input type="hidden" name="category_id" value="{{ cat['id'] }}">
+                    <button type="submit">Remove</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="add_expense">
+    <div class="form-group form-inline">
+        <input type="text" name="name" placeholder="New expense category" required>
+        <button type="submit">Add</button>
+    </div>
+</form>
+{% endblock %}

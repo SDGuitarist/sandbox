@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-bar-chart-line"></i> Reports</h1>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cash-stack text-success"></i> Revenue Report</h5>
+                <p class="card-text text-muted">Monthly revenue breakdown with date range and client filters.</p>
+                <a href="{{ url_for('reports.revenue_report') }}" class="btn btn-outline-primary btn-sm">View Report</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-people text-primary"></i> Client Report</h5>
+                <p class="card-text text-muted">Revenue, projects, and engagement per client.</p>
+                <a href="{{ url_for('reports.client_report') }}" class="btn btn-outline-primary btn-sm">View Report</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-clock text-info"></i> Time Report</h5>
+                <p class="card-text text-muted">Billable vs non-billable hours by project and week.</p>
+                <a href="{{ url_for('reports.time_report') }}" class="btn btn-outline-primary btn-sm">View Report</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-funnel text-warning"></i> Pipeline Report</h5>
+                <p class="card-text text-muted">Win rate, average deal size, and revenue forecast.</p>
+                <a href="{{ url_for('reports.pipeline_report') }}" class="btn btn-outline-primary btn-sm">View Report</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-speedometer2 text-danger"></i> Utilization Report</h5>
+                <p class="card-text text-muted">Weekly billable utilization rate and trends.</p>
+                <a href="{{ url_for('reports.utilization_report') }}" class="btn btn-outline-primary btn-sm">View Report</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-receipt text-secondary"></i> Expense Report</h5>
+                <p class="card-text text-muted">Expenses by category and month, with tax deductions.</p>
+                <a href="{{ url_for('reports.expense_report') }}" class="btn btn-outline-primary btn-sm">View Report</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="my-4">
+
+<h4>Data Export</h4>
+<p class="text-muted">Download any module's data as a CSV file.</p>
+<div class="row g-2">
+    {% for module in ['contacts', 'companies', 'deals', 'projects', 'tasks', 'time_entries', 'income', 'expenses', 'notes', 'journal'] %}
+    <div class="col-auto">
+        <a href="{{ url_for('reports.export_csv', module=module) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download"></i> {{ module|replace('_', ' ')|title }}
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

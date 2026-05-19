@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Notes{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-search"></i> Search Notes</h2>
+        <div>
+            <a href="{{ url_for('notes.journal') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-journal-text"></i> Journal
+            </a>
+            <a href="{{ url_for('notes.note_list') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-sticky"></i> Notes
+            </a>
+        </div>
+    </div>
+
+    <!-- Search form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('notes.search_notes') }}" class="d-flex gap-3">
+                <input type="text" name="q" class="form-control" placeholder="Search notes and journal entries..."
+                       value="{{ query }}">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results -->
+    {% if query %}
+        {% if results %}
+        <p class="text-muted mb-3">Found {{ results|length }} result{{ 's' if results|length != 1 else '' }} for "{{ query }}"</p>
+        <div class="list-group">
+            {% for result in results %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h5 class="mb-1">
+                            {% if result['entry_type'] == 'note' %}
+                                <span class="badge bg-primary me-1">Note</span>
+                                <a href="{{ url_for('notes.edit_note', id=result['id']) }}">
+                                    {{ result['title'] }}
+                                </a>
+                            {% else %}
+                                <span class="badge bg-info me-1">Journal</span>
+                                <a href="{{ url_for('notes.journal', date=result['title']) }}">
+                                    {{ result['title'] }}
+                                </a>
+                            {% endif %}
+                        </h5>
+                        <p class="mb-1 text-muted">
+                            {{ result['content'][:200] }}{% if result['content']|length > 200 %}...{% endif %}
+                        </p>
+                        {% if result['tags'] %}
+                            {% for tag in result['tags'].split(',') %}
+                                {% if tag.strip() %}
+                                <span class="badge bg-secondary">{{ tag.strip() }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">{{ result['created_at'] }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-search" style="font-size: 3rem;"></i>
+            <p class="mt-3">No results found for "{{ query }}".</p>
+        </div>
+        {% endif %}
+    {% else %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-search" style="font-size: 3rem;"></i>
+        <p class="mt-3">Enter a search term to find notes and journal entries.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Revenue by Client{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people me-2"></i>Revenue by Client</h2>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('revenue.add_income') }}" class="btn btn-success">
+            <i class="bi bi-plus-lg me-1"></i>Income
+        </a>
+    </div>
+</div>
+
+<!-- Navigation tabs for revenue views -->
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('revenue.pl') }}">P&amp;L</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('revenue.by_client') }}">By Client</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('revenue.by_month') }}">By Month</a>
+    </li>
+</ul>
+
+{% if clients %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th class="text-end">Total Revenue</th>
+                    <th class="text-end">Projects</th>
+                    <th class="text-end">Avg Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td>{{ client.contact_name }}</td>
+                    <td class="text-end text-success fw-bold">{{ client.total_revenue|dollars }}</td>
+                    <td class="text-end">{{ client.project_count }}</td>
+                    <td class="text-end">{{ client.avg_value|dollars }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-people display-4"></i>
+    <p class="mt-3">No client revenue data yet. <a href="{{ url_for('revenue.add_income') }}">Add income</a> linked to a client to see revenue breakdowns.</p>
+</div>
+{% endif %}
+{% endblock %}

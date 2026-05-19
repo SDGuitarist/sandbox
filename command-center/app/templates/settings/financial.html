@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings - Financial{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+
+<nav class="settings-tabs">
+    <a href="{{ url_for('settings.profile') }}">Profile</a>
+    <a href="{{ url_for('settings.financial') }}" class="active">Financial</a>
+    <a href="{{ url_for('settings.targets') }}">Targets</a>
+    <a href="{{ url_for('settings.categories') }}">Categories</a>
+    <a href="{{ url_for('settings.export_data') }}">Export</a>
+</nav>
+
+<h2>Financial Settings</h2>
+
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+        <label for="default_hourly_rate">Default Hourly Rate ($)</label>
+        <input type="number" id="default_hourly_rate" name="default_hourly_rate"
+               step="0.01" min="0"
+               value="{{ '%.2f' % (profile['default_hourly_rate'] / 100) }}">
+    </div>
+
+    <div class="form-group">
+        <label for="currency_symbol">Currency Symbol</label>
+        <input type="text" id="currency_symbol" name="currency_symbol"
+               maxlength="5"
+               value="{{ profile['currency_symbol'] }}">
+    </div>
+
+    <div class="form-group">
+        <label for="fiscal_year_start">Fiscal Year Start Month</label>
+        <select id="fiscal_year_start" name="fiscal_year_start">
+            {% for m in range(1, 13) %}
+            <option value="{{ m }}" {% if profile['fiscal_year_start'] == m %}selected{% endif %}>
+                {{ ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'][m-1] }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit">Save Financial Settings</button>
+</form>
+{% endblock %}

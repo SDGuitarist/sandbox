@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Time Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-clock"></i> Time Report</h1>
+    <a href="{{ url_for('reports.export_csv', module='time_entries') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-download"></i> Export CSV
+    </a>
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="text-muted">Billable Hours</h6>
+                <h3 class="text-success">{{ billable_total|minutes_to_hours }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="text-muted">Non-Billable Hours</h6>
+                <h3 class="text-warning">{{ non_billable_total|minutes_to_hours }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="text-muted">Total Hours</h6>
+                <h3>{{ (billable_total + non_billable_total)|minutes_to_hours }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- By Project -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">By Project</h5>
+    </div>
+    <div class="card-body">
+        {% if by_project %}
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Project</th>
+                    <th class="text-end">Billable</th>
+                    <th class="text-end">Non-Billable</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in by_project %}
+                <tr>
+                    <td>{{ p.project }}</td>
+                    <td class="text-end">{{ p.billable|minutes_to_hours }}</td>
+                    <td class="text-end">{{ p.non_billable|minutes_to_hours }}</td>
+                    <td class="text-end">{{ p.total|minutes_to_hours }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No time entries found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- By Week -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">By Week</h5>
+    </div>
+    <div class="card-body">
+        {% if by_week %}
+        <table class="table table-hover table-sm">
+            <thead>
+                <tr>
+                    <th>Week</th>
+                    <th class="text-end">Billable</th>
+                    <th class="text-end">Non-Billable</th>
+                    <th class="text-end">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in by_week %}
+                <tr>
+                    <td>{{ w.week }}</td>
+                    <td class="text-end">{{ w.billable|minutes_to_hours }}</td>
+                    <td class="text-end">{{ w.non_billable|minutes_to_hours }}</td>
+                    <td class="text-end">{{ w.total|minutes_to_hours }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted mb-0">No time entries found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('reports.index') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to Reports
+    </a>
+</div>
+{% endblock %}
