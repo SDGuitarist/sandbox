@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if contact else 'New' }} Contact{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('contacts.index') }}" class="text-decoration-none text-muted">
+        <i class="bi bi-arrow-left"></i> Contacts
+    </a>
+    <h1 class="h3 mt-1">{{ 'Edit Contact' if contact else 'New Contact' }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post"
+              action="{{ url_for('contacts.edit', id=contact['id']) if contact else url_for('contacts.create') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                <!-- Name (required) -->
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="{{ contact['name'] if contact else '' }}" required>
+                </div>
+
+                <!-- Email -->
+                <div class="col-md-6">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="email" name="email"
+                           value="{{ contact['email'] if contact else '' }}">
+                </div>
+
+                <!-- Phone -->
+                <div class="col-md-6">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="phone" name="phone"
+                           value="{{ contact['phone'] if contact else '' }}">
+                </div>
+
+                <!-- Company -->
+                <div class="col-md-6">
+                    <label for="company_id" class="form-label">Company</label>
+                    <select class="form-select" id="company_id" name="company_id">
+                        <option value="">— None —</option>
+                        {% for co in companies %}
+                        <option value="{{ co['id'] }}"
+                                {% if contact and contact['company_id'] == co['id'] %}selected{% endif %}>
+                            {{ co['name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Role / Title -->
+                <div class="col-md-6">
+                    <label for="role_title" class="form-label">Role / Title</label>
+                    <input type="text" class="form-control" id="role_title" name="role_title"
+                           value="{{ contact['role_title'] if contact else '' }}"
+                           placeholder="e.g. CEO, Project Manager">
+                </div>
+
+                <!-- Status -->
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        {% for s in statuses %}
+                        <option value="{{ s }}"
+                                {% if contact and contact['status'] == s %}selected{% endif %}
+                                {% if not contact and s == 'lead' %}selected{% endif %}>
+                            {{ s | replace('_', ' ') | title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Source -->
+                <div class="col-md-3">
+                    <label for="source" class="form-label">Source</label>
+                    <select class="form-select" id="source" name="source">
+                        {% for src in sources %}
+                        <option value="{{ src }}"
+                                {% if contact and contact['source'] == src %}selected{% endif %}
+                                {% if not contact and src == 'other' %}selected{% endif %}>
+                            {{ src | replace('_', ' ') | title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Tags -->
+                <div class="col-md-6">
+                    <label for="tags" class="form-label">Tags</label>
+                    <input type="text" class="form-control" id="tags" name="tags"
+                           value="{{ contact['tags'] if contact else '' }}"
+                           placeholder="Comma-separated tags">
+                    <div class="form-text">Separate multiple tags with commas.</div>
+                </div>
+
+                <!-- Notes -->
+                <div class="col-12">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3"
+                              placeholder="Any additional notes...">{{ contact['notes'] if contact else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg"></i> {{ 'Update Contact' if contact else 'Create Contact' }}
+                </button>
+                <a href="{{ url_for('contacts.detail', id=contact['id']) if contact else url_for('contacts.index') }}"
+                   class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
