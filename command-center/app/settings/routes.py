@@ -2,7 +2,7 @@ import csv
 import io
 from datetime import datetime, timezone
 
-from flask import Response, flash, redirect, render_template, request, url_for
+from flask import Response, flash, redirect, render_template, request, session, url_for
 
 from app.settings import bp
 from ..db import get_db
@@ -34,18 +34,20 @@ def _log_activity(conn, action, entity_type, entity_id, description):
 
 def _get_or_create_profile(conn):
     """Return the single business profile row, creating a default if absent."""
-    row = conn.execute("SELECT * FROM business_profile LIMIT 1").fetchone()
+    user_id = session.get('user_id')
+    row = conn.execute("SELECT * FROM business_profile WHERE user_id = ?", (user_id,)).fetchone()
     if row is None:
         conn.execute(
             "INSERT INTO business_profile "
-            "(business_name, owner_name, logo_url, tagline, email, phone, "
+            "(user_id, business_name, owner_name, logo_url, tagline, email, phone, "
             "website, address, tax_id, default_hourly_rate, currency_symbol, "
             "fiscal_year_start, monthly_revenue_target, weekly_hours_target, "
             "quarterly_revenue_target) "
-            "VALUES ('', '', '', '', '', '', '', '', '', 0, '$', 1, 0, 40, 0)"
+            "VALUES (?, '', '', '', '', '', '', '', '', '', 0, '$', 1, 0, 40, 0)",
+            (user_id,)
         )
         conn.commit()
-        row = conn.execute("SELECT * FROM business_profile LIMIT 1").fetchone()
+        row = conn.execute("SELECT * FROM business_profile WHERE user_id = ?", (user_id,)).fetchone()
     return row
 
 
