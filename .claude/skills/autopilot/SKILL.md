@@ -42,20 +42,16 @@ Security heuristics fire on compound commands regardless of permissions. One com
 
 Execute these steps in order. Do not stop between steps.
 
-### Step 1: Start Ralph Loop
-
-Run `/ralph-loop:ralph-loop "finish all slash commands" --completion-promise "DONE"`
-
-### Step 2: Compound Start + Capture Lessons
+### Step 1: Compound Start + Capture Lessons
 
 Run `/compound-start $ARGUMENTS`
 
 The solution-doc-searcher agent will return relevant lessons from prior builds.
-**Capture these findings** -- they feed into Step 3. Note which solution docs
+**Capture these findings** -- they feed into Step 2. Note which solution docs
 were found and their key lessons (e.g., "CSRF missing in Flask builds,"
 "scalar returns need usage examples," "data ownership required in spec").
 
-### Step 2.5: Create BUILD_TRACKING.md
+### Step 1.5: Create BUILD_TRACKING.md
 
 Copy the tracking template into the project root. This is MANDATORY -- do not
 skip. The template is at `~/.claude/docs/autopilot-tracking-template.md`.
@@ -69,20 +65,20 @@ skip. The template is at `~/.claude/docs/autopilot-tracking-template.md`.
 If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
 Run Info + empty AGENT_STATUS + empty FAILURES + empty RUN_METRICS sections.
 
-### Step 2.6: Inject Agent Pitfalls
+### Step 1.6: Inject Agent Pitfalls
 
 Read `~/.claude/docs/agent-pitfalls.md`. These pitfalls MUST be injected into
 every agent brief in Step 10w (swarm) or referenced in Step 7s (solo).
 Capture the full document content for injection later.
 
-### Step 3: Expand Brief + Roadmap
+### Step 2: Expand Brief + Roadmap
 
 Expand the user's app description into a structured brief, informed by the
-solution doc findings from Step 2. This prevents the brainstorm workflow from
+solution doc findings from Step 1. This prevents the brainstorm workflow from
 asking interactive questions and ensures past lessons are baked in from the start.
 
 Generate the following from `$ARGUMENTS` + solution doc findings (do not
-create a file -- pass it inline to Step 4):
+create a file -- pass it inline to Step 3):
 
 ```
 ## App Brief
@@ -114,7 +110,7 @@ create a file -- pass it inline to Step 4):
 
 ## Lessons Applied from Prior Builds
 
-[For each relevant solution doc found in Step 2, list what it taught
+[For each relevant solution doc found in Step 1, list what it taught
 and how it influences this brief. Examples:]
 - CSRF protection required on all POST forms (from: autopilot-swarm-orchestration)
 - Scalar-return functions need usage examples in spec (from: task-tracker-categories)
@@ -127,9 +123,9 @@ focused interpretation of the app description. If a solution doc lesson
 applies, include it in core features or roadmap constraints -- don't just
 list it, act on it.
 
-### Step 4: Brainstorm
+### Step 3: Brainstorm
 
-Run `/workflows:brainstorm` with the expanded brief from Step 3 appended to
+Run `/workflows:brainstorm` with the expanded brief from Step 2 appended to
 `$ARGUMENTS`. If the brainstorm workflow asks clarifying questions, pick the
 simplest option and continue. Do not wait for user input.
 
@@ -138,12 +134,12 @@ with a `## Feed-Forward` section containing all three questions (hardest
 decision, rejected alternatives, least confident). If missing, append the
 section before proceeding.
 
-### Step 5: Brainstorm Refinement
+### Step 4: Brainstorm Refinement
 
 Use the **brainstorm-refinement** agent. Pass the path to the brainstorm doc
 just created in `docs/brainstorms/`. Read its output and check for STATUS: PASS.
 
-### Step 6: Plan
+### Step 5: Plan
 
 Run `/workflows:plan $ARGUMENTS`
 
@@ -154,7 +150,7 @@ Run `/workflows:plan $ARGUMENTS`
 
 If any are missing, add them before proceeding.
 
-### Step 7: Deepen Plan
+### Step 6: Deepen Plan
 
 Run `/compound-engineering:deepen-plan`
 
