@@ -10,9 +10,9 @@
 | Phases | 6 (brainstorm, plan, swarm work, review, compound, learnings) |
 | Total Agents | TBD (15+ swarm target) |
 | Build Method | autopilot-swarm |
-| Run ID | 046 |
-| Reports | docs/reports/046/ |
-| Self-Audit | docs/reports/046/self-audit.md |
+| Run ID | 047 |
+| Reports | docs/reports/047/ |
+| Self-Audit | docs/reports/047/self-audit.md |
 
 ---
 
