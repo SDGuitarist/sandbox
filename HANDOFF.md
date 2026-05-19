@@ -22,6 +22,7 @@ the Run Quality Grading rubric in the self-audit system.
 
 ## Deferred Items
 
+- [045-W1] 4 of 7 P3 review findings untracked -- confirm disposition in next session (LOW severity)
 - [045-P3] Content-Security-Policy header (defense-in-depth)
 - [045-P3] Strict-Transport-Security header (HTTPS enforcement)
 - [045-P3] Deferred import in health endpoint (unnecessary indirection)
