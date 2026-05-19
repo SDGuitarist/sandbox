@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback Board{% endblock %}
+
+{% block content %}
+<section class="submit-section">
+    <h2>Submit Feedback</h2>
+    <form method="POST" action="{{ url_for('public.submit') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+            <label for="title">Title *</label>
+            <input type="text" id="title" name="title" maxlength="200" required placeholder="Brief summary of your feedback">
+        </div>
+        <div class="field">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" maxlength="2000" rows="3" placeholder="Add more detail (optional)"></textarea>
+        </div>
+        <div class="field">
+            <label for="category">Category *</label>
+            <select id="category" name="category" required>
+                <option value="">Select a category</option>
+                {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit">Submit Feedback</button>
+    </form>
+</section>
+
+<section class="feedback-list">
+    <h2>All Feedback</h2>
+    {% if feedback_items %}
+        {% for item in feedback_items %}
+        <div class="feedback-card">
+            <div class="feedback-vote">
+                <form method="POST" action="{{ url_for('public.upvote', feedback_id=item.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="vote-btn" title="Upvote">{{ item.vote_count }}</button>
+                </form>
+            </div>
+            <div class="feedback-content">
+                <h3>{{ item.title }}</h3>
+                {% if item.description %}
+                    <p>{{ item.description }}</p>
+                {% endif %}
+                <div class="feedback-meta">
+                    <span class="badge badge-{{ item.category | lower }}">{{ item.category }}</span>
+                    <span class="badge badge-status badge-{{ item.status }}">{{ item.status | replace('_', ' ') }}</span>
+                    <span class="meta-date">{{ item.created_at }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty-state">No feedback yet. Be the first to submit!</p>
+    {% endif %}
+</section>
+{% endblock %}

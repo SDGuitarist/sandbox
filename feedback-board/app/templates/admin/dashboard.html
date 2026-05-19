@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Feedback Board{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+    <h1>Admin Dashboard</h1>
+    <a href="{{ url_for('admin.export_csv') }}" class="btn btn-export">Export CSV</a>
+</div>
+
+<div class="stats-section">
+    <div class="stat-card">
+        <span class="stat-label">Total</span>
+        <span class="stat-value">{{ stats.total }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">New</span>
+        <span class="stat-value">{{ stats.new }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Planned</span>
+        <span class="stat-value">{{ stats.planned }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">In Progress</span>
+        <span class="stat-value">{{ stats.in_progress }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Done</span>
+        <span class="stat-value">{{ stats.done }}</span>
+    </div>
+</div>
+
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('admin.dashboard') }}">
+        <label for="filter-status">Status:</label>
+        <select id="filter-status" name="status" onchange="this.form.submit()">
+            <option value="">All</option>
+            {% for s in statuses %}
+                <option value="{{ s }}" {% if current_status == s %}selected{% endif %}>{{ s | replace('_', ' ') }}</option>
+            {% endfor %}
+        </select>
+        <label for="filter-category">Category:</label>
+        <select id="filter-category" name="category" onchange="this.form.submit()">
+            <option value="">All</option>
+            {% for c in categories %}
+                <option value="{{ c }}" {% if current_category == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="admin-table-container">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Votes</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if feedback_items %}
+                {% for item in feedback_items %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>
+                        <strong>{{ item.title }}</strong>
+                        {% if item.description %}
+                            <br><small>{{ item.description[:100] }}{% if item.description|length > 100 %}...{% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-{{ item.category | lower }}">{{ item.category }}</span></td>
+                    <td>{{ item.vote_count }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.update_status', feedback_id=item.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="current_status" value="{{ current_status or '' }}">
+                            <input type="hidden" name="current_category" value="{{ current_category or '' }}">
+                            <select name="status" onchange="this.form.submit()">
+                                {% for s in statuses %}
+                                    <option value="{{ s }}" {% if item.status == s %}selected{% endif %}>{{ s | replace('_', ' ') }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                    </td>
+                    <td>{{ item.created_at }}</td>
+                    <td>{{ item.updated_at }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="7">No feedback items found.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
