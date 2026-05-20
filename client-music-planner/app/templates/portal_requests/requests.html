@@ -1,0 +1,66 @@
+{% set active_portal = 'requests' %}
+{% extends "portal_base.html" %}
+
+{% block title %}Song Requests - {{ event.name }} - GigList{% endblock %}
+
+{% block content %}
+<h2>Song Requests</h2>
+<p class="text-muted">Can't find a song in the repertoire? Request it here and your musician will see it.</p>
+
+{% if not is_approved %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Request a Song</h5>
+        <form method="POST" action="{{ url_for('portal_requests.add_request', token=event.portal_token) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="title" class="form-label">Song Title <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="title" name="title" required>
+            </div>
+            <div class="mb-3">
+                <label for="artist" class="form-label">Artist</label>
+                <input type="text" class="form-control" id="artist" name="artist">
+            </div>
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Request</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    This event has been approved. Song requests are locked.
+</div>
+{% endif %}
+
+<h4>Your Requests</h4>
+
+{% if requests %}
+<div class="list-group">
+    {% for req in requests %}
+    <div class="list-group-item d-flex justify-content-between align-items-start">
+        <div>
+            <strong>{{ req.title }}</strong>
+            {% if req.artist %}
+                <span class="text-muted">by {{ req.artist }}</span>
+            {% endif %}
+            {% if req.notes %}
+                <p class="mb-0 mt-1 small text-muted">{{ req.notes }}</p>
+            {% endif %}
+            <small class="text-muted">{{ req.created_at|format_date }}</small>
+        </div>
+        {% if not is_approved %}
+        <form method="POST" action="{{ url_for('portal_requests.delete_request', token=event.portal_token, request_id=req.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this request?')">Remove</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No song requests yet.</p>
+{% endif %}
+{% endblock %}
