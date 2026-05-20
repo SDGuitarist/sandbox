@@ -61,7 +61,13 @@ def create_app():
         if 'user_id' not in session:
             return redirect(url_for('auth.login'))
         role = session.get('role', 'musician')
-        return redirect(url_for(f'dashboard_{role}.index'))
+        dashboard_map = {
+            'venue_manager': 'dashboard_venue',
+            'musician': 'dashboard_musician',
+            'promoter': 'dashboard_promoter',
+        }
+        dashboard = dashboard_map.get(role, 'dashboard_musician')
+        return redirect(url_for(f'{dashboard}.index'))
 
     @app.route('/health')
     def health():

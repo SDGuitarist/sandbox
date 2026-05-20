@@ -85,7 +85,13 @@ def login():
         session['role'] = user['role']
 
         flash('Logged in successfully.', 'success')
-        return redirect(url_for(f'dashboard_{user["role"]}.index'))
+        dashboard_map = {
+            'venue_manager': 'dashboard_venue',
+            'musician': 'dashboard_musician',
+            'promoter': 'dashboard_promoter',
+        }
+        dashboard = dashboard_map.get(user['role'], 'dashboard_musician')
+        return redirect(url_for(f'{dashboard}.index'))
 
     return render_template('auth/login.html')
 
