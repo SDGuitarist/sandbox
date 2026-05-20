@@ -168,6 +168,8 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
             CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+            CREATE INDEX IF NOT EXISTS idx_payments_user_date ON payments(user_id, payment_date);
+            CREATE INDEX IF NOT EXISTS idx_invoices_status_due ON invoices(user_id, status, due_date);
         """)
     finally:
         db.close()
