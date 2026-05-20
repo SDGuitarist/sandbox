@@ -114,7 +114,7 @@ def record_advance(booking_id):
     """Record advance payment and transition to advanced state."""
     advance_dollars = request.form.get('advance_dollars', '0')
     try:
-        advance_cents = int(float(advance_dollars) * 100)
+        advance_cents = int(round(float(advance_dollars) * 100))
     except (ValueError, TypeError):
         flash('Invalid advance amount.', 'error')
         return redirect(url_for('booking_manage.detail', booking_id=booking_id))

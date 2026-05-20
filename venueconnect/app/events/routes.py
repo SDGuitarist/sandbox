@@ -4,7 +4,7 @@ from app.db import get_db
 from app.decorators import login_required, role_required
 from app.models import (create_event, get_event, get_events_by_promoter,
                          update_event, get_all_venues, link_booking_to_event,
-                         get_bookings_by_event)
+                         get_bookings_by_event, get_booking)
 
 events_bp = Blueprint('events', __name__)
 
@@ -112,6 +112,15 @@ def link_booking(id):
     booking_id = request.form.get('booking_id', '').strip()
     if not booking_id:
         flash('Booking ID is required.', 'error')
+        return redirect(url_for('events.detail', id=id))
+
+    # Validate booking exists and belongs to this event's venue
+    booking = get_booking(conn, int(booking_id))
+    if booking is None:
+        flash('Booking not found.', 'error')
+        return redirect(url_for('events.detail', id=id))
+    if booking['venue_id'] != event['venue_id']:
+        flash('Booking must be at the same venue as the event.', 'error')
         return redirect(url_for('events.detail', id=id))
 
     link_booking_to_event(conn, int(booking_id), id)

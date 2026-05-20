@@ -94,11 +94,22 @@ def request_booking(room_id):
                 'booking_create/request_form.html', room=room, venue=venue
             )
 
-        # Convert money: dollars -> cents
-        guarantee_cents = int(round(float(guarantee_dollars) * 100))
-        door_split_pct_int = int(door_split_pct)
-        promoter_fee_pct_int = int(promoter_fee_pct)
-        tax_pct_int = int(tax_pct)
+        # Convert money: dollars -> cents (with validation)
+        try:
+            guarantee_cents = int(round(float(guarantee_dollars) * 100))
+            door_split_pct_int = int(door_split_pct)
+            promoter_fee_pct_int = int(promoter_fee_pct)
+            tax_pct_int = int(tax_pct)
+        except (ValueError, TypeError):
+            flash('Invalid numeric value.', 'error')
+            return render_template(
+                'booking_create/request_form.html', room=room, venue=venue
+            )
+        if not (0 <= door_split_pct_int <= 100 and 0 <= promoter_fee_pct_int <= 100 and 0 <= tax_pct_int <= 100):
+            flash('Percentages must be between 0 and 100.', 'error')
+            return render_template(
+                'booking_create/request_form.html', room=room, venue=venue
+            )
 
         # Transaction: BEGIN IMMEDIATE -> check availability -> create booking -> commit
         # FC29: do NOT commit inside check_room_available or create_booking
@@ -142,6 +153,8 @@ def detail(id):
     booking = get_booking(conn, id)
     if booking is None:
         abort(404)
+    if booking['musician_user_id'] != g.user['id']:
+        abort(403)
     history = get_booking_history(conn, id)
     settlement = get_settlement_by_booking(conn, id)
     tiers = get_ticket_tiers(conn, id)

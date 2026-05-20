@@ -398,7 +398,8 @@ def get_settlement(conn, settlement_id):
     return conn.execute(
         '''SELECT s.*, b.event_name, b.event_date, b.deal_type,
            b.guarantee_cents, b.door_split_pct, b.promoter_fee_pct, b.tax_pct,
-           r.name AS room_name, v.name AS venue_name,
+           b.musician_user_id, r.name AS room_name, r.venue_id,
+           v.name AS venue_name, v.user_id AS venue_manager_id,
            u.display_name AS musician_name
            FROM settlements s
            JOIN bookings b ON s.booking_id = b.id
@@ -675,12 +676,20 @@ def get_promoter_settlement_status(conn, user_id):
 # Usage:
 #   results = search_venues(conn, query)
 def search_venues(conn, query):
+    import re
     if not query or not query.strip():
         return get_all_venues(conn)
+    # Sanitize FTS5 query: strip operators to prevent injection
+    cleaned = re.sub(r'[*"():^]', '', query)
+    cleaned = ' '.join(cleaned.split())
+    if not cleaned:
+        return get_all_venues(conn)
+    # Quote as phrase to prevent FTS5 operator injection
+    safe_query = f'"{cleaned}"'
     return conn.execute(
         '''SELECT v.* FROM venues v
            JOIN venues_fts ON v.id = venues_fts.rowid
            WHERE venues_fts MATCH ?
            ORDER BY rank LIMIT 50''',
-        (query,)
+        (safe_query,)
     ).fetchall()

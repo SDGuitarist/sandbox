@@ -19,6 +19,18 @@ def list():
     return render_template('settlements/list.html', settlements=settlements)
 
 
+def _check_settlement_access(settlement):
+    """Verify current user has access to this settlement."""
+    role = g.user['role']
+    uid = g.user['id']
+    if role == 'venue_manager' and settlement['venue_manager_id'] == uid:
+        return True
+    if role == 'musician' and settlement['musician_user_id'] == uid:
+        return True
+    # Promoter access checked via booking -> event
+    return False
+
+
 @settlements_bp.route('/<int:id>')
 @login_required
 def detail(id):
@@ -26,6 +38,8 @@ def detail(id):
     settlement = get_settlement(conn, id)
     if settlement is None:
         abort(404)
+    if not _check_settlement_access(settlement):
+        abort(403)
     return render_template('settlements/detail.html', settlement=settlement)
 
 
@@ -38,6 +52,10 @@ def create(booking_id):
     if booking is None:
         abort(404)
 
+    # Ownership check: venue manager must own this booking's venue
+    if booking['venue_manager_id'] != g.user['id']:
+        abort(403)
+
     # Check if settlement already exists for this booking
     existing = get_settlement_by_booking(conn, booking_id)
     if existing is not None:
@@ -45,9 +63,13 @@ def create(booking_id):
         return redirect(url_for('settlements.detail', id=existing['id']))
 
     if request.method == 'POST':
-        # Parse dollars to cents
-        door_revenue_cents = int(round(float(request.form.get('door_revenue_dollars', '0')) * 100))
-        expenses_cents = int(round(float(request.form.get('expenses_dollars', '0')) * 100))
+        # Parse dollars to cents with validation
+        try:
+            door_revenue_cents = int(round(float(request.form.get('door_revenue_dollars', '0')) * 100))
+            expenses_cents = int(round(float(request.form.get('expenses_dollars', '0')) * 100))
+        except (ValueError, TypeError):
+            flash('Invalid dollar amount.', 'error')
+            return redirect(url_for('settlements.create', booking_id=booking_id))
 
         # Calculate settlement
         result = calculate_settlement(
@@ -88,6 +110,8 @@ def approve(id):
     booking = get_booking(conn, settlement['booking_id'])
     if booking is None:
         abort(404)
+    if booking['venue_manager_id'] != g.user['id']:
+        abort(403)
 
     conn.execute('BEGIN IMMEDIATE')
     approve_settlement(conn, id, g.user['id'])
@@ -109,6 +133,8 @@ def download_pdf(id):
     settlement = get_settlement(conn, id)
     if settlement is None:
         abort(404)
+    if not _check_settlement_access(settlement):
+        abort(403)
 
     pdf_bytes = generate_settlement_pdf(settlement)
     return Response(
