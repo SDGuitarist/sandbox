@@ -72,7 +72,7 @@ class TestLogout:
     def test_logout(self, auth_client):
         """WHEN a logged-in user logs out
         THE SYSTEM SHALL clear session and redirect to login."""
-        response = auth_client.get('/auth/logout')
+        response = auth_client.post('/auth/logout')
         assert response.status_code == 302
 
         # After logout, accessing a protected page should redirect to login

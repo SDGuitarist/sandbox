@@ -45,32 +45,37 @@ def _revenue_by_client_data(db, user_id):
 
 
 def _aging_data(db, user_id):
-    """Return aging buckets: list of dicts with bucket, count, total_cents."""
-    buckets = [
-        ("Current (0-30 days)", "due_date >= date('now', '-30 days')"),
-        ("31-60 days", "due_date BETWEEN date('now', '-60 days') AND date('now', '-31 days')"),
-        ("61-90 days", "due_date BETWEEN date('now', '-90 days') AND date('now', '-61 days')"),
-        ("90+ days", "due_date < date('now', '-90 days')"),
+    """Return aging buckets: list of dicts with bucket, count, total_cents.
+    Single query using CASE expressions instead of 4 separate queries."""
+    rows = db.execute("""
+        SELECT
+            CASE
+                WHEN due_date >= date('now', '-30 days') THEN 'Current (0-30 days)'
+                WHEN due_date >= date('now', '-60 days') THEN '31-60 days'
+                WHEN due_date >= date('now', '-90 days') THEN '61-90 days'
+                ELSE '90+ days'
+            END AS bucket,
+            COUNT(*) AS count,
+            COALESCE(SUM(total_cents), 0) AS total_cents
+        FROM invoices
+        WHERE user_id = ?
+          AND status IN ('sent', 'viewed', 'overdue')
+        GROUP BY bucket
+        ORDER BY CASE bucket
+            WHEN 'Current (0-30 days)' THEN 1
+            WHEN '31-60 days' THEN 2
+            WHEN '61-90 days' THEN 3
+            ELSE 4
+        END
+    """, (user_id,)).fetchall()
+
+    bucket_map = {r['bucket']: r for r in rows}
+    bucket_labels = ['Current (0-30 days)', '31-60 days', '61-90 days', '90+ days']
+    return [
+        {'bucket': label, 'count': bucket_map[label]['count'], 'total_cents': bucket_map[label]['total_cents']}
+        if label in bucket_map else {'bucket': label, 'count': 0, 'total_cents': 0}
+        for label in bucket_labels
     ]
-    results = []
-    for label, condition in buckets:
-        row = db.execute(
-            f"""
-            SELECT COUNT(*) AS cnt,
-                   COALESCE(SUM(total_cents), 0) AS total_cents
-              FROM invoices
-             WHERE user_id = ?
-               AND status IN ('sent', 'viewed', 'overdue')
-               AND {condition}
-            """,
-            (user_id,),
-        ).fetchone()
-        results.append({
-            "bucket": label,
-            "count": row["cnt"],
-            "total_cents": row["total_cents"],
-        })
-    return results
 
 
 def _forecast_data(db, user_id):
