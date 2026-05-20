@@ -8,7 +8,7 @@ run_id: "049"
 agents: 25
 files: 90
 lines: 5750
-grade: pending
+grade: "B (4.0)"
 symptom: "Largest swarm build to date -- 25 agents, 3-role RBAC, 8-state booking lifecycle, settlement engine with PDF, FTS5 search, Chart.js analytics"
 root_cause: "N/A (greenfield build)"
 ---
