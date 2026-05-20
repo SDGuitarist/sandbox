@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Workspace Members</h2>
+
+    {% if g.workspace_role in ('owner', 'admin') %}
+    <div class="card mb-4">
+        <div class="card-header">Invite Member</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('workspace_members.invite') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            {% for r in roles %}
+                                {% if r != 'owner' %}
+                                <option value="{{ r }}">{{ r|title }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">Invite</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">Current Members ({{ members|length }})</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                        {% if g.workspace_role in ('owner', 'admin') %}
+                        <th>Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in members %}
+                    <tr>
+                        <td>{{ member['display_name'] or 'No name' }}</td>
+                        <td>{{ member['email'] }}</td>
+                        <td>
+                            <span class="badge bg-{% if member['role'] == 'owner' %}warning text-dark{% elif member['role'] == 'admin' %}info{% else %}secondary{% endif %}">
+                                {{ member['role']|title }}
+                            </span>
+                        </td>
+                        <td>{{ member['joined_at'] }}</td>
+                        {% if g.workspace_role in ('owner', 'admin') %}
+                        <td>
+                            {% if member['role'] != 'owner' %}
+                            <div class="d-flex gap-2">
+                                <form method="POST" action="{{ url_for('workspace_members.change_role', id=member['user_id']) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <select name="role" class="form-select form-select-sm d-inline-block" style="width: auto;" onchange="this.form.submit()">
+                                        {% for r in roles %}
+                                            {% if r != 'owner' %}
+                                            <option value="{{ r }}" {% if r == member['role'] %}selected{% endif %}>{{ r|title }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </form>
+                                <form method="POST" action="{{ url_for('workspace_members.remove', id=member['user_id']) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Remove this member?')">Remove</button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">--</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
