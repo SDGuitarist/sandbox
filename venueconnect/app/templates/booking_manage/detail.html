@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Booking: {{ booking['event_name'] }}{% endblock %}
+
+{% block content %}
+<h1>{{ booking['event_name'] }}</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-{% if booking['state'] == 'confirmed' %}success{% elif booking['state'] == 'requested' %}warning{% elif booking['state'] in ('rejected', 'cancelled') %}danger{% elif booking['state'] == 'paid' %}primary{% else %}secondary{% endif %}">
+                            {{ booking['state'] }}
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-4">Musician</dt>
+                    <dd class="col-sm-8">{{ booking['musician_name'] }}</dd>
+
+                    <dt class="col-sm-4">Venue</dt>
+                    <dd class="col-sm-8">{{ booking['venue_name'] }}</dd>
+
+                    <dt class="col-sm-4">Room</dt>
+                    <dd class="col-sm-8">{{ booking['room_name'] }}</dd>
+
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">{{ booking['event_date'] }}</dd>
+
+                    <dt class="col-sm-4">Time</dt>
+                    <dd class="col-sm-8">{{ booking['start_time'] }} - {{ booking['end_time'] }}</dd>
+
+                    <dt class="col-sm-4">Deal Type</dt>
+                    <dd class="col-sm-8">{{ booking['deal_type'] }}</dd>
+
+                    {% if booking['deal_type'] == 'guarantee' or booking['deal_type'] == 'hybrid' %}
+                    <dt class="col-sm-4">Guarantee</dt>
+                    <dd class="col-sm-8">{{ booking['guarantee_cents']|dollars }}</dd>
+                    {% endif %}
+
+                    {% if booking['deal_type'] == 'door_split' or booking['deal_type'] == 'hybrid' %}
+                    <dt class="col-sm-4">Door Split</dt>
+                    <dd class="col-sm-8">{{ booking['door_split_pct'] }}% to musician</dd>
+                    {% endif %}
+
+                    {% if booking['advance_cents'] > 0 %}
+                    <dt class="col-sm-4">Advance Paid</dt>
+                    <dd class="col-sm-8">{{ booking['advance_cents']|dollars }}</dd>
+                    {% endif %}
+
+                    {% if booking['notes'] %}
+                    <dt class="col-sm-4">Notes</dt>
+                    <dd class="col-sm-8">{{ booking['notes'] }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        <!-- Action Buttons based on current state -->
+        {% if booking['state'] == 'requested' %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Actions</h5></div>
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-3">
+                    <form method="post" action="{{ url_for('booking_manage.confirm', booking_id=booking['id']) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success">Confirm Booking</button>
+                    </form>
+                </div>
+                <form method="post" action="{{ url_for('booking_manage.reject', booking_id=booking['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="rejection_notes" class="form-label">Rejection Notes</label>
+                        <textarea class="form-control" id="rejection_notes" name="rejection_notes"
+                                  rows="2" placeholder="Reason for declining..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Reject Booking</button>
+                </form>
+            </div>
+        </div>
+
+        {% elif booking['state'] == 'confirmed' %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Actions</h5></div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('booking_manage.record_advance', booking_id=booking['id']) }}" class="mb-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="advance_dollars" class="form-label">Advance Payment ($)</label>
+                        <input type="number" class="form-control" id="advance_dollars" name="advance_dollars"
+                               step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Record Advance Payment</button>
+                </form>
+                <hr>
+                <form method="post" action="{{ url_for('booking_manage.cancel', booking_id=booking['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="cancel_notes" class="form-label">Cancellation Notes</label>
+                        <textarea class="form-control" id="cancel_notes" name="cancel_notes"
+                                  rows="2" placeholder="Reason for cancellation..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Cancel Booking</button>
+                </form>
+            </div>
+        </div>
+
+        {% elif booking['state'] == 'advanced' %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Actions</h5></div>
+            <div class="card-body">
+                <div class="d-flex gap-2 mb-3">
+                    <form method="post" action="{{ url_for('booking_manage.mark_performed', booking_id=booking['id']) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-success">Mark as Performed</button>
+                    </form>
+                </div>
+                <hr>
+                <form method="post" action="{{ url_for('booking_manage.cancel', booking_id=booking['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="cancel_notes_adv" class="form-label">Cancellation Notes</label>
+                        <textarea class="form-control" id="cancel_notes_adv" name="cancel_notes"
+                                  rows="2" placeholder="Reason for cancellation..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Cancel Booking</button>
+                </form>
+            </div>
+        </div>
+
+        {% elif booking['state'] == 'performed' %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Actions</h5></div>
+            <div class="card-body">
+                <p>Show performed. Create a settlement sheet to proceed.</p>
+                <a href="{{ url_for('settlements.create', booking_id=booking['id']) }}"
+                   class="btn btn-primary">Create Settlement</a>
+            </div>
+        </div>
+
+        {% elif booking['state'] == 'settled' %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Actions</h5></div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('booking_manage.mark_paid', booking_id=booking['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success">Mark as Paid</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Ticket Tiers -->
+        {% if tiers %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Ticket Tiers</h5></div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Sold</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tier in tiers %}
+                        <tr>
+                            <td>{{ tier['name'] }}</td>
+                            <td>{{ tier['price_cents']|dollars }}</td>
+                            <td>{{ tier['quantity'] }}</td>
+                            <td>{{ tier['sold_count'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Settlement -->
+        {% if settlement %}
+        <div class="card mb-4">
+            <div class="card-header"><h5 class="mb-0">Settlement</h5></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-6">Door Revenue</dt>
+                    <dd class="col-sm-6">{{ settlement['door_revenue_cents']|dollars }}</dd>
+
+                    <dt class="col-sm-6">Expenses</dt>
+                    <dd class="col-sm-6">{{ settlement['expenses_cents']|dollars }}</dd>
+
+                    <dt class="col-sm-6">Musician Payout</dt>
+                    <dd class="col-sm-6">{{ settlement['musician_payout_cents']|dollars }}</dd>
+
+                    <dt class="col-sm-6">Venue Share</dt>
+                    <dd class="col-sm-6">{{ settlement['venue_share_cents']|dollars }}</dd>
+
+                    <dt class="col-sm-6">Promoter Fee</dt>
+                    <dd class="col-sm-6">{{ settlement['promoter_fee_cents']|dollars }}</dd>
+
+                    <dt class="col-sm-6">Tax</dt>
+                    <dd class="col-sm-6">{{ settlement['tax_amount_cents']|dollars }}</dd>
+
+                    <dt class="col-sm-6">Status</dt>
+                    <dd class="col-sm-6">
+                        <span class="badge bg-{{ 'success' if settlement['status'] == 'approved' else 'warning' }}">
+                            {{ settlement['status'] }}
+                        </span>
+                    </dd>
+                </dl>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <!-- History Sidebar -->
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">History</h5></div>
+            <ul class="list-group list-group-flush">
+                {% for entry in history %}
+                <li class="list-group-item">
+                    <small class="text-muted">{{ entry['created_at'] }}</small><br>
+                    <strong>{{ entry['actor_name'] }}</strong>:
+                    {{ entry['from_state'] }} &rarr; {{ entry['to_state'] }}
+                    {% if entry['notes'] %}
+                    <br><small>{{ entry['notes'] }}</small>
+                    {% endif %}
+                </li>
+                {% endfor %}
+                {% if not history %}
+                <li class="list-group-item text-muted">No history yet.</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('booking_manage.pending') }}" class="btn btn-outline-secondary mt-3">
+    Back to Pending Bookings
+</a>
+{% endblock %}
