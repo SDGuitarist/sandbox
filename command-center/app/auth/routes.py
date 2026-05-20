@@ -57,18 +57,16 @@ def register():
         flash('Password must be at least 8 characters.', 'error')
         return render_template('auth/register.html')
 
-    # Check email uniqueness
-    with get_db() as db:
+    # Check + insert in single transaction to prevent race condition
+    with get_db(immediate=True) as db:
         existing = db.execute(
             "SELECT id FROM user WHERE email = ?", (email,)
         ).fetchone()
 
-    if existing is not None:
-        flash('An account with that email already exists.', 'error')
-        return render_template('auth/register.html')
+        if existing is not None:
+            flash('An account with that email already exists.', 'error')
+            return render_template('auth/register.html')
 
-    # Create user
-    with get_db(immediate=True) as db:
         db.execute(
             "INSERT INTO user (email, password_hash, setup_complete) VALUES (?, ?, 0)",
             (email, generate_password_hash(password)),

@@ -482,7 +482,7 @@ def update_milestone(db, milestone_id, name=None, due_date=None, status=None, de
 
 def complete_milestone(db, milestone_id):
     """Mark a milestone as complete. Returns None."""
-    db.execute("UPDATE milestone SET status = 'complete' WHERE id = ?", (milestone_id,))
+    db.execute("UPDATE milestone SET status = 'completed' WHERE id = ?", (milestone_id,))
     return None
 
 
@@ -1114,15 +1114,20 @@ def get_revenue_snapshot(db):
     All monetary values in cents. No user_id needed (single-user app)."""
     today = date.today()
     this_month_start = today.replace(day=1).isoformat()
+    if today.month == 12:
+        next_month_start = date(today.year + 1, 1, 1).isoformat()
+    else:
+        next_month_start = date(today.year, today.month + 1, 1).isoformat()
     if today.month == 1:
         last_month_start = date(today.year - 1, 12, 1).isoformat()
     else:
         last_month_start = date(today.year, today.month - 1, 1).isoformat()
     year_start = date(today.year, 1, 1).isoformat()
+    year_end = date(today.year + 1, 1, 1).isoformat()
 
     this_month = db.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE date >= ?",
-        (this_month_start,),
+        "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE date >= ? AND date < ?",
+        (this_month_start, next_month_start),
     ).fetchone()['total']
 
     last_month = db.execute(
@@ -1131,8 +1136,8 @@ def get_revenue_snapshot(db):
     ).fetchone()['total']
 
     ytd = db.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE date >= ?",
-        (year_start,),
+        "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE date >= ? AND date < ?",
+        (year_start, year_end),
     ).fetchone()['total']
 
     profile = get_business_profile(db)
@@ -1221,7 +1226,7 @@ def get_upcoming_deadlines(db, days=7):
         """SELECT m.name, m.due_date, 'milestone' as type, p.name as project_name
            FROM milestone m
            JOIN project p ON m.project_id = p.id
-           WHERE m.due_date >= ? AND m.due_date <= ? AND m.status != 'complete'
+           WHERE m.due_date >= ? AND m.due_date <= ? AND m.status != 'completed'
            ORDER BY m.due_date ASC LIMIT 20""",
         (today_str, end_date),
     ).fetchall()
@@ -1258,15 +1263,19 @@ def get_cash_flow(db):
     Current month only."""
     today = date.today()
     month_start = today.replace(day=1).isoformat()
+    if today.month == 12:
+        month_end = date(today.year + 1, 1, 1).isoformat()
+    else:
+        month_end = date(today.year, today.month + 1, 1).isoformat()
 
     income_total = db.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE date >= ?",
-        (month_start,),
+        "SELECT COALESCE(SUM(amount), 0) as total FROM income WHERE date >= ? AND date < ?",
+        (month_start, month_end),
     ).fetchone()['total']
 
     expense_total = db.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE date >= ?",
-        (month_start,),
+        "SELECT COALESCE(SUM(amount), 0) as total FROM expense WHERE date >= ? AND date < ?",
+        (month_start, month_end),
     ).fetchone()['total']
 
     return {
