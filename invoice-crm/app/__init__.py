@@ -10,6 +10,8 @@ def create_app():
     app = Flask(__name__, template_folder='templates')
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(24))
     app.config['DATABASE'] = os.path.join(app.instance_path, 'invoicecrm.db')
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
     os.makedirs(app.instance_path, exist_ok=True)
 

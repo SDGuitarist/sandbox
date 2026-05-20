@@ -47,7 +47,6 @@ def _get_or_create_profile(conn):
             "VALUES (?, '', '', '', '', '', '', '', '', '', 0, '$', 1, 0, 40, 0)",
             (user_id,)
         )
-        conn.commit()
         row = conn.execute("SELECT * FROM business_profile WHERE user_id = ?", (user_id,)).fetchone()
     return row
 
@@ -102,7 +101,11 @@ def financial():
             profile = _get_or_create_profile(conn)
             # Convert dollar input to cents
             rate_dollars = request.form.get('default_hourly_rate', '0')
-            rate_cents = int(float(rate_dollars) * 100)
+            try:
+                rate_cents = int(float(rate_dollars) * 100)
+            except (ValueError, TypeError):
+                flash('Invalid hourly rate.', 'error')
+                return redirect(url_for('settings.financial'))
             conn.execute(
                 "UPDATE business_profile SET "
                 "default_hourly_rate=?, currency_symbol=?, fiscal_year_start=? "
@@ -136,9 +139,13 @@ def targets():
             profile = _get_or_create_profile(conn)
             # Convert dollar inputs to cents
             monthly_dollars = request.form.get('monthly_revenue_target', '0')
-            monthly_cents = int(float(monthly_dollars) * 100)
             quarterly_dollars = request.form.get('quarterly_revenue_target', '0')
-            quarterly_cents = int(float(quarterly_dollars) * 100)
+            try:
+                monthly_cents = int(float(monthly_dollars) * 100)
+                quarterly_cents = int(float(quarterly_dollars) * 100)
+            except (ValueError, TypeError):
+                flash('Invalid revenue target.', 'error')
+                return redirect(url_for('settings.targets'))
             conn.execute(
                 "UPDATE business_profile SET "
                 "monthly_revenue_target=?, weekly_hours_target=?, "

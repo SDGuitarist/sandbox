@@ -340,7 +340,7 @@ def quick_add():
     title = request.form.get('title', '').strip()
     if not title:
         flash("Title is required.", "error")
-        return redirect(request.referrer or url_for('tasks.index'))
+        return redirect(url_for('tasks.index'))
 
     project_id = request.form.get('project_id', '') or None
     if project_id:

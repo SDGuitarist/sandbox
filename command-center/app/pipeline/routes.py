@@ -28,21 +28,31 @@ def board():
     with get_db() as db:
         contacts = db.execute("SELECT id, name FROM contact ORDER BY name").fetchall()
 
+        # Single query for all active deals, grouped in Python
+        stage_keys = [s[0] for s in BOARD_STAGES]
+        placeholders = ','.join('?' * len(stage_keys))
+        all_deals = db.execute(
+            f"SELECT d.*, c.name as contact_name "
+            f"FROM deal d LEFT JOIN contact c ON d.contact_id = c.id "
+            f"WHERE d.stage IN ({placeholders}) ORDER BY d.updated_at DESC",
+            stage_keys
+        ).fetchall()
+
+        deals_by_stage = {s[0]: [] for s in BOARD_STAGES}
+        for deal in all_deals:
+            if deal['stage'] in deals_by_stage:
+                deals_by_stage[deal['stage']].append(deal)
+
         stages = []
         for key, label, probability in BOARD_STAGES:
-            deals = db.execute(
-                "SELECT d.*, c.name as contact_name "
-                "FROM deal d LEFT JOIN contact c ON d.contact_id = c.id "
-                "WHERE d.stage = ? ORDER BY d.updated_at DESC",
-                (key,)
-            ).fetchall()
-            total_value = sum(d['value'] for d in deals)
-            weighted_value = sum(d['value'] * probability // 100 for d in deals)
+            stage_deals = deals_by_stage[key]
+            total_value = sum(d['value'] for d in stage_deals)
+            weighted_value = sum(d['value'] * probability // 100 for d in stage_deals)
             stages.append({
                 'key': key,
                 'label': label,
                 'probability': probability,
-                'deals': deals,
+                'deals': stage_deals,
                 'total_value': total_value,
                 'weighted_value': weighted_value,
             })
@@ -301,6 +311,12 @@ def move_stage(id):
                 "UPDATE deal SET stage=?, probability_pct=?, updated_at=datetime('now') WHERE id=?",
                 (stage, probability_pct, id),
             )
+            # Auto-create income record from won deal
+            db.execute(
+                "INSERT INTO income (contact_id, amount, date, category, description) "
+                "VALUES (?, ?, date('now'), 'deal', ?)",
+                (deal['contact_id'], deal['value'], f"Won deal: {deal['title']}"),
+            )
             # Format value for activity log using dollars filter logic
             value_dollars = f"${deal['value'] / 100:,.2f}"
             db.execute(
@@ -308,7 +324,7 @@ def move_stage(id):
                 "VALUES (?, ?, ?, ?)",
                 ('won', 'deal', id, f"Won deal {deal['title']} ({value_dollars})"),
             )
-            flash(f"Deal won! Create a project for it.", "success")
+            flash(f"Deal won! Income recorded. Create a project for it.", "success")
             return redirect(url_for('projects.create', deal_id=id))
 
         # Normal stage move

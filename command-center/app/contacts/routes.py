@@ -262,7 +262,7 @@ def quick_add():
 
     if not name:
         flash("Name is required.", "error")
-        return redirect(request.referrer or url_for('contacts.index'))
+        return redirect(url_for('contacts.index'))
 
     email = request.form.get('email', '').strip()
     phone = request.form.get('phone', '').strip()
