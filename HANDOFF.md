@@ -20,13 +20,15 @@ Run 048 (Client Music Planner) is complete. 20-agent swarm build: 75 files, ~5,6
 ## Deferred Items
 
 ### Run 048 (Client Music Planner)
-- 048-D1: Double DB connection on every portal request (decorator + route). MEDIUM.
-- 048-D2: Row-by-row UPDATE/INSERT instead of executemany. MEDIUM.
-- 048-D3: No rate limiting on login or portal endpoints. MEDIUM.
-- 048-D4: innerHTML XSS risk in showToast (latent). LOW.
-- 048-D5: Check-then-act race conditions across connections. LOW.
-- 048-D6: Missing composite index on song(user_id, energy). LOW.
-- 048-D7: List instead of set for playlist_ids lookup. LOW.
+- 048-W1 DEFERRED: `create_event` silently discards notes at creation time (spec gap). MEDIUM.
+- 048-W5 DEFERRED: ~14 P2 review findings deferred. MEDIUM. Includes:
+  - 048-D1: Double DB connection on every portal request (decorator + route). MEDIUM.
+  - 048-D2: Row-by-row UPDATE/INSERT instead of executemany. MEDIUM.
+  - 048-D3: No rate limiting on login or portal endpoints. MEDIUM.
+  - 048-D4: innerHTML XSS risk in showToast (latent). LOW.
+  - 048-D5: Check-then-act race conditions across connections. LOW.
+  - 048-D6: Missing composite index on song(user_id, energy). LOW.
+  - 048-D7: List instead of set for playlist_ids lookup. LOW.
 
 ### Prior Runs
 - 046-W1 ACCEPTED: No brute-force login protection. MEDIUM.
