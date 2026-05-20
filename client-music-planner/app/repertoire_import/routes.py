@@ -136,8 +136,8 @@ def _parse_csv(file_content: str) -> tuple[list[dict], list[str]]:
         if energy_str:
             try:
                 energy_val = float(energy_str)
-                if energy_val < 0 or energy_val > 10:
-                    errors.append(f"Row {row_num}: energy out of range (0-10)")
+                if energy_val < 1 or energy_val > 5:
+                    errors.append(f"Row {row_num}: energy out of range (1-5)")
             except ValueError:
                 errors.append(f"Row {row_num}: energy must be a number")
 
@@ -297,7 +297,7 @@ def import_confirm():
             db.commit()
     except Exception as e:
         logger.error("Repertoire import failed: %s", e)
-        flash(f"Import failed: {e}", "error")
+        flash("Import failed. Please check your CSV and try again.", "error")
         return redirect(url_for("repertoire_import.import_form"))
 
     _delete_preview(preview_id)

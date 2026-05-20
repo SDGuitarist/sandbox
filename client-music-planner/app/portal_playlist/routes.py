@@ -1,3 +1,5 @@
+import sqlite3
+
 from flask import render_template, request, redirect, url_for, flash, g
 
 from . import bp
@@ -42,7 +44,7 @@ def add_to_playlist(token):
             add_playlist_item(db, g.portal_event['id'], song_id, position)
             db.commit()
             flash("Song added to playlist.", "success")
-        except Exception:
+        except sqlite3.IntegrityError:
             flash("Song is already in your playlist.", "warning")
     return redirect(url_for('portal_playlist.playlist', token=token))
 
