@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Musician Dashboard -- VenueConnect{% endblock %}
+
+{% block content %}
+<h1>Musician Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Upcoming Gigs</h5>
+                <p class="card-text display-6">{{ upcoming_gigs|length }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Pending Requests</h5>
+                <p class="card-text display-6">{{ pending_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Notifications</h5>
+                <p class="card-text display-6">{{ recent_notifications|length }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Upcoming Gigs</h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming_gigs %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Venue</th>
+                                <th>Room</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for gig in upcoming_gigs %}
+                            <tr>
+                                <td>{{ gig['event_date'] }}</td>
+                                <td>{{ gig['venue_name'] }}</td>
+                                <td>{{ gig['room_name'] }}</td>
+                                <td>{{ gig['start_time'] }} - {{ gig['end_time'] }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if gig['state'] == 'confirmed' else 'info' }}">
+                                        {{ gig['state']|capitalize }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No upcoming gigs. <a href="{{ url_for('search.index') }}">Find venues</a> to book.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Notifications</h5>
+                <a href="{{ url_for('notification_views.list') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_notifications %}
+                <ul class="list-group list-group-flush">
+                    {% for notif in recent_notifications %}
+                    <li class="list-group-item {{ '' if notif['is_read'] else 'fw-bold' }}">
+                        {% if notif['link'] %}
+                        <a href="{{ notif['link'] }}">{{ notif['message'] }}</a>
+                        {% else %}
+                        {{ notif['message'] }}
+                        {% endif %}
+                        <small class="text-muted d-block">{{ notif['created_at'] }}</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted">No notifications.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
