@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Booking: {{ booking['event_name'] }} - VenueConnect{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('booking_create.my_bookings') }}">My Bookings</a></li>
+        <li class="breadcrumb-item active">{{ booking['event_name'] }}</li>
+    </ol>
+</nav>
+
+<h1>{{ booking['event_name'] }}</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Booking Details</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th style="width:30%">Status</th>
+                        <td>
+                            {% if booking['state'] == 'requested' %}
+                            <span class="badge bg-warning text-dark">Requested</span>
+                            {% elif booking['state'] == 'confirmed' %}
+                            <span class="badge bg-primary">Confirmed</span>
+                            {% elif booking['state'] == 'advanced' %}
+                            <span class="badge bg-info">Advanced</span>
+                            {% elif booking['state'] == 'performed' %}
+                            <span class="badge bg-success">Performed</span>
+                            {% elif booking['state'] == 'settled' %}
+                            <span class="badge bg-secondary">Settled</span>
+                            {% elif booking['state'] == 'paid' %}
+                            <span class="badge bg-dark">Paid</span>
+                            {% elif booking['state'] == 'rejected' %}
+                            <span class="badge bg-danger">Rejected</span>
+                            {% elif booking['state'] == 'cancelled' %}
+                            <span class="badge bg-danger">Cancelled</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Venue</th>
+                        <td>{{ booking['venue_name'] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Room</th>
+                        <td>{{ booking['room_name'] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Date</th>
+                        <td>{{ booking['event_date'] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Time</th>
+                        <td>{{ booking['start_time'] }} - {{ booking['end_time'] }}</td>
+                    </tr>
+                    <tr>
+                        <th>Deal Type</th>
+                        <td>{{ booking['deal_type']|replace('_', ' ')|title }}</td>
+                    </tr>
+                    <tr>
+                        <th>Guarantee</th>
+                        <td>{{ booking['guarantee_cents']|dollars }}</td>
+                    </tr>
+                    <tr>
+                        <th>Door Split</th>
+                        <td>{{ booking['door_split_pct'] }}%</td>
+                    </tr>
+                    {% if booking['promoter_fee_pct'] %}
+                    <tr>
+                        <th>Promoter Fee</th>
+                        <td>{{ booking['promoter_fee_pct'] }}%</td>
+                    </tr>
+                    {% endif %}
+                    {% if booking['tax_pct'] %}
+                    <tr>
+                        <th>Tax</th>
+                        <td>{{ booking['tax_pct'] }}%</td>
+                    </tr>
+                    {% endif %}
+                    {% if booking['advance_cents'] %}
+                    <tr>
+                        <th>Advance Paid</th>
+                        <td>{{ booking['advance_cents']|dollars }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if booking['notes'] %}
+                    <tr>
+                        <th>Notes</th>
+                        <td>{{ booking['notes'] }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        {% if tiers %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Ticket Tiers</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tier</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Sold</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tier in tiers %}
+                        <tr>
+                            <td>{{ tier['name'] }}</td>
+                            <td>{{ tier['price_cents']|dollars }}</td>
+                            <td>{{ tier['quantity'] }}</td>
+                            <td>{{ tier['sold_count'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if settlement %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Settlement</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <th style="width:30%">Door Revenue</th>
+                        <td>{{ settlement['door_revenue_cents']|dollars }}</td>
+                    </tr>
+                    <tr>
+                        <th>Expenses</th>
+                        <td>{{ settlement['expenses_cents']|dollars }}</td>
+                    </tr>
+                    <tr>
+                        <th>Musician Payout</th>
+                        <td>{{ settlement['musician_payout_cents']|dollars }}</td>
+                    </tr>
+                    <tr>
+                        <th>Venue Share</th>
+                        <td>{{ settlement['venue_share_cents']|dollars }}</td>
+                    </tr>
+                    {% if settlement['promoter_fee_cents'] %}
+                    <tr>
+                        <th>Promoter Fee</th>
+                        <td>{{ settlement['promoter_fee_cents']|dollars }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if settlement['tax_amount_cents'] %}
+                    <tr>
+                        <th>Tax</th>
+                        <td>{{ settlement['tax_amount_cents']|dollars }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Status</th>
+                        <td>
+                            {% if settlement['status'] == 'draft' %}
+                            <span class="badge bg-warning text-dark">Draft</span>
+                            {% elif settlement['status'] == 'approved' %}
+                            <span class="badge bg-success">Approved</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Booking History</h5>
+            </div>
+            <div class="card-body">
+                {% if history %}
+                <ul class="list-group list-group-flush">
+                    {% for entry in history %}
+                    <li class="list-group-item">
+                        <strong>{{ entry['from_state'] }}</strong> &rarr; <strong>{{ entry['to_state'] }}</strong>
+                        <br>
+                        <small class="text-muted">by {{ entry['actor_name'] }} on {{ entry['created_at'] }}</small>
+                        {% if entry['notes'] %}
+                        <br><small>{{ entry['notes'] }}</small>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0">No state transitions yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

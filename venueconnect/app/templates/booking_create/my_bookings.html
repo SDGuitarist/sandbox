@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}My Bookings - VenueConnect{% endblock %}
+
+{% block content %}
+<h1>My Bookings</h1>
+
+{% if bookings %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Event</th>
+            <th>Venue</th>
+            <th>Room</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th>Deal Type</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for booking in bookings %}
+        <tr>
+            <td>{{ booking['event_name'] }}</td>
+            <td>{{ booking['venue_name'] }}</td>
+            <td>{{ booking['room_name'] }}</td>
+            <td>{{ booking['event_date'] }}</td>
+            <td>{{ booking['start_time'] }} - {{ booking['end_time'] }}</td>
+            <td>
+                {% if booking['state'] == 'requested' %}
+                <span class="badge bg-warning text-dark">Requested</span>
+                {% elif booking['state'] == 'confirmed' %}
+                <span class="badge bg-primary">Confirmed</span>
+                {% elif booking['state'] == 'advanced' %}
+                <span class="badge bg-info">Advanced</span>
+                {% elif booking['state'] == 'performed' %}
+                <span class="badge bg-success">Performed</span>
+                {% elif booking['state'] == 'settled' %}
+                <span class="badge bg-secondary">Settled</span>
+                {% elif booking['state'] == 'paid' %}
+                <span class="badge bg-dark">Paid</span>
+                {% elif booking['state'] == 'rejected' %}
+                <span class="badge bg-danger">Rejected</span>
+                {% elif booking['state'] == 'cancelled' %}
+                <span class="badge bg-danger">Cancelled</span>
+                {% endif %}
+            </td>
+            <td>{{ booking['deal_type']|replace('_', ' ')|title }}</td>
+            <td>
+                <a href="{{ url_for('booking_create.detail', id=booking['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-info">
+    You don't have any bookings yet.
+    <a href="{{ url_for('booking_create.browse') }}">Browse venues</a> to request your first gig!
+</div>
+{% endif %}
+{% endblock %}
