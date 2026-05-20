@@ -196,7 +196,7 @@
               <td>
                 <a href="{{ url_for('notes.edit_note', id=note['id']) }}">{{ note['title'] }}</a>
               </td>
-              <td>{{ note['content']|safe|truncate(100) if note['content'] else '-' }}</td>
+              <td>{{ note['content']|truncate(100) if note['content'] else '-' }}</td>
             </tr>
             {% endfor %}
           </tbody>

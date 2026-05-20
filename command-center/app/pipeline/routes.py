@@ -223,6 +223,10 @@ def edit(id):
                 (title, contact_id, company_id, value, stage,
                  probability_pct, expected_close_date, notes, source, loss_reason, id),
             )
+            db.execute(
+                "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+                ('updated', 'deal', id, f"Updated deal {title}"),
+            )
 
         flash("Deal updated successfully.", "success")
         return redirect(url_for('pipeline.detail', id=id))

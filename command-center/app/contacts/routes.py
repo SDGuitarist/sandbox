@@ -245,6 +245,11 @@ def add_interaction(id):
         # Update the contact's updated_at timestamp
         db.execute("UPDATE contact SET updated_at = datetime('now') WHERE id = ?", (id,))
 
+        db.execute(
+            "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+            ('interaction_added', 'contact', id, f"Added {interaction_type} interaction with {contact['name']}"),
+        )
+
     flash("Interaction added successfully.", "success")
     return redirect(url_for('contacts.detail', id=id))
 

@@ -101,6 +101,10 @@ def edit_income(id):
                 "category = ?, payment_method = ?, notes = ? WHERE id = ?",
                 (amount, date, contact_id, project_id, category, payment_method, notes, id),
             )
+            db.execute(
+                "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+                ('updated', 'income', id, f"Updated income ${amount / 100:.2f}"),
+            )
 
         flash("Income updated successfully.", "success")
         return redirect(url_for('revenue.pl'))
@@ -118,6 +122,10 @@ def edit_income(id):
 def delete_income(id):
     with get_db(immediate=True) as db:
         db.execute("DELETE FROM income WHERE id = ?", (id,))
+        db.execute(
+            "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+            ('deleted', 'income', id, "Deleted income record"),
+        )
     flash("Income deleted.", "success")
     return redirect(url_for('revenue.pl'))
 
@@ -203,6 +211,10 @@ def edit_expense(id):
                 "notes = ?, tax_deductible = ? WHERE id = ?",
                 (amount, date, category, vendor, notes, tax_deductible, id),
             )
+            db.execute(
+                "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+                ('updated', 'expense', id, f"Updated expense ${amount / 100:.2f} for {category}"),
+            )
 
         flash("Expense updated successfully.", "success")
         return redirect(url_for('revenue.pl'))
@@ -220,6 +232,10 @@ def edit_expense(id):
 def delete_expense(id):
     with get_db(immediate=True) as db:
         db.execute("DELETE FROM expense WHERE id = ?", (id,))
+        db.execute(
+            "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+            ('deleted', 'expense', id, "Deleted expense record"),
+        )
     flash("Expense deleted.", "success")
     return redirect(url_for('revenue.pl'))
 

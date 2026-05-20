@@ -217,6 +217,10 @@ def edit(id):
                  estimated_hours, tags, is_recurring, recurrence_interval,
                  recurrence_days, id),
             )
+            db.execute(
+                "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+                ('updated', 'task', id, f"Updated task {title}"),
+            )
 
         flash("Task updated successfully.", "success")
         return redirect(url_for('tasks.index'))
@@ -250,6 +254,10 @@ def delete(id):
             flash("Task not found.", "error")
             return redirect(url_for('tasks.index'))
         db.execute("DELETE FROM task WHERE id = ?", (id,))
+        db.execute(
+            "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+            ('deleted', 'task', id, f"Deleted task {task['title']}"),
+        )
 
     flash("Task deleted.", "success")
     return redirect(url_for('tasks.index'))

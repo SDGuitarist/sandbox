@@ -6,19 +6,20 @@ from flask import Response, flash, redirect, render_template, request, session, 
 
 from app.settings import bp
 from ..db import get_db
+from ..decorators import setup_required
 
 # Whitelist of exportable modules and their table names
 EXPORT_MODULES = {
-    'contacts': 'contacts',
-    'companies': 'companies',
-    'deals': 'deals',
-    'projects': 'projects',
-    'tasks': 'tasks',
-    'time_entries': 'time_entries',
+    'contacts': 'contact',
+    'companies': 'company',
+    'deals': 'deal',
+    'projects': 'project',
+    'tasks': 'task',
+    'time_entries': 'time_entry',
     'income': 'income',
-    'expenses': 'expenses',
-    'notes': 'notes',
-    'journal': 'journal',
+    'expenses': 'expense',
+    'notes': 'note',
+    'journal': 'journal_entry',
 }
 
 
@@ -56,6 +57,7 @@ def _get_or_create_profile(conn):
 # ---------------------------------------------------------------------------
 
 @bp.route('/profile', methods=['GET', 'POST'])
+@setup_required
 def profile():
     if request.method == 'POST':
         with get_db(immediate=True) as conn:
@@ -93,6 +95,7 @@ def profile():
 # ---------------------------------------------------------------------------
 
 @bp.route('/financial', methods=['GET', 'POST'])
+@setup_required
 def financial():
     if request.method == 'POST':
         with get_db(immediate=True) as conn:
@@ -126,6 +129,7 @@ def financial():
 # ---------------------------------------------------------------------------
 
 @bp.route('/targets', methods=['GET', 'POST'])
+@setup_required
 def targets():
     if request.method == 'POST':
         with get_db(immediate=True) as conn:
@@ -162,6 +166,7 @@ def targets():
 # ---------------------------------------------------------------------------
 
 @bp.route('/categories', methods=['GET', 'POST'])
+@setup_required
 def categories():
     if request.method == 'POST':
         action = request.form.get('action', '')
@@ -235,12 +240,14 @@ def categories():
 # ---------------------------------------------------------------------------
 
 @bp.route('/export')
+@setup_required
 def export_data():
     modules = list(EXPORT_MODULES.keys())
     return render_template('settings/export.html', modules=modules)
 
 
 @bp.route('/export/<module>')
+@setup_required
 def export_module(module):
     if module not in EXPORT_MODULES:
         flash('Invalid export module.', 'error')

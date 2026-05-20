@@ -129,6 +129,10 @@ def edit_note(id):
                 "UPDATE note SET title = ?, content = ?, tags = ?, updated_at = datetime('now') WHERE id = ?",
                 (title, content, tags, id)
             )
+            db.execute(
+                "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+                ('updated', 'note', id, f"Updated note {title}"),
+            )
 
         flash("Note updated.", "success")
         return redirect(url_for('notes.note_list'))
@@ -153,6 +157,10 @@ def delete_note(id):
             return redirect(url_for('notes.note_list'))
 
         db.execute("DELETE FROM note WHERE id = ?", (id,))
+        db.execute(
+            "INSERT INTO activity_log (action, entity_type, entity_id, description) VALUES (?, ?, ?, ?)",
+            ('deleted', 'note', id, f"Deleted note {note['title']}"),
+        )
 
     flash("Note deleted.", "success")
     return redirect(url_for('notes.note_list'))
