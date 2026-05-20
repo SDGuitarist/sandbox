@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Promoter Dashboard - VenueConnect{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Promoter Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Total Settlements</h5>
+                <p class="display-6">{{ settlement_status.total_settlements }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Pending Settlements</h5>
+                <p class="display-6">{{ settlement_status.pending_settlements }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mb-3">Upcoming Events</h2>
+{% if upcoming_events %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Event Name</th>
+                <th>Venue</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in upcoming_events %}
+            <tr>
+                <td>{{ event.name }}</td>
+                <td>{{ event.venue_name }}</td>
+                <td>{{ event.event_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No upcoming events. <a href="{{ url_for('events.create') }}">Create one</a>.</div>
+{% endif %}
+{% endblock %}
