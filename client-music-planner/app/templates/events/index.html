@@ -1,0 +1,63 @@
+{% set active_page = 'events' %}
+{% extends 'base.html' %}
+
+{% block title %}Events - GigList{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Events</h1>
+    <a href="{{ url_for('events.create') }}" class="btn btn-primary">New Event</a>
+</div>
+
+<div class="mb-3">
+    {% if show_archived %}
+        <a href="{{ url_for('events.index') }}" class="btn btn-outline-secondary btn-sm">Hide Archived</a>
+    {% else %}
+        <a href="{{ url_for('events.index', show_archived='1') }}" class="btn btn-outline-secondary btn-sm">Show Archived</a>
+    {% endif %}
+</div>
+
+{% if events %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Client</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr{% if event.is_archived %} class="table-secondary"{% endif %}>
+                    <td>
+                        <a href="{{ url_for('events.detail', event_id=event.id) }}">{{ event.name }}</a>
+                    </td>
+                    <td>{{ event.event_date|format_date }}</td>
+                    <td>{{ event.event_type.replace('_', ' ').title() }}</td>
+                    <td>{{ event.client_name }}</td>
+                    <td>
+                        {% if event.is_archived %}
+                            <span class="badge bg-secondary">Archived</span>
+                        {% elif event.client_approved %}
+                            <span class="badge bg-success">Approved</span>
+                        {% else %}
+                            <span class="badge bg-info">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('events.detail', event_id=event.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                        <a href="{{ url_for('events.edit', event_id=event.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="text-muted">No events yet. <a href="{{ url_for('events.create') }}">Add one</a>.</p>
+{% endif %}
+{% endblock %}

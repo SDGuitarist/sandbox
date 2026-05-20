@@ -1,0 +1,106 @@
+{% set active_page = 'events' %}
+{% extends 'base.html' %}
+
+{% block title %}{{ event.name }} - GigList{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ event.name }}</h1>
+    <div>
+        <a href="{{ url_for('events.edit', event_id=event.id) }}" class="btn btn-outline-secondary">Edit</a>
+        <a href="{{ url_for('events.index') }}" class="btn btn-outline-primary">Back to Events</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Event Details</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">{{ event.event_date|format_date }}</dd>
+
+                    <dt class="col-sm-4">Type</dt>
+                    <dd class="col-sm-8">{{ event.event_type.replace('_', ' ').title() }}</dd>
+
+                    <dt class="col-sm-4">Venue</dt>
+                    <dd class="col-sm-8">{{ event.venue or 'Not specified' }}</dd>
+
+                    <dt class="col-sm-4">Status</dt>
+                    <dd class="col-sm-8">
+                        {% if event.is_archived %}
+                            <span class="badge bg-secondary">Archived</span>
+                        {% elif event.client_approved %}
+                            <span class="badge bg-success">Approved</span>
+                            {% if event.approved_at %}
+                                <small class="text-muted ms-1">{{ event.approved_at|format_date }}</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-info">Active</span>
+                        {% endif %}
+                    </dd>
+
+                    {% if event.notes %}
+                    <dt class="col-sm-4">Notes</dt>
+                    <dd class="col-sm-8">{{ event.notes }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Client Info</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Name</dt>
+                    <dd class="col-sm-8">{{ event.client_name }}</dd>
+
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ event.client_email or 'Not provided' }}</dd>
+
+                    <dt class="col-sm-4">Playlist Songs</dt>
+                    <dd class="col-sm-8">{{ playlist_count }}</dd>
+
+                    <dt class="col-sm-4">Song Requests</dt>
+                    <dd class="col-sm-8">{{ request_count }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Portal Link</div>
+            <div class="card-body">
+                <p class="mb-2">Share this link with your client:</p>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" value="{{ portal_url }}" readonly id="portal-url">
+                    <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('portal-url').value)">Copy</button>
+                </div>
+                <form method="POST" action="{{ url_for('events.regenerate_token', event_id=event.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-warning" onclick="return confirm('This will invalidate the current link. Continue?')">Regenerate Link</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex gap-2 mb-4">
+    <a href="{{ url_for('event_dashboard.dashboard', event_id=event.id) }}" class="btn btn-primary">View Client Selections</a>
+    <a href="{{ url_for('event_export.export_preview', event_id=event.id) }}" class="btn btn-outline-primary">Export Setlist</a>
+    <form method="POST" action="{{ url_for('events.toggle_archive', event_id=event.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if event.is_archived %}
+            <button type="submit" class="btn btn-outline-secondary">Unarchive</button>
+        {% else %}
+            <button type="submit" class="btn btn-outline-secondary">Archive</button>
+        {% endif %}
+    </form>
+    <form method="POST" action="{{ url_for('events.delete', event_id=event.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Delete this event? This cannot be undone.')">Delete</button>
+    </form>
+</div>
+{% endblock %}
