@@ -1,9 +1,10 @@
-# Self-Audit Report -- Run 046
+# Self-Audit Report -- Run 046 (RE-AUDIT)
 
 **Date:** 2026-05-19
 **Build:** Invoice & CRM (InvoiceCRM)
 **Run ID:** 046
 **Final Status:** PIPELINE_PASS_WITH_DEFERRED_RISK
+**Audit Version:** 2 (re-audit after review phase completion)
 
 ---
 
@@ -11,7 +12,7 @@
 
 **Status:** PIPELINE_PASS_WITH_DEFERRED_RISK
 
-All functional gates passed: 37/37 tests, 20/20 smoke test, 0 ownership violations. However, three deferred risks disqualify a clean PIPELINE_PASS: (1) the formal `/workflows:review` phase was not run -- BUILD_TRACKING records `P2 findings (review): TBD` and HANDOFF explicitly notes `[046-D1] Full multi-agent review not run`; (2) `spec-consistency-check.md` and `swarm-assignments.md` were generated against `docs/plans/solopreneur-command-center.md` (a different 16-agent project) rather than `docs/plans/invoice-crm-plan.md`, meaning run 046's actual plan received no spec-consistency validation; (3) the agent-pitfalls Update Log has no entry for run 046, indicating the learnings-propagation tail was incomplete.
+All critical gates passed: 37/37 tests, 20/20 smoke test, 0 ownership violations, 103/105 spec-consistency checks PASS. The three deferred risks from the original audit (046-W1 review not run, 046-W2 wrong plan in spec-check, 046-W3 agent-pitfalls missing) are fully resolved per HANDOFF.md and agent-pitfalls Update Log. The residual PIPELINE_PASS_WITH_DEFERRED_RISK status is retained because 2 of 8 review P1 findings were documented as acceptable rather than fixed in code (brute-force login protection and line-item parsing duplication), and approximately 12 P2 findings from the review phase remain unresolved -- all explicitly listed in HANDOFF.md under Run 046 deferred items.
 
 ---
 
@@ -19,10 +20,12 @@ All functional gates passed: 37/37 tests, 20/20 smoke test, 0 ownership violatio
 
 | # | Key | Source | WARN Description | Disposition | Rationale |
 |---|-----|--------|-----------------|-------------|-----------|
-| 1 | 046-W1 | BUILD_TRACKING.md FAILURES + HANDOFF.md Deferred Items | Formal `/workflows:review` phase was not run. `P2 findings (review): TBD` in BUILD_TRACKING RUN_METRICS. Review was "inline during assembly" only. | DEFERRED | Review phase is non-optional per operating contract but was skipped due to session scope. Must be completed before any feature additions. HANDOFF.md entry `[046-D1]` matches. |
-| 2 | 046-W2 | docs/reports/046/spec-consistency-check.md + docs/reports/046/swarm-assignments.md | Both spec-consistency-check.md and swarm-assignments.md reference `docs/plans/solopreneur-command-center.md` (16-agent solopreneur project) instead of `docs/plans/invoice-crm-plan.md`. The spec-consistency check and swarm assignment validation were run against the WRONG plan. Run 046's actual plan was never spec-consistency-checked. | DEFERRED | This is a pipeline integrity failure: the pre-swarm spec validation gate was run against an unrelated plan. The solopreneur-command-center.md FAILs (3 contradictions) and WARNs (4) are for that future project, not for invoice-crm. The invoice-crm plan's spec consistency is unverified. Must be re-run before any extension work. Tracked in HANDOFF.md under `[046-W2]`. |
-| 3 | 046-W3 | agent-pitfalls.md Update Log (missing entry) | No Update Log entry for run 046 (2026-05-19 Invoice & CRM). The last entry is 2026-05-18 (run 045). This means FC9 scale pattern (4 test field name mismatches at 15-agent scale) and the transitive-dependency pitfall were not propagated. | DEFERRED | Learnings propagation is a mandatory tail artifact per operating contract. Two new patterns (FC9 at 15-agent scale; transitive deps in swarm specs) should have been added. Tracked in HANDOFF.md under `[046-W3]`. |
-| 4 | 046-W4 | BUILD_TRACKING.md RUN_METRICS | Solution doc frontmatter contains `review_findings: TBD` -- this field was never resolved because review was not run. | ACCEPTED | Directly caused by 046-W1 (review not run). Not a separate underlying failure -- once 046-W1 is resolved, this field should be updated. No independent action needed beyond resolving 046-W1. |
+| 1 | 046-W5 | docs/reports/046/review-security.md P1-3; BUILD_TRACKING RUN_METRICS | No brute-force / rate-limiting protection on login endpoint. BUILD_TRACKING explicitly records this as one of the "2 documented as acceptable" P1s from the review phase. HANDOFF P2s remaining lists "no brute-force login protection." | ACCEPTED | BUILD_TRACKING formally records this as "documented as acceptable." The application is a single-user local tool at MVP stage; the risk is real but tolerable. Adding flask-limiter requires its own dependency + plan cycle and is out of scope for this build. The risk is understood, documented, and owned by the team for a v1.1 cycle. |
+| 2 | 046-W6 | docs/reports/046/review-python.md P1-1; BUILD_TRACKING RUN_METRICS | 70-line line-item parsing block copy-pasted verbatim between `create_invoice` and `edit_invoice`. BUILD_TRACKING explicitly records this as one of the "2 documented as acceptable" P1s from the review phase. HANDOFF P2s remaining lists "line-item parsing duplication." | ACCEPTED | BUILD_TRACKING formally records this as "documented as acceptable." Not a runtime bug today; it is a code quality/maintainability risk. Extracting `_parse_line_items()` is a pure refactor requiring careful regression testing and is out of scope for this build. The risk is understood and documented for a v1.1 refactor session. |
+| 3 | 046-W7 | docs/reports/046/spec-consistency-check.md WARN #92 | `pipeline/list.html` exists but no route renders it. Spec listed the file but defined no route for it. Dead template. The "List View" button in kanban.html links back to the kanban itself -- a UI no-op. | ACCEPTED | The file is dead code with no runtime impact; no route references it so no 500 errors occur. The spec ambiguity (listed in directory structure, not in endpoint registry) is documented in the check report itself. Acceptable for MVP; the kanban is the primary pipeline view. |
+| 4 | 046-W8 | docs/reports/046/spec-consistency-check.md WARN #104 | `line_total_cents` formula in code splits into `line_subtotal + line_tax` rather than the spec's single-pass formula. Can produce a 1-cent rounding difference on edge-case inputs. | ACCEPTED | The code's split is intentional and beneficial -- it tracks subtotal_cents and tax_cents separately for invoice-level totals, which the single-pass formula cannot do. The spec-consistency checker's own verdict is "functionally correct" and "not a contradiction." Mathematically equivalent for the vast majority of inputs; 1-cent edge-case is a known, documented, tolerable deviation for integer-cents accounting at this scale. |
+
+**Note on resolved original WARNs:** 046-W1 (review not run), 046-W2 (wrong plan in spec-check), 046-W3 (agent-pitfalls missing), and 046-W4 (solution doc review_findings TBD) are all RESOLVED. HANDOFF.md records all three as RESOLVED with evidence. They are not re-listed here as they are closed.
 
 ---
 
@@ -31,49 +34,54 @@ All functional gates passed: 37/37 tests, 20/20 smoke test, 0 ownership violatio
 | Source File | WARN Tokens Found | WARNs Added to Table |
 |-------------|-------------------|----------------------|
 | docs/reports/046/ownership-gate.md | 0 | 0 |
-| docs/reports/046/spec-consistency-check.md | 7 (4 WARN lines + 3 FAIL lines = STATUS: FAIL) | 1 (046-W2: wrong plan) -- the individual WARNs/FAILs in this file are against a different project and are not actionable for run 046 |
-| docs/reports/046/swarm-assignments.md | 0 (no WARN token lines; plan gap noted but resolved within the doc) | 1 (046-W2: same wrong-plan finding; attributed to 046-W2 not added separately) |
+| docs/reports/046/spec-consistency-check.md | 2 WARN lines (checks #92 and #104); 0 FAIL lines; STATUS: PASS | 2 (046-W7, 046-W8) |
+| docs/reports/046/swarm-assignments.md | 0 WARN tokens (this file still references solopreneur-command-center.md -- historical artifact from parallel run collision, superseded by the re-run spec-consistency-check against invoice-crm-plan.md) | 0 (historical artifact; invoice-crm spec consistency verified by re-run report) |
 | docs/reports/046/smoke-test.md | 0 | 0 |
 | docs/reports/046/test-results.md | 0 | 0 |
-| invoice-crm/BUILD_TRACKING.md (FAILURES section) | 2 failures logged (LOW severity, both resolved); RUN_METRICS has "TBD" for P2 findings | 1 (046-W1: review TBD) |
-| HANDOFF.md "Deferred Items" section | No "Review Fixes Pending (P2)" section exists; Deferred Items listed | 1 (046-W1: confirmed by [046-D1]) |
-| agent-pitfalls.md Update Log | Missing entry for 2026-05-19 / run 046 | 1 (046-W3) |
+| docs/reports/046/review-security.md | 3 P1 findings, 6 P2 findings, 4 P3 findings; Security Checklist has 3 FAIL rows (IDOR/Authorization, Business Logic, Brute Force); no literal WARN tokens | 1 (046-W5: P1-3 brute-force, documented as acceptable in BUILD_TRACKING) |
+| docs/reports/046/review-python.md | 6 P1 findings, 9 P2 findings, 8 P3 findings; no literal WARN tokens | 1 (046-W6: P1-1 line-item duplication, documented as acceptable in BUILD_TRACKING) |
+| docs/reports/046/review-performance.md | 4 P1 findings, 7 P2 findings, 5 P3 findings; no literal WARN tokens | 0 (all performance P1s covered in the 6 fixed in code; no separately deferred P1s from this report) |
+| invoice-crm/BUILD_TRACKING.md (FAILURES section) | 2 failures logged (LOW severity, both resolved at assembly time); RUN_METRICS notes "8 P1s found, 6 fixed in code, 2 documented as acceptable" | 2 (046-W5 and 046-W6 sourced from "2 documented as acceptable" entry) |
+| HANDOFF.md "Review Fixes Pending" section | No formal "Review Fixes Pending (P2)" section; P2s remaining listed inline under Run 046 Deferred Items (brute-force, session regen, negative amounts, LIKE wildcards, pagination, line-item duplication) | 0 new (confirms 046-W5 and 046-W6 content is tracked; no additional WARNs beyond those already in table) |
+| agent-pitfalls.md Update Log | Entry confirmed for 2026-05-19 run 046: FC9 extended, FC33 added, FC34 added | 0 (confirms 046-W3 resolved; no new WARNs from this source) |
 
-**Notes on spec-consistency-check.md tokens:** The 4 WARN lines and 3 FAIL lines in this file are genuine consistency findings -- but they are against `docs/plans/solopreneur-command-center.md`, a future project not yet built. They are not findings against invoice-crm-plan.md. The actionable issue for run 046 is that this check was pointed at the wrong plan (046-W2), not the individual findings within it.
+**Reconciliation notes:**
+- review-performance.md: Performance P1s (dashboard writes-on-GET, 12 queries/load, strftime scan, N+1 in recurring) overlap with python P1-5 and P2-9. BUILD_TRACKING says "6 fixed in code" -- these are covered in that count. No unfixed performance P1 separately identified.
+- The swarm-assignments.md still contains the solopreneur-command-center.md reference. This is an artifact of the parallel run collision (FC34) captured as 046-W2 (now resolved). The spec-consistency re-run in this reports dir supersedes it.
 
 ---
 
 ## What Was Missed In The First Summary
 
-Three substantive omissions were found:
+Comparing re-audit evidence against the original self-audit (v1) and the solution doc:
 
-**1. Wrong plan in spec-consistency-check and swarm-assignments.**
-Both `spec-consistency-check.md` and `swarm-assignments.md` reference `docs/plans/solopreneur-command-center.md`. The solution doc's Risk Resolution section discusses the invoice-crm plan's feed-forward risks (cross-boundary flows, line items form) as though they were validated, but the spec-consistency check that would have validated the invoice-crm spec was never run -- the checker ran against the wrong plan entirely. The solution doc does not mention this discrepancy anywhere.
+**1. The 2 "documented as acceptable" P1s were not pre-identified.**
+The original audit noted that the review phase had not run and estimated 30-42 unreviewed issues. The review found 8 P1s, of which 6 were fixed. Two were documented as acceptable (brute-force login protection and line-item parsing duplication). The original summary had no way to anticipate the specific findings, but the finding classification -- P1 accepted rather than P1 fixed -- should have been called out explicitly in the solution doc's review section. The solution doc correctly updated `review_findings` with counts but does not list which 2 P1s were accepted vs fixed.
 
-**2. Review phase skipped -- not disclosed in solution doc.**
-The solution doc frontmatter shows `review_findings: TBD` without explanation. The solution doc body contains no mention that the formal review phase was not run. This is a significant omission: the operating contract requires `/workflows:review` before compound, and it was not executed. The BUILD_TRACKING HANDOFF entry `[046-D1]` documents the deferral, but the solution doc is silent on it.
+**2. Performance P1s overlap with Python P1s -- deduplication logic not explained.**
+BUILD_TRACKING says "8 P1 findings (deduplicated across 4 reviewers)." The performance review flagged 4 P1s, the security review flagged 3, the python review flagged 6. The total without deduplication would be 13. The deduplication logic is not documented -- it is implied (dashboard mutations appear in both python P1-5 and performance P1-1) but not explicit. A skeptical reviewer cannot reconstruct which findings were merged. This is a documentation gap in BUILD_TRACKING.
 
-**3. Agent-pitfalls update not completed.**
-The solution doc's "Key Decisions" section identifies the FC9-at-scale pattern and the transitive-dependency miss as learnings, but neither was propagated to agent-pitfalls.md. The Update Log has no 046 entry. The Lessons for Next Build section in BUILD_TRACKING correctly identifies both lessons, but they exist only in that file -- not in the cross-project registry where future builds would find them.
+**3. Flow-trace review report is not on disk.**
+HANDOFF notes "5-agent review ran (security, python, performance, flow-trace, spec-consistency)." Only 4 review reports exist on disk: review-security.md, review-python.md, review-performance.md, spec-consistency-check.md. There is no review-flow-trace.md in docs/reports/046/. The flow-trace agent's findings were either incorporated into the 8 P1 deduplication without a separate artifact, or the report was not written to disk. This is a missing artifact -- the operating contract requires review reports to be written as files in the reports directory.
 
 ---
 
 ## Questions A Skeptical Reviewer Would Ask
 
-**Q1: The smoke test is 20/20 PASS and tests are 37/37 PASS -- but the spec-consistency-check was run against a different plan. How do we know the invoice-crm plan was implemented correctly?**
-**A1:** We cannot be certain from pipeline artifacts alone. The smoke test confirms 20 routes return expected HTTP codes, and the test suite covers 7 cross-boundary flows (deal-won, full payment, partial payment, overpayment, overdue detection, recurring generation, draft exclusion). These are behavioral checks, not structural consistency checks. The invoice-crm plan's internal consistency (field names, schema column names, blueprint name contracts, template file assignments) was never verified by the spec-consistency-checker. The correct answer is: the build passed behavioral gates but the structural pre-flight was run against the wrong plan. A re-run of spec-consistency-check against invoice-crm-plan.md is needed before declaring this plan was "correctly executed."
+**Q1: BUILD_TRACKING says "8 P1s, 6 fixed in code, 2 documented as acceptable." Which 2 were accepted and why?**
+**A1:** Cross-referencing the review reports against HANDOFF P2s remaining: (1) Security P1-3 (no brute-force protection) was documented as acceptable -- it requires adding flask-limiter, a new dependency, and the app is a single-user local tool. (2) Python P1-1 (line-item parsing duplication) was documented as acceptable -- it is a pure code quality refactor, not a runtime bug. Both appear in HANDOFF under "P2s remaining," confirming they were reclassified downward rather than dismissed. The reclassification rationale is reasonable but not explicitly written in BUILD_TRACKING -- a reviewer cannot confirm this without cross-referencing HANDOFF.
 
-**Q2: The BUILD_TRACKING shows assembly required 2 fixes. Were these evidence of a deeper pattern or genuinely isolated?**
-**A2:** The 4 test field name mismatches (FC9) are a well-understood pattern -- tests agent inferred form field names from feature descriptions instead of reading route code. This is structurally predictable at 15-agent scale: the tests agent briefs contained feature descriptions but not the exact WTForms class definitions. The fix was correct (change test data, not route code). The missing email-validator is also a genuinely isolated miss -- a transitive dependency of WTForms Email() that is easy to overlook. Neither indicates a deeper systemic failure, but both should be codified in agent-pitfalls to prevent recurrence. Currently they are only in BUILD_TRACKING's "Lessons for Next Build" section.
+**Q2: The flow-trace review report is referenced in HANDOFF but no review-flow-trace.md exists on disk. What happened to it?**
+**A2:** There is no review-flow-trace.md in docs/reports/046/. The HANDOFF states "5-agent review ran" and mentions flow-trace. Either the flow-trace agent ran but produced no separate report file (its findings were folded into the 8 P1 deduplication), or the report was generated as agent output but not written to disk. This is a gap: the operating contract requires review reports to be written as artifacts. The Glob of docs/reports/046/ lists only 9 files with no flow-trace report. The flow-trace findings, if any, are unverifiable from disk artifacts.
 
-**Q3: The review phase was skipped and HANDOFF says it was "inline during assembly." Is that sufficient?**
-**A3:** No. Inline assembly review catches integration bugs (which it did -- 2 assembly fixes). It does not substitute for the systematic multi-agent code review that checks for security issues, code quality, pattern consistency, and P2/P3 findings. The operating contract explicitly requires `/workflows:review` before compound. The HANDOFF correctly flags this as [046-D1], meaning the run compound phase completed without satisfying this gate. The risk is that undetected P2/P3 issues (security, edge cases, missing CSRF, type issues) exist in 80 files and 6,000 lines that were never formally reviewed. Prior solo builds (run 045) found 2 P1s and 5 P2s in roughly 1,000 lines. Extrapolating, a 6,000-line codebase may have significant unfixed findings.
+**Q3: The spec-consistency-check passes with 2 WARNs (dead template, formula restructure). Are these genuinely safe to accept?**
+**A3:** Yes for both. The pipeline/list.html dead template (WARN #92) causes a UI button that navigates to the same page -- annoying but not broken. The spec explicitly never defined a route for it. The line_total_cents formula split (WARN #104) is mathematically equivalent for all practical inputs; the spec itself describes the formula as illustrative. The checker's own verdict for both is "not a contradiction." The ACCEPTED disposition for 046-W7 and 046-W8 is defensible.
 
-**Q4: The solution doc's Feed-Forward risks are marked as resolved. But if the spec-consistency-check ran against the wrong plan, how confident should we be in those resolutions?**
-**A4:** The Feed-Forward risks documented in the plan were behavioral (cross-boundary flows, line items form). The solution doc's Risk Resolution section correctly describes what happened at runtime: all three cross-boundary flows passed tests (deal-won, payment-to-status, dashboard-recurring), and the line items form worked after the `[]` suffix fix. These resolutions are backed by test-results.md behavioral evidence. The spec-consistency-check would have caught structural issues in the plan spec itself (like naming inconsistencies before agent launch), but since the build completed and tests pass, the specific behavioral risks cited in the plan's Feed-Forward appear genuinely resolved. The structural validation gap (046-W2) is a different risk from the Feed-Forward risks.
+**Q4: 12 P2s remain unfixed after review. Are any of them high enough risk to block the build?**
+**A4:** The most serious remaining P2s are: (1) no session regeneration after login (session fixation risk -- security P2-4); (2) negative amounts accepted in invoice line items (security P2-2, business logic); (3) unescaped LIKE wildcards (python P2-4, logic bug not injection); (4) no pagination on list views (performance P2-1, correctness at scale). None are P1 by the review agents' own classification. For a single-user local app at MVP stage, these are genuinely P2-level -- not blocking, but should be addressed before any multi-user or production deployment. The deferral is honest given the app's current scope.
 
-**Q5: The HANDOFF deferred items list mixes run-046 items ([046-D1] through [046-D5]) with prior-run items ([045-W1], [043-W1], [043-W3]). Why are there no [046-W] keys in HANDOFF -- only [046-D] keys?**
-**A5:** This self-audit is the first document to assign 046-W keys. The WARNs discovered during this audit (046-W1 through 046-W4) were not identified during the build -- the orchestrator's compound phase did not run the self-audit agent before writing HANDOFF.md. As a result, HANDOFF.md currently has no [046-W] entries. The HANDOFF.md must be updated to add entries for 046-W1, 046-W2, and 046-W3 (the DEFERRED dispositions) before this run is considered fully closed.
+**Q5: This is a re-audit after a follow-up review session. Does the final grade fairly reflect the completed build, or is it penalizing the original omission too heavily?**
+**A5:** The grade reflects the full build outcome including the follow-up review session. The review phase was completed: 5 agents, 8 P1s found and 6 fixed. Spec-consistency-check ran correctly. Agent-pitfalls was updated. All three mandatory tail artifacts that were missing are now present. The residual deductions are justified by: (1) review requiring a second session (process discipline gap, not a restored artifact gap); (2) the missing flow-trace artifact on disk; (3) undocumented P1 acceptance rationale in BUILD_TRACKING. These are real but moderate gaps -- a B grade reflects a build that functioned well and recovered completely, with room for process improvement.
 
 ---
 
@@ -81,36 +89,29 @@ The solution doc's "Key Decisions" section identifies the FC9-at-scale pattern a
 
 | Finding | Promoted To | Why |
 |---------|------------|-----|
-| FC9 at 15-agent scale: test agent matched field names to feature descriptions, not WTForms class definitions (4/37 mismatches) | agent-pitfalls FC9 update (DEFERRED via 046-W3) | FC9 already exists but the 15-agent scale validation and the prescription to include exact form field names in test agent briefs is new. Should extend FC9's mitigation section. |
-| Transitive dependency miss: WTForms Email() requires email_validator package not listed in requirements.txt | agent-pitfalls (DEFERRED via 046-W3) | Not a numbered FC yet. Pattern: libraries that use optional transitive deps (WTForms validators, Pillow format plugins) require explicit listing in requirements.txt. Could extend FC9 or create FC33. |
-| Pre-swarm spec-consistency-check pointed at wrong plan | Not promoted to pitfalls -- DEFERRED for HANDOFF [046-W2] correction | This is a pipeline execution error (wrong plan argument), not a reusable failure class. The fix is procedural: verify the plan path in the check invocation matches the build's plan. Document in HANDOFF for repair. |
-| Review phase skipped entirely before compound | Not promoted to pitfalls -- already covered by operating contract | CLAUDE.md and the sandbox operating contract already mandate `/workflows:review` before compound. The failure is a compliance gap, not an uncatalogued pattern. |
+| FC34: parallel-run plan collision -- two concurrent autopilot runs in same repo caused spec-consistency-checker to validate wrong plan (046-W2, now resolved) | agent-pitfalls FC34 (PROMOTED -- confirmed in Update Log 2026-05-19) | New failure class with no prior entry. First time two swarm runs happened in parallel; shared docs/ surface caused structural gate to run against wrong plan. Future builds must pass plan path explicitly and verify the path in the report header. |
+| FC9 at 15-agent scale: test agent matched field names to feature descriptions, not WTForms definitions (4/37 mismatches) | agent-pitfalls FC9 update (PROMOTED -- confirmed in Update Log 2026-05-19) | FC9 already existed but the scale-specific prescription (include exact form field names in test agent brief for swarms with 10+ agents) was new material. |
+| FC33: transitive dependency missing -- WTForms Email() requires email_validator not listed in requirements.txt | agent-pitfalls FC33 (PROMOTED -- confirmed in Update Log 2026-05-19) | New failure class. Libraries with optional-at-install transitive dependencies (WTForms validators, Pillow format plugins) require explicit listing in requirements.txt for swarm builds where the installing agent and the using agent are different. |
+| Missing flow-trace review artifact on disk | Not promoted to agent-pitfalls | One-off execution gap. Already covered by the operating contract's required artifacts list. Not a new failure class warranting a separate FC entry. |
+| 2 P1s documented as acceptable without explicit rationale in BUILD_TRACKING | Not promoted to agent-pitfalls | Not a new failure pattern. The fix is procedural: BUILD_TRACKING RUN_METRICS should list which specific finding IDs were "documented as acceptable" and why. Documentation discipline issue, not a cataloguable failure class. |
 
 ---
 
 ## Unresolved Risk
 
-**Key:** 046-W1
-**Risk:** The formal `/workflows:review` phase was not run. 80 files and ~6,000 lines have never been through systematic code review. Based on the run 045 finding rate (~7 issues per 1,000 lines), this codebase likely contains 30-42 unreviewed issues of varying severity.
-**Why not resolved:** Review was described as "inline during assembly" -- integration-level checks only. Session scope was exhausted.
-**Tracked in:** HANDOFF.md under key `[046-D1]` (predates this audit; equivalent to `[046-W1]`)
-**Severity for next session:** HIGH
+**Key:** 046-W5
+**Risk:** No brute-force / rate-limiting protection on the login endpoint. Unlimited login attempts possible. Application handles financial data (invoices, payments, client records).
+**Why not resolved:** Formally documented as acceptable for this build. Requires adding flask-limiter (new dependency) and its own plan+review cycle. Acceptable for single-user local MVP deployment.
+**Tracked in:** HANDOFF.md Run 046 Deferred Items, P2s remaining ("no brute-force login protection")
+**Severity for next session:** MEDIUM
 
 ---
 
-**Key:** 046-W2
-**Risk:** `spec-consistency-check.md` and `swarm-assignments.md` were generated against `docs/plans/solopreneur-command-center.md` (a different 16-agent project), not `docs/plans/invoice-crm-plan.md`. The 3 FAILs and 4 WARNs in spec-consistency-check.md belong to the solopreneur project. Invoice-crm's plan structural consistency is entirely unverified by the pipeline.
-**Why not resolved:** The wrong plan was passed to the spec-consistency-checker before swarm launch. This was not caught during the build.
-**Tracked in:** HANDOFF.md -- must add entry `[046-W2]` (this audit's new finding)
-**Severity for next session:** MEDIUM (build passed behavioral tests, so runtime correctness is likely, but structural spec integrity is unverified)
-
----
-
-**Key:** 046-W3
-**Risk:** Agent-pitfalls Update Log has no entry for run 046. FC9-at-15-agent-scale lesson and transitive-dependency pitfall are stranded in BUILD_TRACKING "Lessons for Next Build" and will not be found by future swarm agent briefs.
-**Why not resolved:** Learnings propagation tail appears to have been omitted.
-**Tracked in:** HANDOFF.md -- must add entry `[046-W3]` (this audit's new finding)
-**Severity for next session:** LOW (future builds may re-encounter these patterns, but both are recoverable assembly fixes)
+**Key:** 046-W6
+**Risk:** 70-line line-item parsing block copy-pasted verbatim between `create_invoice` and `edit_invoice`. Any bug fix applied to one copy risks being missed in the other. Highest code divergence risk in the codebase.
+**Why not resolved:** Formally documented as acceptable for this build. Pure refactor requiring careful regression testing; out of scope for this build cycle.
+**Tracked in:** HANDOFF.md Run 046 Deferred Items, P2s remaining ("line-item parsing duplication")
+**Severity for next session:** MEDIUM
 
 ---
 
@@ -118,13 +119,13 @@ The solution doc's "Key Decisions" section identifies the FC9-at-scale pattern a
 
 | # | Dimension | Score | Evidence |
 |---|-----------|-------|----------|
-| 1 | Plan Adherence | 4/5 | BUILD_TRACKING AGENT_STATUS: all 15 agents COMPLETED, 80 files built; plan Acceptance Tests: cross-boundary flows verified in test-results.md; plan Required phases: review phase skipped (HANDOFF [046-D1]) |
-| 2 | Review Responsiveness | 2/5 | BUILD_TRACKING RUN_METRICS: P2 findings listed as TBD (review not run); HANDOFF Deferred Items: [046-D1] explicitly states full multi-agent review was not run; solution doc review_findings field: TBD |
-| 3 | Risk Handling | 3/5 | plan Feed-Forward: both risks addressed in solution doc Risk Resolution section with test evidence; self-audit What Was Missed: spec-consistency-check ran against wrong plan (wrong-path failure undetected); BUILD_TRACKING AGENT_STATUS: no FC26/FC27 signals found in assembly |
-| 4 | Documentation Quality | 3/5 | HANDOFF date: 2026-05-19 correct; BUILD_TRACKING RUN_METRICS: P2 findings TBD (incomplete); solution doc review_findings: TBD (incomplete); self-audit What Was Missed: no 046-W keys in HANDOFF before this audit |
-| 5 | Honesty | 4/5 | BUILD_TRACKING FAILURES: both assembly fixes documented with failure class; HANDOFF Deferred Items: [046-D1] honestly discloses review was skipped; self-audit WARN table: wrong-plan finding disclosed despite not appearing in any build artifact |
-| 6 | Compounding Quality | 2/5 | agent-pitfalls Update Log: no entry for run 046 (last entry is 2026-05-18); solution doc: reusable lessons documented in Key Decisions but not propagated cross-project; BUILD_TRACKING Lessons for Next Build: lessons isolated to this file only |
+| 1 | Plan Adherence | 4/5 | BUILD_TRACKING AGENT_STATUS: all 15 agents COMPLETED, 80 files, 0 merge conflicts; plan Acceptance Tests: 16 EARS criteria verified via test-results.md cross-boundary flows and smoke-test.md 20/20 PASS; plan required phases: review phase completed per BUILD_TRACKING RUN_METRICS review findings row |
+| 2 | Review Responsiveness | 4/5 | BUILD_TRACKING RUN_METRICS: 8 P1 findings, 6 fixed in code, 2 documented as acceptable (75% fix rate); HANDOFF Run 046 deferred: P2s remaining explicitly listed; solution doc review_findings: updated from TBD to actual counts (8 P1, ~12 P2, ~17 P3) |
+| 3 | Risk Handling | 4/5 | plan Feed-Forward risk (cross-blueprint flows, line-items form): both addressed in solution doc Risk Resolution with test-results.md behavioral evidence; agent-pitfalls Update Log 2026-05-19: FC34 (parallel-run collision) correctly classified as new failure class; self-audit What Was Missed: flow-trace report missing from disk is a risk-handling gap (-1 deduction) |
+| 4 | Documentation Quality | 3/5 | HANDOFF date 2026-05-19 correct; BUILD_TRACKING RUN_METRICS: review counts present but does not name which 2 P1s were "documented as acceptable" (unrecoverable without cross-referencing HANDOFF); self-audit What Was Missed: deduplication logic for 8 P1s across 4 reviewers undocumented |
+| 5 | Honesty | 4/5 | BUILD_TRACKING FAILURES: both assembly fixes documented with failure class references; HANDOFF Run 046 deferred items: honestly lists all remaining P2s by category; self-audit WARN table: 046-W5 and 046-W6 dispositioned ACCEPTED with explicit rationale, not dismissed; self-audit What Was Missed: missing flow-trace artifact proactively identified |
+| 6 | Compounding Quality | 4/5 | agent-pitfalls Update Log 2026-05-19: entry confirmed with FC9 extension, FC33, FC34 added; solution doc Key Decisions: 5 reusable patterns documented (cross-boundary wiring, thin-agent scaling, form field prescription, parallel-array safety, email-validator lesson); BUILD_TRACKING Lessons for Next Build: 3 lessons mapped to agent-pitfalls entries |
 
-**Overall: 3.0/5.0 (C)**
+**Overall: 3.8/5.0 (B)**
 
-**Justification:** The build's functional outcomes were strong (37/37 tests, 20/20 smoke, 0 merge conflicts at 15-agent scale), earning a solid Plan Adherence score. However, two mandatory tail artifacts were incomplete -- the review phase was entirely skipped (HIGH severity, 046-W1) and learnings were not propagated to agent-pitfalls (046-W3) -- dragging Review Responsiveness and Compounding Quality to 2/5 each. The wrong-plan spec-consistency-check (046-W2) is a structural gap that the orchestrator failed to surface. Despite 046-W1 carrying HIGH severity, the overall grade is justified at C rather than lower because all behavioral gates passed cleanly and the HANDOFF honestly discloses the review deferral; the grade reflects incomplete process discipline, not a broken build. HIGH severity deferred risk 046-W1 must be addressed in the next session before any feature additions.
+**Justification:** The build's functional outcomes were strong and all three original deferred risks are fully resolved -- review completed with 5 agents (8 P1s found, 6 fixed), spec-consistency re-ran correctly against invoice-crm-plan.md (103/105 PASS), and agent-pitfalls updated with FC9, FC33, FC34. Score is held to B rather than A by three evidence-backed gaps: (1) review required a second session rather than completing in the original compound phase (process discipline deduction per plan Feed-Forward expectation); (2) the flow-trace review report was not written to disk despite being referenced in HANDOFF (missing artifact per self-audit What Was Missed); (3) BUILD_TRACKING does not document which specific P1 findings were "accepted" vs fixed, making the acceptance rationale unreconstructable from artifacts alone. The two WARN dispositions 046-W5 and 046-W6 carry MEDIUM severity, not HIGH, so Gate 7f HIGH-key requirement does not apply.
