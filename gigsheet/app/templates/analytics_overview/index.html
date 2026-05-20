@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Overview{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Analytics Overview</h1>
+
+    <!-- Totals Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4 col-lg">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total Leads</h6>
+                    <h2 class="card-title mb-0">{{ total_leads }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Total Campaigns</h6>
+                    <h2 class="card-title mb-0">{{ total_campaigns }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Emails Sent</h6>
+                    <h2 class="card-title mb-0">{{ total_sent }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Emails Opened</h6>
+                    <h2 class="card-title mb-0">{{ total_opened }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-lg">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Emails Bounced</h6>
+                    <h2 class="card-title mb-0">{{ total_bounced }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversion Funnel -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Conversion Funnel</h5>
+        </div>
+        <div class="card-body">
+            {% if conversion_funnel %}
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>Leads</th>
+                            <th>Distribution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in conversion_funnel %}
+                        <tr>
+                            <td>{{ item.stage | replace('_', ' ') | title }}</td>
+                            <td>{{ item.count }}</td>
+                            <td>
+                                {% if total_leads > 0 %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         style="width: {{ (item.count / total_leads * 100) | round(1) }}%"
+                                         aria-valuenow="{{ item.count }}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="{{ total_leads }}">
+                                        {{ (item.count / total_leads * 100) | round(1) }}%
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">No leads</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No pipeline stages configured.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Recent Campaigns -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Recent Campaigns</h5>
+        </div>
+        <div class="card-body">
+            {% if recent_campaigns %}
+            <div class="table-responsive">
+                <table class="table table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Campaign</th>
+                            <th>Status</th>
+                            <th>Recipients</th>
+                            <th>Sent</th>
+                            <th>Opened</th>
+                            <th>Bounced</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for campaign in recent_campaigns %}
+                        <tr>
+                            <td>{{ campaign['name'] }}</td>
+                            <td>
+                                <span class="badge bg-{% if campaign['status'] == 'sent' %}success{% elif campaign['status'] == 'sending' %}primary{% elif campaign['status'] == 'draft' %}secondary{% elif campaign['status'] == 'scheduled' %}info{% else %}warning{% endif %}">
+                                    {{ campaign['status'] | title }}
+                                </span>
+                            </td>
+                            <td>{{ campaign['total_recipients'] }}</td>
+                            <td>{{ campaign['sent_count'] }}</td>
+                            <td>{{ campaign['opened_count'] }}</td>
+                            <td>{{ campaign['bounced_count'] }}</td>
+                            <td>{{ campaign['created_at'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No campaigns yet. <a href="{{ url_for('campaign_editor.new') }}">Create one</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
