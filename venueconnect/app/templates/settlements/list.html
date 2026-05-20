@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Settlements - VenueConnect{% endblock %}
+
+{% block content %}
+<h1>Settlements</h1>
+
+{% if settlements %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Event</th>
+                <th>Date</th>
+                {% if session.get('role') == 'venue_manager' %}
+                <th>Musician</th>
+                {% else %}
+                <th>Venue</th>
+                {% endif %}
+                <th>Door Revenue</th>
+                <th>Musician Payout</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in settlements %}
+            <tr>
+                <td>{{ s['id'] }}</td>
+                <td>{{ s['event_name'] }}</td>
+                <td>{{ s['event_date'] }}</td>
+                {% if session.get('role') == 'venue_manager' %}
+                <td>{{ s['musician_name'] }}</td>
+                {% else %}
+                <td>{{ s['venue_name'] }}</td>
+                {% endif %}
+                <td>{{ s['door_revenue_cents']|dollars }}</td>
+                <td>{{ s['musician_payout_cents']|dollars }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if s['status'] == 'approved' else 'warning' }}">
+                        {{ s['status']|title }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ url_for('settlements.detail', id=s['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No settlements found.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Settlement #{{ settlement['id'] }} - VenueConnect{% endblock %}
+
+{% block content %}
+<h1>Settlement #{{ settlement['id'] }}</h1>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Event Details</h5>
+    </div>
+    <div class="card-body">
+        <p><strong>Event:</strong> {{ settlement['event_name'] }}</p>
+        <p><strong>Date:</strong> {{ settlement['event_date'] }}</p>
+        <p><strong>Venue:</strong> {{ settlement['venue_name'] }}</p>
+        <p><strong>Room:</strong> {{ settlement['room_name'] }}</p>
+        <p><strong>Musician:</strong> {{ settlement['musician_name'] }}</p>
+        <p><strong>Deal Type:</strong> {{ settlement['deal_type'].replace('_', ' ')|title }}</p>
+        <p>
+            <strong>Status:</strong>
+            <span class="badge bg-{{ 'success' if settlement['status'] == 'approved' else 'warning' }}">
+                {{ settlement['status']|title }}
+            </span>
+        </p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Financial Breakdown</h5>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <tbody>
+                <tr>
+                    <td>Door Revenue</td>
+                    <td class="text-end">{{ settlement['door_revenue_cents']|dollars }}</td>
+                </tr>
+                <tr>
+                    <td>Expenses</td>
+                    <td class="text-end">({{ settlement['expenses_cents']|dollars }})</td>
+                </tr>
+                <tr class="table-primary">
+                    <td><strong>Musician Payout</strong></td>
+                    <td class="text-end"><strong>{{ settlement['musician_payout_cents']|dollars }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Venue Share</td>
+                    <td class="text-end">{{ settlement['venue_share_cents']|dollars }}</td>
+                </tr>
+                <tr>
+                    <td>Promoter Fee</td>
+                    <td class="text-end">{{ settlement['promoter_fee_cents']|dollars }}</td>
+                </tr>
+                <tr>
+                    <td>Tax</td>
+                    <td class="text-end">{{ settlement['tax_amount_cents']|dollars }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="d-flex gap-2">
+    {% if settlement['status'] == 'draft' and session.get('role') == 'venue_manager' %}
+    <form method="POST" action="{{ url_for('settlements.approve', id=settlement['id']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-success">Approve Settlement</button>
+    </form>
+    {% endif %}
+
+    <a href="{{ url_for('settlements.download_pdf', id=settlement['id']) }}" class="btn btn-outline-secondary">Download PDF</a>
+    <a href="{{ url_for('settlements.list') }}" class="btn btn-outline-primary">Back to Settlements</a>
+</div>
+{% endblock %}
