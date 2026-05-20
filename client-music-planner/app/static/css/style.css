@@ -1,0 +1,92 @@
+/* GigList -- Musician Side Styles */
+
+/* Body spacing for fixed content */
+body {
+    padding-bottom: 2rem;
+}
+
+/* Navbar brand styling */
+.navbar-brand {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+/* Active nav link emphasis */
+.navbar-nav .nav-link.active {
+    font-weight: 600;
+}
+
+/* Logout button styled as nav link */
+.navbar-nav .btn-link {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.55);
+    padding: 0.5rem 1rem;
+}
+
+.navbar-nav .btn-link:hover {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Flash message spacing */
+.alert {
+    margin-bottom: 1rem;
+}
+
+/* Empty state text */
+.text-muted a {
+    text-decoration: underline;
+}
+
+/* Loading state for AJAX buttons */
+.loading {
+    pointer-events: none;
+    opacity: 0.65;
+}
+
+/* Card consistent spacing */
+.card {
+    margin-bottom: 1rem;
+}
+
+/* Table action buttons */
+.btn-sm {
+    margin-right: 0.25rem;
+}
+
+/* Song energy badges */
+.badge-energy-1 { background-color: #6c757d; }
+.badge-energy-2 { background-color: #17a2b8; }
+.badge-energy-3 { background-color: #28a745; }
+.badge-energy-4 { background-color: #ffc107; color: #212529; }
+.badge-energy-5 { background-color: #dc3545; }
+
+/* Form layout */
+.form-label {
+    font-weight: 500;
+}
+
+/* Page header spacing */
+h1, h2, h3 {
+    margin-bottom: 1rem;
+}
+
+/* Repertoire search/filter bar */
+.filter-bar {
+    margin-bottom: 1.5rem;
+}
+
+/* Event portal link display */
+.portal-link {
+    word-break: break-all;
+    font-family: monospace;
+    font-size: 0.9rem;
+}
+
+/* Stats cards on dashboard */
+.stat-card .card-body {
+    text-align: center;
+}
+
+.stat-card .display-6 {
+    font-weight: 700;
+}
