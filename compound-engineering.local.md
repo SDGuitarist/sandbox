@@ -1,33 +1,24 @@
-# Review Context -- VenueConnect (Run 049)
+# Review Context -- GigSheet (Run 050)
 
 ## Risk Chain
 
-**Brainstorm risk:** RBAC permission boundaries and booking state machine are the two novel patterns most likely to produce cross-section contradictions in the spec.
+**Brainstorm risk:** 6-agent email send chain crosses 6 agent boundaries. Transaction boundary mismatches or field name divergence silently drops emails.
 
-**Plan mitigation:** Prescriptive code blocks for advance_booking_state() call pattern embedded in consuming agents' briefs. Spec consistency checker pre-swarm gate.
+**Plan mitigation:** Transaction Boundary Annotations section prescribing COMMIT/no-commit for every model function. Cross-Boundary Wiring Table mapping every cross-agent call. Export Names Table with exact function signatures.
 
-**Work risk (from Feed-Forward):** Calendar conflict detection atomicity -- BEGIN IMMEDIATE + check_room_available + create_booking must be in same transaction.
+**Work risk (from Feed-Forward):** Deepening step rewrote send_worker.py to use CTE+RETURNING and models functions, changing the commit flow without re-analyzing transaction boundaries.
 
-**Review resolution:** 8 P1s (5 IDOR, 1 FTS5 injection, 2 unvalidated financial parsing), 9 P2s (3 performance, 6 security). All P1s fixed. State machine had 0 bugs (prescriptive spec). IDOR was #1 finding (prose-described ownership checks).
+**Review resolution:** 8 P1s found by 5 agents. Flow-trace found 3 (CSP blocking, commit ordering, delivered_delta). Security found 2 (XSS, IDOR recipients). Performance found 3 (busy_timeout, pipeline unbounded, app-per-job). All 8 P1s fixed. 17 P2s deferred.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/settlements/routes.py | Added IDOR ownership checks, try/except on financial parsing | Authorization, input validation |
-| app/booking_create/routes.py | Added IDOR check, try/except, percentage validation | Authorization, input validation |
-| app/booking_manage/routes.py | Fixed rounding (added round()) | Financial precision |
-| app/events/routes.py | Added venue validation on link_booking | Privilege escalation |
-| app/models.py | Added FTS5 sanitization, venue_manager_id to settlement query | Injection, authorization |
+| gigsheet/send_worker.py | Rewritten to fix commit ordering + app-per-job | Transaction boundaries |
+| gigsheet/app/__init__.py | CSP CDN allowlist + context processor logging | Cross-file JS loading |
+| gigsheet/app/campaign_editor/routes.py | Added lead workspace validation | IDOR prevention |
+| gigsheet/app/db.py | Added busy_timeout pragma | SQLite concurrency |
 
 ## Plan Reference
 
-`docs/plans/2026-05-19-venueconnect-plan.md`
-
-## Review Agents
-
-review_agents:
-  - security-sentinel
-  - performance-oracle
-  - flow-trace-reviewer
-  - learnings-researcher
+`docs/plans/2026-05-20-gigsheet-plan.md`
