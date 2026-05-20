@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lead['venue_name'] or lead['email'] }} - Pipeline{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ lead['venue_name'] or lead['email'] }}</h2>
+    <a href="{{ url_for('pipeline_board.index') }}" class="btn btn-outline-secondary btn-sm">
+        &larr; Back to Pipeline
+    </a>
+</div>
+
+{# --- Lead Info Card --- #}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Lead Information</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <dl>
+                    <dt>Email</dt>
+                    <dd>{{ lead['email'] }}</dd>
+
+                    <dt>Contact Name</dt>
+                    <dd>{{ lead['contact_name'] or '—' }}</dd>
+
+                    <dt>Venue Name</dt>
+                    <dd>{{ lead['venue_name'] or '—' }}</dd>
+
+                    <dt>Capacity</dt>
+                    <dd>{{ lead['capacity'] or '—' }}</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl>
+                    <dt>Location</dt>
+                    <dd>{{ lead['location'] or '—' }}</dd>
+
+                    <dt>Genre</dt>
+                    <dd>{{ lead['genre_tags'] or '—' }}</dd>
+
+                    <dt>Phone</dt>
+                    <dd>{{ lead['phone'] or '—' }}</dd>
+
+                    <dt>Website</dt>
+                    <dd>
+                        {% if lead['website'] %}
+                            <a href="{{ lead['website'] }}" target="_blank" rel="noopener">{{ lead['website'] }}</a>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# --- Pipeline Stage + Move Buttons --- #}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Pipeline Stage</h5>
+    </div>
+    <div class="card-body">
+        <p>
+            Current stage:
+            <span class="badge bg-primary fs-6">{{ lead['pipeline_stage'] }}</span>
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+            {% for stage in stages %}
+                {% if stage != lead['pipeline_stage'] %}
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm js-move-stage"
+                        data-lead-id="{{ lead['id'] }}"
+                        data-stage="{{ stage }}"
+                    >
+                        Move to {{ stage | replace('_', ' ') | title }}
+                    </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{# --- Tags --- #}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Tags</h5>
+    </div>
+    <div class="card-body">
+        {% if tags %}
+            {% for tag in tags %}
+                <span class="badge" style="background-color: {{ tag['color'] or '#6c757d' }};">
+                    {{ tag['name'] }}
+                </span>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted mb-0">No tags assigned.</p>
+        {% endif %}
+    </div>
+</div>
+
+{# --- Pipeline Notes (Activity History) --- #}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Pipeline Notes</h5>
+    </div>
+    <div class="card-body">
+        {# Add note form #}
+        <form method="POST" action="{{ url_for('pipeline_actions.add_note') }}" class="mb-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="lead_id" value="{{ lead['id'] }}">
+            <div class="mb-2">
+                <textarea
+                    name="content"
+                    class="form-control"
+                    rows="2"
+                    placeholder="Add a note..."
+                    required
+                ></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Add Note</button>
+        </form>
+
+        {% if notes %}
+            <ul class="list-group list-group-flush">
+                {% for note in notes %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ note['display_name'] }}</strong>
+                            <small class="text-muted">{{ note['created_at'] }}</small>
+                        </div>
+                        <p class="mb-0 mt-1">{{ note['content'] }}</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted mb-0">No notes yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Stage move buttons use the pipeline_actions JSON endpoint
+document.querySelectorAll('.js-move-stage').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var leadId = this.dataset.leadId;
+        var stage = this.dataset.stage;
+        var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+        fetch('{{ url_for("pipeline_actions.move") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ lead_id: parseInt(leadId), stage: stage })
+        })
+        .then(function(response) {
+            if (response.ok) {
+                // Reload to reflect the new stage
+                window.location.reload();
+            } else {
+                alert('Failed to move lead. Please try again.');
+            }
+        })
+        .catch(function() {
+            alert('Network error. Please try again.');
+        });
+    });
+});
+</script>
+{% endblock %}
