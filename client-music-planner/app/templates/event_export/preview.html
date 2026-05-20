@@ -1,0 +1,97 @@
+{% set active_page = 'events' %}
+{% extends 'base.html' %}
+
+{% block title %}Export Setlist - {{ event.name }} - GigList{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .no-print { display: none !important; }
+        .container { max-width: 100%; }
+        body { font-size: 12pt; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="no-print mb-3">
+    <a href="{{ url_for('event_dashboard.dashboard', event_id=event.id) }}" class="btn btn-outline-secondary btn-sm">&larr; Back to Dashboard</a>
+    <button onclick="window.print()" class="btn btn-primary btn-sm ms-2">Print Setlist</button>
+    <a href="{{ url_for('event_export.export_csv', event_id=event.id) }}" class="btn btn-success btn-sm ms-2">Download CSV</a>
+</div>
+
+<h1>{{ event.name }}</h1>
+<p class="text-muted">
+    {{ event.event_date|format_date }} &middot; {{ event.client_name }}
+    {% if event.venue %} &middot; {{ event.venue }}{% endif %}
+</p>
+
+<h2 class="mt-4">Setlist</h2>
+
+{% if playlist_items %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Artist</th>
+            <th>Genre</th>
+            <th>Key</th>
+            <th>Tempo</th>
+            <th>Energy</th>
+            <th>Duration</th>
+            <th>Flags</th>
+            <th>Client Note</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in playlist_items %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ item.title }}</td>
+            <td>{{ item.artist }}</td>
+            <td>{{ item.genre|format_genre }}</td>
+            <td>{{ item.musical_key }}</td>
+            <td>{{ item.tempo or '' }}</td>
+            <td>{{ item.energy|format_energy }}</td>
+            <td>{{ item.duration_seconds|format_duration }}</td>
+            <td>
+                {% if item.is_must_play %}
+                    <span class="badge bg-success">Must Play</span>
+                {% elif item.is_do_not_play %}
+                    <span class="badge bg-danger">Do Not Play</span>
+                {% endif %}
+            </td>
+            <td>{{ item.client_note }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">No songs in the playlist yet.</p>
+{% endif %}
+
+{% if song_requests %}
+<h2 class="mt-4">Song Requests</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Artist</th>
+            <th>Notes</th>
+            <th>Submitted</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for req in song_requests %}
+        <tr>
+            <td>{{ req.title }}</td>
+            <td>{{ req.artist }}</td>
+            <td>{{ req.notes }}</td>
+            <td>{{ req.created_at|format_date }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}
