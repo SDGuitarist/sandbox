@@ -49,7 +49,7 @@
             <p><strong>Subject:</strong> {{ template['subject_line'] }}</p>
             <div class="border rounded p-3 bg-light">
                 <small class="text-muted d-block mb-1">Preview:</small>
-                {{ template['html_body']|safe }}
+                <iframe sandbox="" srcdoc="{{ template['html_body'] }}" style="width:100%;min-height:300px;border:1px solid #dee2e6;"></iframe>
             </div>
             {% else %}
             <p class="text-muted">No template linked (template may have been deleted).</p>

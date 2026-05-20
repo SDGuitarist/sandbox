@@ -21,7 +21,7 @@
         <div class="card-body">
             <h5 class="card-title">Body</h5>
             <div class="border p-3 bg-light">
-                {{ template['html_body'] | safe }}
+                <iframe sandbox="" srcdoc="{{ template['html_body'] }}" style="width:100%;min-height:300px;border:1px solid #dee2e6;"></iframe>
             </div>
         </div>
     </div>

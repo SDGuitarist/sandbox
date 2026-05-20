@@ -8,6 +8,7 @@ import os
 import sys
 import time
 import uuid
+import signal
 import sqlite3
 
 os.environ.setdefault('SECRET_KEY', 'worker-key')
@@ -22,9 +23,12 @@ def handle_signal(sig, frame):
     global shutdown
     shutdown = True
 
-import signal
 signal.signal(signal.SIGTERM, handle_signal)
 signal.signal(signal.SIGINT, handle_signal)
+
+# Create Flask app ONCE at module level (not per-job -- P1 fix)
+from app import create_app
+app = create_app()
 
 def get_worker_db():
     conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES, timeout=30)
@@ -36,9 +40,6 @@ def get_worker_db():
 
 def process_one_job(conn):
     """Claim and process one job. Returns True if a job was processed."""
-    from app import create_app
-    app = create_app()
-
     # Atomic claim using CTE+RETURNING (single statement)
     conn.execute('BEGIN IMMEDIATE')
     claimed = conn.execute('''
@@ -73,13 +74,13 @@ def process_one_job(conn):
     from app.models import render_template_with_lead
     subject, body = render_template_with_lead(template, recipient)
 
-    # Send via SendGrid client
+    # Send via SendGrid client (uses module-level app for context)
     with app.app_context():
         from app.sendgrid_client import send_email
         from_email = app.config['SENDGRID_FROM_EMAIL']
         result = send_email(recipient['email'], from_email, subject, body, str(job_row['id']))
 
-    # Update via models functions (NO shadow SQL -- use app context)
+    # Update all state in a SINGLE commit (fix: no partial commit window)
     success = result['status'] == 'accepted'
     error_msg = result.get('error', '')
     message_id = result.get('message_id', '')
@@ -90,11 +91,7 @@ def process_one_job(conn):
         from app.db import get_db
         db = get_db()
 
-        # Update job status via models function (no shadow SQL)
-        from app.models import complete_job
-        complete_job(db, job_row['id'], success, error_msg)  # COMMITS independently
-
-        # Update recipient + campaign counters via models
+        # Update recipient + campaign counters FIRST (before job completion)
         if success:
             update_recipient_status(db, recipient['id'], 'sent', message_id)
             increment_campaign_counter(db, job_row['campaign_id'], 'sent_count')
@@ -102,11 +99,24 @@ def process_one_job(conn):
             update_recipient_status(db, recipient['id'], 'failed')
             increment_campaign_counter(db, job_row['campaign_id'], 'failed_count')
 
-        # Note: complete_job already committed. Now update counters + progress.
+        # Update job status (does NOT commit here -- we batch all writes)
+        job_status = 'completed' if success else 'failed'
+        db.execute('''
+            UPDATE job_queue SET status = ?, completed_at = datetime('now'), error_message = ?
+            WHERE id = ?
+        ''', (job_status, error_msg, job_row['id']))
+
+        # Single commit for recipient + counters + job status
+        db.commit()
+
+        # Update campaign progress (COMMITS independently for SSE)
         sent_delta = 1 if success else 0
         failed_delta = 0 if success else 1
+        delivered_delta = 1 if success else 0  # Fix: pass delivered_delta
         update_campaign_progress(db, job_row['campaign_id'],
-                                 sent_delta=sent_delta, failed_delta=failed_delta)
+                                 sent_delta=sent_delta,
+                                 delivered_delta=delivered_delta,
+                                 failed_delta=failed_delta)
     return True
 
 def reclaim_timed_out_jobs(conn):
@@ -139,8 +149,11 @@ if __name__ == '__main__':
                 reclaim_timed_out_jobs(conn)
             if cycle % 150 == 0:  # Every ~5 minutes
                 conn.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        except sqlite3.Error as e:
+            print(f'[{WORKER_ID}] SQLite error (retrying): {e}')
+            time.sleep(POLL_INTERVAL)
         except Exception as e:
-            print(f'[{WORKER_ID}] Error: {e}')
+            print(f'[{WORKER_ID}] Unexpected error: {e}')
             time.sleep(POLL_INTERVAL)
     print(f'[{WORKER_ID}] Shutting down gracefully.')
     conn.close()

@@ -11,6 +11,7 @@ from app.models import (
     get_campaign_recipients,
     get_templates_by_workspace,
     get_leads_by_workspace,
+    get_lead,
     get_template,
     log_activity,
 )
@@ -217,8 +218,18 @@ def manage_recipients(id):
         flash('No leads selected.', 'error')
         return redirect(url_for('campaign_editor.detail', id=id))
 
+    # FC35: validate each lead belongs to current workspace
+    validated_ids = []
+    for lid in lead_ids:
+        lead = get_lead(conn, lid)
+        if lead and lead['workspace_id'] == g.workspace['id']:
+            validated_ids.append(lid)
+    if not validated_ids:
+        flash('No valid leads selected.', 'error')
+        return redirect(url_for('campaign_editor.detail', id=id))
+
     # add_recipients does NOT commit -- we commit after
-    add_recipients(conn, id, lead_ids)
+    add_recipients(conn, id, validated_ids)
     log_activity(
         conn, g.workspace['id'], g.user['id'],
         'added_recipients', 'campaign', id,

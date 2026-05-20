@@ -57,7 +57,7 @@ def create_app():
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net"
         return response
 
     from flask_wtf.csrf import CSRFError
@@ -93,8 +93,8 @@ def create_app():
                 conn = get_db()
                 notifications = get_unread_notifications(conn, session['user_id'])
                 unread_count = len(notifications)
-            except Exception:
-                pass
+            except Exception as e:
+                app.logger.warning(f'Notification count failed: {e}')
         ctx['unread_notification_count'] = unread_count
         return ctx
 
