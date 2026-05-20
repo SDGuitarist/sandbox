@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Workspace Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Workspace Settings</h2>
+
+    <div class="row mt-4">
+        <!-- Plan & Usage Info -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Current Plan</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Tier:</strong> {{ plan_tier|title }}</p>
+                    <p><strong>Price:</strong> {{ tier_info.price_cents|dollars }}/month</p>
+                    <hr>
+                    <p><strong>Email Quota:</strong> {{ tier_info.monthly_email_quota }} / month</p>
+                    <p><strong>Emails Sent This Month:</strong> {{ workspace.emails_sent_this_month }}</p>
+                    <div class="progress">
+                        {% set pct = (workspace.emails_sent_this_month / tier_info.monthly_email_quota * 100) if tier_info.monthly_email_quota > 0 else 0 %}
+                        {% set pct = [pct, 100]|min %}
+                        <div class="progress-bar {% if pct > 90 %}bg-danger{% elif pct > 70 %}bg-warning{% else %}bg-success{% endif %}"
+                             role="progressbar"
+                             style="width: {{ pct|round(1) }}%"
+                             aria-valuenow="{{ workspace.emails_sent_this_month }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ tier_info.monthly_email_quota }}">
+                            {{ pct|round(1) }}%
+                        </div>
+                    </div>
+                    <small class="text-muted mt-1 d-block">
+                        Quota resets: {{ workspace.quota_reset_date }}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Form -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Settings</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('workspace_settings.update') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Workspace Name</label>
+                            <input type="text" class="form-control" id="name" name="name"
+                                   value="{{ workspace.name }}" required maxlength="100">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="from_email" class="form-label">From Email</label>
+                            <input type="email" class="form-control" id="from_email" name="from_email"
+                                   value="{{ workspace.from_email }}"
+                                   placeholder="noreply@yourdomain.com" maxlength="255">
+                            <div class="form-text">
+                                The sender email address used for outreach campaigns.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="from_name" class="form-label">From Name</label>
+                            <input type="text" class="form-control" id="from_name" name="from_name"
+                                   value="{{ workspace.from_name }}"
+                                   placeholder="Your Band Name" maxlength="100">
+                            <div class="form-text">
+                                The display name recipients see in their inbox.
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
