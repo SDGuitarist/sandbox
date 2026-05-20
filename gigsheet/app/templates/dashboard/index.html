@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - GigSheet{% endblock %}
+{% block content %}
+<h1 class="mb-4">Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="stat-number">{{ total_leads }}</div>
+            <div class="stat-label">Total Leads</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="stat-number">{{ active_campaigns|length }}</div>
+            <div class="stat-label">Active Campaigns</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="stat-number">{{ stage_counts.get('booked', 0) }}</div>
+            <div class="stat-label">Booked</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="stat-number">{{ stage_counts.get('interested', 0) }}</div>
+            <div class="stat-label">Interested</div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Pipeline Overview</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th class="text-end">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stage in ['new', 'contacted', 'responded', 'interested', 'booking_requested', 'booked', 'declined'] %}
+                        <tr>
+                            <td><span class="badge badge-{{ stage }}">{{ stage|stage_label }}</span></td>
+                            <td class="text-end">{{ stage_counts.get(stage, 0) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Campaigns</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_campaigns %}
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                            <th class="text-end">Recipients</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for campaign in recent_campaigns %}
+                        <tr>
+                            <td>{{ campaign['name'] }}</td>
+                            <td><span class="badge bg-secondary">{{ campaign['status'] }}</span></td>
+                            <td class="text-end">{{ campaign['total_recipients'] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-muted mb-0">No campaigns yet. <a href="{{ url_for('campaign_list.index') }}">Create one</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

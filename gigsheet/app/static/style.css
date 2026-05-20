@@ -1,0 +1,160 @@
+/* GigSheet -- Bootstrap 5 CDN + custom styles */
+
+/* Flash messages */
+.flash-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1080;
+    max-width: 400px;
+}
+
+.flash-container .alert {
+    margin-bottom: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Map flash categories to Bootstrap alert classes */
+.alert-success {
+    background-color: #d1e7dd;
+    border-color: #badbcc;
+    color: #0f5132;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border-color: #f5c2c7;
+    color: #842029;
+}
+
+.alert-info {
+    background-color: #cff4fc;
+    border-color: #b6effb;
+    color: #055160;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffecb5;
+    color: #664d03;
+}
+
+/* Kanban board */
+.kanban-board {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+}
+
+.kanban-column {
+    min-width: 250px;
+    max-width: 300px;
+    flex-shrink: 0;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+}
+
+.kanban-column-header {
+    font-weight: 600;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kanban-card {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    cursor: grab;
+    transition: box-shadow 0.15s;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.kanban-card .venue-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.kanban-card .contact-info {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* Stage badges */
+.badge-new { background-color: #6c757d; }
+.badge-contacted { background-color: #0d6efd; }
+.badge-responded { background-color: #0dcaf0; }
+.badge-interested { background-color: #ffc107; color: #000; }
+.badge-booking_requested { background-color: #fd7e14; }
+.badge-booked { background-color: #198754; }
+.badge-declined { background-color: #dc3545; }
+
+/* Forms */
+.form-section {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-weight: 700;
+}
+
+.nav-notification-badge {
+    position: relative;
+    top: -8px;
+    left: -5px;
+    font-size: 0.65rem;
+}
+
+/* Dashboard stats */
+.stat-card {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.stat-card .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0d6efd;
+}
+
+.stat-card .stat-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Tags */
+.tag-badge {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    font-size: 0.75rem;
+    border-radius: 0.25rem;
+    color: #fff;
+}
+
+/* Table styles */
+.table-actions {
+    white-space: nowrap;
+}
+
+/* Footer */
+.site-footer {
+    margin-top: 3rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
