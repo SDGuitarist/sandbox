@@ -179,18 +179,23 @@ Test sends `status` but route expects `new_status` (StatusForm field name).
 | Ownership violations | 0 |
 | Smoke test | 20/20 PASS |
 | Assembly fixes | 2 |
-| P1 findings (review) | 0 |
-| P2 findings (review) | TBD |
-| All P1s fixed | N/A |
+| P1 findings (review) | 8 (deduplicated across 4 reviewers) |
+| P2 findings (review) | ~12 |
+| P3 findings (review) | ~17 |
+| All P1s fixed | yes (6 fixed in code, 2 documented as acceptable) |
 
 ### Agent Performance Summary
 
 | Agent | Findings Caused | Failure Classes Hit | Notes |
 |-------|----------------|--------------------|----|
 | scaffold | 0 | -- | Clean build, all shared modules correct |
-| auth | 1 | New (transitive dep) | Missing email-validator in requirements |
+| auth | 1 | FC33 (transitive dep) | Missing email-validator in requirements |
+| invoices | 3 | FC4, FC17, new | IDOR on client_id, duplicated line-item parsing, redundant DELETE |
+| recurring | 1 | FC2 | Prefix[:3] slice in invoice number generation (crash bug) |
+| payments | 2 | new, new | Status bypass (draft payments allowed), hardcoded revert to 'sent' |
+| dashboard | 2 | new, new | Overdue skips 'viewed', 12 queries per load |
 | tests | 4 | FC9 | Form field name mismatches |
-| All others | 0 | -- | Clean builds, zero issues |
+| All others | 0 | -- | Clean builds |
 
 ### Lessons for Next Build
 

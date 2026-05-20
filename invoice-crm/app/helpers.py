@@ -1,5 +1,17 @@
+from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 from flask import session, redirect, url_for, flash
+
+
+def parse_dollars_to_cents(value):
+    """Convert a dollar string to integer cents using Decimal arithmetic.
+    Avoids float rounding errors: '19.99' -> 1999, not 1998 or 2000."""
+    try:
+        d = Decimal(str(value))
+        cents = int((d * 100).to_integral_value(rounding=ROUND_HALF_UP))
+        return cents
+    except Exception:
+        return 0
 
 
 def dollars(cents):

@@ -143,6 +143,16 @@ def create_invoice():
         flash('Client, issue date, and due date are required.', 'danger')
         return redirect(url_for('invoices.create_invoice'))
 
+    # Verify client belongs to current user (IDOR prevention)
+    with get_db() as db:
+        client_check = db.execute(
+            "SELECT id FROM clients WHERE id = ? AND user_id = ?",
+            (client_id, user_id)
+        ).fetchone()
+        if not client_check:
+            flash('Invalid client.', 'danger')
+            return redirect(url_for('invoices.create_invoice'))
+
     # Parallel arrays for line items
     descriptions = request.form.getlist('descriptions[]')
     quantities = request.form.getlist('quantities[]')
@@ -372,6 +382,15 @@ def edit_invoice(invoice_id):
             flash('Client, issue date, and due date are required.', 'danger')
             return redirect(url_for('invoices.edit_invoice', invoice_id=invoice_id))
 
+        # Verify client belongs to current user (IDOR prevention)
+        client_check = db.execute(
+            "SELECT id FROM clients WHERE id = ? AND user_id = ?",
+            (client_id, user_id)
+        ).fetchone()
+        if not client_check:
+            flash('Invalid client.', 'danger')
+            return redirect(url_for('invoices.edit_invoice', invoice_id=invoice_id))
+
         descriptions = request.form.getlist('descriptions[]')
         quantities = request.form.getlist('quantities[]')
         unit_prices = request.form.getlist('unit_prices[]')
@@ -589,7 +608,6 @@ def delete_invoice(invoice_id):
             flash('Invoice not found.', 'danger')
             return redirect(url_for('invoices.list_invoices'))
 
-        db.execute("DELETE FROM invoice_line_items WHERE invoice_id = ?", (invoice_id,))
         db.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
         db.commit()
 

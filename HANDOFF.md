@@ -30,6 +30,18 @@ This is the Solopreneur Command Center -- 16-agent swarm build, run 047, compoun
 ```
 
 ## Deferred Items
+
+### Run 047 (Solopreneur Command Center)
 - P3: CSV export may be duplicated between reports and settings blueprints
 - P3: Form field names not prescribed in spec (caused test confusion)
 - Future: Responsive design, email integration, calendar sync
+
+### Run 046 (Invoice & CRM) -- Review Completed 2026-05-19
+- [046-W1] RESOLVED: Full 5-agent review ran (security, python, performance, flow-trace, spec-consistency). 8 P1s found, 6 fixed. PR: SDGuitarist/sandbox#5
+- [046-W2] RESOLVED: Spec-consistency-check re-ran against correct plan. STATUS: PASS.
+- [046-W3] RESOLVED: Agent-pitfalls Update Log updated. FC9 extended, FC33 + FC34 added.
+- [046-D2] PDF invoice export (v2 feature)
+- [046-D3] Email sending (v2 feature)
+- [046-D4] Multi-user / team features (v2)
+- [046-D5] Online payment processing (v2)
+- P2s remaining: no brute-force login protection, no session regeneration, negative amounts accepted, unescaped LIKE wildcards, no pagination, line-item parsing duplication

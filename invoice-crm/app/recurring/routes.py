@@ -16,19 +16,21 @@ def generate_due_invoices(db, user_id):
           AND status != 'draft'
     """, (user_id,)).fetchall()
 
+    # Fetch user settings once outside the loop (not per-invoice)
+    user_row = db.execute(
+        "SELECT invoice_prefix, default_payment_terms FROM users WHERE id = ?",
+        (user_id,)
+    ).fetchone()
+    prefix = user_row['invoice_prefix']
+    payment_terms = user_row['default_payment_terms']
+
     count = 0
     for inv in due:
-        # Generate next invoice number
+        # Generate next invoice number using user's actual prefix (not [:3] slice)
         max_num = db.execute(
             "SELECT MAX(CAST(SUBSTR(invoice_number, LENGTH(?) + 2) AS INTEGER)) FROM invoices WHERE user_id = ?",
-            (inv['invoice_number'][:3], user_id)
+            (prefix, user_id)
         ).fetchone()[0] or 0
-        user_row = db.execute(
-            "SELECT invoice_prefix, default_payment_terms FROM users WHERE id = ?",
-            (user_id,)
-        ).fetchone()
-        prefix = user_row['invoice_prefix']
-        payment_terms = user_row['default_payment_terms']
         new_number = f"{prefix}-{max_num + 1:03d}"
 
         # Copy invoice as draft
