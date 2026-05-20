@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{% if tier %}Edit Ticket Tier{% else %}Add Ticket Tier{% endif %} - {{ booking['event_name'] }}{% endblock %}
+
+{% block content %}
+<h1>{% if tier %}Edit Ticket Tier{% else %}Add Ticket Tier{% endif %}</h1>
+<p class="text-muted">
+    Booking: {{ booking['event_name'] }} at {{ booking['venue_name'] }} ({{ booking['event_date'] }})
+</p>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Tier Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ tier['name'] if tier else '' }}"
+               placeholder="e.g. General Admission, VIP" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="price_dollars" class="form-label">Price ($)</label>
+        <input type="number" class="form-control" id="price_dollars" name="price_dollars"
+               step="0.01" min="0"
+               {% if tier %}
+               value="{{ (tier['price_cents'] // 100) }}.{{ '%02d' % (tier['price_cents'] % 100) }}"
+               {% else %}
+               value="0.00"
+               {% endif %}
+               required>
+    </div>
+
+    <div class="mb-3">
+        <label for="quantity" class="form-label">Quantity Available</label>
+        <input type="number" class="form-control" id="quantity" name="quantity"
+               min="0"
+               value="{{ tier['quantity'] if tier else 0 }}"
+               required>
+    </div>
+
+    {% if tier %}
+    <div class="mb-3">
+        <label for="sold_count" class="form-label">Sold Count</label>
+        <input type="number" class="form-control" id="sold_count" name="sold_count"
+               min="0"
+               value="{{ tier['sold_count'] }}"
+               required>
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            {% if tier %}Update Tier{% else %}Create Tier{% endif %}
+        </button>
+        <a href="{{ url_for('tickets.manage', booking_id=booking['id']) }}"
+           class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
