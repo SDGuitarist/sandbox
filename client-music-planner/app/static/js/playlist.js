@@ -103,8 +103,13 @@ function showToast(message, type) {
     var alert = document.createElement('div');
     alert.className = 'alert alert-' + (type || 'info') + ' alert-dismissible fade show';
     alert.setAttribute('role', 'alert');
-    alert.innerHTML = message +
-        '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+    alert.textContent = message;
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close';
+    closeBtn.setAttribute('data-bs-dismiss', 'alert');
+    closeBtn.setAttribute('aria-label', 'Close');
+    alert.appendChild(closeBtn);
     container.insertBefore(alert, container.firstChild);
     setTimeout(function() {
         if (alert.parentNode) alert.remove();

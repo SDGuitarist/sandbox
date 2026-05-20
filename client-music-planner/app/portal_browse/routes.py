@@ -19,7 +19,7 @@ def browse(token):
             energy=energy_filter or None,
             search=search or None,
         )
-        playlist_song_ids = get_playlist_song_ids(db, g.portal_event['id'])
+        playlist_song_ids = set(get_playlist_song_ids(db, g.portal_event['id']))
     return render_template('portal_browse/browse.html',
         event=g.portal_event,
         songs=songs,
@@ -38,7 +38,7 @@ def song_detail(token, song_id):
         song = get_song_for_portal(db, song_id, g.portal_event['user_id'])
         if song is None:
             abort(404)
-        playlist_song_ids = get_playlist_song_ids(db, g.portal_event['id'])
+        playlist_song_ids = set(get_playlist_song_ids(db, g.portal_event['id']))
     in_playlist = song_id in playlist_song_ids
     return render_template('portal_browse/song_detail.html',
         event=g.portal_event,

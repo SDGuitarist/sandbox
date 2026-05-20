@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import contextmanager
-from flask import current_app
+from flask import current_app, g
 
 
 def _init_db_pragmas():
@@ -36,6 +36,28 @@ def get_db(immediate=False):
         conn.close()
 
 
+def get_request_db():
+    """Return a request-scoped read-only connection stored on g.
+    Used by decorators to avoid opening a second connection when the route
+    will open its own. Closed in teardown_appcontext."""
+    if '_db' not in g:
+        g._db = sqlite3.connect(
+            current_app.config['DATABASE'],
+            timeout=5.0,
+        )
+        g._db.row_factory = sqlite3.Row
+        g._db.execute("PRAGMA foreign_keys = ON")
+        g._db.execute("PRAGMA synchronous = NORMAL")
+    return g._db
+
+
+def close_request_db(exc=None):
+    """Close the request-scoped connection if it was opened."""
+    db = g.pop('_db', None)
+    if db is not None:
+        db.close()
+
+
 def init_db():
     """Create tables from schema.sql. Called once at app startup."""
     conn = sqlite3.connect(current_app.config['DATABASE'])
@@ -47,6 +69,7 @@ def init_db():
 
 
 def init_app(app):
+    app.teardown_appcontext(close_request_db)
     with app.app_context():
         _init_db_pragmas()
         init_db()

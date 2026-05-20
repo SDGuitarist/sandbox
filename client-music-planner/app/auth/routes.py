@@ -3,10 +3,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from ..db import get_db
 from ..models import get_user_by_email, create_user
+from .. import limiter
 from . import bp
 
 
 @bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10/minute", methods=["POST"])
 def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()

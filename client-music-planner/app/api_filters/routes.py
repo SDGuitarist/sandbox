@@ -18,7 +18,7 @@ def filter_songs():
             return jsonify(error="Invalid portal"), 404
         songs = get_songs_by_user(db, event['user_id'], genre=genre or None,
                                    energy=energy or None, search=search or None)
-        playlist_ids = get_playlist_song_ids(db, event['id'])
+        playlist_ids = set(get_playlist_song_ids(db, event['id']))
 
     result = [{'id': s['id'], 'title': s['title'], 'artist': s['artist'],
                'genre': s['genre'], 'energy': s['energy'],

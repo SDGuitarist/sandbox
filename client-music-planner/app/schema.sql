@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS song_request (
 
 CREATE INDEX IF NOT EXISTS idx_song_user ON song(user_id);
 CREATE INDEX IF NOT EXISTS idx_song_genre ON song(user_id, genre);
+CREATE INDEX IF NOT EXISTS idx_song_energy ON song(user_id, energy);
 CREATE INDEX IF NOT EXISTS idx_event_user ON event(user_id);
 CREATE INDEX IF NOT EXISTS idx_event_token ON event(portal_token);
 CREATE INDEX IF NOT EXISTS idx_playlist_event ON playlist_item(event_id);

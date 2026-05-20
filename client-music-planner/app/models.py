@@ -93,17 +93,18 @@ def delete_song(db, song_id, user_id):
 def bulk_create_songs(db, user_id, songs_list):
     """Returns: int (count of songs created). Does NOT commit.
     songs_list is list[dict] with keys: title, artist, genre, musical_key, tempo, energy, duration_seconds, notes"""
-    count = 0
-    for s in songs_list:
-        db.execute(
-            """INSERT INTO song (user_id, title, artist, genre, musical_key, tempo, energy, duration_seconds, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (user_id, s['title'], s.get('artist', ''), s.get('genre', 'other'),
-             s.get('musical_key', ''), s.get('tempo'), int(s.get('energy', 3)),
-             s.get('duration_seconds'), s.get('notes', ''))
-        )
-        count += 1
-    return count
+    rows = [
+        (user_id, s['title'], s.get('artist', ''), s.get('genre', 'other'),
+         s.get('musical_key', ''), s.get('tempo'), int(s.get('energy', 3)),
+         s.get('duration_seconds'), s.get('notes', ''))
+        for s in songs_list
+    ]
+    db.executemany(
+        """INSERT INTO song (user_id, title, artist, genre, musical_key, tempo, energy, duration_seconds, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        rows
+    )
+    return len(rows)
 
 
 # --- Event Functions ---
@@ -241,11 +242,10 @@ def update_playlist_positions(db, event_id, item_ids_in_order):
     """Returns: None. Does NOT commit.
     item_ids_in_order is list[int] of playlist_item.id values in new order.
     IMPORTANT: Caller MUST validate len(item_ids_in_order) matches actual count."""
-    for position, item_id in enumerate(item_ids_in_order):
-        db.execute(
-            "UPDATE playlist_item SET position = ? WHERE id = ? AND event_id = ?",
-            (position, item_id, event_id)
-        )
+    db.executemany(
+        "UPDATE playlist_item SET position = ? WHERE id = ? AND event_id = ?",
+        [(pos, item_id, event_id) for pos, item_id in enumerate(item_ids_in_order)]
+    )
 
 
 def toggle_playlist_flag(db, event_id, song_id, flag_type):

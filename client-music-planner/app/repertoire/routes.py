@@ -216,12 +216,10 @@ def edit(song_id):
 @bp.route('/<int:song_id>/delete', methods=['POST'])
 @login_required
 def delete(song_id):
-    with get_db() as db:
-        song = get_song(db, song_id, session['user_id'])
-    if song is None:
-        abort(404)
-
     with get_db(immediate=True) as db:
+        song = get_song(db, song_id, session['user_id'])
+        if song is None:
+            abort(404)
         delete_song(db, song_id, session['user_id'])
         db.commit()
 

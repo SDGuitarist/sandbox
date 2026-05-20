@@ -1,8 +1,11 @@
 import os
 from flask import Flask
 from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 csrf = CSRFProtect()
+limiter = Limiter(key_func=get_remote_address, storage_uri="memory://")
 
 
 def create_app():
@@ -12,6 +15,7 @@ def create_app():
     os.makedirs(app.instance_path, exist_ok=True)
 
     csrf.init_app(app)
+    limiter.init_app(app)
 
     from .db import init_app
     init_app(app)

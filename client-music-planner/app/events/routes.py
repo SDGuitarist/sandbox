@@ -151,12 +151,10 @@ def edit(event_id):
 @bp.route('/<int:event_id>/delete', methods=['POST'])
 @login_required
 def delete(event_id):
-    with get_db() as db:
-        event = get_event(db, event_id, session['user_id'])
-    if event is None:
-        abort(404)
-
     with get_db(immediate=True) as db:
+        event = get_event(db, event_id, session['user_id'])
+        if event is None:
+            abort(404)
         delete_event(db, event_id, session['user_id'])
         db.commit()
 
@@ -167,13 +165,11 @@ def delete(event_id):
 @bp.route('/<int:event_id>/regenerate-token', methods=['POST'])
 @login_required
 def regenerate_token(event_id):
-    with get_db() as db:
-        event = get_event(db, event_id, session['user_id'])
-    if event is None:
-        abort(404)
-
     new_token = secrets.token_urlsafe(32)
     with get_db(immediate=True) as db:
+        event = get_event(db, event_id, session['user_id'])
+        if event is None:
+            abort(404)
         model_regenerate_token(db, event_id, session['user_id'], new_token)
         db.commit()
 
@@ -184,12 +180,10 @@ def regenerate_token(event_id):
 @bp.route('/<int:event_id>/archive', methods=['POST'])
 @login_required
 def toggle_archive(event_id):
-    with get_db() as db:
-        event = get_event(db, event_id, session['user_id'])
-    if event is None:
-        abort(404)
-
     with get_db(immediate=True) as db:
+        event = get_event(db, event_id, session['user_id'])
+        if event is None:
+            abort(404)
         archive_event(db, event_id, session['user_id'])
         db.commit()
 

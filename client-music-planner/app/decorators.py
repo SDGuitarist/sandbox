@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import session, flash, redirect, url_for, abort, g
-from .db import get_db
+from .db import get_request_db
 from .models import get_event_by_token
 
 
@@ -17,11 +17,11 @@ def login_required(f):
 def require_portal_token(f):
     """Validates portal token and sets g.portal_event and g.portal_is_approved.
     Returns 404 for invalid/archived tokens (no information leak).
-    Does NOT open a database connection for the route -- route must open its own."""
+    Uses request-scoped connection (closed in teardown) to avoid double-open."""
     @wraps(f)
     def decorated_function(token, *args, **kwargs):
-        with get_db() as db:
-            event = get_event_by_token(db, token)
+        db = get_request_db()
+        event = get_event_by_token(db, token)
         if event is None:
             abort(404)
         if event['is_archived']:
