@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Search Venues - VenueConnect{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Find Venues</h1>
+</div>
+
+<form method="get" action="{{ url_for('search.index') }}" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="q" class="form-control" placeholder="Search by name, location, or genre..."
+               value="{{ query }}">
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+{% if query %}
+<p class="text-muted">{{ results|length }} result{{ 's' if results|length != 1 else '' }} for "{{ query }}"</p>
+{% else %}
+<p class="text-muted">Showing all venues ({{ results|length }})</p>
+{% endif %}
+
+<div class="row">
+    {% for venue in results %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ venue['name'] }}</h5>
+                {% if venue['location'] %}
+                <p class="card-text text-muted mb-1">{{ venue['location'] }}</p>
+                {% endif %}
+                {% if venue['capacity'] %}
+                <p class="card-text mb-1"><small>Capacity: {{ venue['capacity'] }}</small></p>
+                {% endif %}
+                {% if venue['genre_tags'] %}
+                <p class="card-text mb-2">
+                    {% for tag in venue['genre_tags'].split(',') %}
+                    <span class="badge bg-secondary">{{ tag.strip() }}</span>
+                    {% endfor %}
+                </p>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{{ url_for('venues.detail', venue_id=venue['id']) }}" class="btn btn-sm btn-outline-primary">View Details</a>
+                <a href="{{ url_for('rooms.list', venue_id=venue['id']) }}" class="btn btn-sm btn-outline-secondary">Room Availability</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            No venues found{% if query %} matching "{{ query }}"{% endif %}.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
