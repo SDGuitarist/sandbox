@@ -1,0 +1,80 @@
+{% set active_portal = 'browse' %}
+{% extends 'portal_base.html' %}
+
+{% block title %}Browse Repertoire - {{ event.name }} - GigList{% endblock %}
+
+{% block content %}
+<h2 class="mb-3">{{ event.name }} &mdash; Browse Repertoire</h2>
+
+{% if is_approved %}
+<div class="alert alert-info">This event has been approved and is now locked.</div>
+{% endif %}
+
+<form method="GET" action="{{ url_for('portal_browse.browse', token=event.portal_token) }}" class="row g-2 mb-4">
+    <div class="col-md-4">
+        <input type="text" class="form-control" name="search" placeholder="Search songs..." value="{{ search }}">
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" name="genre">
+            <option value="">All Genres</option>
+            {% for g_item in genres %}
+            <option value="{{ g_item }}" {% if genre_filter == g_item %}selected{% endif %}>{{ g_item|format_genre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" name="energy">
+            <option value="">All Energy</option>
+            {% for level in range(1, 6) %}
+            <option value="{{ level }}" {% if energy_filter == level|string %}selected{% endif %}>{{ level|format_energy }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Filter</button>
+    </div>
+</form>
+
+{% if songs %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Genre</th>
+                <th>Energy</th>
+                <th>Duration</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for song in songs %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('portal_browse.song_detail', token=event.portal_token, song_id=song.id) }}">{{ song.title }}</a>
+                </td>
+                <td>{{ song.artist }}</td>
+                <td>{{ song.genre|format_genre }}</td>
+                <td>{{ song.energy|format_energy }}</td>
+                <td>{{ song.duration_seconds|format_duration }}</td>
+                <td>
+                    {% if song.id in playlist_song_ids %}
+                    <span class="badge bg-success">In Playlist</span>
+                    {% elif not is_approved %}
+                    <form method="POST" action="{{ url_for('portal_playlist.add_to_playlist', token=event.portal_token) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="song_id" value="{{ song.id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Add to Playlist</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No songs found. Try adjusting your filters.</p>
+{% endif %}
+{% endblock %}
