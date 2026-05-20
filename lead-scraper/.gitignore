@@ -11,3 +11,4 @@ nl_audit.jsonl
 *.health.json
 *.db-shm
 *.db-wal
+serpapi_cache/

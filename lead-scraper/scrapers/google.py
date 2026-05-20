@@ -257,7 +257,7 @@ def scrape(config: dict) -> list[dict]:
         if len(visible_text) < 200:
             continue
 
-        extraction = _extract_with_llm(client, "claude-haiku-4-5-20251001", visible_text, WebsiteContactModel)
+        extraction, _in_tok, _out_tok = _extract_with_llm(client, "claude-haiku-4-5-20251001", visible_text, WebsiteContactModel)
         if extraction is None or not extraction.name:
             continue  # Not a personal site
 

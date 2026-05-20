@@ -36,6 +36,10 @@ def normalize(row: dict) -> dict | None:
     if not source_url:
         return None
 
+    # LeadModel requires https:// profile_url. Many venue sites are http-only.
+    if source_url.startswith("http://"):
+        source_url = "https://" + source_url[7:]
+
     name = (row.get("name") or "").strip()
     if not name:
         return None

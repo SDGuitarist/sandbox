@@ -1105,7 +1105,7 @@ def _command_needs_db_lock(args) -> bool:
     if args.command == "nl":
         plan = _nl_plan_from_args(args)
         return bool(plan and plan["needs_lock"])
-    if args.command in {"scrape", "enrich", "import", "dedup", "migrate"}:
+    if args.command in {"scrape", "enrich", "import", "dedup", "migrate", "delete-source"}:
         return True
     if args.command == "workflow" and args.action != "status":
         return True
@@ -1113,7 +1113,7 @@ def _command_needs_db_lock(args) -> bool:
         return True
     if args.command == "account":
         return True
-    if args.command == "leads" and args.action == "unhold":
+    if args.command == "leads" and args.action in {"unhold", "clear-mismatch"}:
         return True
     return False
 
@@ -1122,7 +1122,7 @@ def _command_needs_backup(args) -> bool:
     if args.command == "nl":
         plan = _nl_plan_from_args(args)
         return bool(plan and plan["needs_backup"])
-    if args.command in {"scrape", "enrich", "import", "dedup", "migrate"}:
+    if args.command in {"scrape", "enrich", "import", "dedup", "migrate", "delete-source"}:
         return True
     if args.command == "workflow" and args.action != "status":
         return True

@@ -311,8 +311,12 @@ def _extract_with_llm(
     model: str,
     page_text: str,
     WebsiteContactModel,
-) -> object | None:
-    """Call Claude to extract contacts. Returns a WebsiteContactModel or None."""
+) -> tuple[object | None, int, int]:
+    """Call Claude to extract contacts.
+
+    Returns (result, input_tokens, output_tokens).
+    Result is a WebsiteContactModel or None.
+    """
     try:
         response = client.messages.create(
             model=model,
@@ -334,13 +338,15 @@ def _extract_with_llm(
             }],
             tool_choice={"type": "tool", "name": "extract_contacts"},
         )
+        in_tok = getattr(response.usage, "input_tokens", 0)
+        out_tok = getattr(response.usage, "output_tokens", 0)
         # Get the tool use block
         for block in response.content:
             if block.type == "tool_use":
-                return WebsiteContactModel.model_validate(block.input)
-        return None
+                return WebsiteContactModel.model_validate(block.input), in_tok, out_tok
+        return None, in_tok, out_tok
     except Exception:
-        return None
+        return None, 0, 0
 
 
 @dataclass
@@ -398,11 +404,13 @@ def enrich_website_llm(
             "SELECT id, name, website, profile_url, email, phone "
             "FROM leads WHERE website IS NOT NULL AND enriched_at IS NULL"
         )
+        params: list = []
         if limit:
-            query += f" LIMIT {limit}"
+            query += " LIMIT ?"
+            params.append(limit)
         elif dry_run:
             query += " LIMIT 10"
-        rows = conn.execute(query).fetchall()
+        rows = conn.execute(query, params).fetchall()
 
     if not rows:
         print("No leads with websites to enrich.")
@@ -460,8 +468,10 @@ def enrich_website_llm(
             continue
 
         # Tier 1: Haiku
-        extraction = _extract_with_llm(client, "claude-haiku-4-5-20251001", visible_text, WebsiteContactModel)
+        extraction, in_tok, out_tok = _extract_with_llm(client, "claude-haiku-4-5-20251001", visible_text, WebsiteContactModel)
         result.haiku_calls += 1
+        result.total_input_tokens += in_tok
+        result.total_output_tokens += out_tok
 
         if extraction is None:
             consecutive_failures += 1
@@ -483,8 +493,10 @@ def enrich_website_llm(
 
         # Tier 2: Sonnet fallback (only if Haiku found nothing AND page has >1000 chars)
         if not _has_contact_info(extraction) and text_len > 1000:
-            extraction = _extract_with_llm(client, "claude-sonnet-4-5-20250514", visible_text, WebsiteContactModel)
+            extraction, in_tok, out_tok = _extract_with_llm(client, "claude-sonnet-4-5-20250514", visible_text, WebsiteContactModel)
             result.sonnet_calls += 1
+            result.total_input_tokens += in_tok
+            result.total_output_tokens += out_tok
             sonnet_trigger_count += 1
 
             if extraction is None:
@@ -520,17 +532,24 @@ def enrich_website_llm(
         if not dry_run and updates:
             _persist_lead_update(lead["id"], updates, db_path, force_enriched_at=True)
 
-            # Domain mismatch check
-            if updates.get("email") and _check_domain_mismatch(updates["email"], url):
+            # Domain mismatch check: use the ACTUAL stored email (post-COALESCE),
+            # not the proposed email from updates, to avoid false-flagging leads
+            # whose existing email was preserved by COALESCE.
+            with get_db(db_path) as conn:
+                actual_email = conn.execute(
+                    "SELECT email FROM leads WHERE id = ?", (lead["id"],)
+                ).fetchone()["email"]
+
+            if actual_email and _check_domain_mismatch(actual_email, url):
                 with get_db(db_path) as conn:
                     conn.execute(
                         "UPDATE leads SET is_sendable = 0, sendable_reason = ? WHERE id = ?",
                         ("email_domain_mismatch", lead["id"]),
                     )
                 result.domain_mismatches += 1
-                print(f"email={updates['email']} (DOMAIN MISMATCH)", end=" ")
-            elif updates.get("email"):
-                print(f"email={updates['email']}", end=" ")
+                print(f"email={actual_email} (DOMAIN MISMATCH)", end=" ")
+            elif actual_email:
+                print(f"email={actual_email}", end=" ")
 
             if updates.get("phone"):
                 print(f"phone={updates['phone']}", end=" ")
