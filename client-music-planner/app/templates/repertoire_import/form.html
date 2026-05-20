@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Import Repertoire - Client Music Planner{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Import Repertoire</h1>
+    <p class="text-muted">
+        Upload a CSV file to bulk-import tracks into your repertoire.
+    </p>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">CSV Format</h5>
+            <p class="card-text">
+                Your file should include a header row with these columns:
+            </p>
+            <code>title,artist,genre,musical_key,tempo,energy,duration_seconds,notes</code>
+            <p class="mt-2 text-muted">
+                Only <strong>title</strong> is required. All other columns are optional.
+                The file must be UTF-8 encoded. Comma, semicolon, tab, and pipe delimiters are auto-detected.
+            </p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('repertoire_import.import_preview') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-3">
+            <label for="csv_file" class="form-label">CSV File</label>
+            <input
+                type="file"
+                class="form-control"
+                id="csv_file"
+                name="csv_file"
+                accept=".csv,text/csv"
+                required
+            >
+            <div class="form-text">Maximum file size: 2 MB. Maximum rows: 500.</div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Upload &amp; Preview
+        </button>
+    </form>
+</div>
+{% endblock %}
