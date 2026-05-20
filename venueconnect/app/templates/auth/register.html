@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Register - VenueConnect{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <h1 class="mb-4">Register</h1>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control" id="username" name="username"
+                       value="{{ request.form.get('username', '') }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email"
+                       value="{{ request.form.get('email', '') }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password"
+                       required minlength="8">
+                <div class="form-text">At least 8 characters.</div>
+            </div>
+
+            <div class="mb-3">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <select class="form-select" id="role" name="role" required>
+                    <option value="" disabled {{ '' if request.form.get('role') else 'selected' }}>Choose a role...</option>
+                    <option value="venue_manager" {{ 'selected' if request.form.get('role') == 'venue_manager' }}>Venue Manager</option>
+                    <option value="musician" {{ 'selected' if request.form.get('role') == 'musician' }}>Musician</option>
+                    <option value="promoter" {{ 'selected' if request.form.get('role') == 'promoter' }}>Promoter</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="display_name" class="form-label">Display Name</label>
+                <input type="text" class="form-control" id="display_name" name="display_name"
+                       value="{{ request.form.get('display_name', '') }}" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <p class="mt-3 text-center">
+            Already have an account? <a href="{{ url_for('auth.login') }}">Login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
