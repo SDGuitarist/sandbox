@@ -1,25 +1,26 @@
-# Review Context -- Sandbox (Feedback Board, Run 045)
+# Review Context -- Sandbox (Invoice & CRM, Run 046)
 
 ## Risk Chain
 
-**Brainstorm risk:** Denormalized vote_count consistency under concurrent upvotes.
+**Brainstorm risk:** "cross-blueprint data flows (deal-to-invoice, payment-to-invoice-status, recurring generation from dashboard) and spec size (~1200 lines) are highest coordination risk"
 
-**Plan mitigation:** BEGIN IMMEDIATE + SQL atomic increment (vote_count = vote_count + 1). Confirmed INSERT OR IGNORE rowcount=0 during plan deepening.
+**Plan mitigation:** Cross-Boundary Wiring Table with exact code blocks for all 3 flows. Coordinated Behaviors Table for flash messages and activity logging. Endpoint Registry with url_for names.
 
-**Work risk (from Feed-Forward):** before_request admin auth hook interaction with Flask-WTF CSRF on admin POST routes.
+**Work risk (from Feed-Forward):** "invoice line items form with parallel arrays (descriptions[], quantities[], unit_prices[], tax_rates[], catalog_item_ids[]) and the JS to add/remove rows"
 
-**Review resolution:** 3 agents found 2 P1, 5 P2, 7 P3. All P1/P2 fixed. Key fixes: init_db try/finally, deduplicated query builder, typed return values, documented CSRF/auth hook ordering. Zero learnings violations. Security false positive on blocklist check.
+**Review resolution:** 5 agents found 8 P1, ~12 P2, ~17 P3. 6 P1s fixed in code, 2 documented as acceptable (brute-force login, line-item duplication). Flow-trace reviewer found 3 cross-flow bugs (prefix crash, status revert, overdue gap) -- all fixed.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| feedback-board/app/db.py | New -- DB layer with get_db + init_db | init_db connection leak (fixed), WAL placement |
-| feedback-board/app/models.py | New -- 7 model functions | Upvote dedup atomicity, query builder extraction |
-| feedback-board/app/__init__.py | New -- App factory | SECRET_KEY fail-closed, CSRF/auth ordering |
-| feedback-board/app/blueprints/admin/routes.py | New -- Admin with brute-force | Hook ordering comment, eviction cap |
-| feedback-board/app/blueprints/public/routes.py | New -- Public routes | Input validation, CSRF on upvote forms |
+| invoice-crm/app/invoices/routes.py | 1134 lines, line-item parallel arrays, 70-line duplicated parsing block | Array desync, code duplication (046-W2) |
+| invoice-crm/app/recurring/routes.py | generate_due_invoices cross-boundary import | Invoice number generation, prefix handling |
+| invoice-crm/app/dashboard/routes.py | Imports from recurring, overdue detection, writes on GET | Performance (12 queries/load), status transitions |
+| invoice-crm/app/payments/routes.py | Payment→invoice status update, overpayment logic | Status bypass (draft payments), delete revert |
+| invoice-crm/app/pipeline/routes.py | Deal-won redirect to invoice creation | Cross-boundary wiring, activity logging |
+| invoice-crm/app/auth/routes.py | Login endpoint, no rate limiting | Brute-force risk (046-W1) |
 
 ## Plan Reference
 
-`docs/plans/2026-05-18-feat-feedback-board-plan.md`
+`docs/plans/invoice-crm-plan.md`
