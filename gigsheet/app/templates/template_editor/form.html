@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if is_edit %}Edit Template{% else %}New Template{% endif %}</h2>
+
+    <form method="POST"
+          action="{% if is_edit %}{{ url_for('template_editor.update', id=template['id']) }}{% else %}{{ url_for('template_editor.create') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Template Name</label>
+            <input type="text" class="form-control" id="name" name="name"
+                   value="{{ template['name'] if template else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="subject_line" class="form-label">Subject Line</label>
+            <input type="text" class="form-control" id="subject_line" name="subject_line"
+                   value="{{ template['subject_line'] if template else '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="html_body" class="form-label">Body (HTML)</label>
+            <textarea class="form-control" id="html_body" name="html_body" rows="12">{{ template['html_body'] if template else '' }}</textarea>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <h6 class="card-title">Merge Fields</h6>
+                <p class="text-muted small">Click a field to insert it at the cursor position in the body.</p>
+                <div>
+                    {% for field in merge_fields %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm me-1 mb-1 merge-field-btn"
+                            data-field="{{ '{{' }}{{ field }}{{ '}}' }}">
+                        {{ '{{' }}{{ field }}{{ '}}' }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Update Template{% else %}Create Template{% endif %}
+            </button>
+            <a href="{% if is_edit %}{{ url_for('template_editor.detail', id=template['id']) }}{% else %}{{ url_for('template_list.index') }}{% endif %}"
+               class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('.merge-field-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var textarea = document.getElementById('html_body');
+        var field = this.getAttribute('data-field');
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var text = textarea.value;
+        textarea.value = text.substring(0, start) + field + text.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + field.length;
+        textarea.focus();
+    });
+});
+</script>
+{% endblock %}
