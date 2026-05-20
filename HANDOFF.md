@@ -1,90 +1,54 @@
 # HANDOFF -- Sandbox
 
-**Date:** 2026-05-19
+**Date:** 2026-05-20
 **Branch:** master
-**Phase:** Ready for autopilot -- VenueConnect (run 049)
+**Phase:** Compound complete -- VenueConnect (run 049)
 
-## What To Do
+## Current State
 
-Launch full autopilot run for **VenueConnect** -- a three-sided venue booking and settlement platform for the live music industry. Venues list available dates/rooms, musicians request bookings, promoters manage events. After the show, the system generates settlement sheets with door splits.
+VenueConnect 25-agent swarm build complete. 90 files, 5,750 LOC, zero merge conflicts. 18/18 smoke tests pass. 8 P1s found and fixed in review. 9 P2s documented as deferred. Solution doc written. Learnings propagated.
 
-**This should be the biggest and most complex run to date (run 048 was 20 agents). Target 22-25 agents.**
+## Key Artifacts
 
-### Concept
+| Phase | Location |
+|-------|----------|
+| Brainstorm | docs/brainstorms/2026-05-19-venueconnect-brainstorm.md |
+| Plan | docs/plans/2026-05-19-venueconnect-plan.md |
+| Reports | docs/reports/049/ |
+| Solution | docs/solutions/2026-05-20-venueconnect-25-agent-swarm-build.md |
+| BUILD_TRACKING | BUILD_TRACKING.md |
+| App | venueconnect/ |
 
-- **Venue side:** Manage rooms/stages, set availability windows, view booking requests, approve/reject, upload stage plots, generate settlement sheets post-show
-- **Musician side:** Search venues (FTS5), browse availability calendar, request bookings, view contracts, track payment status, manage band profile
-- **Promoter side:** Create events across venues, manage ticket tiers, oversee booking lifecycle, view settlement calculations, analytics dashboard
-- **Booking lifecycle (state machine):** available -> requested -> confirmed -> advanced -> performed -> settled -> paid
-- **Moat:** Settlement sheet automation (who gets what after the show) is the #1 pain point. Every venue currently does this with spreadsheets.
+## Deferred Items
 
-### Key Decisions for Brainstorm/Plan
+### Run 049 (VenueConnect)
+- 049-D1: N+1 query loop in dashboard-venue (MEDIUM, performance)
+- 049-D2: Unbounded list queries -- no pagination (MEDIUM, performance)
+- 049-D3: Analytics queries without date bounds (MEDIUM, performance)
+- 049-D4: Missing WAL mode (LOW, performance)
+- 049-D5: Missing composite index for conflict check (LOW, performance)
+- 049-D6: Notification mark_read no ownership check (MEDIUM, security)
+- 049-D7: Missing CSP header (LOW, security)
+- 049-D8: Session cookie security attributes (LOW, security)
+- 049-D9: No `confirmed -> performed` shortcut for non-advance bookings (LOW, UX)
 
-1. Three-role multi-tenant architecture (venue manager, musician, promoter) -- first sandbox build with RBAC
-2. Calendar with time-slot conflict detection (double-booking prevention)
-3. Booking state machine (7 states, guarded transitions)
-4. PDF generation for contracts + settlement sheets (weasyprint or reportlab)
-5. FTS5 full-text search for venues (name, location, capacity, genre)
-6. Financial calculations (guarantee vs door split, ticket tiers, promoter fee %, tax)
-7. In-app notification system (read/unread)
-8. Chart.js analytics (venue revenue by month, genre distribution, occupancy rate)
-9. Flask + SQLite + Jinja2 + Bootstrap 5 (same stack as runs 046-048)
-10. How many agents/blueprints -- target 22-25 for biggest run
-
-### Untested Patterns (novel for sandbox pipeline)
-
-| Pattern | Status | Why it matters |
-|---------|--------|---------------|
-| Multi-tenant with 3 roles | Never tested | Permission logic across roles is the hardest spec surface |
-| Calendar with conflict detection | Never tested | Time-slot math + double-booking prevention |
-| Complex state machine (7 states) | Never tested | Only binary flags in prior builds |
-| PDF generation | Never tested | New library (weasyprint/reportlab) |
-| FTS5 full-text search | Never tested | All prior builds use LIKE |
-| Financial calculations | Partially (invoice line items) | Door splits, guarantees, percentages |
-| In-app notifications | Never tested | Read/unread state management |
-| Chart.js integration | Never tested | Data visualization |
-
-### Pre-Flight Checklist (do at start of next session)
-
-- [ ] Verify git working tree is clean
-- [ ] Verify dangerouslySkipPermissions: true in .claude/settings.local.json
-- [ ] Archive BUILD_TRACKING.md to client-music-planner/
-- [ ] Copy autopilot-tracking-template.md to BUILD_TRACKING.md
-- [ ] Read agent-pitfalls.md (current through run 048)
-- [ ] No parallel sessions (FC34 mitigation)
-
-### Autopilot Launch Prompt
-
-```
-Read HANDOFF.md. This is the Sandbox project, launching run 049: VenueConnect.
-
-Target: biggest and most complex autopilot swarm to date (22-25 agents).
-Three-sided platform -- venues, musicians, promoters. 7-state booking lifecycle,
-calendar with conflict detection, PDF generation, FTS5 search, financial
-calculations, notifications, charts.
-
-Stack: Flask + SQLite + Jinja2 + Bootstrap 5 (same as runs 046-048).
-No parallel sessions -- single autopilot run only (FC34 mitigation).
-
-Run /autopilot for the full compound loop: brainstorm -> plan -> spec convergence
--> swarm work -> review -> compound -> learnings.
-```
-
-## Prior Runs (for context)
-
-| Run | Project | Agents | Grade | Solution Doc |
-|-----|---------|--------|-------|-------------|
-| 048 | Client Music Planner | 20 | B (4.2) | docs/solutions/2026-05-19-client-music-planner-20-agent-swarm-build.md |
-| 047 | Command Center | 16 | A (4.5) | docs/solutions/2026-05-19-solopreneur-command-center-swarm-build.md |
-| 046 | Invoice & CRM | 15 | B (3.8) | docs/solutions/2026-05-19-invoice-crm-15-agent-swarm-build.md |
-| 045 | Feedback Board | 1 (solo) | A (4.5) | docs/solutions/2026-05-18-feedback-board-solo-build.md |
-
-## Deferred Items From Prior Runs
-
-### Run 048 (Client Music Planner)
-- 048-W1: create_event notes gap (MEDIUM, spec gap -- not code bug)
-- 048-D1 through D7: ALL RESOLVED in post-run P2 fix commit (b5308dc)
-
-### Run 046 (Invoice & CRM)
+### Prior Runs
+- 048-W1: create_event notes gap (MEDIUM, spec gap)
 - 046-W1 ACCEPTED: No brute-force login protection. MEDIUM.
 - 046-W2 ACCEPTED: Line-item parsing duplication. MEDIUM.
+
+## Three Questions
+
+1. **Hardest decision?** Splitting the booking domain across 3 agents (create, manage, lifecycle). The state machine consumed by agents 8 and 13 was the highest-risk cross-boundary surface.
+2. **What was rejected?** WeasyPrint, many-to-many role table, slot-based calendar, WebSocket notifications, `transitions` library.
+3. **Least confident about?** Calendar conflict detection atomicity -- turned out to be correctly implemented via BEGIN IMMEDIATE.
+
+## Prompt for Next Session
+
+```
+Read HANDOFF.md. This is the Sandbox project. VenueConnect (run 049) is complete --
+25-agent swarm, 90 files, 5,750 LOC. 9 P2s deferred.
+
+Options: (1) Fix P2s for VenueConnect, (2) Start a new build (run 050),
+(3) Cross-pollination with lead-scraper venue data.
+```

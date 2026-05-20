@@ -1,25 +1,33 @@
-# Review Context -- Sandbox (Client Music Planner, Run 048)
+# Review Context -- VenueConnect (Run 049)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Token-based portal access is novel territory. The @require_portal_token decorator is the critical security boundary."
+**Brainstorm risk:** RBAC permission boundaries and booking state machine are the two novel patterns most likely to produce cross-section contradictions in the spec.
 
-**Plan mitigation:** Prescriptive decorator code blocks in spec. Cross-Boundary Wiring section with exact usage patterns for g.portal_event. Coordinated Behaviors table for all 20 agents.
+**Plan mitigation:** Prescriptive code blocks for advance_booking_state() call pattern embedded in consuming agents' briefs. Spec consistency checker pre-swarm gate.
 
-**Work risk (from Feed-Forward):** "Drag-and-drop reorder persistence (SortableJS -> /api/playlist/reorder -> batch UPDATE). Three things must align across 3 agents."
+**Work risk (from Feed-Forward):** Calendar conflict detection atomicity -- BEGIN IMMEDIATE + check_room_available + create_booking must be in same transaction.
 
-**Review resolution:** 5 agents found 4 P1, ~14 P2, ~16 P3. All P1s fixed. Flow-trace reviewer found the only P1 (CSS class mismatch) that 4 other reviewers missed. portal_playlist was the only agent that needed full rewrite (23 contract failures).
+**Review resolution:** 8 P1s (5 IDOR, 1 FTS5 injection, 2 unvalidated financial parsing), 9 P2s (3 performance, 6 security). All P1s fixed. State machine had 0 bugs (prescriptive spec). IDOR was #1 finding (prose-described ownership checks).
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| client-music-planner/app/portal_playlist/routes.py | Full rewrite in assembly fix (original had 13 contract failures) | g.portal_event usage, db.commit() |
-| client-music-planner/app/repertoire_import/routes.py | Assembly fix (5 failures) + P1 fix (exception leakage) | CSV parsing, bulk_create_songs call |
-| client-music-planner/app/api_playlist/routes.py | Reorder endpoint -- validates parallel arrays | Length check, set equality |
-| client-music-planner/app/static/js/playlist.js | SortableJS + move buttons + error recovery | CSS class selectors match template |
-| client-music-planner/app/templates/portal_playlist/playlist.html | DnD template with data-item-id, move buttons | data attributes, block name |
+| app/settlements/routes.py | Added IDOR ownership checks, try/except on financial parsing | Authorization, input validation |
+| app/booking_create/routes.py | Added IDOR check, try/except, percentage validation | Authorization, input validation |
+| app/booking_manage/routes.py | Fixed rounding (added round()) | Financial precision |
+| app/events/routes.py | Added venue validation on link_booking | Privilege escalation |
+| app/models.py | Added FTS5 sanitization, venue_manager_id to settlement query | Injection, authorization |
 
 ## Plan Reference
 
-`docs/plans/client-music-planner-plan.md`
+`docs/plans/2026-05-19-venueconnect-plan.md`
+
+## Review Agents
+
+review_agents:
+  - security-sentinel
+  - performance-oracle
+  - flow-trace-reviewer
+  - learnings-researcher
