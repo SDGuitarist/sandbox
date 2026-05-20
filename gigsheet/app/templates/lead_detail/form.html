@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>{% if is_edit %}Edit Lead{% else %}New Lead{% endif %}</h1>
+
+    <form method="POST"
+          action="{% if is_edit %}{{ url_for('lead_detail.update', id=lead['id']) }}{% else %}{{ url_for('lead_detail.create') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="mb-3">
+            <label for="venue_name" class="form-label">Venue Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="venue_name" name="venue_name"
+                   value="{{ lead['venue_name'] if lead else '' }}" required maxlength="200">
+        </div>
+
+        <div class="mb-3">
+            <label for="contact_name" class="form-label">Contact Name</label>
+            <input type="text" class="form-control" id="contact_name" name="contact_name"
+                   value="{{ lead['contact_name'] if lead else '' }}" maxlength="200">
+        </div>
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email"
+                   value="{{ lead['email'] if lead else '' }}" maxlength="200">
+        </div>
+
+        <div class="mb-3">
+            <label for="phone" class="form-label">Phone</label>
+            <input type="tel" class="form-control" id="phone" name="phone"
+                   value="{{ lead['phone'] if lead else '' }}" maxlength="50">
+        </div>
+
+        <div class="mb-3">
+            <label for="website" class="form-label">Website</label>
+            <input type="url" class="form-control" id="website" name="website"
+                   value="{{ lead['website'] if lead else '' }}" maxlength="500">
+        </div>
+
+        <div class="mb-3">
+            <label for="capacity" class="form-label">Capacity</label>
+            <input type="number" class="form-control" id="capacity" name="capacity"
+                   value="{{ lead['capacity'] if lead else '0' }}" min="0">
+        </div>
+
+        <div class="mb-3">
+            <label for="location" class="form-label">Location</label>
+            <input type="text" class="form-control" id="location" name="location"
+                   value="{{ lead['location'] if lead else '' }}" maxlength="200">
+        </div>
+
+        <div class="mb-3">
+            <label for="genre_tags" class="form-label">Genre Tags</label>
+            <input type="text" class="form-control" id="genre_tags" name="genre_tags"
+                   value="{{ lead['genre_tags'] if lead else '' }}" maxlength="200"
+                   placeholder="e.g. rock, jazz, electronic">
+        </div>
+
+        <div class="mb-3">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea class="form-control" id="notes" name="notes" rows="4"
+                      maxlength="2000">{{ lead['notes'] if lead else '' }}</textarea>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                {% if is_edit %}Update Lead{% else %}Create Lead{% endif %}
+            </button>
+            <a href="{% if is_edit %}{{ url_for('lead_detail.detail', id=lead['id']) }}{% else %}{{ url_for('lead_list.index') }}{% endif %}"
+               class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
