@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Venue Dashboard - VenueConnect{% endblock %}
+{% block content %}
+<h1>Venue Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    Pending Requests
+                    {% if pending_count > 0 %}
+                    <span class="badge bg-danger">{{ pending_count }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">0</span>
+                    {% endif %}
+                </h5>
+                <p class="card-text">
+                    {% if pending_count > 0 %}
+                    You have {{ pending_count }} booking request{{ 's' if pending_count != 1 else '' }} waiting for review.
+                    {% else %}
+                    No pending booking requests.
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('booking_manage.pending') }}" class="btn btn-primary">View Pending</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">My Venues</h5>
+                <p class="card-text">{{ venues|length }} venue{{ 's' if venues|length != 1 else '' }} registered.</p>
+                <a href="{{ url_for('venues.list') }}" class="btn btn-outline-primary">Manage Venues</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2>Upcoming Confirmed Bookings</h2>
+{% if upcoming_bookings %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>Room</th>
+                <th>Musician</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in upcoming_bookings %}
+            <tr>
+                <td>{{ booking['event_name'] }}</td>
+                <td>{{ booking['event_date'] }}</td>
+                <td>{{ booking['room_name'] }}</td>
+                <td>{{ booking['musician_name'] }}</td>
+                <td><span class="badge bg-success">{{ booking['state'] }}</span></td>
+                <td><a href="{{ url_for('booking_manage.detail', booking_id=booking['id']) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No upcoming confirmed bookings.</p>
+{% endif %}
+
+<h2>Your Venues</h2>
+{% if venues %}
+<div class="row">
+    {% for venue in venues %}
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ venue['name'] }}</h5>
+                <p class="card-text text-muted">{{ venue['location'] }}</p>
+                <a href="{{ url_for('venues.detail', venue_id=venue['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                <a href="{{ url_for('venues.edit', venue_id=venue['id']) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No venues yet. <a href="{{ url_for('venues.create') }}">Add your first venue</a>.</p>
+{% endif %}
+{% endblock %}
