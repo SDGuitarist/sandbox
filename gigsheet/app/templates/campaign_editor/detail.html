@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}{{ campaign['name'] }} - GigSheet{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('campaign_list.index') }}">Campaigns</a></li>
+            <li class="breadcrumb-item active">{{ campaign['name'] }}</li>
+        </ol>
+    </nav>
+
+    <!-- Campaign header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2>{{ campaign['name'] }}</h2>
+            <span class="badge bg-{% if campaign['status'] == 'draft' %}secondary{% elif campaign['status'] == 'sending' %}primary{% elif campaign['status'] == 'sent' %}success{% elif campaign['status'] == 'scheduled' %}info{% elif campaign['status'] == 'paused' %}warning{% else %}danger{% endif %}">
+                {{ campaign['status']|title }}
+            </span>
+            <small class="text-muted ms-2">Created {{ campaign['created_at'] }}</small>
+        </div>
+        <div class="d-flex gap-2">
+            {% if campaign['status'] == 'draft' %}
+            <a href="{{ url_for('campaign_editor.edit', id=campaign['id']) }}" class="btn btn-outline-primary btn-sm">Edit</a>
+            <form method="POST" action="{{ url_for('campaign_editor.delete', id=campaign['id']) }}" class="d-inline"
+                  onsubmit="return confirm('Are you sure you want to delete this campaign?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+            </form>
+            {% endif %}
+            {% if campaign['status'] == 'draft' and total_recipients > 0 %}
+            <form method="POST" action="{{ url_for('campaign_sender.send', id=campaign['id']) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-success btn-sm">Send Campaign</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Template preview -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Email Template</h5>
+        </div>
+        <div class="card-body">
+            {% if template %}
+            <p><strong>Template:</strong> {{ template['name'] }}</p>
+            <p><strong>Subject:</strong> {{ template['subject_line'] }}</p>
+            <div class="border rounded p-3 bg-light">
+                <small class="text-muted d-block mb-1">Preview:</small>
+                {{ template['html_body']|safe }}
+            </div>
+            {% else %}
+            <p class="text-muted">No template linked (template may have been deleted).</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Campaign stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3>{{ total_recipients }}</h3>
+                    <small class="text-muted">Recipients</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3>{{ campaign['sent_count'] }}</h3>
+                    <small class="text-muted">Sent</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3>{{ campaign['delivered_count'] }}</h3>
+                    <small class="text-muted">Delivered</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h3>{{ campaign['opened_count'] }}</h3>
+                    <small class="text-muted">Opened</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current recipients -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Recipients ({{ total_recipients }})</h5>
+        </div>
+        {% if recipients %}
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Contact</th>
+                        <th>Venue</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recipients %}
+                    <tr>
+                        <td>{{ r['contact_name'] or '-' }}</td>
+                        <td>{{ r['venue_name'] or '-' }}</td>
+                        <td>{{ r['email'] }}</td>
+                        <td>
+                            <span class="badge bg-{% if r['status'] == 'pending' %}secondary{% elif r['status'] == 'sent' %}primary{% elif r['status'] == 'delivered' %}success{% elif r['status'] in ('bounced', 'failed') %}danger{% else %}info{% endif %}">
+                                {{ r['status']|title }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body">
+            <p class="text-muted mb-0">No recipients added yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Add recipients form (only for draft campaigns) -->
+    {% if campaign['status'] == 'draft' and available_leads %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Add Recipients</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('campaign_editor.manage_recipients', id=campaign['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">
+                                    <input type="checkbox" id="select-all" class="form-check-input">
+                                </th>
+                                <th>Contact</th>
+                                <th>Venue</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for lead in available_leads %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="lead_ids[]" value="{{ lead['id'] }}"
+                                           class="form-check-input lead-checkbox">
+                                </td>
+                                <td>{{ lead['contact_name'] or '-' }}</td>
+                                <td>{{ lead['venue_name'] or '-' }}</td>
+                                <td>{{ lead['email'] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Selected Recipients</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    document.getElementById('select-all').addEventListener('change', function() {
+        var checkboxes = document.querySelectorAll('.lead-checkbox');
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = this.checked;
+        }
+    });
+    </script>
+    {% elif campaign['status'] == 'draft' and not available_leads and total_recipients == 0 %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <p class="text-muted mb-0">
+                No leads available. <a href="{{ url_for('lead_detail.new') }}">Add leads</a> or
+                <a href="{{ url_for('lead_import.index') }}">import from CSV</a> first.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
