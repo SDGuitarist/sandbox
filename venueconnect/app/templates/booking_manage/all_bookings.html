@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}All Bookings - {{ venue['name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>All Bookings</h1>
+    <a href="{{ url_for('booking_manage.pending') }}" class="btn btn-outline-secondary">
+        View Pending Only
+    </a>
+</div>
+
+<p class="text-muted">Venue: <strong>{{ venue['name'] }}</strong></p>
+
+{% if bookings %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Musician</th>
+                <th>Room</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Deal Type</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking['event_name'] }}</td>
+                <td>{{ booking['musician_name'] }}</td>
+                <td>{{ booking['room_name'] }}</td>
+                <td>{{ booking['event_date'] }}</td>
+                <td>{{ booking['start_time'] }} - {{ booking['end_time'] }}</td>
+                <td>
+                    <span class="badge bg-{% if booking['state'] == 'confirmed' %}success{% elif booking['state'] == 'requested' %}warning{% elif booking['state'] in ('rejected', 'cancelled') %}danger{% elif booking['state'] == 'paid' %}primary{% else %}secondary{% endif %}">
+                        {{ booking['state'] }}
+                    </span>
+                </td>
+                <td>{{ booking['deal_type'] }}</td>
+                <td>
+                    <a href="{{ url_for('booking_manage.detail', booking_id=booking['id']) }}"
+                       class="btn btn-sm btn-outline-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No bookings found for this venue.</div>
+{% endif %}
+{% endblock %}
