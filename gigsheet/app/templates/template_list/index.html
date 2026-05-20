@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Email Templates{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Email Templates</h1>
+    <a href="{{ url_for('template_editor.new') }}" class="btn btn-primary">New Template</a>
+</div>
+
+{% if templates %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Subject Line</th>
+                <th>Last Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in templates %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('template_editor.detail', id=t['id']) }}">{{ t['name'] }}</a>
+                </td>
+                <td>{{ t['subject_line'] }}</td>
+                <td>{{ t['updated_at'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <p class="text-muted mb-3">No templates yet. Create one to get started.</p>
+    <a href="{{ url_for('template_editor.new') }}" class="btn btn-primary">Create Template</a>
+</div>
+{% endif %}
+{% endblock %}

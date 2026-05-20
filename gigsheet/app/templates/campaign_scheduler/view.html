@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Campaign{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Schedule Campaign: {{ campaign['name'] }}</h2>
+    <p>Status: <strong>{{ campaign['status'] }}</strong></p>
+
+    {% if campaign['status'] == 'draft' %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Set Schedule</h5>
+            <form method="POST" action="{{ url_for('campaign_scheduler.set_schedule', id=campaign['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label for="scheduled_at" class="form-label">Send Date &amp; Time</label>
+                    <input type="datetime-local" class="form-control" id="scheduled_at"
+                           name="scheduled_at" required>
+                </div>
+                <div class="mb-3">
+                    <label for="timezone" class="form-label">Timezone</label>
+                    <select class="form-select" id="timezone" name="timezone">
+                        <option value="UTC" selected>UTC</option>
+                        <option value="US/Eastern">US/Eastern</option>
+                        <option value="US/Central">US/Central</option>
+                        <option value="US/Mountain">US/Mountain</option>
+                        <option value="US/Pacific">US/Pacific</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="Europe/Berlin">Europe/Berlin</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo</option>
+                        <option value="Australia/Sydney">Australia/Sydney</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Schedule Campaign</button>
+            </form>
+        </div>
+    </div>
+    {% elif campaign['status'] == 'scheduled' %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Scheduled</h5>
+            <p>This campaign is scheduled to send at <strong>{{ campaign['scheduled_at'] }}</strong> ({{ campaign['timezone'] }}).</p>
+            <form method="POST" action="{{ url_for('campaign_scheduler.cancel', id=campaign['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Are you sure you want to cancel this campaign?')">
+                    Cancel Campaign
+                </button>
+            </form>
+        </div>
+    </div>
+    {% elif campaign['status'] == 'cancelled' %}
+    <div class="alert alert-secondary">
+        This campaign has been cancelled.
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        This campaign is currently <strong>{{ campaign['status'] }}</strong> and cannot be scheduled.
+    </div>
+    {% endif %}
+
+    <a href="{{ url_for('campaign_list.index') }}" class="btn btn-outline-secondary">Back to Campaigns</a>
+</div>
+{% endblock %}

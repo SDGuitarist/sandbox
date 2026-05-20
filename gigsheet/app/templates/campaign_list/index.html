@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Campaigns{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Campaigns</h1>
+    <a href="{{ url_for('campaign_editor.new') }}" class="btn btn-primary">New Campaign</a>
+</div>
+
+{# Status filter tabs #}
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link {% if not current_status %}active{% endif %}"
+           href="{{ url_for('campaign_list.index') }}">All</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if current_status == 'draft' %}active{% endif %}"
+           href="{{ url_for('campaign_list.index', status='draft') }}">Draft</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if current_status == 'sending' %}active{% endif %}"
+           href="{{ url_for('campaign_list.index', status='sending') }}">Sending</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if current_status == 'sent' %}active{% endif %}"
+           href="{{ url_for('campaign_list.index', status='sent') }}">Sent</a>
+    </li>
+</ul>
+
+{% if campaigns %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Recipients</th>
+                <th>Sent</th>
+                <th>Delivered</th>
+                <th>Bounced</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for campaign in campaigns %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('campaign_editor.detail', id=campaign['id']) }}">
+                        {{ campaign['name'] }}
+                    </a>
+                </td>
+                <td>
+                    {% if campaign['status'] == 'draft' %}
+                        <span class="badge bg-secondary">Draft</span>
+                    {% elif campaign['status'] == 'scheduled' %}
+                        <span class="badge bg-info">Scheduled</span>
+                    {% elif campaign['status'] == 'sending' %}
+                        <span class="badge bg-warning text-dark">Sending</span>
+                    {% elif campaign['status'] == 'sent' %}
+                        <span class="badge bg-success">Sent</span>
+                    {% elif campaign['status'] == 'paused' %}
+                        <span class="badge bg-dark">Paused</span>
+                    {% elif campaign['status'] == 'cancelled' %}
+                        <span class="badge bg-danger">Cancelled</span>
+                    {% endif %}
+                </td>
+                <td>{{ campaign['total_recipients'] }}</td>
+                <td>{{ campaign['sent_count'] }}</td>
+                <td>{{ campaign['delivered_count'] }}</td>
+                <td>{{ campaign['bounced_count'] }}</td>
+                <td>{{ campaign['created_at'][:10] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <p class="text-muted mb-3">No campaigns found{% if current_status %} with status "{{ current_status }}"{% endif %}.</p>
+    <a href="{{ url_for('campaign_editor.new') }}" class="btn btn-primary">Create Your First Campaign</a>
+</div>
+{% endif %}
+{% endblock %}

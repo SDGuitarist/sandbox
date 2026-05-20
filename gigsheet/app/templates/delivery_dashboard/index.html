@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Reports{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Delivery Reports</h1>
+        <a href="{{ url_for('delivery_dashboard.export_csv') }}" class="btn btn-outline-primary">
+            Export CSV
+        </a>
+    </div>
+
+    <!-- Aggregate metrics cards -->
+    <div class="row mb-4">
+        <div class="col-md">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Sent</h5>
+                    <p class="display-6">{{ total_sent }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Delivered</h5>
+                    <p class="display-6">{{ total_delivered }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Opened</h5>
+                    <p class="display-6">{{ total_opened }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Clicked</h5>
+                    <p class="display-6">{{ total_clicked }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Bounced</h5>
+                    <p class="display-6">{{ total_bounced }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delivery rates -->
+    {% if total_sent > 0 %}
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Delivery Rate</h6>
+                    <p class="h4">{{ "%.1f"|format(total_delivered / total_sent * 100) }}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Open Rate</h6>
+                    <p class="h4">{{ "%.1f"|format(total_opened / total_sent * 100) }}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h6 class="text-muted">Click Rate</h6>
+                    <p class="h4">{{ "%.1f"|format(total_clicked / total_sent * 100) }}%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent campaigns table -->
+    <h3>Recent Campaigns</h3>
+    {% if recent_campaigns %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Campaign</th>
+                    <th>Status</th>
+                    <th>Sent</th>
+                    <th>Delivered</th>
+                    <th>Opened</th>
+                    <th>Clicked</th>
+                    <th>Bounced</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in recent_campaigns %}
+                <tr>
+                    <td>{{ c['name'] }}</td>
+                    <td>
+                        <span class="badge bg-{{ 'success' if c['status'] == 'sent' else 'primary' if c['status'] == 'sending' else 'secondary' }}">
+                            {{ c['status']|stage_label }}
+                        </span>
+                    </td>
+                    <td>{{ c['sent_count'] or 0 }}</td>
+                    <td>{{ c['delivered_count'] or 0 }}</td>
+                    <td>{{ c['opened_count'] or 0 }}</td>
+                    <td>{{ c['clicked_count'] or 0 }}</td>
+                    <td>{{ c['bounced_count'] or 0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No campaigns yet. Create your first campaign to see delivery metrics here.</p>
+    {% endif %}
+
+    <p class="text-muted mt-3">
+        Showing {{ recent_campaigns|length }} of {{ total_campaigns }} total campaigns.
+    </p>
+</div>
+{% endblock %}

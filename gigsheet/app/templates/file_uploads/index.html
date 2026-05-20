@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Files{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Files</h1>
+    </div>
+
+    {# Upload form #}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Upload File</h5>
+            <p class="text-muted">
+                Allowed types: PDF, JPG, JPEG, PNG, GIF, DOC, DOCX, MP3, WAV, ZIP (max 10 MB)
+            </p>
+            <form method="POST" action="{{ url_for('file_uploads.upload') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="input-group">
+                    <input type="file" class="form-control" name="file" required>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# File list #}
+    {% if files %}
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Uploaded</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file in files %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('file_uploads.serve', file_id=file['id']) }}">
+                                {{ file['filename_original'] }}
+                            </a>
+                        </td>
+                        <td>{{ file['file_ext'] }}</td>
+                        <td>
+                            {% if file['file_size_bytes'] >= 1048576 %}
+                                {{ "%.1f"|format(file['file_size_bytes'] / 1048576) }} MB
+                            {% elif file['file_size_bytes'] >= 1024 %}
+                                {{ "%.1f"|format(file['file_size_bytes'] / 1024) }} KB
+                            {% else %}
+                                {{ file['file_size_bytes'] }} B
+                            {% endif %}
+                        </td>
+                        <td>{{ file['created_at'] }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('file_uploads.delete', file_id=file['id']) }}"
+                                  style="display:inline"
+                                  onsubmit="return confirm('Delete this file?')">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-muted">No files uploaded yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

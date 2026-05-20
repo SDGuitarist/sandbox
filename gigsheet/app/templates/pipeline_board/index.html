@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline Board{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Pipeline Board</h1>
+</div>
+
+<div class="d-flex gap-3 overflow-auto pb-3" style="min-height: 400px;">
+    {% for stage in stages %}
+    <div class="card flex-shrink-0" style="min-width: 260px; width: 260px;">
+        <div class="card-header bg-light">
+            <strong>{{ stage | replace('_', ' ') | title }}</strong>
+            <span class="badge bg-secondary ms-1">{{ leads_by_stage[stage] | length }}</span>
+        </div>
+        <div class="card-body p-2 kanban-column"
+             data-stage="{{ stage }}"
+             style="min-height: 200px; overflow-y: auto; max-height: 70vh;">
+            {% for lead in leads_by_stage[stage] %}
+            <div class="card mb-2 kanban-card" data-lead-id="{{ lead['id'] }}">
+                <div class="card-body p-2">
+                    <div class="fw-bold small">{{ lead['contact_name'] or 'No Name' }}</div>
+                    <div class="text-muted small">{{ lead['venue_name'] or '' }}</div>
+                    <span class="badge bg-info text-dark small">{{ lead['pipeline_stage'] | replace('_', ' ') | title }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var columns = document.querySelectorAll('.kanban-column');
+    columns.forEach(function (col) {
+        new Sortable(col, {
+            group: 'pipeline',
+            animation: 150,
+            ghostClass: 'bg-warning',
+            onEnd: function (evt) {
+                var card = evt.item;
+                var leadId = parseInt(card.getAttribute('data-lead-id'), 10);
+                var newStage = evt.to.getAttribute('data-stage');
+
+                fetch('/pipeline/actions/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ lead_id: leadId, stage: newStage })
+                })
+                .then(function (response) {
+                    if (!response.ok) {
+                        alert('Failed to move lead. Please refresh.');
+                    } else {
+                        // Update the badge text on the card
+                        var badge = card.querySelector('.badge');
+                        if (badge) {
+                            badge.textContent = newStage.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+                        }
+                        // Update column counts
+                        updateColumnCounts();
+                    }
+                })
+                .catch(function () {
+                    alert('Network error. Please refresh.');
+                });
+            }
+        });
+    });
+
+    function getCsrfToken() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        var input = document.querySelector('input[name="csrf_token"]');
+        if (input) return input.value;
+        return '';
+    }
+
+    function updateColumnCounts() {
+        columns.forEach(function (col) {
+            var count = col.querySelectorAll('.kanban-card').length;
+            var header = col.closest('.card').querySelector('.badge');
+            if (header) {
+                header.textContent = count;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

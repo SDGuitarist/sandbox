@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Tags</h1>
+    </div>
+
+    <!-- Create Tag Form -->
+    <div class="card mb-4">
+        <div class="card-header">Create New Tag</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('lead_tags.create') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label for="name" class="form-label">Tag Name</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               maxlength="100" required placeholder="e.g. Priority, Follow-up">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="color" class="form-label">Color</label>
+                        <input type="color" class="form-control form-control-color" id="color"
+                               name="color" value="#6c757d">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary">Create Tag</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tag List -->
+    {% if tags %}
+    <div class="card">
+        <div class="card-header">All Tags ({{ tags|length }})</div>
+        <ul class="list-group list-group-flush">
+            {% for tag in tags %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    <span class="badge rounded-pill" style="background-color: {{ tag['color'] }};">
+                        &nbsp;&nbsp;
+                    </span>
+                    {{ tag['name'] }}
+                </span>
+                <form method="POST" action="{{ url_for('lead_tags.delete', id=tag['id']) }}"
+                      onsubmit="return confirm('Delete tag &quot;{{ tag['name'] }}&quot;? This will remove it from all leads.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No tags yet. Create your first tag above to start organizing your leads.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Sending: {{ campaign['name'] }}</h2>
+
+    <div class="card mt-3">
+        <div class="card-body">
+            <p id="status-text" class="mb-3">
+                {% if progress and progress['status'] == 'completed' %}
+                    Campaign sent!
+                {% elif campaign['status'] == 'sending' %}
+                    Sending in progress...
+                {% else %}
+                    {{ campaign['status'] | capitalize }}
+                {% endif %}
+            </p>
+
+            <div class="progress mb-3" style="height: 25px;">
+                {% set total = progress['total'] if progress else 0 %}
+                {% set done = (progress['sent'] + progress['failed']) if progress else 0 %}
+                {% set pct = ((done / total * 100) | round | int) if total > 0 else 0 %}
+                <div id="progress-bar"
+                     class="progress-bar progress-bar-striped progress-bar-animated"
+                     role="progressbar"
+                     style="width: {{ pct }}%;"
+                     aria-valuenow="{{ pct }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+                    {{ pct }}%
+                </div>
+            </div>
+
+            <div class="row text-center">
+                <div class="col">
+                    <strong>Total</strong>
+                    <p id="total-count">{{ total }}</p>
+                </div>
+                <div class="col">
+                    <strong>Sent</strong>
+                    <p id="sent-count">{{ progress['sent'] if progress else 0 }}</p>
+                </div>
+                <div class="col">
+                    <strong>Failed</strong>
+                    <p id="failed-count">{{ progress['failed'] if progress else 0 }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <a href="{{ url_for('campaign_editor.detail', id=campaign['id']) }}" class="btn btn-secondary">
+            Back to Campaign
+        </a>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (typeof EventSource === 'undefined') {
+        return;
+    }
+
+    var source = new EventSource('/sse/campaign/{{ campaign['id'] }}');
+
+    source.addEventListener('progress', function(e) {
+        var data = JSON.parse(e.data);
+        document.getElementById('sent-count').textContent = data.sent;
+        document.getElementById('failed-count').textContent = data.failed;
+        var pct = Math.round((data.sent + data.failed) / data.total * 100);
+        var bar = document.getElementById('progress-bar');
+        bar.style.width = pct + '%';
+        bar.textContent = pct + '%';
+        bar.setAttribute('aria-valuenow', pct);
+    });
+
+    source.addEventListener('done', function(e) {
+        source.close();
+        document.getElementById('status-text').textContent = 'Campaign sent!';
+        var bar = document.getElementById('progress-bar');
+        bar.classList.remove('progress-bar-animated');
+    });
+
+    source.onerror = function() {
+        source.close();
+    };
+})();
+</script>
+{% endblock %}

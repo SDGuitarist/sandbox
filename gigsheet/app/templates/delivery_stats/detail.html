@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Delivery Stats: {{ campaign['name'] }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Delivery Stats: {{ campaign['name'] }}</h2>
+    <p>
+        <span class="badge bg-secondary">{{ campaign['status'] }}</span>
+        {% if campaign['started_at'] %}
+            <small class="text-muted ms-2">Started: {{ campaign['started_at'] }}</small>
+        {% endif %}
+        {% if campaign['completed_at'] %}
+            <small class="text-muted ms-2">Completed: {{ campaign['completed_at'] }}</small>
+        {% endif %}
+    </p>
+
+    <!-- Delivery metrics summary -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ campaign['sent_count'] }}</h5>
+                    <p class="card-text text-muted">Sent</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ campaign['delivered_count'] }}</h5>
+                    <p class="card-text text-muted">Delivered</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ campaign['opened_count'] }}</h5>
+                    <p class="card-text text-muted">Opened</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ campaign['clicked_count'] }}</h5>
+                    <p class="card-text text-muted">Clicked</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ campaign['bounced_count'] }}</h5>
+                    <p class="card-text text-muted">Bounced</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">{{ campaign['failed_count'] }}</h5>
+                    <p class="card-text text-muted">Failed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recipient table -->
+    <h4>Recipients ({{ recipients|length }})</h4>
+    {% if recipients %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Venue</th>
+                    <th>Contact</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Sent At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recipients %}
+                <tr>
+                    <td>{{ r['venue_name'] }}</td>
+                    <td>{{ r['contact_name'] }}</td>
+                    <td>{{ r['email'] }}</td>
+                    <td>
+                        {% if r['status'] == 'delivered' %}
+                            <span class="badge bg-success">Delivered</span>
+                        {% elif r['status'] == 'sent' %}
+                            <span class="badge bg-primary">Sent</span>
+                        {% elif r['status'] == 'opened' %}
+                            <span class="badge bg-info">Opened</span>
+                        {% elif r['status'] == 'clicked' %}
+                            <span class="badge bg-info">Clicked</span>
+                        {% elif r['status'] == 'bounced' %}
+                            <span class="badge bg-warning">Bounced</span>
+                        {% elif r['status'] == 'failed' %}
+                            <span class="badge bg-danger">Failed</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ r['status'] }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ r['sent_at'] or '---' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No recipients in this campaign yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('campaign_list.index') }}" class="btn btn-outline-secondary mt-3">Back to Campaigns</a>
+</div>
+{% endblock %}

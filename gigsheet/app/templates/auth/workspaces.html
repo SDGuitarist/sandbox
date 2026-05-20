@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Select Workspace - GigSheet{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <h2 class="mb-4 text-center">Your Workspaces</h2>
+
+        {% if workspaces %}
+        <div class="list-group mb-4">
+            {% for ws in workspaces %}
+            <form method="POST" action="{{ url_for('auth.set_workspace') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="workspace_id" value="{{ ws.id }}">
+                <span>{{ ws.name }}</span>
+                <button type="submit" class="btn btn-sm btn-outline-primary">Select</button>
+            </form>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted text-center">You don't have any workspaces yet. Create one below.</p>
+        {% endif %}
+
+        <hr>
+
+        <h4 class="mb-3">Create New Workspace</h4>
+        <form method="POST" action="{{ url_for('auth.create_workspace') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="name" class="form-label">Workspace Name</label>
+                <input type="text" class="form-control" id="name" name="name" required maxlength="100" placeholder="My Band's Outreach">
+            </div>
+
+            <button type="submit" class="btn btn-success w-100">Create Workspace</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

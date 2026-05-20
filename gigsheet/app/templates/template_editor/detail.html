@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>{{ template['name'] }}</h2>
+        <div>
+            <a href="{{ url_for('template_editor.edit', id=template['id']) }}" class="btn btn-primary">Edit</a>
+            <a href="{{ url_for('template_list.index') }}" class="btn btn-outline-secondary">Back to Templates</a>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Subject Line</h5>
+            <p class="card-text">{{ template['subject_line'] }}</p>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Body</h5>
+            <div class="border p-3 bg-light">
+                {{ template['html_body'] | safe }}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Available Merge Fields</h5>
+            <p class="text-muted">These placeholders are replaced with lead data when sending.</p>
+            <div>
+                {% for field in merge_fields %}
+                <span class="badge bg-secondary me-1">{{ '{{' }}{{ field }}{{ '}}' }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <small class="text-muted">
+            Created: {{ template['created_at'] }}
+            {% if template['updated_at'] != template['created_at'] %}
+             | Updated: {{ template['updated_at'] }}
+            {% endif %}
+        </small>
+        <form method="POST" action="{{ url_for('template_editor.delete', id=template['id']) }}"
+              onsubmit="return confirm('Are you sure you want to delete this template?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger btn-sm">Delete Template</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
