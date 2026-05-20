@@ -22,7 +22,7 @@
         {% endwith %}
 
         <form method="post" action="{{ url_for('auth.setup') }}">
-          {{ csrf_token() }}
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
           <div class="mb-3">
             <label for="business_name" class="form-label">Business Name</label>

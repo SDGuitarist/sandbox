@@ -31,6 +31,7 @@ def login():
         flash('Invalid email or password.', 'error')
         return render_template('auth/login.html')
 
+    session.clear()  # Prevent session fixation
     session['user_id'] = user['id']
     return redirect(url_for('dashboard.index'))
 
