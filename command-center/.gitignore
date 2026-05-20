@@ -5,3 +5,4 @@ instance/
 *.db
 venv/
 .venv/
+test_smoke.py
