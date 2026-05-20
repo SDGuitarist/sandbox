@@ -1,0 +1,7 @@
+name,email,phone,website,source_url,description,venue_type
+Studio A,info@studioa.com,555-1234,https://studioa.com,https://studioa.com,A great recording studio,Recording Studio
+"Venue B, LLC",b@venue.com,,https://venueb.com,https://venueb.com,Event space downtown,Event Space
+No Contact,,,,,Gallery,Art Gallery
+No Source URL,nourl@test.com,555-0000,https://nosource.com,,Missing source URL,Warehouse
+Phone Only,,555-9999,,https://phoneonly.com,Just a phone number,Rehearsal Space
+"Special ""Chars"" Venue",special@test.com,,,https://special.com,"Description with, commas",Studio

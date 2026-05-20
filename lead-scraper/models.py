@@ -256,3 +256,74 @@ def delete_lead(lead_id: int, db_path=DB_PATH) -> bool:
     with get_db(db_path) as conn:
         conn.execute("DELETE FROM leads WHERE id = ?", (lead_id,))
         return conn.execute("SELECT changes()").fetchone()[0] > 0
+
+
+def delete_source(source_name: str, db_path=DB_PATH, dry_run: bool = False) -> dict:
+    """Delete all leads from a given source.
+
+    Refuses to delete leads with sent/replied/booked/declined outreach
+    (those represent real-world actions that cannot be undone).
+
+    Returns dict with counts: total, protected, deleted, campaign_leads, queue_entries.
+    """
+    with get_db(db_path) as conn:
+        # Find all leads for this source
+        leads = conn.execute(
+            "SELECT id, name FROM leads WHERE source = ?", (source_name,)
+        ).fetchall()
+
+        if not leads:
+            return {"total": 0, "protected": 0, "deleted": 0, "campaign_leads": 0, "queue_entries": 0}
+
+        lead_ids = [row["id"] for row in leads]
+        placeholders = ",".join("?" * len(lead_ids))
+
+        # Check for protected leads (sent/replied/booked/declined outreach)
+        protected_rows = conn.execute(
+            f"""SELECT DISTINCT l.id, l.name, oq.status as queue_status
+            FROM leads l
+            JOIN outreach_queue oq ON l.id = oq.lead_id
+            WHERE l.id IN ({placeholders})
+            AND oq.status IN ('sent', 'replied', 'booked', 'declined')
+            """,
+            lead_ids,
+        ).fetchall()
+        protected_ids = {row["id"] for row in protected_rows}
+
+        # Count associated records that will cascade-delete
+        campaign_lead_count = conn.execute(
+            f"SELECT COUNT(*) FROM campaign_leads WHERE lead_id IN ({placeholders})",
+            lead_ids,
+        ).fetchone()[0]
+
+        queue_count = conn.execute(
+            f"SELECT COUNT(*) FROM outreach_queue WHERE lead_id IN ({placeholders})",
+            lead_ids,
+        ).fetchone()[0]
+
+        deletable_ids = [lid for lid in lead_ids if lid not in protected_ids]
+
+        if dry_run:
+            return {
+                "total": len(leads),
+                "protected": len(protected_ids),
+                "deleted": len(deletable_ids),
+                "campaign_leads": campaign_lead_count,
+                "queue_entries": queue_count,
+            }
+
+        # Delete non-protected leads
+        if deletable_ids:
+            del_placeholders = ",".join("?" * len(deletable_ids))
+            conn.execute(
+                f"DELETE FROM leads WHERE id IN ({del_placeholders})",
+                deletable_ids,
+            )
+
+        return {
+            "total": len(leads),
+            "protected": len(protected_ids),
+            "deleted": len(deletable_ids),
+            "campaign_leads": campaign_lead_count,
+            "queue_entries": queue_count,
+        }

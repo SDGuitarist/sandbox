@@ -74,6 +74,7 @@ def available_segments() -> list[str]:
 BASE_SOURCES = {
     "meetup": {
         "enabled": False,  # Requires paid Apify actor rental ($8/mo)
+        "type": "apify",
         "actor": "datapilot/meetup-event-scraper",
         "groups": [
             "https://www.meetup.com/filmnet-sd/",
@@ -81,6 +82,7 @@ BASE_SOURCES = {
     },
     "eventbrite": {
         "enabled": True,
+        "type": "apify",
         "actor": "aitorsm/eventbrite",
         "keywords": [
             # Bucket 1: Musicians/Composers
@@ -104,6 +106,7 @@ BASE_SOURCES = {
     },
     "facebook": {
         "enabled": True,
+        "type": "apify",
         "actor": "apify/facebook-groups-scraper",
         "groups": [
             # Existing
@@ -134,6 +137,7 @@ BASE_SOURCES = {
     },
     "instagram": {
         "enabled": True,
+        "type": "apify",
         "actor": "apify/instagram-hashtag-scraper",
         "hashtags": [
             # Bucket 1: Musicians/Composers
@@ -154,12 +158,25 @@ BASE_SOURCES = {
     },
     "linkedin": {
         "enabled": False,  # Requires paid Apify actor rental
+        "type": "apify",
         "actor": "curious_coder/linkedin-people-search-scraper",
         "queries": [
             "filmmaker San Diego",
             "musician San Diego",
             "creative director San Diego",
         ],
+    },
+    "venue_csv": {
+        "enabled": True,
+        "type": "csv",
+        "csv_path": None,  # Auto-discovered from VENUE_SCRAPER_DIR
+        "source_name": "venue_scraper",
+    },
+    "google": {
+        "enabled": False,  # Phase 5: SerpAPI discovery
+        "type": "serpapi",
+        "queries": [],
+        "location": "San Diego, California, United States",
     },
 }
 
@@ -181,12 +198,17 @@ def _load_source_overrides() -> dict:
     return json.loads(SOURCES_OVERRIDES_PATH.read_text())
 
 
+_NON_OVERRIDABLE_FIELDS = {"type"}
+
+
 def _merge_sources(base_sources: dict, overrides: dict) -> dict:
     merged = deepcopy(base_sources)
     for source_name, source_overrides in overrides.items():
         if source_name not in merged or not isinstance(source_overrides, dict):
             continue
         for key, value in source_overrides.items():
+            if key in _NON_OVERRIDABLE_FIELDS:
+                continue
             if key.endswith("_add"):
                 field_name = key[:-4]
                 if field_name not in merged[source_name] or not isinstance(value, list):

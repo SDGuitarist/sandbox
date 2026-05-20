@@ -39,34 +39,81 @@ DEFAULT_EVENTBRITE_SOURCE = "eventbrite"
 NL_AUDIT_LOG_PATH = Path(__file__).parent / "nl_audit.jsonl"
 
 
+def _scrape_apify(source_name: str, source_config: dict, location: str) -> list[dict]:
+    """Dispatch to an Apify-based scraper module."""
+    from scrapers import eventbrite, meetup, facebook, linkedin, instagram
+    scraper_map = {
+        "eventbrite": eventbrite, "meetup": meetup, "facebook": facebook,
+        "linkedin": linkedin, "instagram": instagram,
+    }
+    scraper = scraper_map.get(source_name)
+    if scraper is None:
+        raise ValueError(f"No Apify scraper for source: {source_name}")
+    return scraper.scrape(location, source_config)
+
+
+def _scrape_csv(source_name: str, source_config: dict) -> list[dict]:
+    """Dispatch to CSV-based scraper."""
+    from scrapers import venue_csv
+    return venue_csv.scrape(source_config)
+
+
+def _scrape_serpapi(source_name: str, source_config: dict) -> list[dict]:
+    """Placeholder for Phase 5 SerpAPI discovery."""
+    raise NotImplementedError("SerpAPI scraper not yet implemented (Phase 5)")
+
+
 def cmd_scrape(args):
     """Run enabled scrapers and ingest results."""
-    # Validate token early
-    try:
-        get_apify_token()
-    except RuntimeError as e:
-        print(e, file=sys.stderr)
-        sys.exit(1)
+    # Validate Apify token only if there are enabled Apify sources
+    sources = get_sources()
+    has_apify = any(
+        cfg.get("enabled") and cfg.get("type", "apify") == "apify"
+        for cfg in sources.values()
+    )
+    if has_apify:
+        try:
+            get_apify_token()
+        except RuntimeError as e:
+            print(e, file=sys.stderr)
+            sys.exit(1)
 
     results = []
-    for source_name, source_config in get_sources().items():
+    for source_name, source_config in sources.items():
         if not source_config.get("enabled"):
             continue
 
-        print(f"Scraping {source_name}...", end=" ", flush=True)
+        # Filter by --source if specified
+        if hasattr(args, "source") and args.source and args.source != source_name:
+            continue
+
+        source_type = source_config.get("type", "apify")
+        print(f"Scraping {source_name} ({source_type})...", end=" ", flush=True)
         try:
-            from scrapers import eventbrite, meetup, facebook, linkedin, instagram
-            scraper_map = {"eventbrite": eventbrite, "meetup": meetup, "facebook": facebook, "linkedin": linkedin, "instagram": instagram}
-            scraper = scraper_map.get(source_name)
-            if scraper is None:
-                print(f"Unknown source: {source_name}")
+            if source_type == "apify":
+                leads = _scrape_apify(source_name, source_config, args.location)
+            elif source_type == "csv":
+                leads = _scrape_csv(source_name, source_config)
+            elif source_type == "serpapi":
+                leads = _scrape_serpapi(source_name, source_config)
+            else:
+                print(f"Unknown source type: {source_type}")
                 continue
-            leads = scraper.scrape(args.location, source_config)
+
             print(f"found {len(leads)} leads.", end=" ", flush=True)
 
             inserted, skipped, invalid = ingest_leads(leads)
             print(f"{inserted} new, {skipped} duplicates, {invalid} rejected.")
             results.append({"source": source_name, "inserted": inserted, "skipped": skipped, "error": None})
+
+            # Venue leads are businesses, not individuals -- bypass AI segment classifier.
+            if source_type == "csv" and source_config.get("source_name") == "venue_scraper" and inserted > 0:
+                with get_db() as conn:
+                    conn.execute(
+                        "UPDATE leads SET segment = 'venue', segment_confidence = 1.0 "
+                        "WHERE source = 'venue_scraper' AND segment IS NULL"
+                    )
+                print(f"  Tagged {inserted} venue leads with segment='venue'.")
 
         except Exception as e:
             # Mask tokens that might appear in the error message
@@ -278,6 +325,44 @@ def _cmd_leads_unhold(args) -> None:
         print("WARNING: Lead has no segment -- will not be assigned to campaigns until enriched.")
     elif segments and row["segment"] not in segments:
         print(f"WARNING: Segment '{row['segment']}' has no template -- lead will not be assigned.")
+
+
+def cmd_delete_source(args):
+    """Delete all leads from a specific source."""
+    from models import delete_source
+    from db import _backup_wal_safe
+
+    # Dry run first to show what would happen
+    result = delete_source(args.source_name, dry_run=True)
+
+    if result["total"] == 0:
+        print(f"No leads found with source='{args.source_name}'.")
+        return
+
+    print(f"\nSource '{args.source_name}' delete summary:")
+    print(f"  Total leads:       {result['total']}")
+    print(f"  Protected (sent):  {result['protected']}")
+    print(f"  Would delete:      {result['deleted']}")
+    print(f"  Campaign links:    {result['campaign_leads']}")
+    print(f"  Queue entries:     {result['queue_entries']}")
+
+    if result["protected"] > 0:
+        print(f"\n  WARNING: {result['protected']} leads have sent/replied outreach and will NOT be deleted.")
+
+    if args.dry_run:
+        print("\n  --dry-run: no changes made.")
+        return
+
+    if result["deleted"] == 0:
+        print("\n  Nothing to delete (all leads are protected).")
+        return
+
+    # Create backup before deletion
+    _backup_wal_safe(DB_PATH)
+
+    # Execute
+    actual = delete_source(args.source_name, dry_run=False)
+    print(f"\n  Deleted {actual['deleted']} leads. Backup created.")
 
 
 def cmd_import(args):
@@ -1024,7 +1109,8 @@ def main():
 
     # scrape
     sp_scrape = subparsers.add_parser("scrape", help="Run scrapers and ingest leads")
-    sp_scrape.add_argument("--location", required=True, help='Target location, e.g. "San Diego, CA"')
+    sp_scrape.add_argument("--location", default="San Diego, CA", help='Target location (default: "San Diego, CA")')
+    sp_scrape.add_argument("--source", type=str, default=None, help="Run only this source (e.g. venue_csv)")
     sp_scrape.set_defaults(func=cmd_scrape)
 
     # export
@@ -1053,6 +1139,12 @@ def main():
         help="Age threshold for --refresh in days (default: 30)",
     )
     sp_enrich.set_defaults(func=cmd_enrich)
+
+    # delete-source
+    sp_del = subparsers.add_parser("delete-source", help="Delete all leads from a source")
+    sp_del.add_argument("source_name", type=str, help="Source name (e.g. venue_scraper)")
+    sp_del.add_argument("--dry-run", action="store_true", help="Show what would be deleted without acting")
+    sp_del.set_defaults(func=cmd_delete_source)
 
     # leads
     sp_leads = subparsers.add_parser("leads", help="Lead queries")
