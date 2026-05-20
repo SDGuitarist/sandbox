@@ -19,6 +19,9 @@ def create_app():
         raise RuntimeError('Set a real SECRET_KEY in production')
     app.config['SECRET_KEY'] = secret
     app.config['DATABASE'] = os.path.join(app.instance_path, 'venueconnect.db')
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = not app.debug
 
     if app.debug or app.testing:
         app.config['WTF_CSRF_ENABLED'] = False
@@ -42,6 +45,7 @@ def create_app():
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Content-Security-Policy'] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
         return response
 
     # CSRF error handler

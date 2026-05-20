@@ -78,6 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_bookings_musician_user_id ON bookings(musician_us
 CREATE INDEX IF NOT EXISTS idx_bookings_event_id ON bookings(event_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_state ON bookings(state);
 CREATE INDEX IF NOT EXISTS idx_bookings_event_date ON bookings(event_date);
+CREATE INDEX IF NOT EXISTS idx_bookings_room_date ON bookings(room_id, event_date);
 
 -- Booking state transition audit trail
 CREATE TABLE IF NOT EXISTS booking_history (
