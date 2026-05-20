@@ -1,0 +1,22 @@
+/* VenueConnect custom styles */
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+.navbar-brand {
+    font-weight: 700;
+}
+
+#notif-badge {
+    font-size: 0.65rem;
+    position: absolute;
+    top: 2px;
+    right: -6px;
+}
