@@ -1,0 +1,71 @@
+{% set active_page = 'repertoire' %}
+{% extends 'base.html' %}
+
+{% block title %}{{ 'Edit Song' if song else 'Add Song' }} - GigList{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Song' if song else 'Add Song' }}</h1>
+
+<form method="POST" class="mt-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="title" name="title" required value="{{ song.title if song else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="artist" class="form-label">Artist</label>
+        <input type="text" class="form-control" id="artist" name="artist" value="{{ song.artist if song else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="genre" class="form-label">Genre</label>
+        <select class="form-select" id="genre" name="genre">
+            {% for g in genres %}
+            <option value="{{ g }}" {% if song and song.genre == g %}selected{% elif not song and g == 'other' %}selected{% endif %}>{{ g|format_genre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="musical_key" class="form-label">Key</label>
+        <input type="text" class="form-control" id="musical_key" name="musical_key" placeholder="e.g. C major, Am" value="{{ song.musical_key if song else '' }}">
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label for="tempo" class="form-label">Tempo (BPM)</label>
+            <input type="number" class="form-control" id="tempo" name="tempo" min="1" max="300" value="{{ song.tempo if song and song.tempo else '' }}">
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label for="energy" class="form-label">Energy</label>
+            <select class="form-select" id="energy" name="energy">
+                {% for e in range(1, 6) %}
+                <option value="{{ e }}" {% if song and song.energy == e %}selected{% elif not song and e == 3 %}selected{% endif %}>{{ e|format_energy }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <label for="duration_seconds" class="form-label">Duration (seconds)</label>
+            <input type="number" class="form-control" id="duration_seconds" name="duration_seconds" min="1" value="{{ song.duration_seconds if song and song.duration_seconds else '' }}">
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ song.notes if song else '' }}</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{{ 'Update Song' if song else 'Create Song' }}</button>
+        {% if song %}
+        <a href="{{ url_for('repertoire.detail', song_id=song.id) }}" class="btn btn-outline-secondary">Cancel</a>
+        {% else %}
+        <a href="{{ url_for('repertoire.index') }}" class="btn btn-outline-secondary">Cancel</a>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}
