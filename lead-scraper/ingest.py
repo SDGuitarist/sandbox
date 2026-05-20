@@ -1,11 +1,43 @@
 import csv
+import logging
 from pathlib import Path
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from db import get_db, DB_PATH
 from scrapers import NormalizedLead
 from utils import sanitize_csv_cell
 
+logger = logging.getLogger(__name__)
+
 REQUIRED_FIELDS = {"name", "profile_url", "source"}
+
+
+class LeadModel(BaseModel):
+    """Validates lead data at the ingest boundary before SQLite INSERT.
+
+    Same shape as NormalizedLead TypedDict but with runtime enforcement.
+    TypedDict = static type checking. BaseModel = runtime validation.
+    """
+
+    model_config = ConfigDict(strict=True)
+
+    name: str = Field(min_length=1)
+    bio: str | None = None
+    location: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    website: str | None = None
+    profile_url: str = Field(min_length=1)
+    activity: str | None = None
+    source: str = Field(min_length=1)
+
+    @field_validator("profile_url")
+    @classmethod
+    def must_be_https(cls, v: str) -> str:
+        if not v.startswith("https://"):
+            raise ValueError("profile_url must start with https://")
+        return v
 
 # Column mapping for flexible CSV headers (case-insensitive)
 _CSV_FIELD_MAP = {
@@ -16,6 +48,8 @@ _CSV_FIELD_MAP = {
     "location": "location", "Location": "location",
     "email": "email", "Email": "email",
     "website": "website", "Website": "website",
+    "phone": "phone", "Phone": "phone",
+    "venue_type": "activity", "Venue Type": "activity",
 }
 
 
@@ -23,28 +57,34 @@ def ingest_leads(leads: list[NormalizedLead], db_path=DB_PATH) -> tuple[int, int
     """Validate and insert leads. Returns (inserted, skipped, invalid) counts.
 
     This is the ONLY module that executes INSERT on the leads table.
+    Validates each lead through LeadModel (Pydantic) before INSERT.
     """
 
     inserted = skipped = invalid = 0
     valid_leads = []
 
     for lead in leads:
-        # Validate required fields are present and non-empty
-        if not all(lead.get(f) for f in REQUIRED_FIELDS):
+        try:
+            validated = LeadModel.model_validate(lead)
+            valid_leads.append(validated.model_dump())
+        except ValidationError as e:
             invalid += 1
+            lead_name = lead.get("name", "<missing>")
+            lead_source = lead.get("source", "<missing>")
+            logger.warning(
+                "Lead validation failed: name=%s source=%s errors=%s",
+                lead_name,
+                lead_source,
+                e.errors(),
+            )
             continue
-        # Validate profile_url is https
-        if not lead["profile_url"].lower().startswith("https://"):
-            invalid += 1
-            continue
-        valid_leads.append(lead)
 
     with get_db(db_path) as conn:
         for lead in valid_leads:
             conn.execute(
                 """INSERT OR IGNORE INTO leads
-                   (name, bio, location, email, website, profile_url, activity, source)
-                   VALUES (:name, :bio, :location, :email, :website, :profile_url, :activity, :source)""",
+                   (name, bio, location, email, phone, website, profile_url, activity, source)
+                   VALUES (:name, :bio, :location, :email, :phone, :website, :profile_url, :activity, :source)""",
                 lead,
             )
             if conn.execute("SELECT changes()").fetchone()[0] > 0:

@@ -98,3 +98,22 @@ def test_ingest_batch_counts(setup_db):
     assert inserted == 2
     assert skipped == 0
     assert invalid == 2
+
+
+def test_ingest_phone_carries_through(setup_db):
+    """Phone field in lead dict is stored in the database."""
+    leads = [_make_lead(phone="619-555-0123")]
+    inserted, _, _ = ingest_leads(leads, setup_db)
+    assert inserted == 1
+
+    with get_db(setup_db) as conn:
+        row = conn.execute("SELECT phone FROM leads WHERE name = 'Jane Doe'").fetchone()
+    assert row["phone"] == "619-555-0123"
+
+
+def test_ingest_strict_rejects_int_name(setup_db):
+    """Pydantic strict mode rejects non-string types for string fields."""
+    leads = [_make_lead(name=123)]
+    inserted, _, invalid = ingest_leads(leads, setup_db)
+    assert invalid == 1
+    assert inserted == 0
