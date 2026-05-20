@@ -1,75 +1,42 @@
-# Browser Outreach Sender -- Operational Ramp
+# HANDOFF -- Lead-Scraper
 
-**Phase:** Operational (all code phases complete)
-**Date:** 2026-05-14
-**Plan:** docs/plans/2026-05-08-feat-browser-outreach-sender-plan.md
-**Brainstorm:** docs/brainstorms/2026-05-08-browser-outreach-sender-brainstorm.md
+**Date:** 2026-05-20
+**Branch:** master
+**Phase:** Compound complete -- cross-pollination integration shipped and reviewed
 
 ## Current State
 
-All 4 implementation phases are complete. The system is operational and has sent 82 messages (May 7-10). Sending has been idle since May 10.
+5-phase cross-pollination integration between lead-scraper and venue-scraper is complete. All phases implemented, 4-agent review done, 7 findings fixed, solution doc written, learnings propagated. 326 tests passing (4 pre-existing failures). The two repos are now connected via CSV handoff with type-based source dispatch, tiered LLM extraction, and SerpAPI discovery.
 
-**Database snapshot (May 14):**
-- 4,198 total leads, 989 high-quality sendable (verified + quality >= 3)
-- 60 approved messages sitting unsent across wave2 campaigns
-- 20 needs_review messages awaiting manual triage
-- 82 sent, 226 skipped, 1 declined
-- 1 sender account ("personal"), 30/day cap, risk acknowledged
+## Key Artifacts
 
-**Deadline:** May 30 workshop (16 days). At 30/day with 1 account, max ~480 more sends. Need a second account to reach 1,000.
-
-## Next Action
-
-Resume daily sending operations. Follow the Daily Operational Playbook in the plan (Phase 4c).
-
-## Prompt for New Session
-
-Read docs/plans/2026-05-08-feat-browser-outreach-sender-plan.md (Phase 4c: Daily Operational Playbook).
-
-Resume operational sending. The code is complete. Focus on:
-1. Send the 60 approved messages (`campaign send <id> --limit 30` per session)
-2. Run quality gate on campaigns with remaining drafts
-3. Force-approve or force-skip the 20 needs_review items
-4. Generate new drafts for wave2 campaigns with unqueued leads
-5. Consider adding a second sender account for throughput
-
-**Critical rules:**
-- NEVER run concurrent processes on leads.db
-- Always use `--limit` with campaign send (no unlimited sends)
-- Watch the headed browser during sends for restriction signals
-- If account gets restricted: `account cooldown personal --hours 48`
-
-**Key commands:**
-```
-python run.py account list                          # check account status
-python run.py campaign status <id>                  # campaign metrics
-python run.py campaign queue <id> --status approved # see what's ready
-python run.py campaign send <id> --limit 30         # send a batch
-python run.py campaign gate <id>                    # verify drafts
-python run.py campaign queue <id> --status needs_review  # triage
-python run.py campaign force-approve <id> --lead <id>    # approve after review
-python run.py campaign force-skip <id> --lead <id>       # reject after review
-```
-
-## Phase Sequence
-
-- [x] Brainstorm (2 Codex reviews, all blockers fixed)
-- [x] Plan (3 Codex reviews, all blockers fixed)
-- [x] Work Phase 1: Foundation (May 8)
-- [x] Work Phase 2: Minimal Sender + Spike Test (May 8-10, 82 sent)
-- [x] Work Phase 3: Quality Gate (May 8)
-- [x] Work Phase 4: Full CLI Integration + Ramp (May 8)
-- [ ] Review
-- [ ] Compound
+| Phase | Location |
+|-------|----------|
+| Brainstorm | docs/brainstorms/2026-05-19-cross-pollination-brainstorm.md |
+| Plan | docs/plans/2026-05-19-feat-cross-pollination-lead-venue-integration-plan.md |
+| Codex Review | docs/plans/2026-05-19-codex-review-findings.md |
+| Solution | docs/solutions/2026-05-20-cross-pollination-lead-venue-integration.md |
 
 ## Deferred Items
 
-- Add second sender account (needed for 1,000 target by May 30)
-- Haiku accuracy audit (plan says: after 50 AI-gated leads, spot-check 10 approved + 10 skipped)
-- AUTO_APPROVE_LOGIN_WALLED toggle (currently 0, switch to 1 after confirming <10% error rate on login-walled leads)
+- P2: `screen_leads()` can overwrite `email_domain_mismatch` reason with screening failure reason -- needs design decision about storing multiple hold reasons
+- P2: `name` field always overwrites on venue upsert (no COALESCE) -- low probability with LLM extraction
+- P2: Relative `CACHE_DIR` in google.py (CWD-dependent)
+- P1 (arch): `WebsiteContactModel` defined twice (enrich.py + google.py) -- should deduplicate
+- P1 (arch): `scrapers/google.py` imports private `_` functions from `enrich.py` -- should extract to shared module
+- Pre-existing H1: SSRF bypass in `_verify_url_contains_hook()` -- not from this work but should fix
 
-## Prior Handoff (Reliability Hardening -- 2026-05-06)
+## Three Questions
 
-- Inline retry loop, circuit breakers, manual_approved column, 12 new tests
-- 8-agent review: 1 P1 + 4 P2 fixed
-- Solution doc: docs/solutions/2026-05-06-reliability-hardening.md
+1. **Hardest decision?** Keeping `unhold_lead()` narrow (manual_approved only) vs making it clear all holds. Chose narrow because `is_sendable` is shared with `screen_leads()` screening failures.
+2. **What was rejected?** Shared DB (WRC incident), monolith (complexity), shared library (~700 lines doesn't justify packaging), Sonnet-only extraction (10x cost).
+3. **Least confident about?** `screen_leads()` can overwrite `email_domain_mismatch` reason when a lead also fails screening. Deferred -- needs multiple-reason design.
+
+## Prompt for Next Session
+
+```
+Read HANDOFF.md for context. This is lead-scraper, a lead discovery and outreach pipeline.
+Cross-pollination integration (5 phases) is complete and reviewed. 326 tests passing.
+Next: run `python run.py enrich --step website --max-cost 10` to LLM-enrich the full lead batch,
+or start a new feature cycle. Check deferred items in HANDOFF.md for cleanup opportunities.
+```

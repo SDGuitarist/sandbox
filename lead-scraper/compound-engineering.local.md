@@ -3,32 +3,33 @@ review_agents:
   - security-sentinel
   - performance-oracle
   - architecture-strategist
-  - code-simplicity-reviewer
-  - kieran-python-reviewer
+  - data-integrity-guardian
 ---
 
-# Review Context -- Lead Scraper
+# Review Context -- Lead-Scraper x Venue-Scraper Cross-Pollination
 
 ## Risk Chain
 
-**Brainstorm risk:** "Circuit breaker reset strategy -- resetting per batch run is simple but means a flaky API that recovers mid-batch won't be retried."
+**Brainstorm risk:** Phase 3 source dispatch refactor -- `_merge_sources()` can overwrite type field via `sources.overrides.json`
 
-**Plan mitigation:** Per-function circuit breaker instances (not shared across steps). Batch-reset is acceptable. Simplified from class to inline counter.
+**Plan mitigation:** `_NON_OVERRIDABLE_FIELDS = {"type"}` set in config.py, `_merge_sources()` skips keys in this set, two named tests required
 
-**Work risk (from Feed-Forward):** "The _research_single_hook retry loop coordinates with two existing timing mechanisms: parse_retry_after() sleep on 429 and the existing time.sleep(1.2) rate-limit sleep in enrich_hook() outer loop."
+**Work risk (from Feed-Forward):** `screen_leads()` can overwrite `email_domain_mismatch` reason when a lead also fails a screening check, making `clear_domain_mismatch()` unable to find it later
 
-**Review resolution:** 8 agents, 1 P1 + 4 P2 + 1 P3. All P1/P2 fixed. enrich_leads() breaker removed (dead code -- function never raises). Hunter pct denominator fixed. Final-429 sleep waste fixed. Codex caught 4 additional issues, all resolved. 154 tests pass.
+**Review resolution:** 4-agent review found 3 P0 + 4 P1. All 7 fixed. Top findings: broken cost cap (tokens never counted), missing DB lock registrations, domain mismatch check on wrong email. Feed-forward dispatch risk confirmed resolved (4 guard tests pass).
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| enrich.py | Retry loop in _research_single_hook, circuit breakers in 2 loops, Hunter alerts | Double-timing interaction, failure signal correctness |
-| resilience.py | parse_retry_after (120s cap), ANSI color constants | Security cap, TTY detection |
-| models.py | COALESCE in 4 UNION branches, unhold_lead, merge preservation | NULL handling, admin flag ownership |
-| campaign.py | assign_leads OR clause with segment guard | SQL grouping correctness |
-| run.py | leads unhold CLI, null segment warning | CLI validation completeness |
+| enrich.py | LLM extraction loop, force_enriched_at, screen_leads mismatch guard | Cost control, hold system interactions |
+| config.py | type field on all sources, _NON_OVERRIDABLE_FIELDS | Dispatch routing |
+| run.py | Type dispatch, delete-source, clear-mismatch, --max-cost | DB lock registration |
+| models.py | delete_source(), clear_domain_mismatch(), query_held_leads() | Cascade delete safety, hold visibility |
+| scrapers/venue_csv.py | CSV normalization, http->https | URL scheme mismatch |
+| scrapers/google.py | SerpAPI + LLM extraction pipeline | SSRF trust boundary |
+| venue-scraper/db.py | SQLite backend, upsert, outreach status | Transaction safety |
 
 ## Plan Reference
 
-`docs/plans/2026-05-06-feat-reliability-hardening-plan.md`
+`docs/plans/2026-05-19-feat-cross-pollination-lead-venue-integration-plan.md`
