@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Room Availability - {{ room['name'] }} - VenueConnect{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('booking_create.browse') }}">Browse Venues</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('venues.detail', venue_id=venue['id']) }}">{{ venue['name'] }}</a></li>
+        <li class="breadcrumb-item active">{{ room['name'] }}</li>
+    </ol>
+</nav>
+
+<h1>{{ room['name'] }}</h1>
+<p class="text-muted">at {{ venue['name'] }} &mdash; {{ venue['location'] }}</p>
+
+{% if room['description'] %}
+<p>{{ room['description'] }}</p>
+{% endif %}
+
+<div class="mb-3">
+    {% if room['capacity'] %}
+    <span class="badge bg-info">Capacity: {{ room['capacity'] }}</span>
+    {% endif %}
+    {% if room['has_pa'] %}
+    <span class="badge bg-success">PA System</span>
+    {% endif %}
+    {% if room['has_lighting'] %}
+    <span class="badge bg-success">Lighting</span>
+    {% endif %}
+</div>
+
+<h3>Availability Windows</h3>
+{% if windows %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Day</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for window in windows %}
+        <tr>
+            <td>{{ window['day_of_week']|day_name }}</td>
+            <td>{{ window['start_time'] }}</td>
+            <td>{{ window['end_time'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="alert alert-warning">No availability windows set for this room yet.</div>
+{% endif %}
+
+<a href="{{ url_for('booking_create.request_booking', room_id=room['id']) }}" class="btn btn-primary">
+    Request Booking
+</a>
+{% endblock %}

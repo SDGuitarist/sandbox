@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Request Booking - {{ room['name'] }} - VenueConnect{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('booking_create.browse') }}">Browse Venues</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('booking_create.room_availability', room_id=room['id']) }}">{{ room['name'] }}</a></li>
+        <li class="breadcrumb-item active">Request Booking</li>
+    </ol>
+</nav>
+
+<h1>Request Booking</h1>
+<p class="text-muted">{{ room['name'] }} at {{ venue['name'] }}</p>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="event_name" class="form-label">Event Name</label>
+        <input type="text" class="form-control" id="event_name" name="event_name" required>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label for="event_date" class="form-label">Event Date</label>
+            <input type="date" class="form-control" id="event_date" name="event_date" required>
+        </div>
+        <div class="col-md-4">
+            <label for="start_time" class="form-label">Start Time</label>
+            <input type="time" class="form-control" id="start_time" name="start_time" required>
+        </div>
+        <div class="col-md-4">
+            <label for="end_time" class="form-label">End Time</label>
+            <input type="time" class="form-control" id="end_time" name="end_time" required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="deal_type" class="form-label">Deal Type</label>
+        <select class="form-select" id="deal_type" name="deal_type">
+            <option value="door_split" selected>Door Split</option>
+            <option value="guarantee">Guarantee</option>
+            <option value="hybrid">Hybrid (Guarantee + Door Split)</option>
+        </select>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label for="guarantee_dollars" class="form-label">Guarantee ($)</label>
+            <input type="number" class="form-control" id="guarantee_dollars" name="guarantee_dollars" value="0" step="0.01" min="0">
+        </div>
+        <div class="col-md-3">
+            <label for="door_split_pct" class="form-label">Door Split (%)</label>
+            <input type="number" class="form-control" id="door_split_pct" name="door_split_pct" value="70" min="0" max="100">
+        </div>
+        <div class="col-md-3">
+            <label for="promoter_fee_pct" class="form-label">Promoter Fee (%)</label>
+            <input type="number" class="form-control" id="promoter_fee_pct" name="promoter_fee_pct" value="0" min="0" max="100">
+        </div>
+        <div class="col-md-3">
+            <label for="tax_pct" class="form-label">Tax (%)</label>
+            <input type="number" class="form-control" id="tax_pct" name="tax_pct" value="0" min="0" max="100">
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Any special requirements or notes for the venue..."></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit Booking Request</button>
+    <a href="{{ url_for('booking_create.room_availability', room_id=room['id']) }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
