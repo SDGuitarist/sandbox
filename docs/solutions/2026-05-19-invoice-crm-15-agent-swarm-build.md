@@ -10,7 +10,7 @@ total_lines: ~6000
 tests: 37
 merge_conflicts: 0
 assembly_fixes: 2
-review_findings: TBD
+review_findings: 8 P1 (6 fixed), ~12 P2, ~17 P3
 run_id: "046"
 tags: [flask, sqlite, jinja2, swarm, crm, invoicing, 15-agent]
 ---
