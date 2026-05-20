@@ -1,6 +1,8 @@
 from typing import TypedDict
 
 
+# DEPRECATED: use LeadModel (in ingest.py) for runtime validation.
+# This TypedDict remains for backward-compatible type annotations in scrapers.
 class NormalizedLead(TypedDict):
     name: str
     bio: str | None
