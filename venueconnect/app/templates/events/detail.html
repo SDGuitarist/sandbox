@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ event['name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ event['name'] }}</h1>
+    <a href="{{ url_for('events.edit', id=event['id']) }}" class="btn btn-outline-secondary">Edit Event</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p><strong>Venue:</strong> {{ event['venue_name'] }}</p>
+        <p><strong>Date:</strong> {{ event['event_date'] }}</p>
+        {% if event['description'] %}
+        <p><strong>Description:</strong> {{ event['description'] }}</p>
+        {% endif %}
+        <p class="text-muted mb-0"><small>Created: {{ event['created_at'] }}</small></p>
+    </div>
+</div>
+
+<h2 class="mb-3">Linked Bookings</h2>
+
+{% if bookings %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Room</th>
+                <th>Musician</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>State</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking['room_name'] }}</td>
+                <td>{{ booking['musician_name'] }}</td>
+                <td>{{ booking['event_date'] }}</td>
+                <td>{{ booking['start_time'] }} - {{ booking['end_time'] }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if booking['state'] in ('confirmed', 'advanced', 'performed', 'settled', 'paid') else 'warning' if booking['state'] == 'requested' else 'danger' }}">
+                        {{ booking['state'] }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No bookings linked to this event yet.</p>
+{% endif %}
+
+<div class="card mt-4">
+    <div class="card-body">
+        <h5 class="card-title">Link a Booking</h5>
+        <form method="POST" action="{{ url_for('events.link_booking', id=event['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label for="booking_id" class="form-label">Booking ID</label>
+                    <input type="number" class="form-control" id="booking_id" name="booking_id" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Link Booking</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('events.list') }}" class="btn btn-outline-secondary">Back to Events</a>
+</div>
+{% endblock %}

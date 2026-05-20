@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Browse Venues - VenueConnect{% endblock %}
+
+{% block content %}
+<h1>Browse Venues</h1>
+<p class="text-muted">Find a venue and book a room for your next gig.</p>
+
+{% if venues %}
+<div class="row">
+    {% for venue in venues %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ venue['name'] }}</h5>
+                <p class="card-text text-muted">{{ venue['location'] }}</p>
+                {% if venue['description'] %}
+                <p class="card-text">{{ venue['description']|truncate(120) }}</p>
+                {% endif %}
+                {% if venue['genre_tags'] %}
+                <p class="card-text">
+                    {% for tag in venue['genre_tags'].split(',') %}
+                    <span class="badge bg-secondary">{{ tag.strip() }}</span>
+                    {% endfor %}
+                </p>
+                {% endif %}
+                {% if venue['capacity'] %}
+                <p class="card-text"><small class="text-muted">Capacity: {{ venue['capacity'] }}</small></p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('venues.detail', venue_id=venue['id']) }}" class="btn btn-outline-primary btn-sm">View Venue</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">No venues available yet. Check back soon!</div>
+{% endif %}
+{% endblock %}

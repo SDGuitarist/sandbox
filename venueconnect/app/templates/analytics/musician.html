@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Musician Analytics{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<h1>Musician Analytics</h1>
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card"><div class="card-body">
+            <h5 class="card-title">Earnings by Month</h5>
+            <canvas id="earningsChart"></canvas>
+        </div></div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card"><div class="card-body">
+            <h5 class="card-title">Venues Played</h5>
+            <canvas id="venuesChart"></canvas>
+        </div></div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card"><div class="card-body">
+            <h5 class="card-title">Booking Success Rate</h5>
+            <canvas id="successChart"></canvas>
+        </div></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Bar chart -- earnings by month
+var earningsData = {{ earnings_data|tojson }};
+new Chart(document.getElementById('earningsChart'), {
+    type: 'bar',
+    data: {
+        labels: earningsData.map(function(r) { return r.month; }),
+        datasets: [{
+            label: 'Earnings',
+            data: earningsData.map(function(r) { return r.total_cents / 100; }),
+            backgroundColor: 'rgba(54, 162, 235, 0.7)'
+        }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true,
+        ticks: { callback: function(v) { return '$' + v.toLocaleString(); } }
+    }}}
+});
+
+// Horizontal bar chart -- venues played
+var venuesData = {{ venues_data|tojson }};
+new Chart(document.getElementById('venuesChart'), {
+    type: 'bar',
+    data: {
+        labels: venuesData.map(function(r) { return r.venue_name; }),
+        datasets: [{
+            label: 'Gigs',
+            data: venuesData.map(function(r) { return r.gig_count; }),
+            backgroundColor: 'rgba(75, 192, 192, 0.7)'
+        }]
+    },
+    options: { responsive: true, indexAxis: 'y', scales: { x: { beginAtZero: true,
+        ticks: { stepSize: 1 }
+    }}}
+});
+
+// Doughnut chart -- booking success rate
+var successData = {{ success_data|tojson }};
+var pending = successData.total - successData.confirmed - successData.rejected;
+new Chart(document.getElementById('successChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Confirmed', 'Rejected', 'Pending'],
+        datasets: [{
+            data: [successData.confirmed, successData.rejected, pending],
+            backgroundColor: ['#4BC0C0', '#FF6384', '#FFCE56']
+        }]
+    },
+    options: { responsive: true }
+});
+</script>
+{% endblock %}

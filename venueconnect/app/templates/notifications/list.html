@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Notifications</h1>
+    {% if notifications %}
+    <form method="post" action="{{ url_for('notification_views.mark_all_read') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Mark All as Read</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if notifications %}
+<div class="list-group">
+    {% for n in notifications %}
+    <div class="list-group-item d-flex justify-content-between align-items-start {% if not n['is_read'] %}list-group-item-primary{% endif %}">
+        <div class="me-auto">
+            {% if n['link'] %}
+            <a href="{{ n['link'] }}">{{ n['message'] }}</a>
+            {% else %}
+            {{ n['message'] }}
+            {% endif %}
+            <br>
+            <small class="text-muted">{{ n['created_at'] }}</small>
+        </div>
+        {% if not n['is_read'] %}
+        <form method="post" action="{{ url_for('notification_views.mark_read', id=n['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-primary ms-2">Mark Read</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No notifications yet.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}My Venues - VenueConnect{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>My Venues</h1>
+    <a href="{{ url_for('venues.create') }}" class="btn btn-primary">Add Venue</a>
+</div>
+
+{% if venues %}
+<div class="row">
+    {% for venue in venues %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ venue['name'] }}</h5>
+                {% if venue['location'] %}
+                <p class="card-text text-muted">{{ venue['location'] }}</p>
+                {% endif %}
+                {% if venue['capacity'] > 0 %}
+                <p class="card-text"><small>Capacity: {{ venue['capacity'] }}</small></p>
+                {% endif %}
+                {% if venue['genre_tags'] %}
+                <p class="card-text">
+                    {% for tag in venue['genre_tags'].split(',') %}
+                    <span class="badge bg-secondary">{{ tag.strip() }}</span>
+                    {% endfor %}
+                </p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('venues.detail', venue_id=venue['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                <a href="{{ url_for('venues.edit', venue_id=venue['id']) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    You haven't added any venues yet. Click "Add Venue" to get started.
+</div>
+{% endif %}
+{% endblock %}

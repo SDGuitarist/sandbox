@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Ticket Tiers - {{ booking['event_name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Ticket Tiers</h1>
+    <a href="{{ url_for('tickets.add', booking_id=booking['id']) }}" class="btn btn-primary">
+        Add Tier
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Booking Details</h5>
+        <p class="mb-1"><strong>Event:</strong> {{ booking['event_name'] }}</p>
+        <p class="mb-1"><strong>Venue:</strong> {{ booking['venue_name'] }}</p>
+        <p class="mb-1"><strong>Room:</strong> {{ booking['room_name'] }}</p>
+        <p class="mb-1"><strong>Date:</strong> {{ booking['event_date'] }}</p>
+        <p class="mb-0"><strong>Status:</strong>
+            <span class="badge bg-secondary">{{ booking['state'] }}</span>
+        </p>
+    </div>
+</div>
+
+{% if tiers %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Sold</th>
+                <th>Revenue</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tier in tiers %}
+            <tr>
+                <td>{{ tier['name'] }}</td>
+                <td>{{ tier['price_cents']|dollars }}</td>
+                <td>{{ tier['quantity'] }}</td>
+                <td>{{ tier['sold_count'] }}</td>
+                <td>{{ (tier['price_cents'] * tier['sold_count'])|dollars }}</td>
+                <td>
+                    <a href="{{ url_for('tickets.edit', tier_id=tier['id']) }}"
+                       class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form method="POST" action="{{ url_for('tickets.delete', tier_id=tier['id']) }}"
+                          class="d-inline"
+                          onsubmit="return confirm('Delete this tier?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+    No ticket tiers defined yet. Click "Add Tier" to create one.
+</div>
+{% endif %}
+{% endblock %}
