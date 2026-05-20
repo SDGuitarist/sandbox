@@ -20,7 +20,7 @@ def index():
         # 2. Update overdue invoices
         db.execute("""
             UPDATE invoices SET status = 'overdue', updated_at = datetime('now')
-            WHERE user_id = ? AND status = 'sent' AND due_date < date('now')
+            WHERE user_id = ? AND status IN ('sent', 'viewed') AND due_date < date('now')
         """, (user_id,))
         db.commit()
 

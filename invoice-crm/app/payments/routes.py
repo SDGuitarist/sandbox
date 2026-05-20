@@ -21,6 +21,10 @@ def create_payment(invoice_id):
             flash('Invoice not found.', 'danger')
             return redirect(url_for('payments.list_payments'))
 
+        if invoice['status'] == 'draft':
+            flash('Cannot record payments on draft invoices. Send the invoice first.', 'danger')
+            return redirect(url_for('invoices.view_invoice', invoice_id=invoice_id))
+
         form = PaymentForm()
 
         if form.validate_on_submit():
@@ -135,6 +139,9 @@ def delete_payment(payment_id):
             invoice_total = invoice['total_cents']
 
             if total_paid < invoice_total:
+                # Revert to 'sent' -- the safe default. We don't track pre-payment
+                # status, so 'sent' is the most conservative revert target.
+                # 'viewed' invoices will be correctly handled by overdue detection.
                 db.execute(
                     "UPDATE invoices SET status = 'sent', updated_at = datetime('now') WHERE id = ?",
                     (invoice_id,)
