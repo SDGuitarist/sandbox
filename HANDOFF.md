@@ -21,16 +21,16 @@ VenueConnect 25-agent swarm build complete. 90 files, 5,750 LOC, zero merge conf
 
 ## Deferred Items
 
-### Run 049 (VenueConnect)
-- 049-D1: N+1 query loop in dashboard-venue (MEDIUM, performance)
-- 049-D2: Unbounded list queries -- no pagination (MEDIUM, performance)
-- 049-D3: Analytics queries without date bounds (MEDIUM, performance)
-- 049-D4: Missing WAL mode (LOW, performance)
-- 049-D5: Missing composite index for conflict check (LOW, performance)
-- 049-D6: Notification mark_read no ownership check (MEDIUM, security)
-- 049-D7: Missing CSP header (LOW, security)
-- 049-D8: Session cookie security attributes (LOW, security)
-- 049-D9: No `confirmed -> performed` shortcut for non-advance bookings (LOW, UX)
+### Run 049 (VenueConnect) -- ALL RESOLVED
+- ~~049-D1: N+1 query loop in dashboard-venue~~ FIXED (2 aggregate SQL queries)
+- ~~049-D2: Unbounded list queries~~ FIXED (LIMIT/OFFSET pagination, default 50)
+- ~~049-D3: Analytics queries without date bounds~~ FIXED (since_date param, default 12mo)
+- ~~049-D4: Missing WAL mode~~ FIXED (PRAGMA journal_mode=WAL in get_db)
+- ~~049-D5: Missing composite index~~ FIXED (idx_bookings_room_date)
+- ~~049-D6: Notification mark_read no ownership check~~ FIXED (user_id verification)
+- ~~049-D7: Missing CSP header~~ FIXED (Content-Security-Policy added)
+- ~~049-D8: Session cookie security attributes~~ FIXED (HTTPONLY/SAMESITE/SECURE)
+- ~~049-D9: No confirmed->performed shortcut~~ FIXED (transition + guard added)
 
 ### Prior Runs
 - 048-W1: create_event notes gap (MEDIUM, spec gap)
