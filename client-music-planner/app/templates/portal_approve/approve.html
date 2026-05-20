@@ -1,0 +1,119 @@
+{% set active_portal = 'approve' %}
+{% extends 'portal_base.html' %}
+
+{% block title %}Approve Selections - {{ event.name }} - GigList{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Review &amp; Approve</h2>
+
+{% if is_approved %}
+    <div class="alert alert-success">
+        <strong>Approved</strong> &mdash; Your selections were approved on {{ event.approved_at|format_date }}.
+        This event is now locked.
+    </div>
+{% endif %}
+
+<!-- Stats Summary -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ stats.total }}</h5>
+                <p class="card-text text-muted">Songs in Playlist</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ stats.must_play }}</h5>
+                <p class="card-text text-muted">Must-Play</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">{{ stats.do_not_play }}</h5>
+                <p class="card-text text-muted">Do Not Play</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Playlist Items -->
+<h4>Your Playlist</h4>
+{% if playlist_items %}
+    <div class="table-responsive mb-4">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Artist</th>
+                    <th>Genre</th>
+                    <th>Energy</th>
+                    <th>Duration</th>
+                    <th>Flags</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in playlist_items %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.artist }}</td>
+                    <td>{{ item.genre|format_genre }}</td>
+                    <td>{{ item.energy|format_energy }}</td>
+                    <td>{{ item.duration_seconds|format_duration }}</td>
+                    <td>
+                        {% if item.is_must_play %}
+                            <span class="badge bg-success">Must Play</span>
+                        {% elif item.is_do_not_play %}
+                            <span class="badge bg-danger">Do Not Play</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="text-muted">No songs in your playlist yet. <a href="{{ url_for('portal_browse.browse', token=event.portal_token) }}">Browse repertoire</a>.</p>
+{% endif %}
+
+<!-- Song Requests -->
+<h4>Song Requests</h4>
+{% if song_requests %}
+    <ul class="list-group mb-4">
+        {% for req in song_requests %}
+        <li class="list-group-item">
+            <strong>{{ req.title }}</strong>
+            {% if req.artist %} &mdash; {{ req.artist }}{% endif %}
+            {% if req.notes %}
+                <br><small class="text-muted">{{ req.notes }}</small>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p class="text-muted mb-4">No song requests submitted.</p>
+{% endif %}
+
+<!-- Approval Action -->
+{% if not is_approved %}
+    <div class="card border-primary mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Ready to approve?</h5>
+            <p class="card-text">
+                Once you approve, your playlist, flags, and song requests will be locked.
+                The musician will use these selections to prepare for your event.
+            </p>
+            <form method="POST" action="{{ url_for('portal_approve.confirm_approval', token=event.portal_token) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary btn-lg">Approve My Selections</button>
+            </form>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
