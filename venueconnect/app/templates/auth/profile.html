@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Profile - VenueConnect{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <h1 class="mb-4">Profile</h1>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <p><strong>Username:</strong> {{ user['username'] }}</p>
+                <p><strong>Email:</strong> {{ user['email'] }}</p>
+                <p><strong>Role:</strong> {{ user['role'] }}</p>
+                <p class="mb-0"><strong>Member since:</strong> {{ user['created_at'] }}</p>
+            </div>
+        </div>
+
+        <h2 class="h4 mb-3">Edit Profile</h2>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="display_name" class="form-label">Display Name</label>
+                <input type="text" class="form-control" id="display_name" name="display_name"
+                       value="{{ user['display_name'] }}" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="bio" class="form-label">Bio</label>
+                <textarea class="form-control" id="bio" name="bio" rows="4">{{ user['bio'] }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="genre_tags" class="form-label">Genre Tags</label>
+                <input type="text" class="form-control" id="genre_tags" name="genre_tags"
+                       value="{{ user['genre_tags'] }}">
+                <div class="form-text">Comma-separated tags (e.g., rock, jazz, electronic).</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Update Profile</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
