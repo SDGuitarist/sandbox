@@ -1,0 +1,130 @@
+{% extends "portal_base.html" %}
+
+{% block title %}Your Playlist - {{ event.name }}{% endblock %}
+
+{% block content %}
+<div id="sr-announcer" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="h4 mb-0">Your Playlist</h2>
+    {% if is_approved %}
+    <span class="badge bg-success">Approved</span>
+    {% endif %}
+    <span class="badge bg-secondary">{{ playlist_items | length }} song{{ 's' if playlist_items | length != 1 else '' }}</span>
+</div>
+
+{% if not is_approved %}
+<!-- Playlist Items -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Playlist Order</h5>
+        {% if playlist_items | length > 1 %}
+        <small class="text-muted">Drag to reorder or use arrow buttons</small>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if playlist_items %}
+        <ul class="list-group list-group-flush playlist-item" id="playlist-container" data-token="{{ event.portal_token }}">
+            {% for item in playlist_items %}
+            <li class="list-group-item d-flex align-items-center playlist-item" data-item-id="{{ item.id }}">
+                <!-- Drag handle (hidden by default, shown when SortableJS loads) -->
+                <span class="drag-handle d-none me-3" style="cursor: grab;">&#9776;</span>
+
+                <!-- Position number -->
+                <span class="badge bg-light text-dark me-3 position-number">{{ item.position }}</span>
+
+                <!-- Song details -->
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ item.title }}</div>
+                    <small class="text-muted">
+                        {{ item.artist }}
+                        {% if item.genre %} &middot; {{ item.genre|format_genre }}{% endif %}
+                        {% if item.energy %} &middot; {{ item.energy|format_energy }}{% endif %}
+                        {% if item.duration_seconds %} &middot; {{ item.duration_seconds|format_duration }}{% endif %}
+                    </small>
+                    {% if item.client_note %}
+                    <div class="mt-1">
+                        <small class="text-info">{{ item.client_note }}</small>
+                    </div>
+                    {% endif %}
+                    {% if item.is_must_play %}
+                    <span class="badge bg-success">Must Play</span>
+                    {% elif item.is_do_not_play %}
+                    <span class="badge bg-danger">Do Not Play</span>
+                    {% endif %}
+                </div>
+
+                <!-- Move up/down buttons -->
+                <div class="btn-group btn-group-sm me-2">
+                    <button type="button" class="btn btn-outline-secondary btn-move-up"
+                            title="Move up" data-item-id="{{ item.id }}">&#8593;</button>
+                    <button type="button" class="btn btn-outline-secondary btn-move-down"
+                            title="Move down" data-item-id="{{ item.id }}">&#8595;</button>
+                </div>
+
+                <!-- Remove button -->
+                <form method="post" action="{{ url_for('portal_playlist.remove_from_playlist', token=event.portal_token) }}"
+                      class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="song_id" value="{{ item.song_id }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm"
+                            title="Remove from playlist">Remove</button>
+                </form>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <p class="mt-2 mb-0">Your playlist is empty. <a href="{{ url_for('portal_browse.browse', token=event.portal_token) }}">Browse songs</a> to add some.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Read-only view when approved -->
+<div class="card mb-4">
+    <div class="card-body p-0">
+        {% if playlist_items %}
+        <ul class="list-group list-group-flush">
+            {% for item in playlist_items %}
+            <li class="list-group-item d-flex align-items-center">
+                <span class="badge bg-light text-dark me-3">{{ item.position }}</span>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold">{{ item.title }}</div>
+                    <small class="text-muted">{{ item.artist }}</small>
+                    {% if item.is_must_play %}
+                    <span class="badge bg-success ms-1">Must Play</span>
+                    {% elif item.is_do_not_play %}
+                    <span class="badge bg-danger ms-1">Do Not Play</span>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+            <p class="mb-0">No songs in playlist yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Song Requests -->
+{% if song_requests %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Song Requests</h5>
+    </div>
+    <ul class="list-group list-group-flush">
+        {% for req in song_requests %}
+        <li class="list-group-item">
+            <div class="fw-semibold">{{ req.title }}</div>
+            {% if req.artist %}<small class="text-muted">{{ req.artist }}</small>{% endif %}
+            {% if req.notes %}<p class="mb-0 mt-1 small">{{ req.notes }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}

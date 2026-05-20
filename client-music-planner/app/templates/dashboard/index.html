@@ -1,0 +1,97 @@
+{% set active_page = 'dashboard' %}
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - GigList{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Dashboard</h1>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Active Events</h5>
+                <p class="display-6">{{ active_count }}</p>
+                <a href="{{ url_for('events.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Songs in Repertoire</h5>
+                <p class="display-6">{{ total_songs }}</p>
+                <a href="{{ url_for('repertoire.index') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Client Approvals</h5>
+                <p class="display-6">{{ recent_approvals|length }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Active Events -->
+<h2 class="mb-3">Active Events</h2>
+{% if events %}
+<div class="row">
+    {% for event in events %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ event.name }}</h5>
+                <p class="card-text text-muted mb-1">{{ event.event_date|format_date }}</p>
+                <p class="card-text mb-1">{{ event.client_name }}</p>
+                <p class="card-text">
+                    <span class="badge bg-secondary">{{ event.event_type.replace('_', ' ').title() }}</span>
+                    {% if event.client_approved %}
+                    <span class="badge bg-success">Approved</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="card-footer bg-transparent">
+                <a href="{{ url_for('events.detail', event_id=event.id) }}" class="btn btn-sm btn-outline-primary">Details</a>
+                <a href="{{ url_for('event_dashboard.dashboard', event_id=event.id) }}" class="btn btn-sm btn-outline-secondary">Client Selections</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No events yet. <a href="{{ url_for('events.create') }}">Create one</a>.</p>
+{% endif %}
+
+<!-- Recent Approvals -->
+{% if recent_approvals %}
+<h2 class="mt-4 mb-3">Recent Client Approvals</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Client</th>
+                <th>Approved</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for approval in recent_approvals %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('event_dashboard.dashboard', event_id=approval.id) }}">
+                        {{ approval.name }}
+                    </a>
+                </td>
+                <td>{{ approval.client_name }}</td>
+                <td>{{ approval.approved_at|format_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

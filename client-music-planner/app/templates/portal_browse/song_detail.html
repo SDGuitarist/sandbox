@@ -1,0 +1,64 @@
+{% set active_portal = 'browse' %}
+{% extends 'portal_base.html' %}
+
+{% block title %}{{ song.title }} - {{ event.name }} - GigList{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('portal_browse.browse', token=event.portal_token) }}">Browse</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ song.title }}</li>
+    </ol>
+</nav>
+
+<div class="card">
+    <div class="card-body">
+        <h2 class="card-title">{{ song.title }}</h2>
+        {% if song.artist %}
+        <h5 class="card-subtitle mb-3 text-muted">{{ song.artist }}</h5>
+        {% endif %}
+
+        <dl class="row">
+            <dt class="col-sm-3">Genre</dt>
+            <dd class="col-sm-9">{{ song.genre|format_genre }}</dd>
+
+            <dt class="col-sm-3">Energy</dt>
+            <dd class="col-sm-9">{{ song.energy|format_energy }}</dd>
+
+            {% if song.musical_key %}
+            <dt class="col-sm-3">Key</dt>
+            <dd class="col-sm-9">{{ song.musical_key }}</dd>
+            {% endif %}
+
+            {% if song.tempo %}
+            <dt class="col-sm-3">Tempo</dt>
+            <dd class="col-sm-9">{{ song.tempo }} BPM</dd>
+            {% endif %}
+
+            {% if song.duration_seconds %}
+            <dt class="col-sm-3">Duration</dt>
+            <dd class="col-sm-9">{{ song.duration_seconds|format_duration }}</dd>
+            {% endif %}
+
+            {% if song.notes %}
+            <dt class="col-sm-3">Notes</dt>
+            <dd class="col-sm-9">{{ song.notes }}</dd>
+            {% endif %}
+        </dl>
+
+        <div class="mt-3">
+            {% if in_playlist %}
+            <span class="badge bg-success">In Playlist</span>
+            {% elif not is_approved %}
+            <form method="POST" action="{{ url_for('portal_playlist.add_to_playlist', token=event.portal_token) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="song_id" value="{{ song.id }}">
+                <button type="submit" class="btn btn-primary">Add to Playlist</button>
+            </form>
+            {% endif %}
+
+            <a href="{{ url_for('portal_browse.browse', token=event.portal_token) }}" class="btn btn-outline-secondary">Back to Browse</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

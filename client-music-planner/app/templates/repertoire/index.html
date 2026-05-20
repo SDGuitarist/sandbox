@@ -1,0 +1,69 @@
+{% set active_page = 'repertoire' %}
+{% extends 'base.html' %}
+
+{% block title %}Repertoire - GigList{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>My Repertoire</h1>
+    <a href="{{ url_for('repertoire.create') }}" class="btn btn-primary">Add Song</a>
+</div>
+
+<form method="GET" action="{{ url_for('repertoire.index') }}" class="row g-3 mb-4">
+    <div class="col-md-4">
+        <input type="text" class="form-control" name="search" placeholder="Search by title or artist..." value="{{ search }}">
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" name="genre">
+            <option value="">All Genres</option>
+            {% for g in genres %}
+            <option value="{{ g }}" {% if genre == g %}selected{% endif %}>{{ g|format_genre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select class="form-select" name="energy">
+            <option value="">All Energy</option>
+            {% for e in range(1, 6) %}
+            <option value="{{ e }}" {% if energy == e|string %}selected{% endif %}>{{ e|format_energy }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-secondary w-100">Filter</button>
+    </div>
+</form>
+
+{% if songs %}
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Genre</th>
+                <th>Key</th>
+                <th>Tempo</th>
+                <th>Energy</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for song in songs %}
+            <tr>
+                <td><a href="{{ url_for('repertoire.detail', song_id=song.id) }}">{{ song.title }}</a></td>
+                <td>{{ song.artist }}</td>
+                <td>{{ song.genre|format_genre }}</td>
+                <td>{{ song.musical_key }}</td>
+                <td>{{ song.tempo if song.tempo else '' }}</td>
+                <td>{{ song.energy|format_energy }}</td>
+                <td>{{ song.duration_seconds|format_duration }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No songs yet. <a href="{{ url_for('repertoire.create') }}">Add one</a>.</p>
+{% endif %}
+{% endblock %}

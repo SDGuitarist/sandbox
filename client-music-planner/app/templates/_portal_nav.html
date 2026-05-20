@@ -1,0 +1,42 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="{{ url_for('portal_browse.browse', token=event.portal_token) }}">
+            GigList <small class="text-muted">| {{ event.name }}</small>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#portalNav"
+                aria-controls="portalNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="portalNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link{% if active_portal == 'browse' %} active{% endif %}"
+                       href="{{ url_for('portal_browse.browse', token=event.portal_token) }}">
+                        Browse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if active_portal == 'playlist' %} active{% endif %}"
+                       href="{{ url_for('portal_playlist.playlist', token=event.portal_token) }}">
+                        My Playlist
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if active_portal == 'requests' %} active{% endif %}"
+                       href="{{ url_for('portal_requests.requests', token=event.portal_token) }}">
+                        Song Requests
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if active_portal == 'approve' %} active{% endif %}"
+                       href="{{ url_for('portal_approve.approve', token=event.portal_token) }}">
+                        Approve
+                    </a>
+                </li>
+            </ul>
+            {% if event.client_approved %}
+            <span class="badge bg-success align-self-center">Approved</span>
+            {% endif %}
+        </div>
+    </div>
+</nav>
