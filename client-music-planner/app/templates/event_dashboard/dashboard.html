@@ -1,0 +1,125 @@
+{% set active_page = 'events' %}
+{% extends 'base.html' %}
+
+{% block title %}{{ event.name }} Dashboard - GigList{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ event.name }} &mdash; Client Dashboard</h1>
+    <a href="{{ url_for('events.detail', event_id=event.id) }}" class="btn btn-outline-secondary">Back to Event</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Playlist Songs</h5>
+                <p class="display-6">{{ stats.total }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-success">
+            <div class="card-body">
+                <h5 class="card-title text-success">Must Play</h5>
+                <p class="display-6 text-success">{{ stats.must_play }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center border-danger">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Do Not Play</h5>
+                <p class="display-6 text-danger">{{ stats.do_not_play }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col">
+        <p class="text-muted">
+            <strong>Client:</strong> {{ event.client_name }}
+            &middot; <strong>Date:</strong> {{ event.event_date|format_date }}
+            &middot; <strong>Status:</strong>
+            {% if event.client_approved %}
+                <span class="badge bg-success">Approved</span>
+                {% if event.approved_at %}({{ event.approved_at|format_date }}){% endif %}
+            {% else %}
+                <span class="badge bg-warning text-dark">Pending</span>
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<h2>Playlist</h2>
+{% if playlist_items %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Genre</th>
+                <th>Energy</th>
+                <th>Duration</th>
+                <th>Flags</th>
+                <th>Client Note</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in playlist_items %}
+            <tr>
+                <td>{{ item.position + 1 }}</td>
+                <td>{{ item.title }}</td>
+                <td>{{ item.artist }}</td>
+                <td>{{ item.genre|format_genre }}</td>
+                <td>{{ item.energy|format_energy }}</td>
+                <td>{{ item.duration_seconds|format_duration }}</td>
+                <td>
+                    {% if item.is_must_play %}
+                        <span class="badge bg-success">Must Play</span>
+                    {% endif %}
+                    {% if item.is_do_not_play %}
+                        <span class="badge bg-danger">Do Not Play</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.client_note }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No playlist items yet. The client has not added any songs.</p>
+{% endif %}
+
+<h2 class="mt-4">Song Requests</h2>
+{% if song_requests %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Notes</th>
+                <th>Requested</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in song_requests %}
+            <tr>
+                <td>{{ req.title }}</td>
+                <td>{{ req.artist }}</td>
+                <td>{{ req.notes }}</td>
+                <td>{{ req.created_at|format_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No song requests yet. The client has not submitted any requests.</p>
+{% endif %}
+{% endblock %}
