@@ -10,7 +10,7 @@ from app.notifications import create_notification
 
 TRANSITIONS = {
     'requested':  ['confirmed', 'rejected'],
-    'confirmed':  ['advanced', 'cancelled'],
+    'confirmed':  ['advanced', 'performed', 'cancelled'],
     'advanced':   ['performed', 'cancelled'],
     'performed':  ['settled'],
     'settled':    ['paid'],
@@ -54,6 +54,7 @@ GUARD_FUNCTIONS = {
     ('requested', 'confirmed'): _guard_confirm,
     ('requested', 'rejected'): _guard_reject,
     ('confirmed', 'advanced'): _guard_advance,
+    ('confirmed', 'performed'): _guard_perform,
     ('confirmed', 'cancelled'): _guard_cancel,
     ('advanced', 'performed'): _guard_perform,
     ('advanced', 'cancelled'): _guard_cancel,

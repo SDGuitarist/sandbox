@@ -20,6 +20,12 @@ def list():
 @login_required
 def mark_read(id):
     conn = get_db()
+    notification = conn.execute(
+        'SELECT user_id FROM notifications WHERE id = ?', (id,)
+    ).fetchone()
+    if notification is None or notification['user_id'] != g.user['id']:
+        flash('Notification not found.', 'error')
+        return redirect(url_for('notification_views.list'))
     mark_notification_read(conn, id)
     conn.commit()
     flash('Notification marked as read.', 'success')
