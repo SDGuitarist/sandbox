@@ -218,28 +218,28 @@ def get_booking(conn, booking_id):
 
 
 # Returns: list[sqlite3.Row]
-def get_bookings_by_musician(conn, musician_user_id):
+def get_bookings_by_musician(conn, musician_user_id, limit=50, offset=0):
     return conn.execute(
         '''SELECT b.*, r.name AS room_name, v.name AS venue_name
            FROM bookings b
            JOIN rooms r ON b.room_id = r.id
            JOIN venues v ON r.venue_id = v.id
            WHERE b.musician_user_id = ?
-           ORDER BY b.event_date DESC''',
-        (musician_user_id,)
+           ORDER BY b.event_date DESC LIMIT ? OFFSET ?''',
+        (musician_user_id, limit, offset)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row]
-def get_bookings_by_venue(conn, venue_id):
+def get_bookings_by_venue(conn, venue_id, limit=50, offset=0):
     return conn.execute(
         '''SELECT b.*, r.name AS room_name, u.display_name AS musician_name
            FROM bookings b
            JOIN rooms r ON b.room_id = r.id
            JOIN users u ON b.musician_user_id = u.id
            WHERE r.venue_id = ?
-           ORDER BY b.event_date DESC''',
-        (venue_id,)
+           ORDER BY b.event_date DESC LIMIT ? OFFSET ?''',
+        (venue_id, limit, offset)
     ).fetchall()
 
 
@@ -307,13 +307,13 @@ def get_event(conn, event_id):
 
 
 # Returns: list[sqlite3.Row]
-def get_events_by_promoter(conn, promoter_user_id):
+def get_events_by_promoter(conn, promoter_user_id, limit=50, offset=0):
     return conn.execute(
         '''SELECT e.*, v.name AS venue_name
            FROM events e JOIN venues v ON e.venue_id = v.id
            WHERE e.promoter_user_id = ?
-           ORDER BY e.event_date DESC''',
-        (promoter_user_id,)
+           ORDER BY e.event_date DESC LIMIT ? OFFSET ?''',
+        (promoter_user_id, limit, offset)
     ).fetchall()
 
 
@@ -419,7 +419,7 @@ def get_settlement_by_booking(conn, booking_id):
 
 
 # Returns: list[sqlite3.Row]
-def get_settlements_list(conn, user_id, role):
+def get_settlements_list(conn, user_id, role, limit=50, offset=0):
     if role == 'venue_manager':
         return conn.execute(
             '''SELECT s.*, b.event_name, b.event_date, u.display_name AS musician_name
@@ -429,8 +429,8 @@ def get_settlements_list(conn, user_id, role):
                JOIN venues v ON r.venue_id = v.id
                JOIN users u ON b.musician_user_id = u.id
                WHERE v.user_id = ?
-               ORDER BY s.created_at DESC''',
-            (user_id,)
+               ORDER BY s.created_at DESC LIMIT ? OFFSET ?''',
+            (user_id, limit, offset)
         ).fetchall()
     elif role == 'musician':
         return conn.execute(
@@ -440,8 +440,8 @@ def get_settlements_list(conn, user_id, role):
                JOIN rooms r ON b.room_id = r.id
                JOIN venues v ON r.venue_id = v.id
                WHERE b.musician_user_id = ?
-               ORDER BY s.created_at DESC''',
-            (user_id,)
+               ORDER BY s.created_at DESC LIMIT ? OFFSET ?''',
+            (user_id, limit, offset)
         ).fetchall()
     else:  # promoter
         return conn.execute(
@@ -452,8 +452,8 @@ def get_settlements_list(conn, user_id, role):
                JOIN venues v ON r.venue_id = v.id
                JOIN events e ON b.event_id = e.id
                WHERE e.promoter_user_id = ?
-               ORDER BY s.created_at DESC''',
-            (user_id,)
+               ORDER BY s.created_at DESC LIMIT ? OFFSET ?''',
+            (user_id, limit, offset)
         ).fetchall()
 
 
@@ -470,69 +470,80 @@ def approve_settlement(conn, settlement_id, approved_by_user_id):
 # Analytics Functions
 # ---------------------------------------------------------------------------
 
+# Default analytics lookback: 12 months from today
+_DEFAULT_SINCE = "date('now', '-12 months')"
+
+
 # Returns: list[sqlite3.Row] with columns: month (TEXT 'YYYY-MM'), total_cents (INT)
-def get_venue_revenue_by_month(conn, venue_id):
+def get_venue_revenue_by_month(conn, venue_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT strftime('%Y-%m', b.event_date) AS month,
            SUM(s.door_revenue_cents) AS total_cents
            FROM settlements s
            JOIN bookings b ON s.booking_id = b.id
            JOIN rooms r ON b.room_id = r.id
-           WHERE r.venue_id = ?
+           WHERE r.venue_id = ? AND b.event_date >= ?
            GROUP BY month ORDER BY month''',
-        (venue_id,)
+        (venue_id, cutoff)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row] with columns: room_name (TEXT), booking_count (INT)
-def get_venue_occupancy_by_room(conn, venue_id):
+def get_venue_occupancy_by_room(conn, venue_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT r.name AS room_name,
            COUNT(b.id) AS booking_count
            FROM rooms r
-           LEFT JOIN bookings b ON r.id = b.room_id AND b.state NOT IN ('requested')
+           LEFT JOIN bookings b ON r.id = b.room_id
+               AND b.state NOT IN ('requested') AND b.event_date >= ?
            WHERE r.venue_id = ?
            GROUP BY r.id ORDER BY r.name''',
-        (venue_id,)
+        (cutoff, venue_id)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row] with columns: genre (TEXT), count (INT)
-def get_venue_genre_distribution(conn, venue_id):
+def get_venue_genre_distribution(conn, venue_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT u.genre_tags AS genre, COUNT(*) AS count
            FROM bookings b
            JOIN rooms r ON b.room_id = r.id
            JOIN users u ON b.musician_user_id = u.id
-           WHERE r.venue_id = ? AND u.genre_tags != ''
+           WHERE r.venue_id = ? AND u.genre_tags != '' AND b.event_date >= ?
            GROUP BY u.genre_tags ORDER BY count DESC LIMIT 10''',
-        (venue_id,)
+        (venue_id, cutoff)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row] with columns: month, total_cents
-def get_musician_earnings_by_month(conn, user_id):
+def get_musician_earnings_by_month(conn, user_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT strftime('%Y-%m', b.event_date) AS month,
            SUM(s.musician_payout_cents) AS total_cents
            FROM settlements s
            JOIN bookings b ON s.booking_id = b.id
-           WHERE b.musician_user_id = ?
+           WHERE b.musician_user_id = ? AND b.event_date >= ?
            GROUP BY month ORDER BY month''',
-        (user_id,)
+        (user_id, cutoff)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row] with columns: venue_name (TEXT), gig_count (INT)
-def get_musician_venues_played(conn, user_id):
+def get_musician_venues_played(conn, user_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT v.name AS venue_name, COUNT(*) AS gig_count
            FROM bookings b
            JOIN rooms r ON b.room_id = r.id
            JOIN venues v ON r.venue_id = v.id
            WHERE b.musician_user_id = ? AND b.state IN ('performed', 'settled', 'paid')
+           AND b.event_date >= ?
            GROUP BY v.id ORDER BY gig_count DESC LIMIT 10''',
-        (user_id,)
+        (user_id, cutoff)
     ).fetchall()
 
 
@@ -550,21 +561,23 @@ def get_musician_booking_success_rate(conn, user_id):
 
 
 # Returns: list[sqlite3.Row] with columns: month, total_cents
-def get_promoter_revenue_by_month(conn, user_id):
+def get_promoter_revenue_by_month(conn, user_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT strftime('%Y-%m', b.event_date) AS month,
            SUM(s.promoter_fee_cents) AS total_cents
            FROM settlements s
            JOIN bookings b ON s.booking_id = b.id
            JOIN events e ON b.event_id = e.id
-           WHERE e.promoter_user_id = ?
+           WHERE e.promoter_user_id = ? AND b.event_date >= ?
            GROUP BY month ORDER BY month''',
-        (user_id,)
+        (user_id, cutoff)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row] with columns: venue_name, total_cents
-def get_promoter_settlements_by_venue(conn, user_id):
+def get_promoter_settlements_by_venue(conn, user_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT v.name AS venue_name, SUM(s.door_revenue_cents) AS total_cents
            FROM settlements s
@@ -572,21 +585,22 @@ def get_promoter_settlements_by_venue(conn, user_id):
            JOIN rooms r ON b.room_id = r.id
            JOIN venues v ON r.venue_id = v.id
            JOIN events e ON b.event_id = e.id
-           WHERE e.promoter_user_id = ?
+           WHERE e.promoter_user_id = ? AND b.event_date >= ?
            GROUP BY v.id ORDER BY total_cents DESC''',
-        (user_id,)
+        (user_id, cutoff)
     ).fetchall()
 
 
 # Returns: list[sqlite3.Row] with columns: status (TEXT), count (INT)
-def get_promoter_event_status_counts(conn, user_id):
+def get_promoter_event_status_counts(conn, user_id, since_date=None):
+    cutoff = since_date or conn.execute(f"SELECT {_DEFAULT_SINCE}").fetchone()[0]
     return conn.execute(
         '''SELECT b.state AS status, COUNT(*) AS count
            FROM bookings b
            JOIN events e ON b.event_id = e.id
-           WHERE e.promoter_user_id = ?
+           WHERE e.promoter_user_id = ? AND b.event_date >= ?
            GROUP BY b.state''',
-        (user_id,)
+        (user_id, cutoff)
     ).fetchall()
 
 
