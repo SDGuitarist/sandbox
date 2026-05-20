@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Room' if room else 'New Room' }} - {{ venue['name'] }}{% endblock %}
+
+{% block content %}
+<a href="{% if room %}{{ url_for('rooms.detail', id=room['id']) }}{% else %}{{ url_for('rooms.list', venue_id=venue['id']) }}{% endif %}" class="btn btn-outline-secondary btn-sm mb-3">&larr; Back</a>
+
+<h1>{{ 'Edit Room' if room else 'New Room' }}</h1>
+<p class="text-muted">Venue: {{ venue['name'] }}</p>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Room Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ room['name'] if room else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="capacity" class="form-label">Capacity</label>
+        <input type="number" class="form-control" id="capacity" name="capacity"
+               value="{{ room['capacity'] if room else '' }}" min="1" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ room['description'] if room else '' }}</textarea>
+    </div>
+
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="has_pa" name="has_pa"
+               {% if room and room['has_pa'] %}checked{% endif %}>
+        <label class="form-check-label" for="has_pa">PA System Available</label>
+    </div>
+
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="has_lighting" name="has_lighting"
+               {% if room and room['has_lighting'] %}checked{% endif %}>
+        <label class="form-check-label" for="has_lighting">Lighting Available</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">{{ 'Update Room' if room else 'Create Room' }}</button>
+</form>
+{% endblock %}
