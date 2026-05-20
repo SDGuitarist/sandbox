@@ -117,10 +117,30 @@ def update():
 @bp.route('/history')
 @setup_required
 def history():
-    """Show all past goals with met/not-met status."""
+    """Show all past goals with live actual values from income/time_entry."""
     with get_db() as db:
         goals = db.execute(
             "SELECT * FROM goal ORDER BY month DESC"
         ).fetchall()
 
-    return render_template('goals/history.html', goals=goals)
+        enriched = []
+        for g in goals:
+            month = g['month']
+            month_end = month + '-32'  # SQLite date comparison trick: any day > 31 works as upper bound
+            revenue_actual = db.execute(
+                "SELECT COALESCE(SUM(amount), 0) FROM income WHERE strftime('%%Y-%%m', date) = ?",
+                (month,)
+            ).fetchone()[0]
+            hours_actual = db.execute(
+                "SELECT COALESCE(SUM(minutes), 0) / 60.0 FROM time_entry WHERE strftime('%%Y-%%m', date) = ?",
+                (month,)
+            ).fetchone()[0]
+            enriched.append({
+                'month': month,
+                'revenue_target': g['revenue_target'],
+                'revenue_actual': revenue_actual,
+                'hours_target': g['hours_target'],
+                'hours_actual': hours_actual,
+            })
+
+    return render_template('goals/history.html', goals=enriched)
