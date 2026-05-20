@@ -1,0 +1,187 @@
+{% extends "portal_base.html" %}
+
+{% block title %}Your Playlist - {{ event.event_name }}{% endblock %}
+
+{% block portal_content %}
+<div class="container py-4" data-token="{{ event.portal_token }}">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">Your Playlist</h2>
+        <span class="badge bg-secondary">{{ items | length }} song{{ 's' if items | length != 1 else '' }}</span>
+    </div>
+
+    <!-- Add Song Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Add a Song</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('portal_playlist.add_to_playlist', token=event.portal_token) }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label for="song_id" class="form-label">Song</label>
+                        <select class="form-select" name="song_id" id="song_id" required>
+                            <option value="">Choose a song...</option>
+                            {% for song in songs %}
+                            <option value="{{ song.id }}">
+                                {{ song.title }} - {{ song.artist }}
+                                {% if song.genre %}({{ song.genre }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="client_note" class="form-label">Note (optional)</label>
+                        <input type="text" class="form-control" name="client_note" id="client_note"
+                               placeholder="e.g. First dance, must-play, etc.">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-lg"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Playlist Items -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Playlist Order</h5>
+            {% if items | length > 1 %}
+            <small class="text-muted">Drag to reorder or use arrow buttons</small>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if items %}
+            <ul class="list-group list-group-flush" id="playlist-sortable">
+                {% for item in items %}
+                <li class="list-group-item d-flex align-items-center" data-item-id="{{ item.id }}">
+                    <!-- Drag handle (hidden by default, shown when SortableJS loads) -->
+                    <span class="drag-handle d-none me-3" style="cursor: grab;">
+                        <i class="bi bi-grip-vertical fs-5 text-muted"></i>
+                    </span>
+
+                    <!-- Position number -->
+                    <span class="badge bg-light text-dark me-3 position-number">{{ item.position }}</span>
+
+                    <!-- Song details -->
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">{{ item.title }}</div>
+                        <small class="text-muted">
+                            {{ item.artist }}
+                            {% if item.genre %} &middot; {{ item.genre }}{% endif %}
+                            {% if item.energy %} &middot; Energy: {{ item.energy }}{% endif %}
+                            {% if item.duration %} &middot; {{ item.duration }} min{% endif %}
+                        </small>
+                        {% if item.client_note %}
+                        <div class="mt-1">
+                            <small class="text-info"><i class="bi bi-chat-left-text"></i> {{ item.client_note }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Move up/down buttons -->
+                    <div class="btn-group btn-group-sm me-2">
+                        {% if not loop.first %}
+                        <button type="button" class="btn btn-outline-secondary btn-move-up"
+                                title="Move up" data-item-id="{{ item.id }}">
+                            <i class="bi bi-arrow-up"></i>
+                        </button>
+                        {% endif %}
+                        {% if not loop.last %}
+                        <button type="button" class="btn btn-outline-secondary btn-move-down"
+                                title="Move down" data-item-id="{{ item.id }}">
+                            <i class="bi bi-arrow-down"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Remove button -->
+                    <form method="post" action="{{ url_for('portal_playlist.remove_from_playlist', token=event.portal_token) }}"
+                          class="d-inline">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                title="Remove from playlist">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-music-note-list fs-1"></i>
+                <p class="mt-2 mb-0">Your playlist is empty. Add songs from the repertoire above.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block portal_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.querySelector('[data-token]');
+    if (!container) return;
+
+    const token = container.dataset.token;
+    const sortableEl = document.getElementById('playlist-sortable');
+    if (!sortableEl) return;
+
+    // Show drag handles now that SortableJS is loaded
+    sortableEl.querySelectorAll('.drag-handle').forEach(function(el) {
+        el.classList.remove('d-none');
+    });
+
+    // Initialize SortableJS
+    Sortable.create(sortableEl, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function(evt) {
+            updatePositions(token, sortableEl);
+        }
+    });
+
+    // Move up/down button handlers
+    sortableEl.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-move-up, .btn-move-down');
+        if (!btn) return;
+
+        const listItem = btn.closest('li');
+        const isUp = btn.classList.contains('btn-move-up');
+
+        if (isUp && listItem.previousElementSibling) {
+            listItem.parentNode.insertBefore(listItem, listItem.previousElementSibling);
+        } else if (!isUp && listItem.nextElementSibling) {
+            listItem.parentNode.insertBefore(listItem.nextElementSibling, listItem);
+        }
+
+        updatePositions(token, sortableEl);
+    });
+
+    function updatePositions(token, listEl) {
+        const items = listEl.querySelectorAll('li[data-item-id]');
+        const order = [];
+
+        items.forEach(function(li, idx) {
+            order.push(li.dataset.itemId);
+            // Update visible position numbers
+            var posEl = li.querySelector('.position-number');
+            if (posEl) posEl.textContent = idx + 1;
+        });
+
+        // Send new order to server
+        fetch('/portal/' + token + '/playlist/reorder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: order })
+        }).catch(function(err) {
+            console.error('Failed to save order:', err);
+        });
+    }
+});
+</script>
+{% endblock %}
