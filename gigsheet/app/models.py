@@ -396,6 +396,27 @@ def update_campaign_status(conn, campaign_id: int, status: str) -> None:
 
 
 # Returns: None -- Does NOT commit
+def delete_campaign(conn, campaign_id: int) -> None:
+    conn.execute('DELETE FROM campaigns WHERE id = ?', (campaign_id,))
+
+
+# Returns: None -- Does NOT commit
+def update_campaign_schedule(conn, campaign_id: int, scheduled_at: str, timezone: str) -> None:
+    conn.execute(
+        "UPDATE campaigns SET scheduled_at = ?, timezone = ?, updated_at = datetime('now') WHERE id = ?",
+        (scheduled_at, timezone, campaign_id)
+    )
+
+
+# Returns: None -- Does NOT commit
+def update_workspace(conn, workspace_id: int, name: str, from_email: str, from_name: str) -> None:
+    conn.execute(
+        'UPDATE workspaces SET name = ?, from_email = ?, from_name = ? WHERE id = ?',
+        (name, from_email, from_name, workspace_id)
+    )
+
+
+# Returns: None -- Does NOT commit
 def add_recipients(conn, campaign_id: int, lead_ids: list) -> None:
     for lead_id in lead_ids:
         conn.execute(

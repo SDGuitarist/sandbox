@@ -1,7 +1,7 @@
 from flask import Blueprint, request, g, flash, redirect, url_for, render_template, abort
 
 from app.db import get_db
-from app.models import get_campaign, update_campaign_status, log_activity
+from app.models import get_campaign, update_campaign_status, update_campaign_schedule, log_activity
 from app.decorators import login_required, require_workspace
 
 campaign_scheduler_bp = Blueprint('campaign_scheduler', __name__)
@@ -31,10 +31,7 @@ def set_schedule(id):
         timezone = 'UTC'
 
     # Update the campaign's scheduled_at and timezone fields
-    conn.execute(
-        "UPDATE campaigns SET scheduled_at = ?, timezone = ?, updated_at = datetime('now') WHERE id = ?",
-        (scheduled_at, timezone, id)
-    )
+    update_campaign_schedule(conn, id, scheduled_at, timezone)
     conn.commit()
 
     # Transition status to 'scheduled'

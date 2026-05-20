@@ -6,6 +6,7 @@ from app.models import (
     create_campaign,
     get_campaign,
     update_campaign,
+    delete_campaign,
     add_recipients,
     get_campaign_recipients,
     get_templates_by_workspace,
@@ -187,7 +188,7 @@ def delete(id):
         return redirect(url_for('campaign_editor.detail', id=id))
 
     campaign_name = campaign['name']
-    conn.execute('DELETE FROM campaigns WHERE id = ?', (id,))
+    delete_campaign(conn, id)
     log_activity(
         conn, g.workspace['id'], g.user['id'],
         'deleted_campaign', 'campaign', id, f'Campaign: {campaign_name}'

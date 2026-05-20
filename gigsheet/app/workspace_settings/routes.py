@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g
 from app.db import get_db
-from app.models import log_activity
+from app.models import log_activity, update_workspace
 from app.decorators import login_required, require_workspace, require_role
 
 workspace_settings_bp = Blueprint('workspace_settings', __name__)
@@ -40,10 +40,7 @@ def update():
         return redirect(url_for('workspace_settings.index'))
 
     conn = get_db()
-    conn.execute(
-        'UPDATE workspaces SET name = ?, from_email = ?, from_name = ? WHERE id = ?',
-        (name, from_email, from_name, g.workspace['id'])
-    )
+    update_workspace(conn, g.workspace['id'], name, from_email, from_name)
     log_activity(conn, g.workspace['id'], g.user['id'],
                  'updated_workspace', 'workspace', g.workspace['id'],
                  f'Updated workspace settings: {name}')

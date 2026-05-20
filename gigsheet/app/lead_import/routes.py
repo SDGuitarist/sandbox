@@ -122,8 +122,9 @@ def upload():
         'lead_import/preview.html',
         preview_rows=preview_rows,
         error_rows=error_rows,
-        temp_name=temp_name,
+        filename=temp_name,
         has_header=has_header,
+        total_rows=len(preview_rows) + len(error_rows),
     )
 
 

@@ -114,7 +114,7 @@ def handle():
         if internal_type in ('bounced', 'dropped'):
             # Look up the campaign's workspace to notify the owner
             campaign = db.execute(
-                'SELECT workspace_id, user_id, name FROM campaigns WHERE id = ?',
+                'SELECT workspace_id, created_by_user_id, name FROM campaigns WHERE id = ?',
                 (campaign_id,),
             ).fetchone()
             if campaign:
@@ -122,7 +122,7 @@ def handle():
                 create_notification(
                     db,
                     campaign['workspace_id'],
-                    campaign['user_id'],
+                    campaign['created_by_user_id'],
                     f"Email {internal_type}: {email_addr} in campaign \"{campaign['name']}\"",
                     link=f"/delivery/{campaign_id}",
                 )
