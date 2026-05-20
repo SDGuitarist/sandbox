@@ -89,6 +89,15 @@ def query_held_leads(db_path: Path = DB_PATH) -> list[dict]:
         )
         params.extend(available)
 
+    # Domain-mismatch holds (no manual_approved filter -- separate hold system)
+    parts.append(
+        "SELECT id, name, segment, segment_confidence, hook_quality, "
+        "sendable_reason as hold_reason "
+        "FROM leads "
+        "WHERE is_sendable = 0 "
+        "AND sendable_reason = 'email_domain_mismatch'"
+    )
+
     query = " UNION ALL ".join(parts) + " ORDER BY hold_reason, name"
 
     with get_db(db_path) as conn:
@@ -231,6 +240,20 @@ def query_leads_scored(source="", q="", db_path=DB_PATH, limit=100, offset=0):
         scored.append(d)
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored, total
+
+
+def clear_domain_mismatch(lead_id: int, db_path: Path = DB_PATH) -> bool:
+    """Clear email_domain_mismatch flag only. Does not clear other screening failures.
+
+    Returns True if the lead had a domain-mismatch hold that was cleared.
+    """
+    with get_db(db_path) as conn:
+        conn.execute(
+            "UPDATE leads SET is_sendable = 1, sendable_reason = NULL "
+            "WHERE id = ? AND sendable_reason = 'email_domain_mismatch'",
+            (lead_id,),
+        )
+        return conn.execute("SELECT changes()").fetchone()[0] > 0
 
 
 def unhold_lead(lead_id: int, db_path: Path = DB_PATH) -> bool:

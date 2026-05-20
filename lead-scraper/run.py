@@ -184,6 +184,8 @@ def cmd_enrich(args):
         "hook": enrich_hook,
     }
     limit = getattr(args, "limit", 0) or 0
+    max_cost = getattr(args, "max_cost", 2.0)
+    dry_run = getattr(args, "dry_run", False)
     selected = args.step
     if selected == "verify":
         from enrich import verify_hooks
@@ -194,9 +196,18 @@ def cmd_enrich(args):
     elif selected == "consistency":
         from enrich import verify_hook_consistency
         verify_hook_consistency(limit=limit)
+    elif selected == "website":
+        # LLM extraction as primary, regex enrich_leads as fallback
+        from enrich import enrich_website_llm
+        enrich_website_llm(max_cost=max_cost, limit=limit, dry_run=dry_run)
     elif selected == "all":
         for name, func in steps.items():
-            func()
+            if name == "website":
+                # Use LLM extraction for website step
+                from enrich import enrich_website_llm
+                enrich_website_llm(max_cost=max_cost)
+            else:
+                func()
             print()
         # Auto-verify, screen, and consistency check after enrichment
         from enrich import verify_hooks, screen_leads, verify_hook_consistency
@@ -271,6 +282,8 @@ def cmd_leads(args) -> None:
         _cmd_leads_held()
     elif args.action == "unhold":
         _cmd_leads_unhold(args)
+    elif args.action == "clear-mismatch":
+        _cmd_leads_clear_mismatch(args)
 
 
 def _cmd_leads_held() -> None:
@@ -325,6 +338,18 @@ def _cmd_leads_unhold(args) -> None:
         print("WARNING: Lead has no segment -- will not be assigned to campaigns until enriched.")
     elif segments and row["segment"] not in segments:
         print(f"WARNING: Segment '{row['segment']}' has no template -- lead will not be assigned.")
+
+
+def _cmd_leads_clear_mismatch(args) -> None:
+    """Clear a domain-mismatch hold on a lead."""
+    from models import clear_domain_mismatch
+
+    lead_id = args.lead_id
+    if clear_domain_mismatch(lead_id):
+        print(f"Cleared domain-mismatch hold on lead {lead_id}. Lead is now sendable.")
+    else:
+        print(f"Lead {lead_id} is not held for domain mismatch.", file=sys.stderr)
+        sys.exit(1)
 
 
 def cmd_delete_source(args):
@@ -1138,6 +1163,14 @@ def main():
         "--days", type=int, default=30,
         help="Age threshold for --refresh in days (default: 30)",
     )
+    sp_enrich.add_argument(
+        "--max-cost", type=float, default=2.0, dest="max_cost",
+        help="Max LLM cost per enrichment run in dollars (default: $2)",
+    )
+    sp_enrich.add_argument(
+        "--dry-run", action="store_true", dest="dry_run",
+        help="Project LLM cost on 10 leads without persisting",
+    )
     sp_enrich.set_defaults(func=cmd_enrich)
 
     # delete-source
@@ -1152,6 +1185,8 @@ def main():
     leads_sub.add_parser("held", help="Show leads held from auto-generation")
     sp_unhold = leads_sub.add_parser("unhold", help="Force-approve a held lead for campaigns")
     sp_unhold.add_argument("lead_id", type=int, help="Lead ID to approve")
+    sp_clear_mm = leads_sub.add_parser("clear-mismatch", help="Clear domain-mismatch hold on a lead")
+    sp_clear_mm.add_argument("lead_id", type=int, help="Lead ID to clear")
     sp_leads.set_defaults(func=cmd_leads)
 
     # account
