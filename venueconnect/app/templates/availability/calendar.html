@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Availability - {{ room['name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Availability: {{ room['name'] }}</h1>
+    <a href="{{ url_for('availability.add', room_id=room['id']) }}" class="btn btn-primary">Add Window</a>
+</div>
+
+<p class="text-muted">
+    Venue: <a href="{{ url_for('venues.detail', venue_id=venue['id']) }}">{{ venue['name'] }}</a>
+    &middot;
+    <a href="{{ url_for('rooms.detail', id=room['id']) }}">Room Details</a>
+</p>
+
+<h2>Weekly Availability Windows</h2>
+{% if windows %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Start Time</th>
+                <th>End Time</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for window in windows %}
+            <tr>
+                <td>{{ window['day_of_week']|day_name }}</td>
+                <td>{{ window['start_time'] }}</td>
+                <td>{{ window['end_time'] }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('availability.delete', window_id=window['id']) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this availability window?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No availability windows set. <a href="{{ url_for('availability.add', room_id=room['id']) }}">Add one</a>.</p>
+{% endif %}
+
+<h2 class="mt-4">Upcoming Bookings</h2>
+{% if bookings %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Musician</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for booking in bookings %}
+            <tr>
+                <td>{{ booking['event_date'] }}</td>
+                <td>{{ booking['start_time'] }} - {{ booking['end_time'] }}</td>
+                <td>{{ booking['event_name'] }}</td>
+                <td>{{ booking['musician_name'] }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if booking['state'] == 'confirmed' else 'warning' if booking['state'] == 'requested' else 'info' }}">
+                        {{ booking['state'] }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No upcoming bookings for this room.</p>
+{% endif %}
+{% endblock %}
