@@ -1,9 +1,5 @@
 from flask import Blueprint
 
-repertoire_import_bp = Blueprint(
-    "repertoire_import",
-    __name__,
-    url_prefix="/repertoire/import",
-)
+bp = Blueprint('repertoire_import', __name__)
 
-from app.repertoire_import import routes  # noqa: E402, F401
+from . import routes  # noqa: E402, F401

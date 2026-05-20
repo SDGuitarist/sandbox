@@ -24,10 +24,14 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 
-from app.repertoire_import import repertoire_import_bp
+from . import bp
+from ..decorators import login_required
+from ..db import get_db
+from ..models import bulk_create_songs
 
 logger = logging.getLogger(__name__)
 
@@ -204,13 +208,15 @@ def _delete_preview(preview_id: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-@repertoire_import_bp.route("/", methods=["GET"])
+@bp.route("/", methods=["GET"])
+@login_required
 def import_form():
     """Display the CSV upload form."""
     return render_template("repertoire_import/form.html")
 
 
-@repertoire_import_bp.route("/preview", methods=["POST"])
+@bp.route("/preview", methods=["POST"])
+@login_required
 def import_preview():
     """Parse an uploaded CSV and display a preview table."""
     csv_file = request.files.get("csv_file")
@@ -218,6 +224,8 @@ def import_preview():
     if csv_file is None or csv_file.filename == "":
         flash("Please select a CSV file to upload.", "error")
         return redirect(url_for("repertoire_import.import_form"))
+
+    filename = csv_file.filename
 
     # Read the raw bytes and enforce size limit.
     raw_bytes = csv_file.read()
@@ -248,23 +256,25 @@ def import_preview():
 
     preview_id = _save_preview(rows)
 
+    # Build error_rows in the format the spec expects: list[dict] with keys row_number, error
+    error_rows = []
+    for err in errors:
+        error_rows.append({'row_number': None, 'error': err})
+
     return render_template(
         "repertoire_import/preview.html",
-        rows=rows,
-        errors=errors,
+        songs=rows,
+        filename=filename,
+        error_rows=error_rows,
+        valid_count=len(rows),
         preview_id=preview_id,
-        columns=EXPECTED_COLUMNS,
     )
 
 
-@repertoire_import_bp.route("/confirm", methods=["POST"])
+@bp.route("/confirm", methods=["POST"])
+@login_required
 def import_confirm():
-    """Persist the previewed rows into the database.
-
-    NOTE: The actual database insertion depends on a model layer (e.g.
-    app.models.bulk_insert_repertoire) that another agent owns. This route
-    loads the preview, attempts the insert, and reports success or failure.
-    """
+    """Persist the previewed rows into the database."""
     preview_id = request.form.get("preview_id", "").strip()
 
     if not preview_id:
@@ -279,20 +289,12 @@ def import_confirm():
         )
         return redirect(url_for("repertoire_import.import_form"))
 
-    # Attempt bulk insert via model layer.
-    try:
-        from app.models import bulk_insert_repertoire
-        from app.db import get_db
+    user_id = session['user_id']
 
-        with get_db() as conn:
-            inserted_count = bulk_insert_repertoire(conn, rows)
-    except ImportError:
-        # Model layer not yet available -- store count for flash message.
-        logger.warning(
-            "bulk_insert_repertoire not available; skipping DB insert. "
-            "This is expected during early development."
-        )
-        inserted_count = len(rows)
+    try:
+        with get_db(immediate=True) as db:
+            inserted_count = bulk_create_songs(db, user_id, rows)
+            db.commit()
     except Exception as e:
         logger.error("Repertoire import failed: %s", e)
         flash(f"Import failed: {e}", "error")
@@ -300,5 +302,5 @@ def import_confirm():
 
     _delete_preview(preview_id)
 
-    flash(f"Successfully imported {inserted_count} tracks.", "success")
+    flash(f"Successfully imported {inserted_count} songs.", "success")
     return redirect(url_for("repertoire_import.import_form"))
