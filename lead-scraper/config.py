@@ -173,9 +173,15 @@ BASE_SOURCES = {
         "source_name": "venue_scraper",
     },
     "google": {
-        "enabled": False,  # Phase 5: SerpAPI discovery
+        "enabled": False,  # Enable with: python run.py scrape --source google
         "type": "serpapi",
-        "queries": [],
+        "queries": [
+            "filmmaker {location}",
+            "film composer {location}",
+            "music producer {location}",
+            "screenwriter {location}",
+            "video production {location}",
+        ],
         "location": "San Diego, California, United States",
     },
 }

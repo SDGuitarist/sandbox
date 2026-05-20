@@ -59,8 +59,9 @@ def _scrape_csv(source_name: str, source_config: dict) -> list[dict]:
 
 
 def _scrape_serpapi(source_name: str, source_config: dict) -> list[dict]:
-    """Placeholder for Phase 5 SerpAPI discovery."""
-    raise NotImplementedError("SerpAPI scraper not yet implemented (Phase 5)")
+    """Dispatch to SerpAPI-based discovery scraper."""
+    from scrapers import google
+    return google.scrape(source_config)
 
 
 def cmd_scrape(args):
