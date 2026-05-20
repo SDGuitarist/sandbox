@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from functools import wraps
 from flask import session, redirect, url_for, flash
@@ -25,7 +26,6 @@ def format_date(date_str):
     """Format ISO date string: '2026-05-19' -> 'May 19, 2026'"""
     if not date_str:
         return ''
-    from datetime import datetime
     try:
         dt = datetime.strptime(date_str[:10], '%Y-%m-%d')
         return dt.strftime('%b %d, %Y')

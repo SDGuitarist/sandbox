@@ -198,9 +198,9 @@ def create_invoice():
                 flash('Invalid numeric value in line items.', 'danger')
                 return redirect(url_for('invoices.create_invoice'))
 
-            line_subtotal = int(round(qty * up_cents))
-            line_tax = int(round(qty * up_cents * (tr / 100)))
-            line_total_cents = line_subtotal + line_tax
+            if qty <= 0 or up_cents < 0 or tr < 0:
+                flash('Quantity must be positive; price and tax rate must be non-negative.', 'danger')
+                return redirect(url_for('invoices.create_invoice'))
 
             cat_id = None
             if i < len(catalog_item_ids) and catalog_item_ids[i]:
@@ -214,18 +214,24 @@ def create_invoice():
                 'quantity': qty,
                 'unit_price_cents': up_cents,
                 'tax_rate': tr,
-                'line_total_cents': line_total_cents,
                 'catalog_item_id': cat_id,
                 'sort_order': i,
             })
-            subtotal_cents += line_subtotal
-            tax_cents += line_tax
-
-        total_cents = subtotal_cents + tax_cents
 
         if not parsed_items:
             flash('At least one line item is required.', 'danger')
             return redirect(url_for('invoices.create_invoice'))
+
+        # Calculate totals from parsed items
+        subtotal_cents = 0
+        tax_cents = 0
+        for item in parsed_items:
+            line_subtotal = int(round(item['quantity'] * item['unit_price_cents']))
+            line_tax = int(round(item['quantity'] * item['unit_price_cents'] * (item['tax_rate'] / 100)))
+            item['line_total_cents'] = line_subtotal + line_tax
+            subtotal_cents += line_subtotal
+            tax_cents += line_tax
+        total_cents = subtotal_cents + tax_cents
 
         # Insert invoice
         db.execute("""
@@ -416,6 +422,10 @@ def edit_invoice(invoice_id):
                 tr = float(tax_rates[i])
             except (ValueError, IndexError):
                 flash('Invalid numeric value in line items.', 'danger')
+                return redirect(url_for('invoices.edit_invoice', invoice_id=invoice_id))
+
+            if qty <= 0 or up_cents < 0 or tr < 0:
+                flash('Quantity must be positive; price and tax rate must be non-negative.', 'danger')
                 return redirect(url_for('invoices.edit_invoice', invoice_id=invoice_id))
 
             line_subtotal = int(round(qty * up_cents))

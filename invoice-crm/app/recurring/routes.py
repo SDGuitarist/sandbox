@@ -93,6 +93,15 @@ def set_recurring(invoice_id):
             recurrence_interval = request.form.get('recurrence_interval') if is_recurring else None
             next_recurrence_date = request.form.get('next_recurrence_date') if is_recurring else None
 
+            valid_intervals = ('weekly', 'monthly', 'quarterly', 'annually')
+            if is_recurring:
+                if recurrence_interval not in valid_intervals:
+                    flash('Invalid recurrence interval.', 'danger')
+                    return redirect(url_for('recurring.set_recurring', invoice_id=invoice_id))
+                if not next_recurrence_date:
+                    flash('Next recurrence date is required.', 'danger')
+                    return redirect(url_for('recurring.set_recurring', invoice_id=invoice_id))
+
             db.execute("""
                 UPDATE invoices
                 SET is_recurring = ?, recurrence_interval = ?, next_recurrence_date = ?,

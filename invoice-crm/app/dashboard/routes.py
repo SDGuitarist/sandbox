@@ -11,18 +11,17 @@ def index():
     with get_db() as db:
         user_id = session['user_id']
 
-        # 1. Generate recurring invoices
+        # 1. Generate recurring invoices + update overdue (single commit)
         generated = generate_due_invoices(db, user_id)
-        if generated > 0:
-            db.commit()
-            flash(f'{generated} recurring invoice(s) generated.', 'info')
 
-        # 2. Update overdue invoices
         db.execute("""
             UPDATE invoices SET status = 'overdue', updated_at = datetime('now')
             WHERE user_id = ? AND status IN ('sent', 'viewed') AND due_date < date('now')
         """, (user_id,))
+
         db.commit()
+        if generated > 0:
+            flash(f'{generated} recurring invoice(s) generated.', 'info')
 
         # 3. Query dashboard data
 

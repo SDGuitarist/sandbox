@@ -18,6 +18,7 @@ def login():
                 "SELECT * FROM users WHERE email = ?", (email,)
             ).fetchone()
             if user and check_password_hash(user['password_hash'], password):
+                session.clear()  # Regenerate session to prevent fixation
                 session['user_id'] = user['id']
                 return redirect(url_for('dashboard.index'))
             flash('Invalid email or password.', 'danger')

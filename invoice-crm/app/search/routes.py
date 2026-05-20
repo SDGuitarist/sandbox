@@ -14,25 +14,26 @@ def search():
     deals = []
 
     if q:
-        like_pattern = f'%{q}%'
+        escaped_q = q.replace('%', r'\%').replace('_', r'\_')
+        like_pattern = f'%{escaped_q}%'
         user_id = session['user_id']
 
         with get_db() as db:
             clients = db.execute(
                 "SELECT id, name, email, company, status FROM clients "
-                "WHERE user_id = ? AND name LIKE ?",
+                r"WHERE user_id = ? AND name LIKE ? ESCAPE '\'",
                 (user_id, like_pattern)
             ).fetchall()
 
             invoices = db.execute(
                 "SELECT id, invoice_number, status, total_cents, issue_date FROM invoices "
-                "WHERE user_id = ? AND invoice_number LIKE ?",
+                r"WHERE user_id = ? AND invoice_number LIKE ? ESCAPE '\'",
                 (user_id, like_pattern)
             ).fetchall()
 
             deals = db.execute(
                 "SELECT id, title, stage, value_cents FROM deals "
-                "WHERE user_id = ? AND title LIKE ?",
+                r"WHERE user_id = ? AND title LIKE ? ESCAPE '\'",
                 (user_id, like_pattern)
             ).fetchall()
 
