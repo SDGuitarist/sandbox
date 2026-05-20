@@ -138,7 +138,7 @@ class TestExportOutreachCsv:
         assert count == 1
         assert output.exists()
 
-    def test_uses_source_url_for_website(self, tmp_path: Path) -> None:
+    def test_source_url_in_own_column(self, tmp_path: Path) -> None:
         results = [
             {"name": "Venue", "email": "v@v.com", "phone": None, "source_url": "https://venue.com", "website": None}
         ]
@@ -148,4 +148,6 @@ class TestExportOutreachCsv:
         with open(output) as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-        assert rows[0]["website"] == "https://venue.com"
+        # source_url is now its own column, website shows actual website value
+        assert rows[0]["source_url"] == "https://venue.com"
+        assert rows[0]["website"] == ""
