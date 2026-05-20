@@ -1,0 +1,56 @@
+{% set active_page = 'events' %}
+{% extends 'base.html' %}
+
+{% block title %}{% if event %}Edit Event{% else %}New Event{% endif %} - GigList{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{% if event %}Edit Event{% else %}New Event{% endif %}</h1>
+
+<form method="POST" action="{% if event %}{{ url_for('events.edit', event_id=event.id) }}{% else %}{{ url_for('events.create') }}{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Event Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="name" name="name" value="{{ event.name if event else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="event_date" class="form-label">Event Date <span class="text-danger">*</span></label>
+        <input type="date" class="form-control" id="event_date" name="event_date" value="{{ event.event_date if event else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="event_type" class="form-label">Event Type</label>
+        <select class="form-select" id="event_type" name="event_type">
+            {% for et in event_types %}
+                <option value="{{ et }}" {% if event and event.event_type == et %}selected{% endif %}>{{ et.replace('_', ' ').title() }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="venue" class="form-label">Venue</label>
+        <input type="text" class="form-control" id="venue" name="venue" value="{{ event.venue if event else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="client_name" class="form-label">Client Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="client_name" name="client_name" value="{{ event.client_name if event else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="client_email" class="form-label">Client Email</label>
+        <input type="email" class="form-control" id="client_email" name="client_email" value="{{ event.client_email if event else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ event.notes if event else '' }}</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{% if event %}Update Event{% else %}Create Event{% endif %}</button>
+        <a href="{% if event %}{{ url_for('events.detail', event_id=event.id) }}{% else %}{{ url_for('events.index') }}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
