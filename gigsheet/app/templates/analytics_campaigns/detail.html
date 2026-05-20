@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Campaign Analytics - {{ campaign['name'] }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('analytics_overview.index') }}">Analytics</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ campaign['name'] }}</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">{{ campaign['name'] }}</h1>
+
+    {# Campaign info card #}
+    <div class="card mb-4">
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3">Status</dt>
+                <dd class="col-sm-9">
+                    <span class="badge bg-{% if campaign['status'] == 'sent' %}success{% elif campaign['status'] == 'sending' %}primary{% elif campaign['status'] == 'draft' %}secondary{% elif campaign['status'] == 'scheduled' %}info{% elif campaign['status'] == 'cancelled' %}danger{% else %}warning{% endif %}">
+                        {{ campaign['status'] | stage_label }}
+                    </span>
+                </dd>
+
+                <dt class="col-sm-3">Template</dt>
+                <dd class="col-sm-9">{{ template['name'] if template else 'N/A' }}</dd>
+
+                <dt class="col-sm-3">Send Date</dt>
+                <dd class="col-sm-9">{{ campaign['started_at'] or campaign['scheduled_at'] or 'Not sent yet' }}</dd>
+
+                <dt class="col-sm-3">Recipients</dt>
+                <dd class="col-sm-9">{{ total_recipients }}</dd>
+            </dl>
+        </div>
+    </div>
+
+    {# Metrics cards #}
+    <h2 class="mb-3">Delivery Metrics</h2>
+    <div class="row g-3 mb-4">
+        {% for key, m in metrics.items() %}
+        <div class="col-md-4 col-lg-2">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-capitalize">{{ key }}</h5>
+                    <p class="display-6 mb-0">{{ m['count'] }}</p>
+                    <small class="text-muted">{{ m['pct'] }}%</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# Recipient table #}
+    <h2 class="mb-3">Recipients</h2>
+    {% if recipients %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Contact Name</th>
+                    <th>Venue</th>
+                    <th>Status</th>
+                    <th>Sent At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recipients %}
+                <tr>
+                    <td>{{ r['email'] }}</td>
+                    <td>{{ r['contact_name'] or '' }}</td>
+                    <td>{{ r['venue_name'] or '' }}</td>
+                    <td>
+                        <span class="badge bg-{% if r['status'] == 'delivered' or r['status'] == 'opened' or r['status'] == 'clicked' %}success{% elif r['status'] == 'sent' %}info{% elif r['status'] == 'pending' %}secondary{% elif r['status'] == 'bounced' or r['status'] == 'failed' %}danger{% else %}warning{% endif %}">
+                            {{ r['status'] | stage_label }}
+                        </span>
+                    </td>
+                    <td>{{ r['sent_at'] or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No recipients in this campaign.</p>
+    {% endif %}
+
+</div>
+{% endblock %}
