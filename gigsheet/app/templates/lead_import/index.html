@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Import Leads from CSV</h2>
+    <p class="text-muted">
+        Upload a CSV file with your venue/promoter contacts.
+        Expected columns: email, contact_name, venue_name, capacity, location, genre_tags, phone, website.
+    </p>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('lead_import.upload') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-3">
+                    <label for="csv_file" class="form-label">CSV File</label>
+                    <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                    <div class="form-text">Max 5,000 rows. Only .csv files accepted.</div>
+                </div>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="has_header" name="has_header" value="1" checked>
+                    <label class="form-check-label" for="has_header">First row is a header</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Upload &amp; Preview</button>
+                <a href="{{ url_for('lead_list.index') }}" class="btn btn-secondary ms-2">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
