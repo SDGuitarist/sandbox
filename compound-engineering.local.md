@@ -1,26 +1,25 @@
-# Review Context -- Sandbox (Invoice & CRM, Run 046)
+# Review Context -- Sandbox (Client Music Planner, Run 048)
 
 ## Risk Chain
 
-**Brainstorm risk:** "cross-blueprint data flows (deal-to-invoice, payment-to-invoice-status, recurring generation from dashboard) and spec size (~1200 lines) are highest coordination risk"
+**Brainstorm risk:** "Token-based portal access is novel territory. The @require_portal_token decorator is the critical security boundary."
 
-**Plan mitigation:** Cross-Boundary Wiring Table with exact code blocks for all 3 flows. Coordinated Behaviors Table for flash messages and activity logging. Endpoint Registry with url_for names.
+**Plan mitigation:** Prescriptive decorator code blocks in spec. Cross-Boundary Wiring section with exact usage patterns for g.portal_event. Coordinated Behaviors table for all 20 agents.
 
-**Work risk (from Feed-Forward):** "invoice line items form with parallel arrays (descriptions[], quantities[], unit_prices[], tax_rates[], catalog_item_ids[]) and the JS to add/remove rows"
+**Work risk (from Feed-Forward):** "Drag-and-drop reorder persistence (SortableJS -> /api/playlist/reorder -> batch UPDATE). Three things must align across 3 agents."
 
-**Review resolution:** 5 agents found 8 P1, ~12 P2, ~17 P3. 6 P1s fixed in code, 2 documented as acceptable (brute-force login, line-item duplication). Flow-trace reviewer found 3 cross-flow bugs (prefix crash, status revert, overdue gap) -- all fixed.
+**Review resolution:** 5 agents found 4 P1, ~14 P2, ~16 P3. All P1s fixed. Flow-trace reviewer found the only P1 (CSS class mismatch) that 4 other reviewers missed. portal_playlist was the only agent that needed full rewrite (23 contract failures).
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| invoice-crm/app/invoices/routes.py | 1134 lines, line-item parallel arrays, 70-line duplicated parsing block | Array desync, code duplication (046-W2) |
-| invoice-crm/app/recurring/routes.py | generate_due_invoices cross-boundary import | Invoice number generation, prefix handling |
-| invoice-crm/app/dashboard/routes.py | Imports from recurring, overdue detection, writes on GET | Performance (12 queries/load), status transitions |
-| invoice-crm/app/payments/routes.py | Payment→invoice status update, overpayment logic | Status bypass (draft payments), delete revert |
-| invoice-crm/app/pipeline/routes.py | Deal-won redirect to invoice creation | Cross-boundary wiring, activity logging |
-| invoice-crm/app/auth/routes.py | Login endpoint, no rate limiting | Brute-force risk (046-W1) |
+| client-music-planner/app/portal_playlist/routes.py | Full rewrite in assembly fix (original had 13 contract failures) | g.portal_event usage, db.commit() |
+| client-music-planner/app/repertoire_import/routes.py | Assembly fix (5 failures) + P1 fix (exception leakage) | CSV parsing, bulk_create_songs call |
+| client-music-planner/app/api_playlist/routes.py | Reorder endpoint -- validates parallel arrays | Length check, set equality |
+| client-music-planner/app/static/js/playlist.js | SortableJS + move buttons + error recovery | CSS class selectors match template |
+| client-music-planner/app/templates/portal_playlist/playlist.html | DnD template with data-item-id, move buttons | data attributes, block name |
 
 ## Plan Reference
 
-`docs/plans/invoice-crm-plan.md`
+`docs/plans/client-music-planner-plan.md`
