@@ -2,66 +2,73 @@
 
 **Date:** 2026-05-19
 **Branch:** master
-**Phase:** Compound complete -- both Run 046 (Invoice & CRM) and Run 047 (Command Center) fully closed
+**Phase:** Ready for autopilot -- Client Music Planner (run 048)
 
-## Current State
+## What To Do
 
-Two swarm builds completed and reviewed. Invoice & CRM (run 046) is a 15-agent Flask app with 80 files, reviewed by 5 agents, grade 3.8/5.0 (B). Command Center (run 047) is a 16-agent Flask app with 98 files, reviewed by 3 agents, grade 4.5/5.0 (A). Both have solution docs, learnings propagated, self-audits verified.
+Launch full autopilot run for the **Client Music Planner** -- a two-sided portal where musicians share a branded link with wedding/event clients, who browse the musician's repertoire, build their event playlist, flag must-plays and do-not-plays, and approve the timeline.
 
-## Key Artifacts
+**This should be the biggest run to date (run 046 was 15 agents, run 047 was 16).**
+
+### Concept
+
+- **Musician side:** Manage repertoire (songs with key, tempo, genre, energy, duration), create shareable event portals per client, view client selections, export final setlist
+- **Client side:** Browse musician's repertoire (filterable by genre/energy/mood), drag-and-drop playlist builder, flag must-play/do-not-play, add song requests not in repertoire, approve timeline, leave notes
+- **Moat:** Accumulated repertoire data is a switching cost. If multiple musicians adopt, clients start expecting the experience (network effect). Music-specific workflow only a musician would design correctly.
+- **Monetization:** Free for 1 active event, $15/mo unlimited events, $25/mo with analytics + branding
+
+### Key Decisions for Brainstorm/Plan
+
+1. Two-sided portal architecture (musician auth + client token-based access)
+2. How clients access their portal (unique link with token? PIN code?)
+3. Repertoire data model (songs, tags, categories, energy levels)
+4. Playlist builder UX (drag-and-drop? checkbox? timeline slots?)
+5. How many agents/blueprints -- target 18-20+ for biggest run
+6. Flask + SQLite + Jinja2 (same stack as runs 046/047)
+
+### Pre-Flight Status (verified this session)
+
+| Check | Status |
+|-------|--------|
+| Git working tree | Clean |
+| Stale branches | Pruned (30 -> 4) |
+| Stale worktrees | Pruned |
+| BUILD_TRACKING.md | Archived to command-center/ |
+| Permissions | dangerouslySkipPermissions: true |
+| Agent-pitfalls | Current (FC9, FC33, FC34 from run 046) |
+| Parallel run risk | None (single session only) |
+
+### Autopilot Launch Prompt
+
+```
+Read HANDOFF.md. This is the Sandbox project, launching run 048: Client Music Planner.
+
+Target: biggest autopilot swarm to date (18-20+ agents). Two-sided portal --
+musicians manage repertoire and create event portals, clients browse and build
+playlists via shareable links.
+
+Stack: Flask + SQLite + Jinja2 + Bootstrap 5 (same as runs 046/047).
+No parallel sessions -- single autopilot run only (FC34 mitigation).
+
+Run /autopilot for the full compound loop: brainstorm -> plan -> spec convergence
+-> swarm work -> review -> compound -> learnings.
+```
+
+## Prior Runs (for context)
+
+| Run | Project | Agents | Grade | Solution Doc |
+|-----|---------|--------|-------|-------------|
+| 046 | Invoice & CRM | 15 | B (3.8) | docs/solutions/2026-05-19-invoice-crm-15-agent-swarm-build.md |
+| 047 | Command Center | 16 | A (4.5) | docs/solutions/2026-05-19-solopreneur-command-center-swarm-build.md |
+| 045 | Feedback Board | 1 (solo) | A (4.5) | docs/solutions/2026-05-18-feedback-board-solo-build.md |
+
+## Deferred Items From Prior Runs
 
 ### Run 046 (Invoice & CRM)
+- 046-W1 ACCEPTED: No brute-force login protection. MEDIUM.
+- 046-W2 ACCEPTED: Line-item parsing duplication. MEDIUM.
+- P2s: no session regen, negative amounts, LIKE wildcards, no pagination
 
-| Phase | Location |
-|-------|----------|
-| Brainstorm | docs/brainstorms/invoice-crm.md |
-| Plan | docs/plans/invoice-crm-plan.md |
-| Reports | docs/reports/046/ (10 files: ownership, spec-consistency, smoke, tests, 4 reviews, swarm-assignments, self-audit) |
-| Solution | docs/solutions/2026-05-19-invoice-crm-15-agent-swarm-build.md |
-| BUILD_TRACKING | invoice-crm/BUILD_TRACKING.md |
-| App | invoice-crm/ (run with `.venv/bin/python run.py`, port 5000) |
-
-### Run 047 (Solopreneur Command Center)
-
-| Phase | Location |
-|-------|----------|
-| Brainstorm | docs/brainstorms/solopreneur-command-center-brainstorm.md |
-| Plan | docs/plans/solopreneur-command-center.md |
-| Reports | docs/reports/047/ |
-| Solution | docs/solutions/2026-05-19-solopreneur-command-center-swarm-build.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
-| App | command-center/ (run with `.venv/bin/python run.py`) |
-
-## Deferred Items
-
-### Run 046 (Invoice & CRM) -- Review Completed 2026-05-19
-- [046-W1] ACCEPTED: No brute-force login protection (flask-limiter needed, own plan cycle). Severity: MEDIUM.
-- [046-W2] ACCEPTED: 70-line line-item parsing duplication in create/edit invoice. Severity: MEDIUM.
-- [046-W3] ACCEPTED: pipeline/list.html dead template, UI no-op. Severity: LOW.
-- [046-W4] ACCEPTED: line_total_cents formula split vs spec (functionally equivalent). Severity: LOW.
-- [046-D2] PDF invoice export (v2 feature)
-- [046-D3] Email sending (v2 feature)
-- [046-D4] Multi-user / team features (v2)
-- [046-D5] Online payment processing (v2)
-- P2s remaining: no session regeneration, negative amounts accepted, unescaped LIKE wildcards, no pagination
-
-### Run 047 (Solopreneur Command Center)
-- P3: CSV export may be duplicated between reports and settings blueprints
-- P3: Form field names not prescribed in spec (caused test confusion)
-- Future: Responsive design, email integration, calendar sync
-
-## Three Questions
-
-1. **Hardest decision?** Whether to have 15 thin agents or 10 merged agents. 15 thin agents proved correct -- zero merge conflicts.
-2. **What was rejected?** Merging blueprints would have created shared template directories causing merge conflicts. Background job for recurring/overdue -- rejected as overkill for MVP.
-3. **Least confident about?** Whether the test suite (written by a separate agent) would correctly match the routes (written by 12 other agents). 4/37 failures were naming mismatches.
-
-## Prompt for Next Session
-
-```
-Read HANDOFF.md for context. This is the Sandbox project with two completed swarm builds:
-- Invoice & CRM (run 046, 15-agent, B grade) in invoice-crm/
-- Command Center (run 047, 16-agent, A grade) in command-center/
-Both builds are fully closed (reviewed, audited, learnings propagated).
-[Your task here]
-```
+### Run 047 (Command Center)
+- P3: CSV export duplication, form field names not prescribed
+- Future: responsive design, email integration, calendar sync
