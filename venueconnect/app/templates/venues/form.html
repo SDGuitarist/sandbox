@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Venue' if venue else 'New Venue' }} - VenueConnect{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Venue' if venue else 'New Venue' }}</h1>
+
+<form method="POST" class="mt-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Venue Name *</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ venue['name'] if venue else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Location</label>
+        <input type="text" class="form-control" id="location" name="location"
+               value="{{ venue['location'] if venue else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ venue['description'] if venue else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="capacity" class="form-label">Capacity</label>
+        <input type="number" class="form-control" id="capacity" name="capacity"
+               value="{{ venue['capacity'] if venue else 0 }}" min="0">
+    </div>
+
+    <div class="mb-3">
+        <label for="genre_tags" class="form-label">Genre Tags</label>
+        <input type="text" class="form-control" id="genre_tags" name="genre_tags"
+               value="{{ venue['genre_tags'] if venue else '' }}"
+               placeholder="e.g. jazz, blues, rock">
+        <div class="form-text">Comma-separated list of genres.</div>
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">{{ 'Update Venue' if venue else 'Create Venue' }}</button>
+        {% if venue %}
+        <a href="{{ url_for('venues.detail', venue_id=venue['id']) }}" class="btn btn-outline-secondary">Cancel</a>
+        {% else %}
+        <a href="{{ url_for('venues.list') }}" class="btn btn-outline-secondary">Cancel</a>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}
