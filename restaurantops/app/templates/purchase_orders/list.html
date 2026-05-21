@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Purchase Orders - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Purchase Orders</h1>
+        <a href="{{ url_for('purchase_orders.create_form') }}" class="btn btn-primary">New Purchase Order</a>
+    </div>
+
+    {% if not orders %}
+    <div class="text-center text-muted py-5">
+        <p>No purchase orders found.</p>
+        <a href="{{ url_for('purchase_orders.create_form') }}" class="btn btn-primary">Add First Purchase Order</a>
+    </div>
+    {% else %}
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Supplier</th>
+                <th>Status</th>
+                <th>Total</th>
+                <th>Ordered</th>
+                <th>Received</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td><a href="{{ url_for('purchase_orders.detail', id=order['id']) }}">#{{ order['id'] }}</a></td>
+                <td>{{ order['supplier_name'] if order['supplier_name'] else 'N/A' }}</td>
+                <td>
+                    {% if order['status'] == 'draft' %}
+                    <span class="badge bg-secondary">draft</span>
+                    {% elif order['status'] == 'submitted' %}
+                    <span class="badge bg-primary">submitted</span>
+                    {% elif order['status'] == 'received' %}
+                    <span class="badge bg-success">received</span>
+                    {% elif order['status'] == 'closed' %}
+                    <span class="badge bg-dark">closed</span>
+                    {% endif %}
+                </td>
+                <td>{{ order['total_cents']|dollars }}</td>
+                <td>{{ order['ordered_date']|datefmt if order['ordered_date'] else '-' }}</td>
+                <td>{{ order['received_date']|datefmt if order['received_date'] else '-' }}</td>
+                <td>{{ order['created_at']|datefmt }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}
