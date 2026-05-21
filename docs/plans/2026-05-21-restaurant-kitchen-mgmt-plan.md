@@ -1284,7 +1284,7 @@ render_template('dashboard/index.html',
     stats=get_dashboard_stats(conn),        # dict with keys below
     active_specials=get_todays_specials(conn),  # list[Row]
     low_stock=get_low_stock_items(conn),    # list[Row]
-    active_orders=get_all_orders(conn, status='pending'),  # list[Row]
+    pending_orders=get_all_orders(conn, status='pending'),  # list[Row]
     todays_reservations=get_all_reservations(conn, date=today_str)  # list[Row]
 )
 # stats keys: active_orders, low_stock_count, todays_reservations,
@@ -1870,11 +1870,10 @@ without the per-connection PRAGMAs causes concurrency bugs (FC40).
 
 | Caller | Callee Function | Module | Notes |
 |--------|----------------|--------|-------|
-| orders.prepare | deduct_order_inventory(conn, order_id) | inventory_models | BEGIN IMMEDIATE in caller |
-| orders.cancel | restore_order_inventory(conn, order_id) | inventory_models | BEGIN IMMEDIATE in caller |
+| orders.prepare | start_preparing_order(conn, order_id) | order_models | Owns BEGIN IMMEDIATE, validates status, deducts inventory |
+| orders.cancel | cancel_order(conn, order_id) | order_models | Owns BEGIN IMMEDIATE, conditionally restores inventory |
 | purchase_orders.receive | receive_purchase_order(conn, po_id) | purchase_order_models | Calls record_stock_movement internally |
 | receive_purchase_order | record_stock_movement(conn, ...) | inventory_models | Does NOT commit |
-| menu.detail | calculate_recipe_cost(conn, recipe_id) | recipe_models | Read-only |
 | menu.detail | get_menu_item_allergens(conn, id) | menu_models | Read-only JOIN |
 | menu.detail | get_menu_item_avg_rating(conn, id) | review_models | Read-only |
 | orders.form | get_all_menu_items(conn) | menu_models | Read-only for select |
