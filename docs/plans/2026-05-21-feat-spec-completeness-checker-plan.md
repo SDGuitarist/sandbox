@@ -84,10 +84,20 @@ This matches the existing consistency checker's approach (it finds sections by h
 
 **Validation evidence:** All 6 patterns tested against all 18 existing swarm plans. Zero false positives, zero false negatives. Patterns handle trailing annotations like "(FC1 Prevention)", "(MANDATORY for all agents)", and variant suffixes ("Table", "Section", "Rules", "Annotations"). Only 1/18 plans (GigSheet) has all 4 existing sections -- this reflects recent standard adoption, not pattern failure.
 
-**N/A strategy (two types, different handling):**
-- **N/A-section:** The canonical heading was not found in the plan. For mandatory sections (Export Names, Cross-Boundary Wiring, Coordinated Behaviors, Transaction Contracts): this is a FAIL, not N/A. The section must exist.
-- **N/A-condition:** The section heading exists but the condition doesn't apply (e.g., Authorization Matrix exists but no auth-protected routes found). This is a genuine N/A -- surface is skipped.
-- **Exception:** Authorization Matrix and Input Validation Prescriptions are only mandatory when the condition applies (auth routes exist, parsed input routes exist). If the plan has no auth routes, missing Authorization Matrix heading is N/A, not FAIL.
+**N/A strategy (unified control flow for all 6 surfaces):**
+
+Every surface follows the same decision tree:
+
+1. **Enumerate the qualifying items** (functions, routes, blueprints) that the surface covers.
+2. **If zero qualifying items:** N/A. The surface doesn't apply to this build. Stop.
+3. **If qualifying items exist:** find the canonical heading.
+4. **If heading missing:** FAIL with "[section] not found. <N> items require coverage."
+5. **If heading found:** evaluate row-by-row coverage. Missing rows = FAIL.
+
+This means:
+- Surfaces 1, 2, 4, 5 (Export Names, Wiring, Registration, Transactions) will almost always have qualifying items in swarm builds, so missing headings produce FAIL.
+- Surfaces 3, 6 (Input Validation, Authorization) may have zero qualifying items in builds without parsed input or auth routes, producing N/A.
+- No surface ever produces N/A for "heading not found" -- that's always FAIL when qualifying items exist.
 
 **Main section enumeration:** The agent also needs to identify routes and model functions from the spec's main body. These are found by searching for:
 - Route tables: headings containing "Route" or "Endpoint" followed by markdown tables with columns like `Method`, `Path`, `Handler`
@@ -98,37 +108,54 @@ This matches the existing consistency checker's approach (it finds sections by h
 
 #### Check 1: Export Names Coverage (FC1)
 
+**Scope:** The checker enumerates three identifier classes deterministically. Other identifier types (template filenames, CSS classes, form field names) are not reliably enumerable from markdown specs and are excluded from automated checking.
+
+**Identifier classes checked:**
+
+| Class | Enumeration rule | Where found in spec |
+|-------|-----------------|-------------------|
+| Model functions | Lines matching `def <name>(` inside python code blocks | `### *_models.py` or `### models/` sections |
+| Endpoint names | `url_for('<blueprint>.<function>')` patterns in code blocks | Route handler sections |
+| Blueprint names | `### <name>/` section headings or entries in file inventory tables | File inventory, blueprint sections |
+
+**Steps:**
+
 1. Find the Export Names section by canonical prefix.
 2. If section missing: FAIL with "Export Names section not found."
 3. Extract all names from the Export Names table (column 1).
-4. Scan all model function sections for function definitions (lines matching `def <name>(` in code blocks).
-5. Scan all route handler sections for `url_for('<blueprint>.<function>')` patterns in code blocks.
-6. For each function/url_for target found in the spec body but NOT in the Export Names table: FAIL.
-7. Count: `<N> symbols checked, <M> missing`.
+4. Enumerate identifiers using the three rules above.
+5. For each enumerated identifier NOT in the Export Names table: FAIL.
+6. Count: `<N> identifiers checked, <M> missing`.
 
-#### Check 2: Wiring Completeness (FC3)
+#### Check 2: Wiring Coverage (FC3)
+
+**Scope:** Does every cross-boundary function appear in the wiring table? This is a COVERAGE check -- "is the function declared in the wiring table at all?" The consistency checker (Category 6) already verifies that declared wiring entries have matching consumers. This check catches functions that are MISSING from the table entirely.
 
 1. Find the Cross-Boundary Wiring section by canonical prefix.
 2. If section missing: FAIL with "Cross-Boundary Wiring section not found."
-3. Extract all producer-consumer entries from the wiring table.
-4. For each producer: verify the producing module appears in the spec's file inventory or blueprint sections.
-5. For each consumer: verify the consuming file appears in the spec.
-6. For each entry in the Export Names table with a "Used By" column: verify it has at least one consumer listed.
-7. For any export with zero consumers: FAIL.
-8. Count: `<N> entries, <M> orphaned`.
+3. Extract all function names from the wiring table (producer column).
+4. Extract all functions from the Export Names table that have a "Used By" column listing consumers in other agents (cross-boundary functions).
+5. For each cross-boundary function in the Export Names table: verify it also appears in the Cross-Boundary Wiring table as a producer.
+6. For any cross-boundary function missing from the wiring table: FAIL.
+7. Count: `<N> cross-boundary functions, <M> missing from wiring table`.
+
+**Boundary with consistency checker:** Completeness asks "is this function in the wiring table?" Consistency asks "do the names in the wiring table match the export names?" No overlap.
 
 #### Check 3: Input Validation Prescriptions (FC4)
 
-1. Find the Input Validation Prescriptions section by canonical prefix.
-2. If section missing: FAIL with "Input Validation Prescriptions section not found."
-3. Identify all routes from the route table that accept user input. **Narrow definition of "parsed input":**
+**Control flow (explicit, no ambiguity):**
+
+1. **Enumerate qualifying routes first.** Scan the route table for routes matching the narrow definition of "parsed input":
    - Routes with `methods=['POST']` or `methods=['PUT', 'PATCH']` (form submissions)
    - Routes with `<int:id>` or `<int:*>` URL parameters (type-converted params)
    - Routes with DELETE method that reference a resource by ID (FK delete paths)
-4. For each identified route: verify it appears in the Input Validation Prescriptions table with at least one validation rule.
-5. Exclude: GET routes with only string query params (no type conversion). These are low-risk.
-6. For any route with parsed input but no validation prescription: FAIL.
-7. Count: `<N> routes checked, <M> unvalidated`.
+   - **Exclude:** GET routes with only string query params (no type conversion)
+2. **If zero qualifying routes found:** mark surface as N/A. Stop.
+3. **If qualifying routes exist:** find the Input Validation Prescriptions section by canonical prefix.
+4. **If section missing:** FAIL with "Input Validation Prescriptions section not found. <N> routes require validation prescriptions."
+5. **If section exists:** for each qualifying route, verify it appears in the table with at least one validation rule specifying: what input is validated, how (try/except, regex, allowlist), and what error response (400, flash, redirect).
+6. For any qualifying route missing from the table: FAIL.
+7. Count: `<N> qualifying routes, <M> unvalidated`.
 
 **Scope calibration (validated against 3 recent plans):**
 
@@ -142,38 +169,61 @@ GET routes with string query params have produced 0 P1s across all builds. The n
 
 #### Check 4: Registration Points (FC5)
 
+**Scope:** This check covers blueprint and navigation registration only -- the two registration surfaces that are deterministically enumerable. The broader FC5 problem (flash message consistency, activity logging patterns, etc.) is addressed by the Coordinated Behaviors section EXISTING with prescriptive content. Verifying that the content of those prescriptions is correct is a human/review concern, not an automated completeness check.
+
+**What this check verifies:**
+- Every blueprint defined in the spec is registered in `create_app` or the factory section
+- Every blueprint with user-facing routes has a navigation/navbar entry (if the spec has a nav section)
+
+**What this check does NOT verify:**
+- Flash message pattern consistency across blueprints
+- Activity logging completeness
+- Shared CSS/JS inclusion
+- Role-to-dashboard map completeness (covered by Surface 6 Authorization Matrix)
+
+**Steps:**
+
 1. Find the Coordinated Behaviors section by canonical prefix.
 2. If section missing: FAIL with "Coordinated Behaviors section not found."
 3. Extract all blueprint names from the spec (from file inventory, blueprint sections, or route table).
-4. Verify each blueprint appears in the Coordinated Behaviors table or Registration Points list for:
-   - Blueprint registration (mentioned in `create_app` or factory section)
-   - Navbar/navigation links (if the spec has a nav section)
-5. For any blueprint not registered: FAIL.
-6. Count: `<N> blueprints, <M> unregistered`.
+4. Verify each blueprint appears in a registration list within the Coordinated Behaviors section (look for `register_blueprint`, `create_app`, or a Registration Points subsection).
+5. If the spec has a navigation/navbar section: verify each user-facing blueprint has a nav entry.
+6. For any blueprint not registered: FAIL.
+7. Count: `<N> blueprints, <M> unregistered`.
 
 #### Check 5: Transaction Contracts (FC29)
 
-1. Find the Transaction section by canonical prefix (matching "Transaction" + "Boundary" or "Contract").
-2. If section missing: FAIL with "Transaction Contracts section not found."
-3. Extract all model functions from the spec that contain write operations (keywords: `INSERT`, `UPDATE`, `DELETE`, `conn.execute` with write SQL).
-4. For each write function: verify it appears in the Transaction section with one of:
-   - "commits" / "COMMIT" annotation
-   - "does NOT commit" / "caller commits" annotation
-   - "BEGIN IMMEDIATE" annotation
-5. For any write function without a transaction annotation: FAIL.
-6. Count: `<N> functions, <M> unannotated`.
+**Two valid annotation forms (checker must detect both):**
+
+- **Form A -- Dedicated section:** A section with canonical heading prefix "Transaction" + "Boundary" or "Contract". Functions listed under "commits" / "does NOT commit" / "BEGIN IMMEDIATE" sublists. Example: GigSheet plan line 1916.
+- **Form B -- Column in model tables:** Model function tables include a "Commits" or "Transaction" column with values like "yes", "no/caller", "BEGIN IMMEDIATE". Example: a table row `| update_order | UPDATE | no -- caller commits |`.
+
+**Steps:**
+
+1. **Detect Form A:** Search for a section with canonical heading prefix "Transaction" + ("Boundary" or "Contract").
+2. **Detect Form B:** Search model function tables (under `### *_models.py` headings) for a column header containing "Commit" or "Transaction".
+3. If neither Form A nor Form B found: FAIL with "Transaction Contracts not found (no dedicated section and no Commits column in model tables)."
+4. Extract all model functions from the spec that contain write operations. **Enumeration rule:** lines matching `def <name>(` in model code blocks where the code block also contains `INSERT`, `UPDATE`, `DELETE`, or `conn.execute`.
+5. For each write function: verify it appears in the transaction annotations (Form A list or Form B column) with one of:
+   - "commits" / "COMMIT" / "yes" (commits internally)
+   - "does NOT commit" / "caller commits" / "no" (caller's transaction)
+   - "BEGIN IMMEDIATE" / "immediate" (exclusive lock with concurrency scenario)
+6. For any write function without a transaction annotation: FAIL.
+7. Count: `<N> write functions, <M> unannotated`.
 
 #### Check 6: Authorization Mode (FC35)
 
-1. Find the Authorization Matrix section by canonical prefix.
-2. If section missing AND the spec has auth-protected routes (login_required decorator or similar): FAIL with "Authorization Matrix section not found."
-3. If section missing AND no auth routes: N/A.
-4. Extract all non-public routes from the route table (routes behind `@login_required` or role decorators).
-5. For each auth-protected route: verify it appears in the Authorization Matrix with a mode:
+**Control flow (same unified pattern as Check 3):**
+
+1. **Enumerate qualifying routes first.** Scan route handler sections for auth-protected routes: lines containing `@login_required`, `@require_role`, `@admin_required`, or similar auth decorators in code blocks.
+2. **If zero auth-protected routes found:** mark surface as N/A. Stop.
+3. **If auth routes exist:** find the Authorization Matrix section by canonical prefix.
+4. **If section missing:** FAIL with "Authorization Matrix section not found. <N> auth-protected routes require authorization annotations."
+5. **If section exists:** for each auth-protected route, verify it appears in the matrix with a mode:
    - public, role-only, role+ownership, or admin-only
-6. For routes annotated "role+ownership": verify the spec names the specific ownership field and comparison (e.g., "check venue.owner_id == g.user['id']").
-7. For any auth-protected route without an authorization annotation: FAIL.
-8. Count: `<N> routes, <M> unannotated`.
+6. For routes annotated "role+ownership": verify the spec names the specific ownership field and comparison (e.g., "check venue.owner_id == g.user['id']"). If the field is unnamed: WARN.
+7. For any auth-protected route missing from the matrix: FAIL.
+8. Count: `<N> auth routes, <M> unannotated`.
 
 **Output contract:** Write report to `[reports-directory]/spec-completeness-check.md`. Format matches the brainstorm's report template:
 
@@ -306,7 +356,7 @@ The plan author includes these sections during plan authoring (Steps 4-5 of the 
 
 ## Technical Considerations
 
-- **No overlap with consistency checker.** Research confirmed the two agents ask different questions about the same data. Consistency's Category 4 (Export Names vs Import References) checks naming matches; completeness's Surface 1 checks coverage (is the symbol declared at all?). Consistency's Category 6 (Wiring Completeness) checks that declared wiring entries are consistent; completeness's Surface 2 checks that all cross-boundary functions appear in the wiring table. Different concerns, no collision.
+- **No overlap with consistency checker (re-scoped after Codex review).** Consistency checks declared-name coherence: do the names in declared surfaces match each other? (Category 4: export name A == import name A? Category 6: does every declared export have a declared consumer?) Completeness checks coverage: is every function/route/blueprint represented in the coverage tables at all? Specifically, Surface 2 (Wiring Coverage) only checks whether cross-boundary functions from the Export Names table appear in the Wiring table as producers. It does NOT check whether wiring entries have consumers -- that's the consistency checker's Category 6.
 - **No new dependencies.** The agent uses only Read, Grep, Glob, Write (same as consistency checker).
 - **Heading matching is prefix-based.** The agent searches for `## Export Names` or `### Export Names` (case-insensitive, ignoring trailing text). This handles all existing heading variations without requiring a spec format migration.
 - **FC4 narrow scope is load-bearing.** The Input Validation surface only checks POST/PUT routes and typed URL params (`<int:id>`). GET routes with string query params are excluded. This prevents false positives on read-only endpoints.
@@ -345,7 +395,10 @@ The plan author includes these sections during plan authoring (Steps 4-5 of the 
 - WHEN Step 9w.6 produces STATUS: FAIL twice (after 1 retry) THE SYSTEM SHALL abort with "SPEC INCOMPLETE" and not proceed to Step 10w
 - WHEN a solo build reaches the autopilot THE SYSTEM SHALL skip Step 9w.6 entirely (swarm-only gate)
 - WHEN a swarm plan has no auth-protected routes (no `@login_required`) THE SYSTEM SHALL mark the Authorization Mode surface as N/A, not FAIL
+- WHEN a swarm plan has no POST/PUT/DELETE routes and no `<int:id>` params THE SYSTEM SHALL mark the Input Validation surface as N/A, not FAIL
+- WHEN a swarm plan has qualifying POST routes but the Input Validation Prescriptions heading is missing THE SYSTEM SHALL produce FAIL (not N/A) with the count of qualifying routes
 - WHEN a GET route has only string query params with no type conversion THE SYSTEM SHALL NOT flag it in the Input Validation surface (narrow scope)
+- WHEN transaction annotations exist as a column in model function tables (Form B) instead of a dedicated section THE SYSTEM SHALL detect them and evaluate coverage normally
 
 ### Verification Commands
 
@@ -389,4 +442,17 @@ grep "STATUS:" docs/reports/<run-id>/spec-completeness-check.md
 
 - **Hardest decision:** The narrow definition of "parsed input" for FC4. Only POST/PUT routes and typed URL params (`<int:id>`) are checked. GET routes with string query params are excluded. This prevents false positives but could miss validation gaps on read endpoints that pass strings to SQL or int() casts deep in model code. The first run validates whether this scope is correct.
 - **Rejected alternatives:** Extending spec-consistency-checker (couples different concerns). Template-only without checker (doesn't prove coverage). All 10 surfaces in v1 (broader than evidence requires). Full markdown parser (fragile, unnecessary with canonical headings).
-- **Least confident:** Whether prefix-based heading matching handles all future plan formats. Current plans use `##` and `###` with varying suffixes. The checker matches on prefix, ignoring suffix -- this works for all 20+ existing plans. If a future plan uses a completely different heading structure, the checker will FAIL (safe direction -- forces adoption of conventions rather than silently passing).
+- **Least confident:** Whether prefix-based heading matching handles all future plan formats. Explicit verification targets:
+
+  **Accepted heading variants (validated against 18 plans):**
+  - `## Export Names Table` / `## Export Names Table (FC1 Prevention)` / `### Export Names Table`
+  - `## Cross-Boundary Wiring Table` / `### Cross-Boundary Wiring Table` / `## Cross-Boundary Wiring Section`
+  - `## Coordinated Behaviors` / `## Coordinated Behaviors Table` / `### Coordinated Behaviors (MANDATORY for all agents)`
+  - `## Transaction Boundary Annotations` / `## Transaction Boundary Rules` / `## Transaction Contracts`
+  - `## Authorization Matrix` / `### Authorization Matrix`
+
+  **Safe fallback:** If a heading prefix is not found, the surface FAILs with "section not found." This is the safe direction -- false FAILs force the spec author to adopt canonical headings, while false PASSes would silently skip coverage checks.
+
+  **When the checker should FAIL for unsupported format:** If the plan has no recognizable headings for ANY of the 4 mandatory surfaces (Export Names, Wiring, Coordinated Behaviors, Transaction Contracts), the checker produces 4 FAILs and the autopilot aborts. This is correct behavior -- a plan without any coverage sections is genuinely incomplete, regardless of format.
+
+  **First-run validation:** Run the checker against the GigSheet plan (docs/plans/2026-05-20-gigsheet-plan.md) before deploying to a live build. It has all 4 existing sections and should produce PASS on Surfaces 1, 2, 4, 5 and FAIL on Surfaces 3, 6 (new sections not yet authored).
