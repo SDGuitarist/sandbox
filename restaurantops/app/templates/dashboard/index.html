@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Dashboard</h1>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Active Orders</h5>
+                <p class="card-text display-6">{{ stats.active_orders }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md">
+        <div class="card text-bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Low Stock Items</h5>
+                <p class="card-text display-6">{{ stats.low_stock_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Today's Reservations</h5>
+                <p class="card-text display-6">{{ stats.todays_reservations }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md">
+        <div class="card text-bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Today's Revenue</h5>
+                <p class="card-text display-6">{{ stats.todays_revenue_cents|dollars }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md">
+        <div class="card text-bg-secondary">
+            <div class="card-body">
+                <h5 class="card-title">Staff on Shift</h5>
+                <p class="card-text display-6">{{ stats.staff_on_shift }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Specials -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Today's Specials</h5>
+        <a href="{{ url_for('specials.list_specials') }}" class="btn btn-sm btn-outline-primary">View All</a>
+    </div>
+    <div class="card-body">
+        {% if active_specials %}
+        <div class="row g-3">
+            {% for special in active_specials %}
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title">{{ special['name'] }}</h6>
+                        {% if special['description'] %}
+                        <p class="card-text text-muted small">{{ special['description'] }}</p>
+                        {% endif %}
+                        <p class="card-text fw-bold">{{ special['price_cents']|dollars }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-3">
+            <p>No specials today.</p>
+            <a href="{{ url_for('specials.create_form') }}" class="btn btn-primary">Add Special</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pending Orders -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Pending Orders</h5>
+        <a href="{{ url_for('orders.list_orders') }}" class="btn btn-sm btn-outline-primary">View All</a>
+    </div>
+    <div class="card-body">
+        {% if pending_orders %}
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Order #</th>
+                    <th>Table</th>
+                    <th>Total</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in pending_orders %}
+                <tr>
+                    <td>{{ order['id'] }}</td>
+                    <td>{{ order['table_id'] or 'N/A' }}</td>
+                    <td>{{ order['total_cents']|dollars }}</td>
+                    <td>{{ order['created_at']|datefmt }}</td>
+                    <td>
+                        <a href="{{ url_for('orders.detail', id=order['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-3">
+            <p>No pending orders.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Low Stock Alerts -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Low Stock Alerts</h5>
+        <a href="{{ url_for('inventory.low_stock') }}" class="btn btn-sm btn-outline-warning">View All</a>
+    </div>
+    <div class="card-body">
+        {% if low_stock %}
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Ingredient</th>
+                    <th>Current Stock</th>
+                    <th>Threshold</th>
+                    <th>Unit</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in low_stock %}
+                <tr>
+                    <td>{{ item['name'] }}</td>
+                    <td class="text-danger fw-bold">{{ item['current_stock'] }}</td>
+                    <td>{{ item['low_stock_threshold'] }}</td>
+                    <td>{{ item['unit'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-3">
+            <p>All stock levels are healthy.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Today's Reservations -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Today's Reservations</h5>
+        <a href="{{ url_for('reservations.list_reservations') }}" class="btn btn-sm btn-outline-info">View All</a>
+    </div>
+    <div class="card-body">
+        {% if todays_reservations %}
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Time</th>
+                    <th>Guest</th>
+                    <th>Party Size</th>
+                    <th>Table</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in todays_reservations %}
+                <tr>
+                    <td>{{ res['reservation_time'] }}</td>
+                    <td>{{ res['guest_name'] }}</td>
+                    <td>{{ res['party_size'] }}</td>
+                    <td>{{ res['table_id'] }}</td>
+                    <td>
+                        {% if res['status'] == 'confirmed' %}
+                        <span class="badge bg-success">confirmed</span>
+                        {% elif res['status'] == 'seated' %}
+                        <span class="badge bg-primary">seated</span>
+                        {% elif res['status'] == 'completed' %}
+                        <span class="badge bg-secondary">completed</span>
+                        {% elif res['status'] == 'cancelled' %}
+                        <span class="badge bg-danger">cancelled</span>
+                        {% elif res['status'] == 'no_show' %}
+                        <span class="badge bg-warning">no_show</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('reservations.detail', id=res['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-3">
+            <p>No reservations today.</p>
+            <a href="{{ url_for('reservations.create_form') }}" class="btn btn-primary">Add Reservation</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
