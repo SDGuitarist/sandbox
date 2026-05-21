@@ -1,7 +1,7 @@
 ---
 title: Pre-Swarm Spec Completeness Checker
 date: 2026-05-21
-status: brainstorm-complete
+status: brainstorm-revised-r2
 trigger: Analysis of runs 046-052 showing 6 failure classes recurring despite documented agent-level rules
 scope: New agent (.claude/agents/spec-completeness-checker.md) + spec template additions + autopilot step
 feed_forward:
@@ -68,16 +68,20 @@ Every exported symbol that crosses an agent boundary must appear in an authorita
 
 **Check:** For every route, model function, and template referenced in the spec's main sections, verify it appears in the Export Names Table. FAIL on any symbol referenced but not registered.
 
+**Boundary with Surface 2:** Export Names checks that symbols have canonical names. Wiring Completeness checks that cross-boundary calls have declared producers and consumers. A model function appears in Export Names (for its name) AND in Wiring (for its caller/callee relationship). No duplication -- different questions about the same symbol.
+
 #### Coverage Surface 2: Wiring Completeness (FC3 prevention)
 
 Every cross-boundary producer must have a declared consumer. Every consumer dependency must have a declared producer.
 
 **Check:** For every entry in the Cross-Boundary Wiring Table, verify:
-- The producer function exists in the producing agent's file list
+- The producer function exists in the producing module's file list
 - At least one consumer is declared
-- The consumer's agent assignment includes the consuming file
+- The consumer's file is listed in the spec
 
 FAIL on orphaned producers or undeclared dependencies.
+
+**Ordering note:** This check runs at Step 9w.6, AFTER swarm-planner (Step 7w) has produced agent assignments. The checker can cross-reference wiring entries against the assignment table.
 
 #### Coverage Surface 3: Input Validation Prescriptions (FC4 prevention)
 
@@ -89,6 +93,8 @@ Every parsed numeric/date/id field must have prescribed validation behavior. Eve
 - Date/time fields: spec prescribes format validation
 
 FAIL on any route with parsed input but no validation prescription. N/A for routes with no user input.
+
+**Note:** This is the broadest surface and has the highest false-positive risk. The plan should define what counts as "parsed input" narrowly (form fields, URL params with type conversion) to avoid flagging every route that reads `request.args`.
 
 #### Coverage Surface 4: Registration Points (FC5 prevention)
 
@@ -167,7 +173,7 @@ One row per finding. The spec author reads the report and adds the missing presc
 ### Gate Behavior
 
 - **FAIL:** Any surface has missing coverage. Abort swarm launch. Spec author fixes omissions and re-runs.
-- **WARN:** Coverage present but ambiguous (e.g., ownership annotation says "check owner" but doesn't name the field).
+- **WARN:** Coverage present but ambiguous (e.g., ownership annotation says "check owner" but doesn't name the field). WARNs do NOT block -- swarm proceeds. WARNs are logged in the report for the spec author to address during the next retry or post-swarm review.
 - **N/A:** Surface not applicable to this build (e.g., no auth-protected routes, no workers).
 - **PASS:** All applicable surfaces have complete coverage.
 
@@ -190,7 +196,7 @@ Grouped with the consistency checker under "Pre-Swarm Structural Gates" for UX c
 
 ### Spec Template Changes
 
-Add these mandatory sections to the spec template (plan deepening or manual authoring must fill them):
+Add these as mandatory sections in every swarm plan's shared interface spec. There is no physical template file -- these are conventions the plan author must include (same as Export Names Table and Coordinated Behaviors are conventions today). The completeness checker validates they exist.
 
 1. **Export Names Table** -- already common but not mandatory. Make it required.
 2. **Cross-Boundary Wiring Table** -- already common. Make it required.
@@ -212,7 +218,14 @@ Add these mandatory sections to the spec template (plan deepening or manual auth
 
 ## Open Questions
 
-(None -- resolved via Codex review.)
+1. **Parsing strategy:** How does the checker enumerate routes/functions/exports from a markdown spec? Options for the plan to decide:
+   - **A) Require standardized table formats** -- every spec uses the same heading names and table columns. Checker finds them by heading. Pro: reliable, simple parsing. Con: constrains spec authoring.
+   - **B) Heuristic markdown parsing** -- regex/pattern matching for tables, code blocks, headers. Pro: flexible. Con: fragile, varies across specs.
+   - **C) Hybrid** -- require a small set of canonical table headings (Export Names, Authorization Matrix, Transaction Contracts) but allow flexible content within them. Pro: balances reliability with flexibility.
+
+   Recommendation: C. The existing consistency checker already relies on finding specific spec sections by heading name. Extending that convention is lower-risk than inventing a general parser.
+
+2. **Who fills the mandatory sections in autopilot?** Plan deepening agents currently add corrections to existing spec sections. The new mandatory sections need to be authored during planning (Step 5 or Step 6) so they exist before deepening. Deepening can then refine them, and the completeness checker validates at Step 9w.6.
 
 ## Resolved Questions
 
@@ -232,4 +245,4 @@ Add these mandatory sections to the spec template (plan deepening or manual auth
 
 - **Hardest decision:** Scoping to core 6 instead of all 10. The extra 4 are real problems but feature-conditional. Adding them now risks false positives on builds without those features.
 - **Rejected alternatives:** Extending the existing spec-consistency-checker (couples concerns, harder to tune). Template-only without checker (doesn't prove coverage). All 10 surfaces in v1 (broader than evidence requires).
-- **Least confident:** Whether the completeness checker can reliably parse spec structure to identify routes/functions/exports without excessive false positives. The spec format varies across builds (some use tables, some use headers, some use code blocks). The checker must handle structural variation or specs must be further standardized.
+- **Least confident:** Whether the completeness checker can reliably parse spec structure. See Open Question 1 for candidate strategies. The hybrid approach (canonical headings, flexible content) is the recommended starting point. First run validates false-positive rate.
