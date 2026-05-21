@@ -1,7 +1,7 @@
 ---
 title: Autopilot Context Window Optimization
 date: 2026-05-20
-status: brainstorm-revised-r2
+status: brainstorm-revised-r3
 trigger: Run 050 (GigSheet, 31-agent swarm) hit 0% context during shared tail
 scope: .claude/skills/autopilot/SKILL.md + .claude/agents/ + new helper skill(s)
 feed_forward:
@@ -69,11 +69,6 @@ review_summary_path: docs/reviews/master/REVIEW-SUMMARY.md
 reports_dir: docs/reports/050/
 build_tracking_path: BUILD_TRACKING.md
 handoff_path: HANDOFF.md
-brainstorm_path: docs/brainstorms/2026-05-20-gigsheet-brainstorm.md
-compound_engineering_local_path: compound-engineering.local.md
-agent_pitfalls_path: ~/.claude/docs/agent-pitfalls.md
-lessons_learned_path: ~/Documents/dev-notes/LESSONS_LEARNED.md
-journal_path: ~/Documents/dev-notes/2026-05-20.md
 
 last_completed_step: "Compound"
 next_step: "Update Learnings"
@@ -126,11 +121,17 @@ The trigger is not purely agent count. Context pressure comes from multiple sour
 | Run | Agents | Deep | Review | Retries | Score | Died? | Checkpoint? |
 |-----|--------|------|--------|---------|-------|-------|-------------|
 | 047 | 16 | 0 | 4 | 1 | 16+0+6+3 = 25 | No | No (correct) |
-| 048 | 20 | 0 | 5 | 1 | 20+0+7.5+3 = 30.5 | No | No (correct) |
-| 049 | 25 | 0 | 4 | 2 | 25+0+6+6 = 37 | No | No (correct, under 40) |
+| 048 | 20 | 5 | 5 | 1 | 20+10+7.5+3 = 40.5 | No | **Yes (FALSE POSITIVE)** |
+| 049 | 25 | 0 | 4 | 2 | 25+0+6+6 = 37 | No | No (correct) |
 | 050 | 31 | 4 | 5 | 2 | 31+8+7.5+6 = 52.5 | Yes | Yes (correct) |
 
-The >40/>30 thresholds correctly separate run 050 (checkpoint) from runs 047-049 (no checkpoint). These are initial guardrails -- calibrate after next 2 large swarms.
+**Honesty note:** The >40 threshold does NOT cleanly separate successful runs from run 050. Run 048 (20 agents, 5 deepening, completed successfully) scores 40.5 and would false-positive. This means:
+- The heuristic correctly identifies run 050 as needing a checkpoint
+- But it would also checkpoint run 048, which didn't need it
+- The thresholds are provisional -- they guarantee run 050 gets caught but may over-checkpoint successful builds with heavy deepening
+- Raising the threshold to >45 would fix the run 048 false positive but leaves less safety margin before run 050's 52.5
+
+**Decision:** Keep >40/>30 as initial guardrails despite the false positive. A false checkpoint (pause + manual resume) is much cheaper than a false miss (context death + lost artifacts). Calibrate after the next 2 large swarms.
 
 **Why this instead of phase shedding:** The tail phases (BUILD_TRACKING, HANDOFF, learnings, self-audit) are all mandatory per CLAUDE.md:34. Shedding mandatory artifacts turns context pressure into silent process drift. A hard stop with resumable state is deterministic recovery.
 
@@ -201,10 +202,21 @@ If the session dies after Compound, a fresh session can complete the remaining t
 - Line 36: plan found "via solution doc's related_prs or most recent"
 - Line 123: compound-engineering.local.md uses "most recent cycle"
 
-**Fix required for Tier 1:** The `tail-resume` skill must pass explicit paths from CHECKPOINT.md as arguments to update-learnings-noninteractive. Specifically:
-- Pass `solution_doc_path` as the `$ARGUMENTS` to update-learnings-noninteractive (it already accepts a path argument -- line 29-30)
-- The learnings skill's Step 0 must then derive the plan path from the solution doc's YAML frontmatter (which contains a `plan:` or `related_prs:` field pointing to the plan), NOT from "most recent in docs/plans/"
-- If the solution doc lacks a plan reference, `tail-resume` must also pass the plan path (add it as a second argument or write a `.tail-resume-context.md` temp file with both paths)
+**Chosen fix: update update-learnings-noninteractive to accept explicit paths.**
+
+The learnings skill already accepts `$ARGUMENTS` as a solution doc path (line 29-30). Extend it to accept three explicit path arguments:
+
+```
+$ARGUMENTS format: <solution_doc_path> [--plan <plan_path>] [--review-summary <review_summary_path>]
+```
+
+- `solution_doc_path` (positional, already supported): the solution doc to propagate from
+- `--plan` (new, optional): explicit plan path. If provided, Step 0 uses it instead of "most recent" or frontmatter discovery.
+- `--review-summary` (new, optional): explicit review summary path. If provided, Step 0 uses it instead of branch-derived `docs/reviews/<branch>/REVIEW-SUMMARY.md`.
+
+When called from the normal autopilot flow (no checkpoint), these flags are omitted and the existing discovery behavior is unchanged. When called from tail-resume, all three are passed from CHECKPOINT.md.
+
+This is the only interface change needed. The plan should implement this and not reopen the decision.
 
 **Self-audit already works:** The self-audit agent receives 6 explicit path arguments (SKILL.md:492-498). All paths are in the CHECKPOINT.md schema. No discovery heuristics.
 
@@ -212,7 +224,7 @@ If the session dies after Compound, a fresh session can complete the remaining t
 
 | Tail Step | Discovery Heuristic? | Fix | Resumable? |
 |-----------|---------------------|-----|------------|
-| Update Learnings Step 0 | Yes: "most recent" solution doc, "most recent" plan | tail-resume passes solution_doc_path as $ARGUMENTS; plan derived from solution doc frontmatter | Yes (after fix) |
+| Update Learnings Step 0 | Yes: "most recent" solution doc, "most recent" plan, branch-derived review summary | tail-resume passes all three as explicit args: `<solution_doc_path> --plan <plan_path> --review-summary <review_summary_path>` | Yes (after fix) |
 | Update Learnings Steps 1-6 | No: all read from paths established in Step 0 | None needed | Yes |
 | Verify Learnings | No: checks HANDOFF.md date, agent-pitfalls log, ID uniqueness | None needed | Yes |
 | Update BUILD_TRACKING | No: with incremental writes, already complete | None needed | Yes |
@@ -237,20 +249,18 @@ These are unverified. Auditing these workflows is out of scope -- it's a future 
 **Step-by-step walkthrough:**
 
 1. **tail-resume reads CHECKPOINT.md** → gets all explicit paths
-2. **tail-resume invokes update-learnings-noninteractive** with `solution_doc_path` as argument
-   - Step 0: reads solution doc at explicit path (not "most recent"). Reads plan via solution doc frontmatter. Reads review summary at review_summary_path from CHECKPOINT.md (requires tail-resume to write a context file or the learnings skill to accept it).
-   - **Gap identified:** update-learnings-noninteractive Step 0 reads review summary from `docs/reviews/<branch>/REVIEW-SUMMARY.md` which it discovers from the branch name. CHECKPOINT.md carries `review_summary_path` but the learnings skill doesn't accept it as an argument. **Fix: tail-resume must either (a) verify the review summary exists at the expected path before invoking, or (b) write it to the conventional path if it's elsewhere.**
-   - Steps 1-6: all read/write from paths established in Step 0. No discovery.
+2. **tail-resume invokes update-learnings-noninteractive** with explicit args:
+   `<solution_doc_path> --plan <plan_path> --review-summary <review_summary_path>`
+   - Step 0: reads solution doc, plan, and review summary at the explicit paths. No "most recent" discovery. ✓
+   - Steps 1-6: all read/write from paths established in Step 0. No discovery. ✓
 3. **Verify learnings:** reads HANDOFF.md, agent-pitfalls, checks dates. All file-based. ✓
 4. **Verify BUILD_TRACKING:** reads BUILD_TRACKING.md sections. File-based. ✓ (already complete from incremental writes)
 5. **Self-audit agent:** tail-resume passes 6 args from CHECKPOINT.md: run_id, reports_dir, plan_path, solution_doc_path, build_tracking_path, handoff_path. ✓
 6. **Verify self-audit:** reads self-audit report at `reports_dir/self-audit.md`. File-based. ✓
 
-**Gaps found:**
-- update-learnings-noninteractive does not accept review_summary_path as an argument. The tail-resume skill must verify the review summary exists at the conventional path (`docs/reviews/<branch>/REVIEW-SUMMARY.md`) before invoking. If it doesn't exist (e.g., review wrote it elsewhere), tail-resume must flag this as a resume failure.
-- update-learnings-noninteractive derives plan from "most recent" if solution doc frontmatter lacks a reference. The tail-resume skill must verify the solution doc's frontmatter contains a plan reference before invoking. If missing, pass plan_path from CHECKPOINT.md via a context file.
+**Gaps: none.** With the `--plan` and `--review-summary` flags added to update-learnings-noninteractive, all tail steps receive explicit paths. No discovery heuristics remain in the resume path.
 
-**Conclusion:** Post-compound tail is resumable with two preconditions enforced by tail-resume: (1) solution doc frontmatter contains plan reference, (2) review summary exists at conventional path. These are verifiable at checkpoint-write time -- if either is missing when CHECKPOINT.md is written, the checkpoint should include them as explicit overrides.
+**Conclusion:** Post-compound tail is fully resumable from CHECKPOINT.md + disk artifacts, contingent on implementing the `--plan` and `--review-summary` argument extensions in update-learnings-noninteractive.
 
 ## Key Decisions
 
@@ -279,7 +289,9 @@ These are unverified. Auditing these workflows is out of scope -- it's a future 
 
 4. **Spec size in heuristic:** Excluded. Plans are 42-106KB on disk but the relevant metric (shared interface spec section size) is hard to measure automatically. Agent count + deepening + review + retries are sufficient discriminators for runs 047-050.
 
-5. **Discovery heuristics in tail:** update-learnings-noninteractive uses "most recent" in 3 places. tail-resume fixes this by passing explicit paths and verifying preconditions (solution doc frontmatter has plan ref, review summary at conventional path).
+5. **Discovery heuristics in tail:** update-learnings-noninteractive uses "most recent" in 3 places. Fixed by extending it to accept `--plan` and `--review-summary` flags. tail-resume passes all three paths explicitly from CHECKPOINT.md. No discovery heuristics remain in the resume path.
+
+6. **CHECKPOINT.md schema scope:** Only paths consumed by tail steps are included. `brainstorm_path`, `compound_engineering_local_path`, `agent_pitfalls_path`, `lessons_learned_path`, and `journal_path` were removed -- update-learnings-noninteractive finds these from its own conventions (project root, ~/.claude/docs/, ~/Documents/dev-notes/). They don't need explicit paths because they're at fixed, known locations, not per-run artifacts.
 
 ## Prior Lessons Applied
 
@@ -292,7 +304,7 @@ These are unverified. Auditing these workflows is out of scope -- it's a future 
 - **Hardest decision:** Checkpoint as hard stop vs phase shedding. Shedding is more adaptive but violates the operating contract. Checkpoint is rigid but honest.
 - **Rejected alternatives:** Phase shedding (silent process drift), separate canonical-spec.md (dual source of truth), deepening audit in plan (execution doc bloat), `/compact` as design dependency (unverified), auto-resume in Phase 1 (premature), spec size in heuristic (hard to measure section vs file).
 - **Least confident:** Orchestration-load heuristic as checkpoint trigger. Concrete falsifiers:
-  1. **False positive on prior success:** If run 049 (score 37) had deepening agents (which it didn't), the score would jump to 37+8=45, triggering a checkpoint on a build that completed successfully. Adding deepening to a 25-agent build should not auto-checkpoint.
-  2. **False negative on future failure:** A 20-agent build with 4 deepening agents, 5 review agents, and 3 fix retries scores 20+8+7.5+9=44.5 -- above threshold. But a 20-agent build without deepening scores 20+0+7.5+3=30.5 -- below threshold. The heuristic is sensitive to retries (3x weight). If a build has many retries but few agents, it checkpoints when it might not need to.
+  1. **Known false positive:** Run 048 (20 agents, 5 deepening, completed successfully) scores 40.5 and would checkpoint under the >40 threshold. This is a real false positive on historical data, not a hypothetical. The cost is a pause + manual resume on a build that didn't need it. Acceptable but not ideal.
+  2. **False negative on future failure:** A 28-agent build with 0 deepening and 4 review agents scores 28+0+6+3=37 -- below threshold. If this build dies, the heuristic missed it. The heuristic is blind to builds where raw agent count alone causes context death without deepening/retries amplifying it.
   3. **Missing factor:** Total plan reads correlate with context usage but aren't captured. A build with unusually many assembly-fix cycles (which re-read the plan each time) would consume more context than the retry weight (3x) accounts for.
-  The first build after this change will validate. If the heuristic false-positives on a build that would have completed, lower the weights. If it misses a failure, raise them.
+  The first build after this change will validate. If run 048-like builds false-positive, consider raising the threshold to >45 (still catches run 050 at 52.5). If a build dies below threshold, add the missing factor or lower the threshold.
