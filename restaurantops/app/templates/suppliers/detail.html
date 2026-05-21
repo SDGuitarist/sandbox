@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>{{ supplier['name'] }}</h1>
     <div>
-        <a href="{{ url_for('suppliers.edit_form', supplier_id=supplier['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <a href="{{ url_for('suppliers.edit_form', id=supplier['id']) }}" class="btn btn-outline-primary">Edit</a>
         <a href="{{ url_for('suppliers.list_suppliers') }}" class="btn btn-secondary">Back to List</a>
     </div>
 </div>

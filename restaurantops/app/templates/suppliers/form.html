@@ -5,7 +5,7 @@
 {% block content %}
 <h1>{{ 'Edit Supplier' if supplier else 'New Supplier' }}</h1>
 
-<form method="post" action="{{ url_for('suppliers.update', supplier_id=supplier['id']) if supplier else url_for('suppliers.create') }}">
+<form method="post" action="{{ url_for('suppliers.edit', id=supplier['id']) if supplier else url_for('suppliers.create') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="mb-3">
@@ -44,7 +44,7 @@
 
 {% if supplier %}
 <hr>
-<form method="post" action="{{ url_for('suppliers.delete', supplier_id=supplier['id']) }}" onsubmit="return confirm('Are you sure you want to delete this supplier?');">
+<form method="post" action="{{ url_for('suppliers.delete', id=supplier['id']) }}" onsubmit="return confirm('Are you sure you want to delete this supplier?');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-danger">Delete Supplier</button>
 </form>

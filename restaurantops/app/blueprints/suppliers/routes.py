@@ -19,7 +19,7 @@ def list_suppliers():
     return render_template('suppliers/list.html', suppliers=suppliers)
 
 
-@bp.route('/new')
+@bp.route('/create')
 def create_form():
     return render_template('suppliers/form.html', supplier=None)
 
@@ -46,30 +46,30 @@ def create():
     return redirect(url_for('suppliers.list_suppliers'))
 
 
-@bp.route('/<int:supplier_id>')
-def detail(supplier_id):
+@bp.route('/<int:id>')
+def detail(id):
     conn = get_db()
-    supplier = get_supplier(conn, supplier_id)
+    supplier = get_supplier(conn, id)
     if supplier is None:
         flash('Supplier not found.', 'error')
         return redirect(url_for('suppliers.list_suppliers'))
     return render_template('suppliers/detail.html', supplier=supplier)
 
 
-@bp.route('/<int:supplier_id>/edit')
-def edit_form(supplier_id):
+@bp.route('/<int:id>/edit')
+def edit_form(id):
     conn = get_db()
-    supplier = get_supplier(conn, supplier_id)
+    supplier = get_supplier(conn, id)
     if supplier is None:
         flash('Supplier not found.', 'error')
         return redirect(url_for('suppliers.list_suppliers'))
     return render_template('suppliers/form.html', supplier=supplier)
 
 
-@bp.route('/<int:supplier_id>/edit', methods=['POST'])
-def update(supplier_id):
+@bp.route('/<int:id>/edit', methods=['POST'])
+def edit(id):
     conn = get_db()
-    supplier = get_supplier(conn, supplier_id)
+    supplier = get_supplier(conn, id)
     if supplier is None:
         flash('Supplier not found.', 'error')
         return redirect(url_for('suppliers.list_suppliers'))
@@ -86,23 +86,23 @@ def update(supplier_id):
         return render_template('suppliers/form.html', supplier=supplier)
 
     conn.execute("BEGIN")
-    update_supplier(conn, supplier_id, name, contact_name, phone, email, address, notes)
+    update_supplier(conn, id, name, contact_name, phone, email, address, notes)
     conn.commit()
 
     flash('Supplier updated successfully.', 'success')
-    return redirect(url_for('suppliers.detail', supplier_id=supplier_id))
+    return redirect(url_for('suppliers.detail', id=id))
 
 
-@bp.route('/<int:supplier_id>/delete', methods=['POST'])
-def delete(supplier_id):
+@bp.route('/<int:id>/delete', methods=['POST'])
+def delete(id):
     conn = get_db()
-    supplier = get_supplier(conn, supplier_id)
+    supplier = get_supplier(conn, id)
     if supplier is None:
         flash('Supplier not found.', 'error')
         return redirect(url_for('suppliers.list_suppliers'))
 
     conn.execute("BEGIN")
-    delete_supplier(conn, supplier_id)
+    delete_supplier(conn, id)
     conn.commit()
 
     flash('Supplier deleted successfully.', 'success')

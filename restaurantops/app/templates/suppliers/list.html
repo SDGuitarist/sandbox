@@ -27,12 +27,12 @@
     <tbody>
         {% for supplier in suppliers %}
         <tr>
-            <td><a href="{{ url_for('suppliers.detail', supplier_id=supplier['id']) }}">{{ supplier['name'] }}</a></td>
+            <td><a href="{{ url_for('suppliers.detail', id=supplier['id']) }}">{{ supplier['name'] }}</a></td>
             <td>{{ supplier['contact_name'] or '' }}</td>
             <td>{{ supplier['phone'] or '' }}</td>
             <td>{{ supplier['email'] or '' }}</td>
             <td>
-                <a href="{{ url_for('suppliers.edit_form', supplier_id=supplier['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <a href="{{ url_for('suppliers.edit_form', id=supplier['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
             </td>
         </tr>
         {% endfor %}
