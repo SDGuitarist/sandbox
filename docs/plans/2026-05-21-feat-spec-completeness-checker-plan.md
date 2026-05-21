@@ -12,6 +12,16 @@ feed_forward:
 
 # feat: Pre-Swarm Spec Completeness Checker
 
+## Enhancement Summary
+
+**Deepened on:** 2026-05-21
+**Research agents used:** heading-pattern validator (18 plans), FC4 scope calibrator (3 plans), consistency-checker overlap analyzer
+
+### Key Improvements
+1. Heading matching validated against all 18 existing swarm plans -- zero false positives, zero edge cases
+2. FC4 narrow scope confirmed: covers ~50% of routes (all state-changing), GET routes have 0 P1 history across all builds
+3. N/A strategy clarified: two distinct N/A types (section-absent vs condition-absent) with different implications
+
 ## Overview
 
 Add a spec-completeness-checker agent as a hard pre-swarm gate (Step 9w.6) that catches spec-level omissions before agents launch. Six coverage surfaces targeting 6 recurring failure classes (FC1, FC3, FC4, FC5, FC29, FC35) that keep producing P1s despite documented agent-level rules.
@@ -72,6 +82,13 @@ The agent finds coverage sections by searching for canonical heading prefixes. H
 
 This matches the existing consistency checker's approach (it finds sections by heading name). No general markdown parser needed.
 
+**Validation evidence:** All 6 patterns tested against all 18 existing swarm plans. Zero false positives, zero false negatives. Patterns handle trailing annotations like "(FC1 Prevention)", "(MANDATORY for all agents)", and variant suffixes ("Table", "Section", "Rules", "Annotations"). Only 1/18 plans (GigSheet) has all 4 existing sections -- this reflects recent standard adoption, not pattern failure.
+
+**N/A strategy (two types, different handling):**
+- **N/A-section:** The canonical heading was not found in the plan. For mandatory sections (Export Names, Cross-Boundary Wiring, Coordinated Behaviors, Transaction Contracts): this is a FAIL, not N/A. The section must exist.
+- **N/A-condition:** The section heading exists but the condition doesn't apply (e.g., Authorization Matrix exists but no auth-protected routes found). This is a genuine N/A -- surface is skipped.
+- **Exception:** Authorization Matrix and Input Validation Prescriptions are only mandatory when the condition applies (auth routes exist, parsed input routes exist). If the plan has no auth routes, missing Authorization Matrix heading is N/A, not FAIL.
+
 **Main section enumeration:** The agent also needs to identify routes and model functions from the spec's main body. These are found by searching for:
 - Route tables: headings containing "Route" or "Endpoint" followed by markdown tables with columns like `Method`, `Path`, `Handler`
 - Model function definitions: headings containing "Model" or "Schema" or function signature code blocks within `### <blueprint>_models.py` or `### models/` sections
@@ -112,6 +129,16 @@ This matches the existing consistency checker's approach (it finds sections by h
 5. Exclude: GET routes with only string query params (no type conversion). These are low-risk.
 6. For any route with parsed input but no validation prescription: FAIL.
 7. Count: `<N> routes checked, <M> unvalidated`.
+
+**Scope calibration (validated against 3 recent plans):**
+
+| Plan | Total Routes | Flagged | % Examined |
+|------|-------------|---------|------------|
+| GigSheet (31 agents) | 70 | 35 | 50% |
+| VenueConnect (25 agents) | 42 | 18 | 43% |
+| RestaurantOps (29 agents) | 106 | 50 | 47% |
+
+GET routes with string query params have produced 0 P1s across all builds. The narrow scope covers all state-changing operations while avoiding false positives on read-only endpoints.
 
 #### Check 4: Registration Points (FC5)
 
@@ -279,6 +306,7 @@ The plan author includes these sections during plan authoring (Steps 4-5 of the 
 
 ## Technical Considerations
 
+- **No overlap with consistency checker.** Research confirmed the two agents ask different questions about the same data. Consistency's Category 4 (Export Names vs Import References) checks naming matches; completeness's Surface 1 checks coverage (is the symbol declared at all?). Consistency's Category 6 (Wiring Completeness) checks that declared wiring entries are consistent; completeness's Surface 2 checks that all cross-boundary functions appear in the wiring table. Different concerns, no collision.
 - **No new dependencies.** The agent uses only Read, Grep, Glob, Write (same as consistency checker).
 - **Heading matching is prefix-based.** The agent searches for `## Export Names` or `### Export Names` (case-insensitive, ignoring trailing text). This handles all existing heading variations without requiring a spec format migration.
 - **FC4 narrow scope is load-bearing.** The Input Validation surface only checks POST/PUT routes and typed URL params (`<int:id>`). GET routes with string query params are excluded. This prevents false positives on read-only endpoints.
