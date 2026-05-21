@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if item else 'Create' }} Menu Item - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit' if item else 'Create' }} Menu Item</h1>
+
+<form method="POST" action="{{ url_for('menu.edit', id=item['id']) if item else url_for('menu.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ item['name'] if item else '' }}" required maxlength="200">
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3"
+                  maxlength="2000">{{ item['description'] if item and item['description'] else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="price" class="form-label">Price ($)</label>
+        <input type="text" class="form-control" id="price" name="price"
+               value="{{ '%.2f'|format(item['price_cents'] / 100) if item else '0.00' }}"
+               placeholder="0.00">
+        <div class="form-text">Enter price in dollars (e.g. 12.99).</div>
+    </div>
+
+    <div class="mb-3">
+        <label for="category_id" class="form-label">Category</label>
+        <select class="form-select" id="category_id" name="category_id">
+            <option value="">-- No category --</option>
+            {% for cat in categories %}
+            <option value="{{ cat['id'] }}"
+                    {{ 'selected' if item and item['category_id'] == cat['id'] else '' }}>
+                {{ cat['name'] }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="recipe_id" class="form-label">Linked Recipe</label>
+        <select class="form-select" id="recipe_id" name="recipe_id">
+            <option value="">-- No recipe --</option>
+            {% for recipe in recipes %}
+            <option value="{{ recipe['id'] }}"
+                    {{ 'selected' if item and item['recipe_id'] == recipe['id'] else '' }}>
+                {{ recipe['name'] }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="is_available" name="is_available" value="1"
+               {{ 'checked' if not item or item['is_available'] else '' }}>
+        <label class="form-check-label" for="is_available">Available</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('menu.list_items') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
