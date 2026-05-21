@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Inventory</h1>
+    <a href="{{ url_for('inventory.low_stock') }}" class="btn btn-warning">Low Stock</a>
+</div>
+
+{% if not inventory %}
+<div class="text-center text-muted py-5">
+    <p>No inventory records found.</p>
+    <a href="{{ url_for('ingredients.create_form') }}" class="btn btn-primary">Add First Ingredient</a>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Ingredient</th>
+            <th>Current Stock</th>
+            <th>Unit</th>
+            <th>Low Stock Threshold</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in inventory %}
+        <tr>
+            <td>{{ item['name'] }}</td>
+            <td>{{ item['current_stock'] }}</td>
+            <td>{{ item['unit'] }}</td>
+            <td>{{ item['low_stock_threshold'] }}</td>
+            <td>
+                {% if item['current_stock'] < item['low_stock_threshold'] %}
+                <span class="badge bg-danger">Low</span>
+                {% else %}
+                <span class="badge bg-success">OK</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('inventory.movements', ingredient_id=item['ingredient_id']) }}" class="btn btn-sm btn-outline-primary">Movements</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

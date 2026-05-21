@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Movements: {{ ingredient['name'] }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Stock Movements: {{ ingredient['name'] }}</h1>
+    <a href="{{ url_for('inventory.index') }}" class="btn btn-secondary">Back to Inventory</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Record Adjustment</h5>
+        <form method="POST" action="{{ url_for('inventory.adjust', ingredient_id=ingredient['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="quantity" class="form-label">Quantity</label>
+                    <input type="number" step="any" class="form-control" id="quantity" name="quantity" required>
+                    <div class="form-text">Negative values reduce stock.</div>
+                </div>
+                <div class="col-md-3">
+                    <label for="movement_type" class="form-label">Type</label>
+                    <select class="form-select" id="movement_type" name="movement_type" required>
+                        <option value="adjustment">Adjustment</option>
+                        <option value="waste">Waste</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="1"></textarea>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<h5>Movement History</h5>
+
+{% if not movements %}
+<div class="text-center text-muted py-5">
+    <p>No stock movements recorded for this ingredient.</p>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Reference</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in movements %}
+        <tr>
+            <td>{{ m['created_at'] | datefmt }}</td>
+            <td>
+                {% if m['movement_type'] == 'receipt' %}
+                <span class="badge bg-success">receipt</span>
+                {% elif m['movement_type'] == 'consumption' %}
+                <span class="badge bg-warning">consumption</span>
+                {% elif m['movement_type'] == 'adjustment' %}
+                <span class="badge bg-info">adjustment</span>
+                {% elif m['movement_type'] == 'waste' %}
+                <span class="badge bg-danger">waste</span>
+                {% else %}
+                <span class="badge bg-secondary">{{ m['movement_type'] }}</span>
+                {% endif %}
+            </td>
+            <td>{{ m['quantity'] }}</td>
+            <td>{{ m['reference_type'] or '' }}{% if m['reference_id'] %} #{{ m['reference_id'] }}{% endif %}</td>
+            <td>{{ m['notes'] or '' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}
