@@ -24,7 +24,7 @@ def create_form():
     return render_template('suppliers/form.html', supplier=None)
 
 
-@bp.route('/', methods=['POST'])
+@bp.route('/create', methods=['POST'])
 def create():
     name = request.form.get('name', '').strip()
     contact_name = request.form.get('contact_name', '').strip()

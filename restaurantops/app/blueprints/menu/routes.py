@@ -69,11 +69,17 @@ def create():
 
     # Category (optional)
     raw_cat = request.form.get('category_id', '')
-    category_id = int(raw_cat) if raw_cat else None
+    try:
+        category_id = int(raw_cat) if raw_cat else None
+    except (ValueError, TypeError):
+        category_id = None
 
     # Recipe (optional)
     raw_recipe = request.form.get('recipe_id', '')
-    recipe_id = int(raw_recipe) if raw_recipe else None
+    try:
+        recipe_id = int(raw_recipe) if raw_recipe else None
+    except (ValueError, TypeError):
+        recipe_id = None
 
     # Availability checkbox
     is_available = 1 if request.form.get('is_available') else 0
@@ -147,10 +153,16 @@ def edit(id):
         price_cents = 0
 
     raw_cat = request.form.get('category_id', '')
-    category_id = int(raw_cat) if raw_cat else None
+    try:
+        category_id = int(raw_cat) if raw_cat else None
+    except (ValueError, TypeError):
+        category_id = None
 
     raw_recipe = request.form.get('recipe_id', '')
-    recipe_id = int(raw_recipe) if raw_recipe else None
+    try:
+        recipe_id = int(raw_recipe) if raw_recipe else None
+    except (ValueError, TypeError):
+        recipe_id = None
 
     is_available = 1 if request.form.get('is_available') else 0
 
@@ -172,8 +184,13 @@ def delete(id):
         return redirect(url_for('menu.list_items'))
 
     conn.execute("BEGIN")
-    delete_menu_item(conn, id)
-    conn.commit()
+    try:
+        delete_menu_item(conn, id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        flash('Cannot delete this menu item because it has existing orders.', 'error')
+        return redirect(url_for('menu.detail', id=id))
 
     flash('Menu item deleted successfully.', 'success')
     return redirect(url_for('menu.list_items'))

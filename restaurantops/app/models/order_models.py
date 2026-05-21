@@ -129,9 +129,9 @@ def start_preparing_order(conn: sqlite3.Connection, order_id: int) -> None:
             (order_id,),
         )
         deduct_order_inventory(conn, order_id)
-        conn.execute("COMMIT")
+        conn.commit()
     except Exception:
-        conn.execute("ROLLBACK")
+        conn.rollback()
         raise
 
 
@@ -235,7 +235,7 @@ def cancel_order(conn: sqlite3.Connection, order_id: int) -> None:
         if previous_status in ("preparing", "ready", "served"):
             restore_order_inventory(conn, order_id)
 
-        conn.execute("COMMIT")
+        conn.commit()
     except Exception:
-        conn.execute("ROLLBACK")
+        conn.rollback()
         raise

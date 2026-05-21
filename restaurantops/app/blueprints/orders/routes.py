@@ -216,7 +216,7 @@ def ready(id):
         flash('Order not found.', 'error')
         return redirect(url_for('orders.list_orders'))
     try:
-        conn.execute("BEGIN")
+        conn.execute("BEGIN IMMEDIATE")
         mark_order_ready(conn, id)
         conn.commit()
         flash('Order is ready for serving.', 'info')
@@ -234,7 +234,7 @@ def serve(id):
         flash('Order not found.', 'error')
         return redirect(url_for('orders.list_orders'))
     try:
-        conn.execute("BEGIN")
+        conn.execute("BEGIN IMMEDIATE")
         mark_order_served(conn, id)
         conn.commit()
         flash('Order has been served.', 'info')
@@ -252,10 +252,10 @@ def close_order(id):
         flash('Order not found.', 'error')
         return redirect(url_for('orders.list_orders'))
     try:
-        conn.execute("BEGIN")
+        conn.execute("BEGIN IMMEDIATE")
         close_order_model(conn, id)
         conn.commit()
-        flash('Order closed.', 'success')
+        flash('Order closed.', 'info')
     except Exception:
         conn.rollback()
         flash('Could not close order. Please try again.', 'error')
