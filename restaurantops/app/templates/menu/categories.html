@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - Menu - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Menu Categories</h1>
+    <a href="{{ url_for('menu.list_items') }}" class="btn btn-outline-secondary">Back to Menu</a>
+</div>
+
+<!-- Create category form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Add Category</h5>
+        <form method="POST" action="{{ url_for('menu.create_category') }}" class="row g-3 align-items-end">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="col-md-6">
+                <label for="new_name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="new_name" name="name" required maxlength="200">
+            </div>
+            <div class="col-md-3">
+                <label for="new_sort_order" class="form-label">Sort Order</label>
+                <input type="number" class="form-control" id="new_sort_order" name="sort_order" value="0">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Existing categories -->
+{% if not categories %}
+<div class="text-center text-muted py-5">
+    <p>No categories found. Add one above.</p>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Sort Order</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cat in categories %}
+        <tr>
+            <td>
+                <!-- Inline edit form -->
+                <form method="POST" action="{{ url_for('menu.edit_category', id=cat['id']) }}" class="row g-2 align-items-center">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-auto">
+                        <input type="text" class="form-control form-control-sm" name="name"
+                               value="{{ cat['name'] }}" required maxlength="200">
+                    </div>
+            </td>
+            <td>
+                    <div class="col-auto">
+                        <input type="number" class="form-control form-control-sm" name="sort_order"
+                               value="{{ cat['sort_order'] }}" style="width:80px;">
+                    </div>
+            </td>
+            <td>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                    </div>
+                </form>
+                <form method="POST" action="{{ url_for('menu.delete_category', id=cat['id']) }}" class="d-inline"
+                      onsubmit="return confirm('Delete this category?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

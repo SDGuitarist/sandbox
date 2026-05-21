@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item['name'] }} - Menu - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ item['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('menu.edit_form', id=item['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <form method="POST" action="{{ url_for('menu.delete', id=item['id']) }}" class="d-inline"
+              onsubmit="return confirm('Delete this menu item?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Details</h5>
+                <table class="table table-borderless mb-0">
+                    <tr>
+                        <th style="width:150px;">Price</th>
+                        <td>{{ item['price_cents']|dollars }}</td>
+                    </tr>
+                    <tr>
+                        <th>Category</th>
+                        <td>{{ item['category_id'] if item['category_id'] else 'None' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Available</th>
+                        <td>
+                            {% if item['is_available'] %}
+                            <span class="badge bg-success">Yes</span>
+                            {% else %}
+                            <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Description</th>
+                        <td>{{ item['description'] if item['description'] else '-' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Recipe</th>
+                        <td>
+                            {% if item['recipe_id'] %}
+                            <a href="{{ url_for('recipes.detail', id=item['recipe_id']) }}">View linked recipe</a>
+                            {% else %}
+                            None
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Created</th>
+                        <td>{{ item['created_at']|datefmt }}</td>
+                    </tr>
+                    <tr>
+                        <th>Updated</th>
+                        <td>{{ item['updated_at']|datefmt }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Cost card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Cost</h5>
+                {% if cost_cents is not none %}
+                <p class="display-6">{{ cost_cents|dollars }}</p>
+                <p class="text-muted">Recipe ingredient cost per serving</p>
+                {% else %}
+                <p class="text-muted">No recipe linked -- cost not available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Rating card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Average Rating</h5>
+                {% if avg_rating is not none %}
+                <p class="display-6">{{ '%.1f'|format(avg_rating) }} / 5</p>
+                {% else %}
+                <p class="text-muted">No reviews yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Allergens card -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">Allergens</h5>
+                {% if allergens %}
+                <div>
+                    {% for a in allergens %}
+                    <span class="badge bg-warning text-dark me-1 mb-1">{{ a['name'] }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No allergens detected (or no recipe linked).</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('menu.list_items') }}" class="btn btn-secondary">Back to Menu</a>
+{% endblock %}
