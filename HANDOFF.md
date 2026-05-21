@@ -2,15 +2,13 @@
 
 **Date:** 2026-05-20
 **Branch:** master
-**Phase:** Autopilot context optimization -- work + review complete, compound phase next
+**Phase:** Autopilot context optimization -- compound phase complete (solution doc + learnings propagated)
 
 ## Current State
 
-Autopilot context window optimization implemented and reviewed. 3 skill files modified, 1 created. 7 implementation commits + 1 review fix commit. 3 review agents found 2 P1s (both fixed) + 4 P2s (deferred). Ready for compound phase (solution doc + learnings propagation).
+Autopilot context window optimization fully completed through the compound phase. Solution doc written, learnings propagated to all 8 surfaces. The autopilot skill is now hardened for 31+ agent swarm builds with incremental BUILD_TRACKING, context-budget checkpoint gates, post-deepening canonical spec rewrite, and a tail-resume skill for manual recovery.
 
 ### What was built
-
-Hardened the autopilot skill so 30+ agent swarm builds don't lose mandatory tail artifacts to context death. Run 050 (GigSheet, 31 agents) hit 0% context during the shared tail -- this prevents that.
 
 | Change | File | Lines |
 |--------|------|-------|
@@ -30,6 +28,7 @@ Final line counts: autopilot 636, tail-resume 85, update-learnings 302.
 |----------|----------|
 | Brainstorm (3 Codex rounds) | docs/brainstorms/2026-05-20-autopilot-context-optimization-brainstorm.md |
 | Plan (3 Codex rounds) | docs/plans/2026-05-20-autopilot-context-optimization-plan.md |
+| Solution doc | docs/solutions/2026-05-20-autopilot-context-window-optimization.md |
 | Autopilot skill | .claude/skills/autopilot/SKILL.md |
 | tail-resume skill | .claude/skills/tail-resume/SKILL.md |
 | update-learnings skill | .claude/skills/update-learnings-noninteractive/SKILL.md |
@@ -46,6 +45,11 @@ Final line counts: autopilot 636, tail-resume 85, update-learnings 302.
 - P2-3: Template file not updated for swarm-variant format -- LOW
 - P2-4: Verify Learnings error messages slightly shorter in tail-resume -- LOW
 
+### Future Hardening
+- Tier 2 pre-review resume (validate review + compound resumability from artifacts)
+- Auto-resume (detect PAUSED_FOR_CONTEXT and spawn fresh session automatically)
+- Heuristic weight calibration (need 2 more large swarm runs for data)
+
 ### Run 050 (GigSheet)
 - 050-D1 through 050-D10 (see prior HANDOFF for full list) -- MEDIUM/LOW
 
@@ -55,25 +59,22 @@ Final line counts: autopilot 636, tail-resume 85, update-learnings 302.
 
 ## Three Questions
 
-1. **Hardest decision?** Moving checkpoint from post-compound to post-BUILD_TRACKING-fill. The review found that the original placement (post-compound) left FAILURES/RUN_METRICS unfilled during resume. Moving it later means less tail is protected, but all data-writing steps complete before the checkpoint fires.
-2. **What was rejected?** Phase shedding (silent drift), `/compact` as dependency (unverified), auto-resume in Phase 1 (premature), spec size in heuristic (unmeasurable), pre-review checkpoint (compound resumability unverified).
-3. **Least confident about?** The orchestration-load heuristic (>30 threshold). Known false positive on run 048 (score 40.5). Cost is brief manual resume, not full rebuild. First real build validates.
+1. **Hardest decision?** Keeping >30 threshold despite the known run 048 false positive (score 40.5). With post-compound checkpoint placement, the cost of a false positive is ~5 min of manual resume vs context death costing ~30 min of artifact reconstruction.
+2. **What was rejected?** Phase shedding (silent drift), `/compact` as dependency (unverified), auto-resume in Phase 1 (premature), spec size in heuristic (unmeasurable), separate canonical-spec.md (dual source of truth), pre-compound checkpoint (compound resumability unverified).
+3. **Least confident about?** The orchestration-load heuristic. Known false positive on run 048 (40.5). A 28-agent build with 0 deepening scores 37 and could die without triggering checkpoint. First real build validates.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md. This is the Sandbox project. Autopilot context optimization
-work + review complete. 2 P1s fixed, 4 P2s deferred.
+is fully complete (brainstorm, plan, work, review, compound, learnings).
 
-Next step: /workflows:compound to write the solution doc, then /update-learnings
-to propagate lessons. After that, update HANDOFF.md with next-session options.
+Next options:
+1. New build (run 051) -- first build to validate the context optimization
+2. GigSheet P2 fixes (050-D1 through 050-D10)
+3. Cross-project integration (Lead Scraper -> GigSheet -> VenueConnect pipeline)
+4. Address deferred P2s from context optimization
 
-Key artifacts:
-- Brainstorm: docs/brainstorms/2026-05-20-autopilot-context-optimization-brainstorm.md
-- Plan: docs/plans/2026-05-20-autopilot-context-optimization-plan.md
-- Changed files: .claude/skills/autopilot/SKILL.md, .claude/skills/tail-resume/SKILL.md,
-  .claude/skills/update-learnings-noninteractive/SKILL.md
-
-Feed-Forward risk: orchestration-load heuristic may false-positive on run 048-like
-builds. First real build validates thresholds.
+The heuristic threshold (>30) is provisional. If the next large swarm
+(25+ agents) false-positives or false-negatives, adjust accordingly.
 ```
