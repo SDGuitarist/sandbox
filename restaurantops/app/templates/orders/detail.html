@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Order #{{ order['id'] }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Order #{{ order['id'] }}</h1>
+    <a href="{{ url_for('orders.list_orders') }}" class="btn btn-secondary">Back to Orders</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <p><strong>Table:</strong> {{ order['table_id'] if order['table_id'] else 'N/A' }}</p>
+        <p><strong>Status:</strong>
+            {% if order['status'] == 'pending' %}
+            <span class="badge bg-warning">pending</span>
+            {% elif order['status'] == 'preparing' %}
+            <span class="badge bg-primary">preparing</span>
+            {% elif order['status'] == 'ready' %}
+            <span class="badge bg-info">ready</span>
+            {% elif order['status'] == 'served' %}
+            <span class="badge bg-success">served</span>
+            {% elif order['status'] == 'closed' %}
+            <span class="badge bg-secondary">closed</span>
+            {% elif order['status'] == 'cancelled' %}
+            <span class="badge bg-danger">cancelled</span>
+            {% endif %}
+        </p>
+        <p><strong>Total:</strong> {{ order['total_cents']|dollars }}</p>
+        {% if order['notes'] %}
+        <p><strong>Notes:</strong> {{ order['notes'] }}</p>
+        {% endif %}
+        <p><strong>Created:</strong> {{ order['created_at']|datefmt }}</p>
+        <p><strong>Updated:</strong> {{ order['updated_at']|datefmt }}</p>
+    </div>
+</div>
+
+<h4>Items</h4>
+{% if items %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Menu Item</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Subtotal</th>
+            {% if items[0]['notes'] is defined %}
+            <th>Notes</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item['menu_item_id'] }}</td>
+            <td>{{ item['quantity'] }}</td>
+            <td>{{ item['unit_price_cents']|dollars }}</td>
+            <td>{{ (item['unit_price_cents'] * item['quantity'])|dollars }}</td>
+            {% if item['notes'] is defined %}
+            <td>{{ item['notes'] or '' }}</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">No items in this order.</p>
+{% endif %}
+
+<div class="mt-4">
+    {% if order['status'] == 'pending' %}
+    <a href="{{ url_for('orders.edit_form', id=order['id']) }}" class="btn btn-outline-primary me-2">Edit</a>
+    <form method="POST" action="{{ url_for('orders.prepare', id=order['id']) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary me-2">Start Preparing</button>
+    </form>
+    {% endif %}
+
+    {% if order['status'] == 'preparing' %}
+    <form method="POST" action="{{ url_for('orders.ready', id=order['id']) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-info me-2">Mark Ready</button>
+    </form>
+    {% endif %}
+
+    {% if order['status'] == 'ready' %}
+    <form method="POST" action="{{ url_for('orders.serve', id=order['id']) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-success me-2">Mark Served</button>
+    </form>
+    {% endif %}
+
+    {% if order['status'] == 'served' %}
+    <form method="POST" action="{{ url_for('orders.close_order', id=order['id']) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-secondary me-2">Close Order</button>
+    </form>
+    {% endif %}
+
+    {% if order['status'] not in ['closed', 'cancelled'] %}
+    <form method="POST" action="{{ url_for('orders.cancel', id=order['id']) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger">Cancel Order</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

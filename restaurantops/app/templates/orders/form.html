@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Order' if order else 'New Order' }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Order #' ~ order['id'] if order else 'New Order' }}</h1>
+
+<form method="POST" action="{{ url_for('orders.edit', id=order['id']) if order else url_for('orders.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="table_id" class="form-label">Table</label>
+        <select class="form-control" id="table_id" name="table_id">
+            <option value="">-- No Table --</option>
+            {% for table in tables %}
+            <option value="{{ table['id'] }}" {% if order and order['table_id'] == table['id'] %}selected{% endif %}>
+                {{ table['table_number'] }} (capacity: {{ table['capacity'] }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="2">{{ order['notes'] if order and order['notes'] else '' }}</textarea>
+    </div>
+
+    <h4>Order Items</h4>
+    <div id="items-container">
+        {% if items %}
+        {% for item in items %}
+        <div class="row mb-2 item-row">
+            <div class="col-md-6">
+                <select class="form-control" name="menu_item_ids[]" required>
+                    <option value="">-- Select Item --</option>
+                    {% for mi in menu_items %}
+                    <option value="{{ mi['id'] }}" {% if mi['id'] == item['menu_item_id'] %}selected{% endif %}>
+                        {{ mi['name'] }} ({{ mi['price_cents']|dollars }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="number" class="form-control" name="quantities[]" min="1" value="{{ item['quantity'] }}" required>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <button type="button" class="btn btn-outline-secondary mb-3" id="add-item">Add Item</button>
+
+    <div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{{ url_for('orders.detail', id=order['id']) if order else url_for('orders.list_orders') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+<template id="item-template">
+    <div class="row mb-2 item-row">
+        <div class="col-md-6">
+            <select class="form-control" name="menu_item_ids[]" required>
+                <option value="">-- Select Item --</option>
+                {% for mi in menu_items %}
+                <option value="{{ mi['id'] }}">{{ mi['name'] }} ({{ mi['price_cents']|dollars }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="number" class="form-control" name="quantities[]" min="1" value="1" required>
+        </div>
+        <div class="col-md-3">
+            <button type="button" class="btn btn-danger btn-sm remove-item">Remove</button>
+        </div>
+    </div>
+</template>
+
+<script>
+document.getElementById('add-item').addEventListener('click', function() {
+    var template = document.getElementById('item-template');
+    var clone = template.content.cloneNode(true);
+    document.getElementById('items-container').appendChild(clone);
+});
+
+document.getElementById('items-container').addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-item')) {
+        e.target.closest('.item-row').remove();
+    }
+});
+</script>
+{% endblock %}
