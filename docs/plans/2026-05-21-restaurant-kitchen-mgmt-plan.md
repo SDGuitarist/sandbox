@@ -4,7 +4,7 @@ date: 2026-05-21
 run: "051"
 status: plan
 swarm: true
-agent_count: 34
+agent_count: 29
 brainstorm: docs/brainstorms/2026-05-21-restaurant-kitchen-mgmt-brainstorm.md
 feed_forward:
   risk: "30+ agent swarm at this feature breadth may produce inconsistent UX patterns across 14 blueprints"
@@ -16,7 +16,7 @@ feed_forward:
 ## What exactly is changing?
 
 Building a new Flask + SQLite + Jinja2 app from scratch in `restaurantops/`.
-34 swarm agents build vertical slices (blueprint + models + templates each).
+29 swarm agents build vertical slices (blueprint + models + templates each).
 Single-location restaurant operations MVP.
 
 ## What must not change?
@@ -41,23 +41,25 @@ includes exact code blocks for every shared pattern.
 
 ### App Configuration
 
+**Database module (restaurantops/app/db.py):**
 ```python
-# restaurantops/app/__init__.py
 import os
 import sqlite3
-from flask import Flask, g, redirect, url_for, session, flash
-from flask_wtf import CSRFProtect
-
-csrf = CSRFProtect()
+from flask import g, current_app
 
 def get_db():
-    """Get database connection for current request."""
+    """Get database connection for current request.
+
+    Uses isolation_level=None to disable Python's implicit transaction
+    management. This is REQUIRED for BEGIN IMMEDIATE to work correctly.
+    All write routes must call conn.commit() explicitly.
+    """
     if 'db' not in g:
         g.db = sqlite3.connect(
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'restaurant.db')
+            current_app.config['DATABASE'],
+            isolation_level=None  # REQUIRED: enables manual BEGIN IMMEDIATE
         )
         g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA journal_mode=WAL")
         g.db.execute("PRAGMA foreign_keys=ON")
         g.db.execute("PRAGMA busy_timeout=5000")
     return g.db
@@ -66,26 +68,11 @@ def close_db(e=None):
     db = g.pop('db', None)
     if db is not None:
         db.close()
+```
 
-def require_login():
-    """Before-request hook: redirect to login if not authenticated."""
-    from flask import request
-    allowed = ['/auth/login', '/static/', '/health']
-    if any(request.path.startswith(p) for p in allowed):
-        return
-    if not session.get('authenticated'):
-        return redirect(url_for('auth.login'))
-
-def create_app():
-    app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-key')
-    app.config['WTF_CSRF_TIME_LIMIT'] = None
-
-    csrf.init_app(app)
-    app.teardown_appcontext(close_db)
-    app.before_request(require_login)
-
-    # Jinja filters
+**Filters module (restaurantops/app/filters.py):**
+```python
+def register_filters(app):
     @app.template_filter('dollars')
     def dollars_filter(cents):
         """Convert integer cents to dollar string."""
@@ -104,6 +91,65 @@ def create_app():
             return dt.strftime('%b %d, %Y %I:%M %p')
         except (ValueError, TypeError):
             return value
+```
+
+**App factory (restaurantops/app/__init__.py):**
+```python
+import os
+from flask import Flask, redirect, url_for, session
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFError
+
+csrf = CSRFProtect()
+
+SECRET_KEY_BLOCKLIST = ['dev-fallback-key', 'change-me', 'secret', '']
+
+def create_app():
+    app = Flask(__name__, instance_relative_config=True)
+    os.makedirs(app.instance_path, exist_ok=True)
+
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-key')
+    app.config['DATABASE'] = os.path.join(app.instance_path, 'restaurant.db')
+    app.config['WTF_CSRF_TIME_LIMIT'] = None
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+    # Block weak secret keys in production
+    if not app.debug and app.config['SECRET_KEY'] in SECRET_KEY_BLOCKLIST:
+        raise RuntimeError('Set a strong SECRET_KEY environment variable for production.')
+
+    csrf.init_app(app)
+
+    from app.db import close_db, get_db
+    app.teardown_appcontext(close_db)
+
+    from app.filters import register_filters
+    register_filters(app)
+
+    # Auth gate: redirect to login if not authenticated
+    @app.before_request
+    def require_login():
+        from flask import request
+        allowed = ['/auth/login', '/static/', '/health']
+        if any(request.path.startswith(p) for p in allowed):
+            return
+        if not session.get('authenticated'):
+            return redirect(url_for('auth.login'))
+
+    # CSRF error handler: flash friendly message instead of raw 400
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(e):
+        from flask import flash
+        flash('Form expired. Please try again.', 'error')
+        return redirect(url_for('dashboard.index'))
+
+    # Security headers
+    @app.after_request
+    def security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        return response
 
     # Register blueprints
     from app.blueprints.auth.routes import bp as auth_bp
@@ -405,18 +451,26 @@ INSERT OR IGNORE INTO allergens (name) VALUES
 import os
 import sqlite3
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'restaurant.db')
+def get_db_path():
+    """Return the database path (instance/restaurant.db)."""
+    instance_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance')
+    os.makedirs(instance_dir, exist_ok=True)
+    return os.path.join(instance_dir, 'restaurant.db')
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
+    db_path = get_db_path()
+    conn = sqlite3.connect(db_path)
+    # WAL mode is persistent -- only needs to be set once
+    result = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+    if result[0] != 'wal':
+        raise RuntimeError(f"Failed to enable WAL mode, got: {result[0]}")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")
     schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
     with open(schema_path) as f:
         conn.executescript(f.read())
     conn.close()
-    print(f"Database initialized at {DB_PATH}")
+    print(f"Database initialized at {db_path}")
 
 if __name__ == '__main__':
     init_db()
@@ -1737,15 +1791,29 @@ Active link highlighted with Bootstrap `active` class based on `request.endpoint
 
 #### 8. Database Connection Pattern
 
-Every route that uses the database:
+**CRITICAL: `isolation_level=None` is set in `get_db()`.** This disables
+Python's implicit transaction management. All write routes MUST call
+`conn.commit()` explicitly. There are no implicit transactions.
+
+Every route that reads only:
 ```python
+from app.db import get_db
 conn = get_db()
-# ... use conn ...
-conn.commit()  # only for POST routes that modify data
+# ... SELECT queries, no commit needed ...
+```
+
+Every route that writes (INSERT/UPDATE/DELETE):
+```python
+from app.db import get_db
+conn = get_db()
+conn.execute("BEGIN")
+# ... INSERT/UPDATE/DELETE ...
+conn.commit()
 ```
 
 For atomic multi-table operations (order preparing, PO receiving):
 ```python
+from app.db import get_db
 conn = get_db()
 conn.execute("BEGIN IMMEDIATE")
 try:
@@ -1759,15 +1827,20 @@ except Exception:
 
 #### 9. SQLite PRAGMAs (per-connection, not per-database)
 
-Every `sqlite3.connect()` call MUST set:
+**Per-connection** (set in `get_db()` on every request):
 ```python
-conn.execute("PRAGMA journal_mode=WAL")
 conn.execute("PRAGMA foreign_keys=ON")
 conn.execute("PRAGMA busy_timeout=5000")
 ```
 
-This is already in `get_db()` and `init_db()`. Do NOT create additional
-connection paths without these PRAGMAs.
+**Per-database** (set once in `init_db()`, persists forever):
+```python
+conn.execute("PRAGMA journal_mode=WAL")
+```
+
+Do NOT create additional `sqlite3.connect()` calls anywhere. All database
+access MUST go through `get_db()` from `app/db.py`. Creating a connection
+without the per-connection PRAGMAs causes concurrency bugs (FC40).
 
 #### 10. Status Badge Styling
 
@@ -1820,6 +1893,8 @@ connection paths without these PRAGMAs.
 
 #### Agent: core (app factory + database + init)
 - `restaurantops/app/__init__.py`
+- `restaurantops/app/db.py`
+- `restaurantops/app/filters.py`
 - `restaurantops/app/schema.sql`
 - `restaurantops/app/init_db.py`
 - `restaurantops/run.py`
@@ -2009,7 +2084,7 @@ Wait — let me recount:
 
 | # | Agent | Files | Dependencies |
 |---|-------|-------|-------------|
-| 1 | core | app/__init__.py, schema.sql, init_db.py, run.py, requirements.txt, .gitignore | None |
+| 1 | core | app/__init__.py, app/db.py, app/filters.py, schema.sql, init_db.py, run.py, requirements.txt, .gitignore | None |
 | 2 | layout | templates/base.html, static/style.css | None |
 | 3 | auth | blueprints/auth/__init__.py, blueprints/auth/routes.py, templates/auth/login.html | core |
 | 4 | ingredient_models | models/ingredient_models.py, models/core_models.py | core |
