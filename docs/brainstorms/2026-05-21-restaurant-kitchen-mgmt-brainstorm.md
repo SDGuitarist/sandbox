@@ -250,3 +250,30 @@ large blueprints like orders and purchase_orders).
   Behaviors table must be extremely prescriptive (flash messages, form
   styling, error display, pagination, table styling, empty states) or
   we'll get 14 different UX dialects.
+
+## Refinement Findings
+
+**Gaps found:** 5 | **STATUS: PASS**
+
+1. **CSP-CDN mismatch** — Bootstrap 5 via CDN + scaffold agent adding
+   `script-src 'self'` = silently broken JS. Spec must prescribe CSP
+   domains or explicitly omit CSP. (Source: gigsheet-31-agent)
+
+2. **PRAGMA per-connection** — `busy_timeout=5000` is per-connection, not
+   per-database. Must be in Coordinated Behaviors table, not just startup
+   config. 5+ agents write to inventory. (Source: gigsheet-31-agent)
+
+3. **Context checkpoint expected** — 32-35 agents scores ~49.5 on
+   orchestration-load heuristic (threshold 30). `PAUSED_FOR_CONTEXT` is
+   the expected exit. Plan must acknowledge tail-resume is required.
+   (Source: autopilot-context-window-optimization)
+
+4. **zip() truncation on parallel arrays** — `recipe_ingredients`,
+   `order_items`, `purchase_order_items` all use `getlist()` parallel
+   arrays. Must prescribe length equality check before `zip()`.
+   (Source: recipe-organizer-swarm-build)
+
+5. **Pre-swarm spec consistency gate** — Mandatory at 30+ agents. Catches
+   cross-section contradictions (CHECK constraints, template entries, URL
+   patterns) before all agents build against broken spec.
+   (Source: venueconnect-25-agent)
