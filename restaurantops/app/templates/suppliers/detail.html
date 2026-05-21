@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ supplier['name'] }} - Suppliers - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ supplier['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('suppliers.edit_form', id=supplier['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <a href="{{ url_for('suppliers.list_suppliers') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Contact Name</dt>
+            <dd class="col-sm-9">{{ supplier['contact_name'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Phone</dt>
+            <dd class="col-sm-9">{{ supplier['phone'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9">{{ supplier['email'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Address</dt>
+            <dd class="col-sm-9">{{ supplier['address'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Notes</dt>
+            <dd class="col-sm-9">{{ supplier['notes'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">{{ supplier['created_at']|datefmt }}</dd>
+
+            <dt class="col-sm-3">Updated</dt>
+            <dd class="col-sm-9">{{ supplier['updated_at']|datefmt }}</dd>
+        </dl>
+    </div>
+</div>
+{% endblock %}

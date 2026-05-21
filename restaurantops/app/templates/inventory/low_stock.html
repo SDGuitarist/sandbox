@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Low Stock - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Low Stock Items</h1>
+    <a href="{{ url_for('inventory.index') }}" class="btn btn-secondary">Back to Inventory</a>
+</div>
+
+{% if not items %}
+<div class="text-center text-muted py-5">
+    <p>No low stock items. All ingredients are above their thresholds.</p>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Ingredient</th>
+            <th>Current Stock</th>
+            <th>Unit</th>
+            <th>Threshold</th>
+            <th>Deficit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item['name'] }}</td>
+            <td><span class="text-danger fw-bold">{{ item['current_stock'] }}</span></td>
+            <td>{{ item['unit'] }}</td>
+            <td>{{ item['low_stock_threshold'] }}</td>
+            <td>{{ (item['low_stock_threshold'] - item['current_stock']) | round(2) }}</td>
+            <td>
+                <a href="{{ url_for('inventory.movements', ingredient_id=item['ingredient_id']) }}" class="btn btn-sm btn-outline-primary">Movements</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

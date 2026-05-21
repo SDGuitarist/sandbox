@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Ingredients - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Ingredients</h1>
+    <a href="{{ url_for('ingredients.create_form') }}" class="btn btn-primary">Add Ingredient</a>
+</div>
+
+{% if not ingredients %}
+<div class="text-center text-muted py-5">
+    <p>No ingredients found.</p>
+    <a href="{{ url_for('ingredients.create_form') }}" class="btn btn-primary">Add First Ingredient</a>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Unit</th>
+            <th>Unit Cost</th>
+            <th>Low Stock Threshold</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ingredient in ingredients %}
+        <tr>
+            <td><a href="{{ url_for('ingredients.detail', id=ingredient['id']) }}">{{ ingredient['name'] }}</a></td>
+            <td>{{ ingredient['unit'] }}</td>
+            <td>{{ ingredient['unit_cost_cents']|dollars }}</td>
+            <td>{{ ingredient['low_stock_threshold'] }}</td>
+            <td>
+                <a href="{{ url_for('ingredients.edit_form', id=ingredient['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="POST" action="{{ url_for('ingredients.delete', id=ingredient['id']) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

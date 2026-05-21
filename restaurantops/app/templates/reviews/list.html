@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Reviews - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Customer Reviews</h1>
+    <div>
+        <a href="{{ url_for('reviews.summary') }}" class="btn btn-info">Summary</a>
+        <a href="{{ url_for('reviews.create_form') }}" class="btn btn-primary">Add Review</a>
+    </div>
+</div>
+
+{% if not reviews %}
+<div class="text-center text-muted py-5">
+    <p>No reviews found.</p>
+    <a href="{{ url_for('reviews.create_form') }}" class="btn btn-primary">Add First Review</a>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>ID</th>
+            <th>Guest</th>
+            <th>Rating</th>
+            <th>Menu Item</th>
+            <th>Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rv in reviews %}
+        <tr>
+            <td>{{ rv['id'] }}</td>
+            <td>{{ rv['guest_name'] or 'Anonymous' }}</td>
+            <td>
+                {% for i in range(rv['rating']) %}&#9733;{% endfor %}{% for i in range(5 - rv['rating']) %}&#9734;{% endfor %}
+                ({{ rv['rating'] }}/5)
+            </td>
+            <td>{{ rv['menu_item_name'] or '—' }}</td>
+            <td>{{ rv['created_at']|datefmt }}</td>
+            <td>
+                <a href="{{ url_for('reviews.detail', id=rv['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

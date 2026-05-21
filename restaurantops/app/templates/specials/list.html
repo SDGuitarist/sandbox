@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Specials - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Daily Specials</h1>
+    <a href="{{ url_for('specials.create_form') }}" class="btn btn-primary">Add Special</a>
+</div>
+
+{% if not specials %}
+<div class="text-center text-muted py-5">
+    <p>No specials found.</p>
+    <a href="{{ url_for('specials.create_form') }}" class="btn btn-primary">Add First Special</a>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sp in specials %}
+        <tr>
+            <td><a href="{{ url_for('specials.detail', id=sp['id']) }}">{{ sp['name'] }}</a></td>
+            <td>{{ sp['price_cents']|dollars }}</td>
+            <td>{{ sp['start_date'] }}</td>
+            <td>{{ sp['end_date'] }}</td>
+            <td>
+                {% if sp['is_active'] %}
+                <span class="badge bg-success">Active</span>
+                {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('specials.edit_form', id=sp['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="POST" action="{{ url_for('specials.delete', id=sp['id']) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this special?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

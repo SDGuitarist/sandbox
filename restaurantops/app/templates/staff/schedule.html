@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Schedule - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Staff Schedule</h1>
+    <div>
+        <a href="{{ url_for('staff.list_staff') }}" class="btn btn-outline-secondary me-2">Staff List</a>
+        <a href="{{ url_for('staff.create_shift_form') }}" class="btn btn-primary">Add Shift</a>
+    </div>
+</div>
+
+<form method="get" action="{{ url_for('staff.schedule') }}" class="mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label for="date" class="form-label">Date</label>
+            <input type="date" class="form-control" id="date" name="date"
+                   value="{{ selected_date }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">Filter</button>
+        </div>
+    </div>
+</form>
+
+{% if not shifts %}
+<div class="text-center text-muted py-5">
+    <p>No shifts scheduled for {{ selected_date }}.</p>
+    <a href="{{ url_for('staff.create_shift_form') }}" class="btn btn-primary">Add Shift</a>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Staff Member</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Role</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for shift in shifts %}
+        <tr>
+            <td>
+                {% for member in staff if member['id'] == shift['staff_id'] %}
+                <a href="{{ url_for('staff.detail', id=member['id']) }}">{{ member['name'] }}</a>
+                {% endfor %}
+            </td>
+            <td>{{ shift['start_time'] }}</td>
+            <td>{{ shift['end_time'] }}</td>
+            <td>{{ shift['role'] | replace('_', ' ') | title }}</td>
+            <td>{{ shift['notes'] or '-' }}</td>
+            <td>
+                <a href="{{ url_for('staff.edit_shift_form', id=shift['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="post" action="{{ url_for('staff.delete_shift', id=shift['id']) }}" class="d-inline"
+                      onsubmit="return confirm('Delete this shift?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

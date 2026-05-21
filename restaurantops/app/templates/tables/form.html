@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Table' if table else 'Add Table' }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Table' if table else 'Add Table' }}</h1>
+
+<form method="post"
+      action="{{ url_for('tables.edit', id=table['id']) if table else url_for('tables.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="table_number" class="form-label">Table Number</label>
+        <input type="text" class="form-control" id="table_number" name="table_number"
+               value="{{ table['table_number'] if table else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="capacity" class="form-label">Capacity</label>
+        <input type="number" class="form-control" id="capacity" name="capacity"
+               min="1" value="{{ table['capacity'] if table else '4' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="zone" class="form-label">Zone</label>
+        <input type="text" class="form-control" id="zone" name="zone"
+               value="{{ table['zone'] if table else 'main' }}">
+    </div>
+
+    {% if table %}
+    <div class="mb-3">
+        <label for="status" class="form-label">Status</label>
+        <select class="form-select" id="status" name="status">
+            <option value="available" {{ 'selected' if table['status'] == 'available' }}>available</option>
+            <option value="reserved" {{ 'selected' if table['status'] == 'reserved' }}>reserved</option>
+            <option value="occupied" {{ 'selected' if table['status'] == 'occupied' }}>occupied</option>
+            <option value="needs_cleaning" {{ 'selected' if table['status'] == 'needs_cleaning' }}>needs_cleaning</option>
+        </select>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('tables.list_tables') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

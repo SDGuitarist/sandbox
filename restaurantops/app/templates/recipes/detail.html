@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe['name'] }} - Recipes - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ recipe['name'] }}</h1>
+        <div>
+            <a href="{{ url_for('recipes.edit_form', id=recipe['id']) }}" class="btn btn-outline-primary">Edit</a>
+            <form method="POST" action="{{ url_for('recipes.delete', id=recipe['id']) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this recipe?')">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            {% if recipe['description'] %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Description</h5>
+                    <p class="card-text">{{ recipe['description'] }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Details</h5>
+                    <div class="row">
+                        <div class="col-sm-4">
+                            <strong>Prep Time:</strong> {{ recipe['prep_time_minutes'] or 0 }} min
+                        </div>
+                        <div class="col-sm-4">
+                            <strong>Cook Time:</strong> {{ recipe['cook_time_minutes'] or 0 }} min
+                        </div>
+                        <div class="col-sm-4">
+                            <strong>Servings:</strong> {{ recipe['servings'] }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Estimated Cost per Serving</h5>
+                    <p class="card-text fs-4">{{ cost_cents|dollars }}</p>
+                </div>
+            </div>
+
+            {% if recipe['instructions'] %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Instructions</h5>
+                    <p class="card-text" style="white-space: pre-wrap;">{{ recipe['instructions'] }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Ingredients</h5>
+                    {% if ingredients %}
+                    <ul class="list-group list-group-flush">
+                        {% for ing in ingredients %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>{{ ing['name'] }}</span>
+                            <span class="text-muted">{{ ing['quantity'] }} {{ ing['unit'] }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted">No ingredients added.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Allergens</h5>
+                    {% if allergens %}
+                    <div>
+                        {% for allergen in allergens %}
+                        <span class="badge bg-warning text-dark me-1">{{ allergen['name'] }}</span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No allergens identified.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="{{ url_for('recipes.list_recipes') }}" class="btn btn-secondary mt-3">Back to Recipes</a>
+</div>
+{% endblock %}

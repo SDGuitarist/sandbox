@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Reservation' if reservation else 'New Reservation' }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Reservation' if reservation else 'New Reservation' }}</h1>
+
+<form method="POST" action="{{ url_for('reservations.edit', id=reservation['id']) if reservation else url_for('reservations.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="table_id" class="form-label">Table</label>
+        <select class="form-control" id="table_id" name="table_id" required>
+            <option value="">-- Select Table --</option>
+            {% for t in tables %}
+            <option value="{{ t['id'] }}"
+                {% if reservation and reservation['table_id'] == t['id'] %}selected{% endif %}>
+                {{ t['table_number'] }} (capacity: {{ t['capacity'] }}, zone: {{ t['zone'] }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="guest_name" class="form-label">Guest Name</label>
+        <input type="text" class="form-control" id="guest_name" name="guest_name"
+               value="{{ reservation['guest_name'] if reservation else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="guest_phone" class="form-label">Guest Phone</label>
+        <input type="text" class="form-control" id="guest_phone" name="guest_phone"
+               value="{{ reservation['guest_phone'] if reservation else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="party_size" class="form-label">Party Size</label>
+        <input type="number" class="form-control" id="party_size" name="party_size"
+               value="{{ reservation['party_size'] if reservation else 2 }}" min="1" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="reservation_date" class="form-label">Date</label>
+        <input type="date" class="form-control" id="reservation_date" name="reservation_date"
+               value="{{ reservation['reservation_date'] if reservation else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="reservation_time" class="form-label">Time</label>
+        <input type="time" class="form-control" id="reservation_time" name="reservation_time"
+               value="{{ reservation['reservation_time'] if reservation else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="duration_minutes" class="form-label">Duration (minutes)</label>
+        <input type="number" class="form-control" id="duration_minutes" name="duration_minutes"
+               value="{{ reservation['duration_minutes'] if reservation else 90 }}" min="15" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ reservation['notes'] if reservation and reservation['notes'] else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('reservations.list_reservations') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Menu - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Menu Items</h1>
+    <div>
+        <a href="{{ url_for('menu.list_categories') }}" class="btn btn-outline-secondary me-2">Categories</a>
+        <a href="{{ url_for('menu.create_form') }}" class="btn btn-primary">Add Menu Item</a>
+    </div>
+</div>
+
+{% if not items %}
+<div class="text-center text-muted py-5">
+    <p>No menu items found.</p>
+    <a href="{{ url_for('menu.create_form') }}" class="btn btn-primary">Add First Item</a>
+</div>
+{% else %}
+<table class="table table-striped table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Available</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td><a href="{{ url_for('menu.detail', id=item['id']) }}">{{ item['name'] }}</a></td>
+            <td>{{ item['category_id'] if item['category_id'] else '-' }}</td>
+            <td>{{ item['price_cents']|dollars }}</td>
+            <td>
+                {% if item['is_available'] %}
+                <span class="badge bg-success">Yes</span>
+                {% else %}
+                <span class="badge bg-secondary">No</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('menu.edit_form', id=item['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="POST" action="{{ url_for('menu.delete', id=item['id']) }}" class="d-inline"
+                      onsubmit="return confirm('Delete this menu item?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}
