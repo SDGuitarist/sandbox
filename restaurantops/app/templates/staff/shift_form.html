@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if shift else 'Add' }} Shift - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit' if shift else 'Add' }} Shift</h1>
+
+<form method="post" action="{{ url_for('staff.edit_shift', id=shift['id']) if shift else url_for('staff.create_shift') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="staff_id" class="form-label">Staff Member</label>
+        <select class="form-select" id="staff_id" name="staff_id" required>
+            <option value="">-- Select Staff Member --</option>
+            {% for member in staff %}
+            <option value="{{ member['id'] }}"
+                    {% if shift and shift['staff_id'] == member['id'] %}selected{% endif %}>
+                {{ member['name'] }} ({{ member['role'] | replace('_', ' ') | title }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="shift_date" class="form-label">Date</label>
+        <input type="date" class="form-control" id="shift_date" name="shift_date"
+               value="{{ shift['shift_date'] if shift else '' }}" required>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="start_time" class="form-label">Start Time</label>
+            <input type="time" class="form-control" id="start_time" name="start_time"
+                   value="{{ shift['start_time'] if shift else '' }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="end_time" class="form-label">End Time</label>
+            <input type="time" class="form-control" id="end_time" name="end_time"
+                   value="{{ shift['end_time'] if shift else '' }}" required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="role" class="form-label">Role</label>
+        <select class="form-select" id="role" name="role" required>
+            {% set roles = ['chef', 'sous_chef', 'server', 'host', 'busser', 'manager'] %}
+            {% for r in roles %}
+            <option value="{{ r }}" {% if shift and shift['role'] == r %}selected{% endif %}>
+                {{ r | replace('_', ' ') | title }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ shift['notes'] if shift else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('staff.schedule') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
