@@ -1,0 +1,18 @@
+/* RestaurantOps custom styles - supplements Bootstrap 5 */
+
+body {
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-weight: 700;
+}
+
+.table th {
+    white-space: nowrap;
+}
+
+.btn + .btn {
+    margin-left: 0.25rem;
+}
