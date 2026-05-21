@@ -69,11 +69,23 @@ skip. The template is at `~/.claude/docs/autopilot-tracking-template.md`.
 1. Read `~/.claude/docs/autopilot-tracking-template.md`
 2. Write it to `BUILD_TRACKING.md` in the project root
 3. Fill in the Run Info section (project name, spec path, date, build method)
-4. Each swarm agent will append to AGENT_STATUS after completing
-5. After review, fill in RUN_METRICS and Agent Performance Summary
+4. **Swarm builds only -- clean template scaffold for incremental writes:**
+   - Use Edit tool to replace everything between `## AGENT_STATUS` and `---`
+     (the section divider before `## FAILURES`) with a table header:
+     ```
+     | # | Agent | Commit | Status |
+     |---|-------|--------|--------|
+     ```
+   - Use Edit tool to replace everything between `## FAILURES` and `---`
+     (the section divider before `## RUN_METRICS`) with:
+     `<!-- Filled after review -->`
+   - Use Edit tool to replace everything between `## RUN_METRICS` and
+     `## Template Version` with:
+     `<!-- Filled after review -->`
+5. Solo builds: skip step 4. Keep the original template scaffold for bulk fill.
 
 If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
-Run Info + empty AGENT_STATUS + empty FAILURES + empty RUN_METRICS sections.
+Run Info + AGENT_STATUS table header + empty FAILURES + empty RUN_METRICS.
 
 ### Step 1.6: Inject Agent Pitfalls
 
@@ -338,6 +350,8 @@ assigned files. For each worktree branch, run these as SEPARATE Bash calls
    STATUS: PASS
    ```
 5. Proceed to assembly merge.
+6. **Incremental BUILD_TRACKING:** After writing ownership-gate.md, run:
+   `echo "### Ownership Gate: PASS ([N] agents)" >> BUILD_TRACKING.md`
 
 ### Step 11w: Assembly Merge
 
@@ -350,6 +364,10 @@ call (do NOT chain with && or use for-loops):
 3. For each worktree agent that made changes, run ONE merge at a time
    (separate Bash call for each -- do NOT use a for-loop):
    `git merge --no-ff <branch-name>`
+   **Incremental BUILD_TRACKING:** After each successful merge, run two Bash calls:
+   - `git log -1 --format=%h` (capture as commit_hash)
+   - `echo "| [N] | [role] | [commit_hash] | PASS |" >> BUILD_TRACKING.md`
+   Where N is the sequential agent number (1-based) and role is from the assignment table.
 4. If a merge fails (exit code != 0), use Write tool to save the conflict
    output to `docs/reports/<run-id>/merge-conflict.md`, then invoke the
    **assembly-fix** agent with the conflict report, plan path, and project root.
@@ -361,6 +379,7 @@ call (do NOT chain with && or use for-loops):
 Use the **spec-contract-checker** agent. Pass the plan path and project root.
 
 Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
+**Incremental BUILD_TRACKING:** `echo "### Contract Check: [STATUS]" >> BUILD_TRACKING.md`
 - If PASS: continue to smoke test.
 - If FAIL: use the **assembly-fix** agent with the contract check report,
   plan path, and project root (max 1 retry). Re-run spec contract check
@@ -371,6 +390,7 @@ Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
 Use the **smoke-test-runner** agent. Pass the plan path and project root.
 
 Read `docs/reports/<run-id>/smoke-test.md`. Check STATUS.
+**Incremental BUILD_TRACKING:** `echo "### Smoke Test: [STATUS]" >> BUILD_TRACKING.md`
 - If PASS: continue to test suite.
 - If FAIL: use the **assembly-fix** agent with the smoke test report, plan
   path, and project root (max 1 retry). Re-run smoke test after fix. If still
@@ -423,6 +443,9 @@ Run `/workflows:review`
 The review agents should scrutinize any areas flagged in the plan's
 Feed-Forward "least confident" item. After review completes, verify that
 review findings reference the Feed-Forward risk if applicable.
+
+**Incremental BUILD_TRACKING:** After review completes, run:
+`echo "### Review: [P1_count] P1, [P2_count] P2 | Fix commits: [hashes]" >> BUILD_TRACKING.md`
 
 ### Resolve TODOs
 
