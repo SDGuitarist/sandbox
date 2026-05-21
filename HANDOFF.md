@@ -2,59 +2,78 @@
 
 **Date:** 2026-05-20
 **Branch:** master
-**Phase:** Run 050 complete -- GigSheet (31-agent swarm, compound done)
+**Phase:** Autopilot context optimization -- work + review complete, compound phase next
 
 ## Current State
 
-GigSheet (run 050) fully complete. 31-agent Flask + SQLite swarm build -- largest ever. 96 files, ~7,500 LOC. Zero FC37 failures (0/31, down from 56% in run 049). Zero merge conflicts. 46/46 smoke tests pass. 8 P1 review findings all fixed. 10 P2s deferred.
+Autopilot context window optimization implemented and reviewed. 3 skill files modified, 1 created. 7 implementation commits + 1 review fix commit. 3 review agents found 2 P1s (both fixed) + 4 P2s (deferred). Ready for compound phase (solution doc + learnings propagation).
+
+### What was built
+
+Hardened the autopilot skill so 30+ agent swarm builds don't lose mandatory tail artifacts to context death. Run 050 (GigSheet, 31 agents) hit 0% context during the shared tail -- this prevents that.
+
+| Change | File | Lines |
+|--------|------|-------|
+| Incremental BUILD_TRACKING writes (orchestrator-owned) | autopilot/SKILL.md | +26 |
+| Step 6.1 run-id gen + Step 6.5 deepening spec rewrite | autopilot/SKILL.md | +37, -16 |
+| Solo/swarm BUILD_TRACKING conditional + FAILURES/RUN_METRICS fill | autopilot/SKILL.md | +26, -12 |
+| Context-budget checkpoint gate (post-fill, pre-audit) | autopilot/SKILL.md | +58 |
+| --plan and --review-summary argument flags | update-learnings-noninteractive/SKILL.md | +16, -6 |
+| tail-resume skill (new) | tail-resume/SKILL.md | +85 |
+| P1 review fixes (dangling ref + checkpoint placement) | autopilot + tail-resume | +67, -100 |
+
+Final line counts: autopilot 636, tail-resume 85, update-learnings 302.
 
 ## Key Artifacts
 
 | Artifact | Location |
 |----------|----------|
+| Brainstorm (3 Codex rounds) | docs/brainstorms/2026-05-20-autopilot-context-optimization-brainstorm.md |
+| Plan (3 Codex rounds) | docs/plans/2026-05-20-autopilot-context-optimization-plan.md |
+| Autopilot skill | .claude/skills/autopilot/SKILL.md |
+| tail-resume skill | .claude/skills/tail-resume/SKILL.md |
+| update-learnings skill | .claude/skills/update-learnings-noninteractive/SKILL.md |
+| Agent pitfalls (42 classes) | ~/.claude/docs/agent-pitfalls.md |
 | GigSheet app | gigsheet/ |
-| GigSheet brainstorm | docs/brainstorms/2026-05-20-gigsheet-brainstorm.md |
-| GigSheet plan | docs/plans/2026-05-20-gigsheet-plan.md |
-| GigSheet solution doc | docs/solutions/2026-05-20-gigsheet-31-agent-swarm-build.md |
-| Build tracking | BUILD_TRACKING.md |
-| Reports | docs/reports/050/ |
 | VenueConnect app | venueconnect/ |
 | Lead Scraper app | lead-scraper/ |
-| Agent pitfalls (40 classes) | ~/.claude/docs/agent-pitfalls.md |
 
 ## Deferred Items
 
+### Autopilot Context Optimization (current)
+- P2-1: BUILD_TRACKING appends mix table/heading formats -- LOW
+- P2-2: CHECKPOINT.md YAML template verbose (could collapse to field list) -- LOW
+- P2-3: Template file not updated for swarm-variant format -- LOW
+- P2-4: Verify Learnings error messages slightly shorter in tail-resume -- LOW
+
 ### Run 050 (GigSheet)
-- 050-D1: Pipeline board loads ALL leads (no per-stage LIMIT) -- MEDIUM
-- 050-D2: Campaign editor loads up to 10K leads for checkbox -- MEDIUM
-- 050-D3: N+1 query in bulk pipeline move -- MEDIUM
-- 050-D4: No pagination on campaign/template/file lists -- MEDIUM
-- 050-D5: Analytics aggregation in Python instead of SQL SUM() -- LOW
-- 050-D6: Webhook endpoint lacks SendGrid signature verification -- MEDIUM
-- 050-D7: Missing type hints on 59 model functions -- LOW
-- 050-D8: SSE generator missing WAL/busy_timeout pragmas -- LOW
-- 050-D9: GET logout susceptible to CSRF -- LOW
-- 050-D10: No HSTS header -- LOW
+- 050-D1 through 050-D10 (see prior HANDOFF for full list) -- MEDIUM/LOW
 
 ### Prior Runs
-- 048-W1: create_event notes gap (MEDIUM, spec gap)
-- 046-W1 ACCEPTED: No brute-force login protection. MEDIUM.
-- 046-W2 ACCEPTED: Line-item parsing duplication. MEDIUM.
+- 048-W1: create_event notes gap (MEDIUM)
+- 046-W1/W2: ACCEPTED
 
 ## Three Questions
 
-1. **Hardest decision?** Rewriting send_worker.py during deepening to use CTE+RETURNING and models functions. The rewrite introduced a commit-ordering bug.
-2. **What was rejected?** Celery/Redis for job queue, WebSocket for real-time, Jinja2 for email templates, customizable pipeline stages.
-3. **Least confident about?** CSP-CDN mismatch pattern -- new, hard to prevent in swarm specs. Spec template needs a "CDN Dependencies" section.
+1. **Hardest decision?** Moving checkpoint from post-compound to post-BUILD_TRACKING-fill. The review found that the original placement (post-compound) left FAILURES/RUN_METRICS unfilled during resume. Moving it later means less tail is protected, but all data-writing steps complete before the checkpoint fires.
+2. **What was rejected?** Phase shedding (silent drift), `/compact` as dependency (unverified), auto-resume in Phase 1 (premature), spec size in heuristic (unmeasurable), pre-review checkpoint (compound resumability unverified).
+3. **Least confident about?** The orchestration-load heuristic (>30 threshold). Known false positive on run 048 (score 40.5). Cost is brief manual resume, not full rebuild. First real build validates.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is the Sandbox project. GigSheet (run 050) complete.
+Read HANDOFF.md. This is the Sandbox project. Autopilot context optimization
+work + review complete. 2 P1s fixed, 4 P2s deferred.
 
-Options for next session:
-1. Fix GigSheet P2s (050-D1 through D10) -- performance + security hardening
-2. New build (run 051) -- pick a new app to push swarm to 35+ agents
-3. Ecosystem integration -- connect Lead Scraper -> GigSheet -> VenueConnect
-4. GigSheet live mode -- replace SendGrid mock with real API
+Next step: /workflows:compound to write the solution doc, then /update-learnings
+to propagate lessons. After that, update HANDOFF.md with next-session options.
+
+Key artifacts:
+- Brainstorm: docs/brainstorms/2026-05-20-autopilot-context-optimization-brainstorm.md
+- Plan: docs/plans/2026-05-20-autopilot-context-optimization-plan.md
+- Changed files: .claude/skills/autopilot/SKILL.md, .claude/skills/tail-resume/SKILL.md,
+  .claude/skills/update-learnings-noninteractive/SKILL.md
+
+Feed-Forward risk: orchestration-load heuristic may false-positive on run 048-like
+builds. First real build validates thresholds.
 ```
