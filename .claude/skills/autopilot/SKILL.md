@@ -167,6 +167,36 @@ Run `/compound-engineering:deepen-plan`
 After deepening completes, read the plan document in `docs/plans/`. Extract the
 `swarm:` field from its YAML frontmatter.
 
+### Step 6.1: Generate Run ID and Reports Directory (MANDATORY)
+
+Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
+the `run-id` (e.g., 21 solutions = run `022`). Create `docs/reports/<run-id>/`.
+
+This step runs before the deepening merge so `docs/reports/<run-id>/` exists
+for the audit trail. Both solo and swarm paths use this run-id -- the duplicate
+generation in Steps 7s.0 and 8w/9w is removed.
+
+### Step 6.5: Merge Deepening Into Plan (MANDATORY)
+
+After deepening completes, merge all accepted corrections into the plan file
+in-place. The orchestrator already has the plan and amendment outputs in context.
+
+1. Read all deepening agent outputs. Identify changes per plan section.
+2. If multiple agents modified the same section: synthesize a single merged
+   edit. Document conflicts in the audit trail.
+3. Use Write tool to overwrite the plan file with the merged version.
+4. Use Write tool to create `docs/reports/<run-id>/deepening-applied.md` with
+   a summary of what changed and why (audit trail only, not execution input).
+5. Commit the rewritten plan:
+   `git add docs/plans/<plan-file>`
+6. Commit the audit trail:
+   `git add docs/reports/<run-id>/deepening-applied.md`
+7. Create the commit:
+   `git commit -m "chore: merge deepening corrections into plan"`
+
+All downstream steps (swarm planner, agents, contract check) read the
+rewritten plan. No agent should see raw amendment notes.
+
 ---
 
 ## Branch Point
@@ -180,16 +210,9 @@ Read the plan's YAML frontmatter. Check the `swarm:` field.
 
 ## Solo Path
 
-### Step 7s.0: Generate Run ID and Reports Directory
+### Step 7s.0: (Removed -- run-id now generated in Step 6.1)
 
-Same logic as swarm Steps 8w/9w. Count the files in `docs/solutions/` and add
-1. Zero-pad to 3 digits. This is the `run-id` (e.g., 21 solutions = run `022`).
-
-Create `docs/reports/<run-id>/` for this run's reports. Do NOT delete prior
-run directories -- they serve as audit trail.
-
-This ensures solo runs have the same canonical report location as swarm runs,
-so the self-audit step in the Shared Tail works identically for both paths.
+Use the `run-id` and `docs/reports/<run-id>/` created in Step 6.1.
 
 ### Step 7s: Work
 
@@ -224,16 +247,14 @@ Use the **swarm-planner** agent. Pass the path to the plan document.
 Read the agent's output. Check for STATUS: PASS. If STATUS: FAIL, abort the
 swarm path and output the error. Do not proceed.
 
-### Step 8w: Generate Run ID
+### Step 8w: (Removed -- run-id now generated in Step 6.1)
 
-Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
-the `run-id` (e.g., 21 solutions = run `022`). Use this for branch naming.
+Use the `run-id` from Step 6.1 for branch naming.
 
-### Step 9w: Create Reports Directory
+### Step 9w: (Removed -- reports directory now created in Step 6.1)
 
-Create `docs/reports/<run-id>/` for this run's verification reports. Do NOT
-delete prior run directories -- they serve as audit trail. All report paths
-in subsequent steps use `docs/reports/<run-id>/` instead of `docs/reports/`.
+Use `docs/reports/<run-id>/` created in Step 6.1. All report paths in
+subsequent steps use `docs/reports/<run-id>/`.
 
 ### Step 9w.5: Pre-Swarm Spec Consistency Gate
 
