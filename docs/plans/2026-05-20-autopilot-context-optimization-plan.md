@@ -1,7 +1,7 @@
 ---
 title: "feat: Autopilot Context Window Optimization"
 type: feat
-status: active
+status: completed
 date: 2026-05-20
 origin: docs/brainstorms/2026-05-20-autopilot-context-optimization-brainstorm.md
 swarm: false
