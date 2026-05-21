@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Table Status Board - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Table Status Board</h1>
+    <a href="{{ url_for('tables.list_tables') }}" class="btn btn-outline-secondary">Back to List</a>
+</div>
+
+{% if not tables %}
+<div class="text-center text-muted py-5">
+    <p>No tables found.</p>
+    <a href="{{ url_for('tables.create_form') }}" class="btn btn-primary">Add First Table</a>
+</div>
+{% else %}
+<div class="row">
+    {% for t in tables %}
+    <div class="col-md-4 col-lg-3 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Table {{ t['table_number'] }}</h5>
+                <p class="card-text">
+                    Capacity: {{ t['capacity'] }}<br>
+                    Zone: {{ t['zone'] }}
+                </p>
+                <p>
+                    {% if t['status'] == 'available' %}
+                    <span class="badge bg-success">available</span>
+                    {% elif t['status'] == 'reserved' %}
+                    <span class="badge bg-warning">reserved</span>
+                    {% elif t['status'] == 'occupied' %}
+                    <span class="badge bg-primary">occupied</span>
+                    {% elif t['status'] == 'needs_cleaning' %}
+                    <span class="badge bg-info">needs_cleaning</span>
+                    {% endif %}
+                </p>
+                <form method="post" action="{{ url_for('tables.update_status', id=t['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="input-group">
+                        <select class="form-select" name="status">
+                            <option value="available" {{ 'selected' if t['status'] == 'available' }}>available</option>
+                            <option value="reserved" {{ 'selected' if t['status'] == 'reserved' }}>reserved</option>
+                            <option value="occupied" {{ 'selected' if t['status'] == 'occupied' }}>occupied</option>
+                            <option value="needs_cleaning" {{ 'selected' if t['status'] == 'needs_cleaning' }}>needs_cleaning</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
