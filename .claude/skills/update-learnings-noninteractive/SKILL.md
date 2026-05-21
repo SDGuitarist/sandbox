@@ -1,7 +1,7 @@
 ---
 name: update-learnings-noninteractive
 description: Non-interactive learnings propagation for autopilot use. Runs Steps 0-6 of update-learnings without the code-explainer prompt. Sandbox-local.
-argument-hint: "[solution doc path, or leave blank to auto-detect]"
+argument-hint: "[solution_doc_path] [--plan path] [--review-summary path]"
 allowed-tools: Read Edit Write Glob Grep Bash Agent
 ---
 
@@ -26,14 +26,24 @@ this file must be updated to match.
 <update_target> #$ARGUMENTS </update_target>
 
 Parse arguments:
-- If a path is given, use it as the solution doc
-- If blank, find the most recently modified file in `docs/solutions/`
+- Extract positional argument as solution doc path (if given)
+- If `--plan <path>` is present, extract plan path
+- If `--review-summary <path>` is present, extract review summary path
+- If no positional argument, find the most recently modified file in `docs/solutions/`
+- If `--plan` or `--review-summary` is passed with a nonexistent path, abort with a file-not-found error
+
+Store parsed values:
+- `solution_doc_path`: from positional arg or auto-detected
+- `plan_path`: from `--plan` flag or null (use discovery in Step 0)
+- `review_summary_path`: from `--review-summary` flag or null (use discovery in Step 0)
 
 ## Step 0: Load Context
 
-- Read the solution doc (the one just written in Compound step 1)
-- Read the review summary (from `docs/reviews/<branch>/REVIEW-SUMMARY.md`)
-- Read the plan (from `docs/plans/` -- find via solution doc's `related_prs` or most recent)
+- Read the solution doc at `solution_doc_path`
+- If `plan_path` was provided: read the plan at that path.
+  Otherwise: find via solution doc's `related_prs` or most recent in `docs/plans/`
+- If `review_summary_path` was provided: read the review summary at that path.
+  Otherwise: find from `docs/reviews/<branch>/REVIEW-SUMMARY.md`
 - Identify the current project name from the nearest `CLAUDE.md` or directory name
 - Get today's date for journal entries
 
