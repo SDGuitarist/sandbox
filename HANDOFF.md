@@ -1,80 +1,79 @@
 # HANDOFF -- Sandbox
 
-**Date:** 2026-05-20
+**Date:** 2026-05-21
 **Branch:** master
-**Phase:** Autopilot context optimization -- compound phase complete (solution doc + learnings propagated)
+**Phase:** Run 052 (RestaurantOps) -- compound phase complete, tail in progress
 
 ## Current State
 
-Autopilot context window optimization fully completed through the compound phase. Solution doc written, learnings propagated to all 8 surfaces. The autopilot skill is now hardened for 31+ agent swarm builds with incremental BUILD_TRACKING, context-budget checkpoint gates, post-deepening canonical spec rewrite, and a tail-resume skill for manual recovery.
+RestaurantOps built as a 29-agent swarm: 98 files, ~8,178 LOC. Single-location restaurant management system in Flask + SQLite + Jinja2 with 14 feature domains. 0 merge conflicts, 0 FC37 failures. All 8 P1 review findings fixed (3 security + 5 code quality). 16 P2s deferred. Context checkpoint fired at load 43, tail resumed manually.
 
 ### What was built
 
-| Change | File | Lines |
-|--------|------|-------|
-| Incremental BUILD_TRACKING writes (orchestrator-owned) | autopilot/SKILL.md | +26 |
-| Step 6.1 run-id gen + Step 6.5 deepening spec rewrite | autopilot/SKILL.md | +37, -16 |
-| Solo/swarm BUILD_TRACKING conditional + FAILURES/RUN_METRICS fill | autopilot/SKILL.md | +26, -12 |
-| Context-budget checkpoint gate (post-fill, pre-audit) | autopilot/SKILL.md | +58 |
-| --plan and --review-summary argument flags | update-learnings-noninteractive/SKILL.md | +16, -6 |
-| tail-resume skill (new) | tail-resume/SKILL.md | +85 |
-| P1 review fixes (dangling ref + checkpoint placement) | autopilot + tail-resume | +67, -100 |
-
-Final line counts: autopilot 636, tail-resume 85, update-learnings 302.
+| Feature | Blueprint(s) | Key Patterns |
+|---------|-------------|-------------|
+| Menu + Categories | menu | Price in integer cents, recipe/category selects |
+| Recipes + Ingredients | recipes, ingredients | M2M junction, parallel array validation, allergen rollup |
+| Inventory + Stock Movements | inventory | record_stock_movement helper, low-stock alerts |
+| Suppliers + Purchase Orders | suppliers, purchase_orders | PO lifecycle (draft->submitted->received->closed), stock receipt |
+| Customer Orders | orders | Kitchen board, BEGIN IMMEDIATE for prepare/cancel, inventory deduction |
+| Tables + Reservations | tables, reservations | Status board, availability checking, table status updates |
+| Staff + Scheduling | staff | Shift CRUD, date-filtered schedule view |
+| Daily Specials | specials | Date range filtering, optional menu item link |
+| Customer Reviews | reviews | Rating 1-5, summary stats, average per menu item |
+| Auth + Dashboard | auth, dashboard | Single password auth, summary cards, low stock/pending orders |
 
 ## Key Artifacts
 
 | Artifact | Location |
 |----------|----------|
-| Brainstorm (3 Codex rounds) | docs/brainstorms/2026-05-20-autopilot-context-optimization-brainstorm.md |
-| Plan (3 Codex rounds) | docs/plans/2026-05-20-autopilot-context-optimization-plan.md |
-| Solution doc | docs/solutions/2026-05-20-autopilot-context-window-optimization.md |
-| Autopilot skill | .claude/skills/autopilot/SKILL.md |
-| tail-resume skill | .claude/skills/tail-resume/SKILL.md |
-| update-learnings skill | .claude/skills/update-learnings-noninteractive/SKILL.md |
-| Agent pitfalls (42 classes) | ~/.claude/docs/agent-pitfalls.md |
-| GigSheet app | gigsheet/ |
-| VenueConnect app | venueconnect/ |
-| Lead Scraper app | lead-scraper/ |
+| Brainstorm | docs/brainstorms/2026-05-21-restaurant-kitchen-mgmt-brainstorm.md |
+| Plan | docs/plans/2026-05-21-restaurant-kitchen-mgmt-plan.md |
+| Solution doc | docs/solutions/2026-05-21-restaurant-kitchen-mgmt-swarm-build.md |
+| Reports | docs/reports/052/ |
+| App | restaurantops/ |
+| BUILD_TRACKING | BUILD_TRACKING.md |
 
 ## Deferred Items
 
-### Autopilot Context Optimization (current)
-- P2-1: BUILD_TRACKING appends mix table/heading formats -- LOW
-- P2-2: CHECKPOINT.md YAML template verbose (could collapse to field list) -- LOW
-- P2-3: Template file not updated for swarm-variant format -- LOW
-- P2-4: Verify Learnings error messages slightly shorter in tail-resume -- LOW
+### P2 Findings (from review)
+- P2-SEC-1: Supplier input fields missing length truncation -- LOW
+- P2-SEC-2: WTF_CSRF_TIME_LIMIT=None disables token expiry -- LOW
+- P2-SEC-3: No Content-Security-Policy header (Bootstrap CDN conflict) -- MEDIUM
+- P2-SEC-4: No reservation date/time format validation -- LOW
+- P2-SEC-5: Recipe description/instructions no length limits -- LOW
+- P2-SEC-6: float() in price conversion marginal rounding -- LOW
+- P2-CODE-1: Broad except Exception in route try/except blocks -- MEDIUM
+- P2-CODE-2: order_models uses raw SQL COMMIT/ROLLBACK (fixed) -- DONE
+- P2-CODE-3: Supplier create_form GET path vs create POST path mismatch (fixed) -- DONE
+- P2-CODE-4: No field length truncation on supplier forms -- LOW
+- P2-CODE-5: Flash category inconsistency on order close -- LOW
+- P2-CODE-6: Recipe cost floor division instead of rounding -- LOW
+- P2-CODE-7: PO total calculation uses float multiplication in SQL -- LOW
+- P2-CODE-8: Dead status variable read in table create route -- LOW
+- P2-CODE-9: Missing type hints on route handlers -- LOW
+- P2-FLOW-1: PO submit route missing try/except -- LOW
 
 ### Future Hardening
-- Tier 2 pre-review resume (validate review + compound resumability from artifacts)
-- Auto-resume (detect PAUSED_FOR_CONTEXT and spawn fresh session automatically)
-- Heuristic weight calibration (need 2 more large swarm runs for data)
-
-### Run 050 (GigSheet)
-- 050-D1 through 050-D10 (see prior HANDOFF for full list) -- MEDIUM/LOW
-
-### Prior Runs
-- 048-W1: create_event notes gap (MEDIUM)
-- 046-W1/W2: ACCEPTED
+- Rate limiting on login endpoint
+- CSP header with CDN allowlist
+- Decimal module for bulletproof money handling
 
 ## Three Questions
 
-1. **Hardest decision?** Keeping >30 threshold despite the known run 048 false positive (score 40.5). With post-compound checkpoint placement, the cost of a false positive is ~5 min of manual resume vs context death costing ~30 min of artifact reconstruction.
-2. **What was rejected?** Phase shedding (silent drift), `/compact` as dependency (unverified), auto-resume in Phase 1 (premature), spec size in heuristic (unmeasurable), separate canonical-spec.md (dual source of truth), pre-compound checkpoint (compound resumability unverified).
-3. **Least confident about?** The orchestration-load heuristic. Known false positive on run 048 (40.5). A 28-agent build with 0 deepening scores 37 and could die without triggering checkpoint. First real build validates.
+1. **Hardest decision?** Model/route split (29 agents) vs single-agent-per-domain (14 agents). The split worked -- zero conflicts, clean ownership -- but doubled the agent count.
+2. **What was rejected?** Single agent per domain (too many files per agent), adding rate limiting (MVP doesn't need it), CSP header (conflicts with Bootstrap CDN).
+3. **Least confident about?** Whether the P2 findings (16 deferred) will cause runtime issues. The broad `except Exception` pattern masks programming errors during development.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is the Sandbox project. Autopilot context optimization
-is fully complete (brainstorm, plan, work, review, compound, learnings).
+Read HANDOFF.md. This is the Sandbox project. Run 052 (RestaurantOps)
+complete -- 29-agent swarm, 98 files, 8178 LOC.
 
 Next options:
-1. New build (run 051) -- first build to validate the context optimization
-2. GigSheet P2 fixes (050-D1 through 050-D10)
-3. Cross-project integration (Lead Scraper -> GigSheet -> VenueConnect pipeline)
-4. Address deferred P2s from context optimization
-
-The heuristic threshold (>30) is provisional. If the next large swarm
-(25+ agents) false-positives or false-negatives, adjust accordingly.
+1. RestaurantOps P2 fixes (16 deferred, mostly LOW)
+2. New build (run 053) -- validates autopilot at even larger scale
+3. GigSheet or VenueConnect P2 fixes
+4. Cross-project integration work
 ```

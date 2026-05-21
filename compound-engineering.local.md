@@ -1,23 +1,25 @@
-# Review Context -- Sandbox (Autopilot Context Optimization)
+# Review Context -- RestaurantOps
 
 ## Risk Chain
 
-**Brainstorm risk:** Orchestration-load heuristic may false-positive on successful runs (run 048 scores 40.5) or miss future failures (28-agent build with 0 deepening scores 37).
+**Brainstorm risk:** "Whether 30+ agents at this feature breadth will produce consistent UX patterns across 14 blueprints."
 
-**Plan mitigation:** Set >30 threshold despite false positive. Cost of false positive (brief manual resume) is much cheaper than false negative (context death + lost artifacts). Calibrate after next 2 large swarms.
+**Plan mitigation:** 10-item Coordinated Behaviors table with prescriptive code blocks for flash messages, form styling, table styling, empty states, error handling, database connection pattern, status badges, and navigation.
 
-**Work risk (from Feed-Forward):** Checkpoint placement and BUILD_TRACKING ownership change are structural -- errors here silently corrupt the resume contract.
+**Work risk (from Feed-Forward):** "Whether the 29-agent model/route split produces correct cross-boundary imports."
 
-**Review resolution:** 2 P1s found (dangling reference to removed heuristic component, checkpoint placed before BUILD_TRACKING fill). Both fixed. 4 P2s deferred (all LOW: format inconsistencies, verbose template, shorter error messages).
+**Review resolution:** 8 P1 (all fixed), 16 P2 (deferred). Top findings: security infrastructure gaps (3 P1), BEGIN IMMEDIATE scope (1 P1), naming divergence in supplier routes (1 P1). UX consistency risk did NOT materialize -- Coordinated Behaviors worked.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| .claude/skills/autopilot/SKILL.md | Incremental BUILD_TRACKING, checkpoint gate, Step 6.1/6.5, solo/swarm conditional | Orchestration flow integrity |
-| .claude/skills/tail-resume/SKILL.md | New skill: reads CHECKPOINT.md, runs tail sequence | Resume contract correctness |
-| .claude/skills/update-learnings-noninteractive/SKILL.md | --plan and --review-summary argument flags | Backwards compatibility |
+| restaurantops/app/__init__.py | Auth gate, security headers, CSRF handler | Auth bypass, session security |
+| restaurantops/app/models/order_models.py | BEGIN IMMEDIATE transactions for prepare/cancel | Inventory deduction atomicity |
+| restaurantops/app/models/inventory_models.py | Stock movement + inventory update | Data integrity under concurrent access |
+| restaurantops/app/blueprints/orders/routes.py | Kitchen board, status transitions | TOCTOU races on concurrent updates |
+| restaurantops/app/blueprints/purchase_orders/routes.py | PO receive with stock movements | Transaction boundary correctness |
 
 ## Plan Reference
 
-`docs/plans/2026-05-20-autopilot-context-optimization-plan.md`
+`docs/plans/2026-05-21-restaurant-kitchen-mgmt-plan.md`
