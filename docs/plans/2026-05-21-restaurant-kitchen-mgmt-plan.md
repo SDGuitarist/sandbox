@@ -1905,8 +1905,10 @@ without the per-connection PRAGMAs causes concurrency bugs (FC40).
 - `restaurantops/app/templates/base.html`
 - `restaurantops/app/static/style.css`
 
-#### Agent: dashboard (models + routes + templates)
+#### Agent: dashboard_models
 - `restaurantops/app/models/dashboard_models.py`
+
+#### Agent: dashboard_routes
 - `restaurantops/app/blueprints/dashboard/__init__.py`
 - `restaurantops/app/blueprints/dashboard/routes.py`
 - `restaurantops/app/templates/dashboard/index.html`
@@ -2043,42 +2045,10 @@ without the per-connection PRAGMAs causes concurrency bugs (FC40).
 - `restaurantops/app/templates/reviews/detail.html`
 - `restaurantops/app/templates/reviews/summary.html`
 
-**Total agents: 34** (core, layout, dashboard, auth, + 15 model/route pairs for
-menu, recipes, ingredients, inventory, suppliers, purchase_orders, orders,
-tables, reservations, staff, specials, reviews + inventory_models split +
-ingredient_models includes core_models)
-
-Wait — let me recount:
-1. core
-2. layout
-3. dashboard
-4. auth
-5. menu_models
-6. menu_routes
-7. recipe_models
-8. recipe_routes
-9. ingredient_models
-10. ingredient_routes
-11. inventory_models
-12. inventory_routes
-13. supplier_models
-14. supplier_routes
-15. po_models
-16. po_routes
-17. order_models
-18. order_routes
-19. table_models
-20. table_routes
-21. reservation_models
-22. reservation_routes
-23. staff_models
-24. staff_routes
-25. specials_models
-26. specials_routes
-27. review_models
-28. review_routes
-
-**Total: 28 agents.** Each owns distinct files. No overlap.
+**Total: 29 agents.** (core, layout, auth, + 13 model/route pairs for
+dashboard, menu, recipes, ingredients, inventory, suppliers, purchase_orders,
+orders, tables, reservations, staff, specials, reviews.) Each owns distinct
+files. No overlap.
 
 ### Swarm Agent Assignment
 
@@ -2100,19 +2070,19 @@ Wait — let me recount:
 | 14 | review_models | models/review_models.py | core |
 | 15 | po_models | models/purchase_order_models.py | core, inventory_models |
 | 16 | dashboard_models | models/dashboard_models.py | core |
-| 17 | ingredient_routes | blueprints/ingredients/*, templates/ingredients/* | ingredient_models |
-| 18 | supplier_routes | blueprints/suppliers/*, templates/suppliers/* | supplier_models |
-| 19 | recipe_routes | blueprints/recipes/*, templates/recipes/* | recipe_models, ingredient_models |
-| 20 | menu_routes | blueprints/menu/*, templates/menu/* | menu_models, recipe_models, review_models |
-| 21 | inventory_routes | blueprints/inventory/*, templates/inventory/* | inventory_models, ingredient_models |
-| 22 | table_routes | blueprints/tables/*, templates/tables/* | table_models |
-| 23 | reservation_routes | blueprints/reservations/*, templates/reservations/* | reservation_models, table_models |
-| 24 | order_routes | blueprints/orders/*, templates/orders/* | order_models, menu_models, table_models |
-| 25 | po_routes | blueprints/purchase_orders/*, templates/purchase_orders/* | po_models, supplier_models, ingredient_models |
-| 26 | staff_routes | blueprints/staff/*, templates/staff/* | staff_models |
-| 27 | specials_routes | blueprints/specials/*, templates/specials/* | specials_models, menu_models |
-| 28 | review_routes | blueprints/reviews/*, templates/reviews/* | review_models, menu_models |
-| 29 | dashboard_routes | blueprints/dashboard/*, templates/dashboard/* | dashboard_models, inventory_models, order_models, reservation_models |
+| 17 | ingredient_routes | blueprints/ingredients/__init__.py, blueprints/ingredients/routes.py, templates/ingredients/list.html, templates/ingredients/form.html, templates/ingredients/detail.html | ingredient_models |
+| 18 | supplier_routes | blueprints/suppliers/__init__.py, blueprints/suppliers/routes.py, templates/suppliers/list.html, templates/suppliers/form.html, templates/suppliers/detail.html | supplier_models |
+| 19 | recipe_routes | blueprints/recipes/__init__.py, blueprints/recipes/routes.py, templates/recipes/list.html, templates/recipes/form.html, templates/recipes/detail.html | recipe_models, ingredient_models |
+| 20 | menu_routes | blueprints/menu/__init__.py, blueprints/menu/routes.py, templates/menu/list.html, templates/menu/form.html, templates/menu/detail.html, templates/menu/categories.html | menu_models, recipe_models, review_models |
+| 21 | inventory_routes | blueprints/inventory/__init__.py, blueprints/inventory/routes.py, templates/inventory/index.html, templates/inventory/low_stock.html, templates/inventory/movements.html | inventory_models, ingredient_models |
+| 22 | table_routes | blueprints/tables/__init__.py, blueprints/tables/routes.py, templates/tables/list.html, templates/tables/form.html, templates/tables/board.html | table_models |
+| 23 | reservation_routes | blueprints/reservations/__init__.py, blueprints/reservations/routes.py, templates/reservations/list.html, templates/reservations/form.html, templates/reservations/detail.html | reservation_models, table_models |
+| 24 | order_routes | blueprints/orders/__init__.py, blueprints/orders/routes.py, templates/orders/list.html, templates/orders/form.html, templates/orders/detail.html, templates/orders/kitchen.html | order_models, menu_models, table_models |
+| 25 | po_routes | blueprints/purchase_orders/__init__.py, blueprints/purchase_orders/routes.py, templates/purchase_orders/list.html, templates/purchase_orders/form.html, templates/purchase_orders/detail.html | po_models, supplier_models, ingredient_models |
+| 26 | staff_routes | blueprints/staff/__init__.py, blueprints/staff/routes.py, templates/staff/list.html, templates/staff/form.html, templates/staff/detail.html, templates/staff/schedule.html, templates/staff/shift_form.html | staff_models |
+| 27 | specials_routes | blueprints/specials/__init__.py, blueprints/specials/routes.py, templates/specials/list.html, templates/specials/form.html, templates/specials/detail.html | specials_models, menu_models |
+| 28 | review_routes | blueprints/reviews/__init__.py, blueprints/reviews/routes.py, templates/reviews/list.html, templates/reviews/form.html, templates/reviews/detail.html, templates/reviews/summary.html | review_models, menu_models |
+| 29 | dashboard_routes | blueprints/dashboard/__init__.py, blueprints/dashboard/routes.py, templates/dashboard/index.html | dashboard_models, inventory_models, order_models, reservation_models |
 
 **Revised total: 29 agents.** (Added dashboard_models as separate from dashboard_routes.)
 
