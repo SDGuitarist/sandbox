@@ -199,9 +199,14 @@ def submit(id):
         flash('Only draft purchase orders can be submitted.', 'error')
         return redirect(url_for('purchase_orders.detail', id=id))
 
-    conn.execute("BEGIN")
-    submit_purchase_order(conn, id)
-    conn.commit()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        submit_purchase_order(conn, id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        flash('Could not submit purchase order. Please try again.', 'error')
+        return redirect(url_for('purchase_orders.detail', id=id))
 
     flash('Purchase order submitted successfully.', 'success')
     return redirect(url_for('purchase_orders.detail', id=id))

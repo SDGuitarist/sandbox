@@ -39,7 +39,6 @@ def create():
     table_number = request.form.get('table_number', '').strip()
     capacity_str = request.form.get('capacity', '').strip()
     zone = request.form.get('zone', '').strip()
-    status = request.form.get('status', 'available').strip()
 
     if not table_number:
         flash('Table number is required.', 'error')

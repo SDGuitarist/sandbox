@@ -46,8 +46,8 @@ def create():
         flash('Name is required.', 'error')
         return redirect(request.url)
 
-    description = request.form.get('description', '').strip()
-    instructions = request.form.get('instructions', '').strip()
+    description = request.form.get('description', '').strip()[:2000]
+    instructions = request.form.get('instructions', '').strip()[:5000]
 
     # Integer fields with safe parsing
     try:
@@ -169,8 +169,8 @@ def edit(id):
         flash('Name is required.', 'error')
         return redirect(request.url)
 
-    description = request.form.get('description', '').strip()
-    instructions = request.form.get('instructions', '').strip()
+    description = request.form.get('description', '').strip()[:2000]
+    instructions = request.form.get('instructions', '').strip()[:5000]
 
     # Integer fields with safe parsing
     try:

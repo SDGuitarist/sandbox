@@ -126,8 +126,7 @@ def calculate_recipe_cost(conn: sqlite3.Connection, recipe_id: int) -> int:
 
     total = row["total"]
     servings = row["servings"] if row["servings"] and row["servings"] > 0 else 1
-    # Integer arithmetic: round to nearest cent
-    return int(total // servings)
+    return int(round(total / servings))
 
 
 def get_recipe_allergens(conn: sqlite3.Connection, recipe_id: int) -> list:

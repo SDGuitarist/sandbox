@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
@@ -61,10 +61,20 @@ def create():
     if not reservation_date:
         flash('Reservation date is required.', 'error')
         return redirect(url_for('reservations.create_form'))
+    try:
+        datetime.strptime(reservation_date, '%Y-%m-%d')
+    except ValueError:
+        flash('Invalid date format. Use YYYY-MM-DD.', 'error')
+        return redirect(url_for('reservations.create_form'))
 
     reservation_time = request.form.get('reservation_time', '').strip()
     if not reservation_time:
         flash('Reservation time is required.', 'error')
+        return redirect(url_for('reservations.create_form'))
+    try:
+        datetime.strptime(reservation_time, '%H:%M')
+    except ValueError:
+        flash('Invalid time format. Use HH:MM.', 'error')
         return redirect(url_for('reservations.create_form'))
 
     try:
@@ -145,10 +155,20 @@ def edit(id):
     if not reservation_date:
         flash('Reservation date is required.', 'error')
         return redirect(url_for('reservations.edit_form', id=id))
+    try:
+        datetime.strptime(reservation_date, '%Y-%m-%d')
+    except ValueError:
+        flash('Invalid date format. Use YYYY-MM-DD.', 'error')
+        return redirect(url_for('reservations.edit_form', id=id))
 
     reservation_time = request.form.get('reservation_time', '').strip()
     if not reservation_time:
         flash('Reservation time is required.', 'error')
+        return redirect(url_for('reservations.edit_form', id=id))
+    try:
+        datetime.strptime(reservation_time, '%H:%M')
+    except ValueError:
+        flash('Invalid time format. Use HH:MM.', 'error')
         return redirect(url_for('reservations.edit_form', id=id))
 
     try:

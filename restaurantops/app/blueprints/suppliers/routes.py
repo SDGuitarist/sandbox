@@ -26,12 +26,12 @@ def create_form():
 
 @bp.route('/create', methods=['POST'])
 def create():
-    name = request.form.get('name', '').strip()
-    contact_name = request.form.get('contact_name', '').strip()
-    phone = request.form.get('phone', '').strip()
-    email = request.form.get('email', '').strip()
-    address = request.form.get('address', '').strip()
-    notes = request.form.get('notes', '').strip()
+    name = request.form.get('name', '').strip()[:200]
+    contact_name = request.form.get('contact_name', '').strip()[:200]
+    phone = request.form.get('phone', '').strip()[:50]
+    email = request.form.get('email', '').strip()[:200]
+    address = request.form.get('address', '').strip()[:500]
+    notes = request.form.get('notes', '').strip()[:500]
 
     if not name:
         flash('Name is required.', 'error')
@@ -74,12 +74,12 @@ def edit(id):
         flash('Supplier not found.', 'error')
         return redirect(url_for('suppliers.list_suppliers'))
 
-    name = request.form.get('name', '').strip()
-    contact_name = request.form.get('contact_name', '').strip()
-    phone = request.form.get('phone', '').strip()
-    email = request.form.get('email', '').strip()
-    address = request.form.get('address', '').strip()
-    notes = request.form.get('notes', '').strip()
+    name = request.form.get('name', '').strip()[:200]
+    contact_name = request.form.get('contact_name', '').strip()[:200]
+    phone = request.form.get('phone', '').strip()[:50]
+    email = request.form.get('email', '').strip()[:200]
+    address = request.form.get('address', '').strip()[:500]
+    notes = request.form.get('notes', '').strip()[:500]
 
     if not name:
         flash('Name is required.', 'error')
@@ -102,8 +102,13 @@ def delete(id):
         return redirect(url_for('suppliers.list_suppliers'))
 
     conn.execute("BEGIN")
-    delete_supplier(conn, id)
-    conn.commit()
+    try:
+        delete_supplier(conn, id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        flash('Cannot delete this supplier because it has existing purchase orders.', 'error')
+        return redirect(url_for('suppliers.detail', id=id))
 
     flash('Supplier deleted successfully.', 'success')
     return redirect(url_for('suppliers.list_suppliers'))

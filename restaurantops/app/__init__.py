@@ -14,7 +14,7 @@ def create_app():
 
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-key')
     app.config['DATABASE'] = os.path.join(app.instance_path, 'restaurant.db')
-    app.config['WTF_CSRF_TIME_LIMIT'] = None
+    app.config['WTF_CSRF_TIME_LIMIT'] = 3600
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_SECURE'] = not app.debug
@@ -54,6 +54,11 @@ def create_app():
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' cdn.jsdelivr.net; "
+            "style-src 'self' cdn.jsdelivr.net 'unsafe-inline'"
+        )
         return response
 
     from app.blueprints.auth.routes import bp as auth_bp

@@ -211,8 +211,13 @@ def delete(id):
         return redirect(url_for('ingredients.list_ingredients'))
 
     conn.execute("BEGIN")
-    delete_ingredient(conn, id)
-    conn.commit()
+    try:
+        delete_ingredient(conn, id)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        flash('Cannot delete this ingredient because it is used in purchase orders or recipes.', 'error')
+        return redirect(url_for('ingredients.detail', id=id))
 
     flash('Ingredient deleted successfully.', 'success')
     return redirect(url_for('ingredients.list_ingredients'))
