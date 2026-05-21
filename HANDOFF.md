@@ -37,15 +37,14 @@ RestaurantOps built as a 29-agent swarm: 98 files, ~8,178 LOC. Single-location r
 ## Deferred Items
 
 ### P2 Findings (from review)
+- [052-W2] Dashboard active_orders variable shadowing (list vs int count) -- LOW
 - P2-SEC-1: Supplier input fields missing length truncation -- LOW
 - P2-SEC-2: WTF_CSRF_TIME_LIMIT=None disables token expiry -- LOW
-- P2-SEC-3: No Content-Security-Policy header (Bootstrap CDN conflict) -- MEDIUM
+- [052-W10] P2-SEC-3: No Content-Security-Policy header (Bootstrap CDN conflict) -- MEDIUM
 - P2-SEC-4: No reservation date/time format validation -- LOW
 - P2-SEC-5: Recipe description/instructions no length limits -- LOW
 - P2-SEC-6: float() in price conversion marginal rounding -- LOW
-- P2-CODE-1: Broad except Exception in route try/except blocks -- MEDIUM
-- P2-CODE-2: order_models uses raw SQL COMMIT/ROLLBACK (fixed) -- DONE
-- P2-CODE-3: Supplier create_form GET path vs create POST path mismatch (fixed) -- DONE
+- [052-W9] P2-CODE-1: Broad except Exception in route try/except blocks -- MEDIUM
 - P2-CODE-4: No field length truncation on supplier forms -- LOW
 - P2-CODE-5: Flash category inconsistency on order close -- LOW
 - P2-CODE-6: Recipe cost floor division instead of rounding -- LOW
@@ -53,6 +52,10 @@ RestaurantOps built as a 29-agent swarm: 98 files, ~8,178 LOC. Single-location r
 - P2-CODE-8: Dead status variable read in table create route -- LOW
 - P2-CODE-9: Missing type hints on route handlers -- LOW
 - P2-FLOW-1: PO submit route missing try/except -- LOW
+
+### Process Deferred
+- [052-W7] No standalone contract-check.md artifact produced -- LOW
+- [052-W8] Plan/solution doc frontmatter `run: "051"` should be 052 -- LOW
 
 ### Future Hardening
 - Rate limiting on login endpoint
