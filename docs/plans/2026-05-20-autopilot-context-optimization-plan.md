@@ -35,7 +35,7 @@ The autopilot treats context as unlimited. At 31 agents, orchestration overhead 
 
 ## Proposed Solution
 
-Five implementation tasks, ordered by dependency:
+Seven implementation tasks, ordered by dependency:
 
 ### Phase 1: Extend update-learnings-noninteractive argument parsing
 
