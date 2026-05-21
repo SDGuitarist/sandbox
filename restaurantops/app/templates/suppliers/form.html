@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Supplier' if supplier else 'New Supplier' }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Supplier' if supplier else 'New Supplier' }}</h1>
+
+<form method="post" action="{{ url_for('suppliers.update', supplier_id=supplier['id']) if supplier else url_for('suppliers.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" class="form-control" id="name" name="name" value="{{ supplier['name'] if supplier else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="contact_name" class="form-label">Contact Name</label>
+        <input type="text" class="form-control" id="contact_name" name="contact_name" value="{{ supplier['contact_name'] if supplier else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="phone" class="form-label">Phone</label>
+        <input type="text" class="form-control" id="phone" name="phone" value="{{ supplier['phone'] if supplier else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{ supplier['email'] if supplier else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="address" class="form-label">Address</label>
+        <textarea class="form-control" id="address" name="address" rows="2">{{ supplier['address'] if supplier else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ supplier['notes'] if supplier else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('suppliers.list_suppliers') }}" class="btn btn-secondary">Cancel</a>
+</form>
+
+{% if supplier %}
+<hr>
+<form method="post" action="{{ url_for('suppliers.delete', supplier_id=supplier['id']) }}" onsubmit="return confirm('Are you sure you want to delete this supplier?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-danger">Delete Supplier</button>
+</form>
+{% endif %}
+{% endblock %}
