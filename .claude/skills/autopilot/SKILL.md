@@ -506,27 +506,41 @@ exist. If ANY check fails, the run fails with the specific error shown.
 
 Do NOT proceed to BUILD_TRACKING until ALL four checks pass.
 
-### Update BUILD_TRACKING.md (MANDATORY -- DO NOT SKIP)
+### Fill BUILD_TRACKING.md (MANDATORY -- SOLO ONLY)
 
-Fill in the remaining sections of BUILD_TRACKING.md:
+If this is a solo build (not swarm): fill AGENT_STATUS, FAILURES, and
+RUN_METRICS sections now (same bulk-fill behavior as before -- read plan,
+review findings, and report files to populate all three sections).
 
-1. AGENT_STATUS: one block per agent (status, files, issues, commit)
-2. FAILURES: one block per P0/P1 finding with failure class reference
-3. RUN_METRICS: final build metrics table + agent performance summary
-4. Lessons for Next Build: list what was added to agent-pitfalls.md
-5. Add a line to Run Info: `| Self-Audit | docs/reports/<run-id>/self-audit.md |`
+If this is a swarm build: skip this step. AGENT_STATUS is already populated
+from incremental writes in Steps 10.5w-11w. Proceed to the swarm-only fill.
 
-Commit BUILD_TRACKING.md with the final metrics.
+### Fill FAILURES and RUN_METRICS (MANDATORY -- SWARM ONLY)
+
+After review completes and all P1 fixes are committed:
+
+1. Read all report files in `docs/reports/<run-id>/` to compile failure data.
+2. Use Edit tool to replace `<!-- Filled after review -->` under `## FAILURES`
+   with a structured table: one row per finding (severity, detail, resolution,
+   failure class). If no failures, replace with "None".
+3. Use Edit tool to replace `<!-- Filled after review -->` under `## RUN_METRICS`
+   with the Final Build Metrics table: agent count, FC37 rate, merge conflicts,
+   file count, LOC estimate, smoke test results, review finding counts, plus
+   Agent Performance Summary table (agent, findings caused, failure classes).
+
+These edits target the cleaned placeholders written during Step 1.5 template
+cleanup. No duplicate headings. The self-audit agent reads FAILURES and
+RUN_METRICS as canonical sources.
 
 ### Verify BUILD_TRACKING.md Completeness (MANDATORY GATE)
 
 Read BUILD_TRACKING.md and verify these sections are non-empty:
-- `## AGENT_STATUS` -- must have at least one agent block
+- `## AGENT_STATUS` -- must have at least one agent row (table row for swarm, block for solo)
 - `## FAILURES` -- must exist (can say "None" if no failures)
-- `## RUN_METRICS` -- must have the final metrics table
+- `## RUN_METRICS` -- must have at least one metric row
 
 If any section is missing or empty, FAIL with:
-`"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty. Fill it before marking done."`
+`"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
 
 ### Self-Audit (MANDATORY -- DO NOT SKIP)
 
@@ -534,7 +548,7 @@ If any section is missing or empty, FAIL with:
 undisposed warnings, and false success claims before the run is marked done.**
 
 Use the **self-audit-reviewer** agent. Pass these six arguments:
-1. The run-id (from Step 8w for swarm, Step 7s.0 for solo)
+1. The run-id (from Step 6.1)
 2. The reports directory path (`docs/reports/<run-id>/`)
 3. The plan document path
 4. The solution doc path (the file created during Compound)
