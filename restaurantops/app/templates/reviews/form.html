@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Add Review - RestaurantOps{% endblock %}
+
+{% block content %}
+<h1>Add Review</h1>
+
+<form method="POST" action="{{ url_for('reviews.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="menu_item_id" class="form-label">Menu Item (optional)</label>
+        <select class="form-select" id="menu_item_id" name="menu_item_id">
+            <option value="">— No specific item —</option>
+            {% for item in menu_items %}
+            <option value="{{ item['id'] }}">{{ item['name'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="rating" class="form-label">Rating</label>
+        <select class="form-select" id="rating" name="rating" required>
+            <option value="">Select rating...</option>
+            <option value="1">1 - Poor</option>
+            <option value="2">2 - Fair</option>
+            <option value="3">3 - Good</option>
+            <option value="4">4 - Very Good</option>
+            <option value="5">5 - Excellent</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="guest_name" class="form-label">Guest Name</label>
+        <input type="text" class="form-control" id="guest_name" name="guest_name" maxlength="200">
+    </div>
+
+    <div class="mb-3">
+        <label for="comment" class="form-label">Comment</label>
+        <textarea class="form-control" id="comment" name="comment" rows="4" maxlength="2000"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('reviews.list_reviews') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
