@@ -95,8 +95,10 @@ Every surface follows the same decision tree:
 5. **If heading found:** evaluate row-by-row coverage. Missing rows = FAIL.
 
 This means:
-- Surfaces 1, 2, 4, 5 (Export Names, Wiring, Registration, Transactions) will almost always have qualifying items in swarm builds, so missing headings produce FAIL.
-- Surfaces 3, 6 (Input Validation, Authorization) may have zero qualifying items in builds without parsed input or auth routes, producing N/A.
+- All 6 surfaces enumerate first. N/A is always possible if qualifying items are zero.
+- Surfaces 1, 2, 4 (Export Names, Wiring, Registration) will have qualifying items in every swarm build (swarms always have model functions, cross-boundary calls, and blueprints). N/A is theoretically possible but practically never occurs.
+- Surface 5 (Transaction Contracts) has N/A when no model functions contain write SQL. Rare but possible (read-only services).
+- Surfaces 3, 6 (Input Validation, Authorization) have N/A when no qualifying routes exist (no POST/PUT/DELETE or no auth decorators).
 - No surface ever produces N/A for "heading not found" -- that's always FAIL when qualifying items exist.
 
 **Main section enumeration:** The agent also needs to identify routes and model functions from the spec's main body. These are found by searching for:
@@ -108,7 +110,7 @@ This means:
 
 #### Check 1: Export Names Coverage (FC1)
 
-**Scope:** The checker enumerates three identifier classes deterministically. Other identifier types (template filenames, CSS classes, form field names) are not reliably enumerable from markdown specs and are excluded from automated checking.
+**Scope:** The checker enumerates four identifier classes deterministically. Other identifier types (template filenames, CSS classes, form field names) are not reliably enumerable from markdown specs and are excluded from automated checking.
 
 **Identifier classes checked:**
 
@@ -117,27 +119,31 @@ This means:
 | Model functions | Lines matching `def <name>(` inside python code blocks | `### *_models.py` or `### models/` sections |
 | Endpoint names | `url_for('<blueprint>.<function>')` patterns in code blocks | Route handler sections |
 | Blueprint names | `### <name>/` section headings or entries in file inventory tables | File inventory, blueprint sections |
+| Route paths | Path column in route tables (e.g., `/suppliers/new`) | Route tables with Method/Path columns |
 
-**Steps:**
+**Note on FC1 scope:** The checker catches naming omissions for the 4 classes above. Route-path drift (e.g., `/new` vs `/create` -- the run 052 FC1 P1) is caught when the route table path doesn't match the Export Names entry. Template filenames and form field names are NOT checked -- those remain human/review concerns until Phase 2 adds FC9.
 
-1. Find the Export Names section by canonical prefix.
-2. If section missing: FAIL with "Export Names section not found."
-3. Extract all names from the Export Names table (column 1).
-4. Enumerate identifiers using the three rules above.
-5. For each enumerated identifier NOT in the Export Names table: FAIL.
+**Steps (unified N/A flow):**
+
+1. **Enumerate qualifying items.** Scan the spec body using the 4 enumeration rules above. Collect all model function names, url_for targets, blueprint names, and route paths.
+2. **If zero items found:** N/A. Stop. (Extremely unlikely in a swarm build, but the unified flow requires the check.)
+3. **If items exist:** find the Export Names section by canonical prefix.
+4. **If section missing:** FAIL with "Export Names section not found. <N> identifiers require registration."
+5. **If section found:** extract all names from the Export Names table (column 1). For each enumerated identifier NOT in the table: FAIL.
 6. Count: `<N> identifiers checked, <M> missing`.
 
 #### Check 2: Wiring Coverage (FC3)
 
 **Scope:** Does every cross-boundary function appear in the wiring table? This is a COVERAGE check -- "is the function declared in the wiring table at all?" The consistency checker (Category 6) already verifies that declared wiring entries have matching consumers. This check catches functions that are MISSING from the table entirely.
 
-1. Find the Cross-Boundary Wiring section by canonical prefix.
-2. If section missing: FAIL with "Cross-Boundary Wiring section not found."
-3. Extract all function names from the wiring table (producer column).
-4. Extract all functions from the Export Names table that have a "Used By" column listing consumers in other agents (cross-boundary functions).
-5. For each cross-boundary function in the Export Names table: verify it also appears in the Cross-Boundary Wiring table as a producer.
-6. For any cross-boundary function missing from the wiring table: FAIL.
-7. Count: `<N> cross-boundary functions, <M> missing from wiring table`.
+**Steps (unified N/A flow):**
+
+1. **Enumerate qualifying items.** From the Export Names table (which must exist -- Check 1 enforces this), extract all functions that have a "Used By" column listing consumers in other agents. These are the cross-boundary functions.
+2. **If zero cross-boundary functions found:** N/A. Stop. (Possible in single-module builds, unlikely in swarms.)
+3. **If cross-boundary functions exist:** find the Cross-Boundary Wiring section by canonical prefix.
+4. **If section missing:** FAIL with "Cross-Boundary Wiring section not found. <N> cross-boundary functions require wiring entries."
+5. **If section found:** extract all producer names from the wiring table. For each cross-boundary function NOT in the wiring table as a producer: FAIL.
+6. Count: `<N> cross-boundary functions, <M> missing from wiring table`.
 
 **Boundary with consistency checker:** Completeness asks "is this function in the wiring table?" Consistency asks "do the names in the wiring table match the export names?" No overlap.
 
@@ -181,13 +187,13 @@ GET routes with string query params have produced 0 P1s across all builds. The n
 - Shared CSS/JS inclusion
 - Role-to-dashboard map completeness (covered by Surface 6 Authorization Matrix)
 
-**Steps:**
+**Steps (unified N/A flow):**
 
-1. Find the Coordinated Behaviors section by canonical prefix.
-2. If section missing: FAIL with "Coordinated Behaviors section not found."
-3. Extract all blueprint names from the spec (from file inventory, blueprint sections, or route table).
-4. Verify each blueprint appears in a registration list within the Coordinated Behaviors section (look for `register_blueprint`, `create_app`, or a Registration Points subsection).
-5. If the spec has a navigation/navbar section: verify each user-facing blueprint has a nav entry.
+1. **Enumerate qualifying items.** Extract all blueprint names from the spec (from file inventory tables, `### <name>/` section headings, or route table blueprint column).
+2. **If zero blueprints found:** N/A. Stop. (Impossible in a swarm build -- swarms are blueprint-per-agent.)
+3. **If blueprints exist:** find the Coordinated Behaviors section by canonical prefix.
+4. **If section missing:** FAIL with "Coordinated Behaviors section not found. <N> blueprints require registration."
+5. **If section found:** verify each blueprint appears in a registration list (look for `register_blueprint`, `create_app`, or a Registration Points subsection). If the spec has a navigation/navbar section: verify each user-facing blueprint has a nav entry.
 6. For any blueprint not registered: FAIL.
 7. Count: `<N> blueprints, <M> unregistered`.
 
@@ -196,15 +202,26 @@ GET routes with string query params have produced 0 P1s across all builds. The n
 **Two valid annotation forms (checker must detect both):**
 
 - **Form A -- Dedicated section:** A section with canonical heading prefix "Transaction" + "Boundary" or "Contract". Functions listed under "commits" / "does NOT commit" / "BEGIN IMMEDIATE" sublists. Example: GigSheet plan line 1916.
-- **Form B -- Column in model tables:** Model function tables include a "Commits" or "Transaction" column with values like "yes", "no/caller", "BEGIN IMMEDIATE". Example: a table row `| update_order | UPDATE | no -- caller commits |`.
+- **Form B -- Column in model tables:** Model function tables include a column with header containing "Commit" or "Transaction" (case-insensitive). Values: "yes", "no/caller", "BEGIN IMMEDIATE". Example: `| update_order | UPDATE | no -- caller commits |`.
 
-**Steps:**
+**Write-function enumeration (two paths matching the two spec formats):**
 
-1. **Detect Form A:** Search for a section with canonical heading prefix "Transaction" + ("Boundary" or "Contract").
-2. **Detect Form B:** Search model function tables (under `### *_models.py` headings) for a column header containing "Commit" or "Transaction".
-3. If neither Form A nor Form B found: FAIL with "Transaction Contracts not found (no dedicated section and no Commits column in model tables)."
-4. Extract all model functions from the spec that contain write operations. **Enumeration rule:** lines matching `def <name>(` in model code blocks where the code block also contains `INSERT`, `UPDATE`, `DELETE`, or `conn.execute`.
-5. For each write function: verify it appears in the transaction annotations (Form A list or Form B column) with one of:
+| Spec format | Enumeration rule | How to identify write functions |
+|---|---|---|
+| Code blocks | Lines matching `def <name>(` in python code blocks under `### *_models.py` sections | Code block also contains `INSERT`, `UPDATE`, `DELETE`, or `conn.execute` |
+| Tables | First column of markdown tables under `### *_models.py` or `### models/` sections | Another column in the same row contains `INSERT`, `UPDATE`, `DELETE`, or SQL write keywords |
+
+If the spec uses code blocks, the checker uses the code-block path. If the spec uses tables, the checker uses the table path. If both are present, use both and deduplicate by function name.
+
+**Steps (unified N/A flow):**
+
+1. **Enumerate qualifying items.** Scan model sections for write functions using both enumeration paths above. A function qualifies if it contains SQL write keywords (INSERT, UPDATE, DELETE) or `conn.execute` with write SQL.
+2. **If zero write functions found:** N/A. Stop.
+3. **If write functions exist:** detect annotation source.
+   - **Detect Form A:** Search for a section with canonical heading prefix "Transaction" + ("Boundary" or "Contract").
+   - **Detect Form B:** Search model function tables for a column header containing "Commit" or "Transaction" (case-insensitive).
+4. **If neither Form A nor Form B found:** FAIL with "Transaction Contracts not found. <N> write functions require annotations. (No dedicated section and no Commits column in model tables.)"
+5. **If annotation source found:** for each write function, verify it appears in the annotations with one of:
    - "commits" / "COMMIT" / "yes" (commits internally)
    - "does NOT commit" / "caller commits" / "no" (caller's transaction)
    - "BEGIN IMMEDIATE" / "immediate" (exclusive lock with concurrency scenario)
@@ -332,8 +349,11 @@ Every swarm plan's shared interface spec must include these 6 sections.
 The spec-completeness-checker (Step 9w.6) validates they exist and are
 complete. Missing sections FAIL the pre-swarm gate.
 
-1. **Export Names Table** -- every function, route name, template, and form field
-   that crosses agent boundaries. Columns: Name, Type, Defined By, Used By.
+1. **Export Names Table** -- every model function, endpoint name (url_for target),
+   blueprint name, and route path that crosses agent boundaries. Columns: Name,
+   Type, Defined By, Used By. (The checker validates these 4 classes; template
+   filenames and form field names should also be listed but are not yet
+   machine-checked.)
 2. **Cross-Boundary Wiring Table** -- every cross-module function call with
    producer file, consumer file, and import path.
 3. **Input Validation Prescriptions** -- every POST/PUT route and typed URL param
@@ -399,6 +419,9 @@ The plan author includes these sections during plan authoring (Steps 4-5 of the 
 - WHEN a swarm plan has qualifying POST routes but the Input Validation Prescriptions heading is missing THE SYSTEM SHALL produce FAIL (not N/A) with the count of qualifying routes
 - WHEN a GET route has only string query params with no type conversion THE SYSTEM SHALL NOT flag it in the Input Validation surface (narrow scope)
 - WHEN transaction annotations exist as a column in model function tables (Form B) instead of a dedicated section THE SYSTEM SHALL detect them and evaluate coverage normally
+- WHEN a swarm plan has zero write functions (no INSERT/UPDATE/DELETE in model sections) THE SYSTEM SHALL mark Transaction Contracts as N/A, not FAIL
+- WHEN a canonical section uses an accepted heading variant (e.g., "## Export Names Table (FC1 Prevention)") THE SYSTEM SHALL still detect it via prefix matching
+- WHEN no accepted heading variant is found for a mandatory surface that has qualifying items THE SYSTEM SHALL FAIL with "section not found" (safe direction -- forces canonical heading adoption)
 
 ### Verification Commands
 
