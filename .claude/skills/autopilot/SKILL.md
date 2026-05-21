@@ -272,7 +272,7 @@ subsequent steps use `docs/reports/<run-id>/`.
 
 Use the **spec-consistency-checker** agent. Pass:
 1. The path to the plan document
-2. `docs/reports/<run-id>/` (the reports directory created in Step 9w)
+2. `docs/reports/<run-id>/` (the reports directory created in Step 6.1)
 
 The agent writes its report to `docs/reports/<run-id>/spec-consistency-check.md`.
 Read that file and check STATUS.
@@ -464,64 +464,6 @@ Run `/workflows:compound`
 If the compound workflow doesn't produce this section, add it before
 proceeding.
 
-### Context-Budget Checkpoint -- Post-Compound (MANDATORY)
-
-Calculate orchestration load:
-- `swarm_agents` = number of agents spawned in Step 10w (count from assignment table; 0 for solo)
-- `deepening_agents` = number of agents spawned in Step 6 (count from deepen-plan output, default 4)
-- `review_agents` = number of review agents spawned during Review
-- `fix_retries` = number of assembly-fix agent invocations in Steps 12w-14w (count from report files; 0 for solo)
-- `load = swarm_agents + (deepening_agents * 2) + (review_agents * 1.5) + (fix_retries * 3)`
-
-If `load > 30`:
-
-1. Identify the solution doc just written by Compound (most recent file in `docs/solutions/`).
-2. Use Write tool to create CHECKPOINT.md with all paths from current run state:
-
-```yaml
----
-status: PAUSED_FOR_CONTEXT
-run_id: "<run-id from Step 6.1>"
-date: "<today>"
-branch: "<current branch>"
-project_name: "<project name from Step 2>"
----
-
-plan_path: <path to plan>
-solution_doc_path: <path to solution doc just written>
-review_summary_path: <path to review summary>
-reports_dir: docs/reports/<run-id>/
-build_tracking_path: BUILD_TRACKING.md
-handoff_path: HANDOFF.md
-
-last_completed_step: "Compound"
-next_step: "Update Learnings"
-
-completed_artifacts:
-  - <list all completed artifact paths>
-
-pending_mandatory_artifacts:
-  - Learnings propagation (update-learnings-noninteractive)
-  - Verify learnings artifacts (4 gates)
-  - Self-audit report (docs/reports/<run-id>/self-audit.md)
-  - Verify self-audit (9 gates)
-
-review_findings:
-  p1_fixed: <count>
-  p2_deferred: <count>
-  fix_commits: [<hashes>]
-```
-
-3. Commit CHECKPOINT.md:
-   `git add CHECKPOINT.md`
-4. Create commit:
-   `git commit -m "chore: context checkpoint for tail resume"`
-5. Output: `PAUSED_FOR_CONTEXT: Orchestration load is [load] (threshold 30). CHECKPOINT.md written and committed. Resume with /tail-resume.`
-6. Output: `<promise>PAUSED_FOR_CONTEXT</promise>`
-7. STOP. Do not proceed to Update Learnings.
-
-If `load <= 30`: proceed to Update Learnings normally.
-
 ### Update Learnings (MANDATORY -- DO NOT SKIP)
 
 **WARNING: This is FC11 from agent-pitfalls.md. The orchestrator has skipped
@@ -589,6 +531,63 @@ After review completes and all P1 fixes are committed:
 These edits target the cleaned placeholders written during Step 1.5 template
 cleanup. No duplicate headings. The self-audit agent reads FAILURES and
 RUN_METRICS as canonical sources.
+
+### Context-Budget Checkpoint -- Pre-Audit (MANDATORY)
+
+Calculate orchestration load:
+- `swarm_agents` = number of agents spawned in Step 10w (count from assignment table; 0 for solo)
+- `deepening_agents` = number of agents spawned in Step 6 (count from deepen-plan output, default 4)
+- `review_agents` = number of review agents spawned during Review
+- `fix_retries` = number of assembly-fix agent invocations in Steps 12w-14w (count from report files; 0 for solo)
+- `load = swarm_agents + (deepening_agents * 2) + (review_agents * 1.5) + (fix_retries * 3)`
+
+If `load > 30`:
+
+1. Identify the solution doc written by Compound (most recent file in `docs/solutions/`).
+2. Use Write tool to create CHECKPOINT.md with all paths from current run state:
+
+```yaml
+---
+status: PAUSED_FOR_CONTEXT
+run_id: "<run-id from Step 6.1>"
+date: "<today>"
+branch: "<current branch>"
+project_name: "<project name from Step 2>"
+---
+
+plan_path: <path to plan>
+solution_doc_path: <path to solution doc>
+review_summary_path: <path to review summary>
+reports_dir: docs/reports/<run-id>/
+build_tracking_path: BUILD_TRACKING.md
+handoff_path: HANDOFF.md
+
+last_completed_step: "Fill BUILD_TRACKING"
+next_step: "Verify BUILD_TRACKING"
+
+completed_artifacts:
+  - <list all completed artifact paths>
+
+pending_mandatory_artifacts:
+  - Verify BUILD_TRACKING.md completeness
+  - Self-audit report (docs/reports/<run-id>/self-audit.md)
+  - Verify self-audit (9 gates)
+
+review_findings:
+  p1_fixed: <count>
+  p2_deferred: <count>
+  fix_commits: [<hashes>]
+```
+
+3. Commit CHECKPOINT.md:
+   `git add CHECKPOINT.md`
+4. Create commit:
+   `git commit -m "chore: context checkpoint for tail resume"`
+5. Output: `PAUSED_FOR_CONTEXT: Orchestration load is [load] (threshold 30). CHECKPOINT.md written and committed. Resume with /tail-resume.`
+6. Output: `<promise>PAUSED_FOR_CONTEXT</promise>`
+7. STOP. Do not proceed to Verify BUILD_TRACKING.
+
+If `load <= 30`: proceed to Verify BUILD_TRACKING normally.
 
 ### Verify BUILD_TRACKING.md Completeness (MANDATORY GATE)
 
