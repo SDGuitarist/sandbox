@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Reservation #{{ reservation['id'] }} - RestaurantOps{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Reservation #{{ reservation['id'] }}</h1>
+    <div>
+        {% if reservation['status'] == 'confirmed' %}
+        <a href="{{ url_for('reservations.edit_form', id=reservation['id']) }}" class="btn btn-outline-primary">Edit</a>
+        {% endif %}
+        <a href="{{ url_for('reservations.list_reservations') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Guest Name</dt>
+            <dd class="col-sm-9">{{ reservation['guest_name'] }}</dd>
+
+            <dt class="col-sm-3">Guest Phone</dt>
+            <dd class="col-sm-9">{{ reservation['guest_phone'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Party Size</dt>
+            <dd class="col-sm-9">{{ reservation['party_size'] }}</dd>
+
+            <dt class="col-sm-3">Table</dt>
+            <dd class="col-sm-9">{{ reservation['table_number'] if reservation['table_number'] is defined and reservation['table_number'] else 'Table #' ~ reservation['table_id'] }}</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">{{ reservation['reservation_date'] }}</dd>
+
+            <dt class="col-sm-3">Time</dt>
+            <dd class="col-sm-9">{{ reservation['reservation_time'] }}</dd>
+
+            <dt class="col-sm-3">Duration</dt>
+            <dd class="col-sm-9">{{ reservation['duration_minutes'] }} minutes</dd>
+
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+                {% if reservation['status'] == 'confirmed' %}
+                <span class="badge bg-warning">confirmed</span>
+                {% elif reservation['status'] == 'seated' %}
+                <span class="badge bg-primary">seated</span>
+                {% elif reservation['status'] == 'completed' %}
+                <span class="badge bg-success">completed</span>
+                {% elif reservation['status'] == 'cancelled' %}
+                <span class="badge bg-danger">cancelled</span>
+                {% elif reservation['status'] == 'no_show' %}
+                <span class="badge bg-secondary">no_show</span>
+                {% endif %}
+            </dd>
+
+            {% if reservation['notes'] %}
+            <dt class="col-sm-3">Notes</dt>
+            <dd class="col-sm-9">{{ reservation['notes'] }}</dd>
+            {% endif %}
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">{{ reservation['created_at']|datefmt }}</dd>
+
+            <dt class="col-sm-3">Updated</dt>
+            <dd class="col-sm-9">{{ reservation['updated_at']|datefmt }}</dd>
+        </dl>
+    </div>
+</div>
+
+{% if reservation['status'] in ('confirmed', 'seated') %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Actions</h5>
+    </div>
+    <div class="card-body d-flex gap-2">
+        {% if reservation['status'] == 'confirmed' %}
+        <form method="POST" action="{{ url_for('reservations.seat', id=reservation['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary">Seat</button>
+        </form>
+        <form method="POST" action="{{ url_for('reservations.no_show', id=reservation['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-secondary">No Show</button>
+        </form>
+        <form method="POST" action="{{ url_for('reservations.cancel', id=reservation['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Cancel</button>
+        </form>
+        {% elif reservation['status'] == 'seated' %}
+        <form method="POST" action="{{ url_for('reservations.complete', id=reservation['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-success">Complete</button>
+        </form>
+        <form method="POST" action="{{ url_for('reservations.cancel', id=reservation['id']) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger">Cancel</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
