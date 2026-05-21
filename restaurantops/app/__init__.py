@@ -6,6 +6,7 @@ from flask_wtf.csrf import CSRFError
 csrf = CSRFProtect()
 
 SECRET_KEY_BLOCKLIST = ['dev-fallback-key', 'change-me', 'secret', '']
+ADMIN_PASSWORD_BLOCKLIST = ['admin', 'password', '1234', '']
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
@@ -16,9 +17,14 @@ def create_app():
     app.config['WTF_CSRF_TIME_LIMIT'] = None
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = not app.debug
 
     if not app.debug and app.config['SECRET_KEY'] in SECRET_KEY_BLOCKLIST:
         raise RuntimeError('Set a strong SECRET_KEY environment variable for production.')
+
+    admin_pw = os.environ.get('ADMIN_PASSWORD', 'admin')
+    if not app.debug and admin_pw in ADMIN_PASSWORD_BLOCKLIST:
+        raise RuntimeError('Set a strong ADMIN_PASSWORD environment variable for production.')
 
     csrf.init_app(app)
 

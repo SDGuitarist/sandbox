@@ -27,7 +27,7 @@ def login_post():
     return render_template('auth/login.html')
 
 
-@bp.route('/logout', methods=['GET'])
+@bp.route('/logout', methods=['POST'])
 def logout():
     """Clear the session and redirect to login."""
     session.clear()
