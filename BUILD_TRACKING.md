@@ -35,3 +35,4 @@
 v1.0 — 2026-05-03 (created after WRC Build #7)
 ### Ownership Gate: PASS (29 agents)
 | 1 | core | b29d057 | PASS |
+### Smoke Test: PASS (34/34)
