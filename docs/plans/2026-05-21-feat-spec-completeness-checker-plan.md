@@ -127,12 +127,16 @@ The checker identifies the path column in route tables using a fixed allowlist o
 - `Path`
 - `URL`
 - `Route`
-- `Endpoint`
+- `Flask Path`
+
+`Endpoint` is NOT accepted -- it typically contains endpoint names like `auth.login`, not URL paths.
+
+**Validation guard:** After selecting a column, verify at least one cell starts with `/`. If none do, skip the column (likely misidentified). WARN: "column does not contain URL paths."
 
 **Behavior:**
-- If exactly one column header matches the allowlist: use that column for route paths.
-- If zero columns match: skip route-path enumeration for this table. Do NOT FAIL -- the table may use a non-standard format. Route paths from this table are simply not checked. Log a WARN: "Route table at [heading] has no recognized path column (expected: Path, URL, Route, or Endpoint)."
-- If multiple columns match (e.g., both "Path" and "URL"): use the FIRST matching column (left to right). Log a WARN noting the ambiguity.
+- If exactly one column header matches the allowlist and passes the guard: use that column.
+- If zero columns match: skip route-path enumeration for this table. WARN: "no recognized path column."
+- If multiple columns match: use the FIRST matching column (left to right). WARN: ambiguity.
 
 **Note on FC1 scope:** The checker catches naming omissions for the 4 classes above. Route-path drift (e.g., `/new` vs `/create` -- the run 052 FC1 P1) is caught when the route table path doesn't match the Export Names entry. Template filenames and form field names are NOT checked -- those remain human/review concerns until Phase 2 adds FC9.
 
@@ -173,11 +177,10 @@ The checker identifies the path column in route tables using a fixed allowlist o
 
 **Control flow (explicit, no ambiguity):**
 
-1. **Enumerate qualifying routes first.** Scan the route table for routes matching the narrow definition of "parsed input":
-   - Routes with `methods=['POST']` or `methods=['PUT', 'PATCH']` (form submissions)
-   - Routes with `<int:id>` or `<int:*>` URL parameters (type-converted params)
-   - Routes with DELETE method that reference a resource by ID (FK delete paths)
-   - **Exclude:** GET routes with only string query params (no type conversion)
+1. **Enumerate qualifying routes first.** Identify route tables by a `Method` column header (case-insensitive). A route qualifies if:
+   - The `Method` cell is `POST`, `PUT`, `PATCH`, or `DELETE` (case-insensitive), OR
+   - The `Path` cell contains `<int:` (type-converted URL parameter)
+   - **Exclude:** rows where `Method` is `GET` AND `Path` does NOT contain `<int:`
 2. **If zero qualifying routes found:** mark surface as N/A. Stop.
 3. **If qualifying routes exist:** find the Input Validation Prescriptions section by canonical prefix.
 4. **If section missing:** FAIL with "Input Validation Prescriptions section not found. <N> routes require validation prescriptions."
@@ -448,7 +451,8 @@ The plan author includes these sections during plan authoring (Steps 4-5 of the 
 - WHEN no accepted heading variant is found for a mandatory surface that has qualifying items THE SYSTEM SHALL FAIL with "section not found" (safe direction -- forces canonical heading adoption)
 - WHEN the Export Names section is missing THE SYSTEM SHALL report Surface 2 (Wiring Coverage) as BLOCKED with "depends on Export Names table (Surface 1 FAIL)" -- not N/A and not a second misleading FAIL
 - WHEN a route table uses a column header "URL" instead of "Path" THE SYSTEM SHALL still enumerate route paths from that column (accepted variant)
-- WHEN a route table has no column matching the accepted allowlist (Path, URL, Route, Endpoint) THE SYSTEM SHALL skip route-path enumeration for that table and log a WARN, not FAIL
+- WHEN a route table has no column matching the accepted allowlist (Path, URL, Route, Flask Path) THE SYSTEM SHALL skip route-path enumeration for that table and log a WARN, not FAIL
+- WHEN a route table has a column header "Endpoint" THE SYSTEM SHALL NOT use it as a path column (endpoint names like auth.login are not URL paths)
 
 ### Verification Commands
 

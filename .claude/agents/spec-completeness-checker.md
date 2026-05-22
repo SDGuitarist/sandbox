@@ -65,9 +65,12 @@ independent and can run in any order.
 | Model functions | `def <name>(` inside python code blocks under `### *_models.py` or `### models/` sections |
 | Endpoint names | `url_for('<blueprint>.<function>')` patterns in code blocks |
 | Blueprint names | `### <name>/` section headings or file inventory table entries |
-| Route paths | Path column in route tables (column header matching: `Path`, `URL`, `Route`, or `Endpoint` -- case-insensitive, exact after trim) |
+| Route paths | Path column in route tables (see column detection rule below) |
 
-Route-path column rules:
+Route-path column detection:
+- Accepted column headers (case-insensitive, exact after trim): `Path`, `URL`, `Route`, `Flask Path`
+- `Endpoint` is NOT accepted as a path column -- it typically contains endpoint names like `auth.login`, not URL paths.
+- **Validation guard:** after selecting the path column, verify that at least one cell value starts with `/`. If no cell starts with `/`, skip this column (likely misidentified). WARN: "column [name] does not contain URL paths."
 - One match: use that column.
 - Zero matches: skip route paths for that table. WARN: "no recognized path column."
 - Multiple matches: use first (left to right). WARN: ambiguity.
@@ -94,11 +97,18 @@ function NOT in the wiring table as a producer = FAIL finding.
 
 ### Check 3: Input Validation Prescriptions (FC4)
 
-**Enumerate:** Scan route tables for qualifying routes:
-- `methods=['POST']` or `methods=['PUT', 'PATCH']`
-- `<int:id>` or `<int:*>` URL parameters
-- DELETE method referencing a resource by ID
-- **Exclude:** GET routes with only string query params
+**Enumerate qualifying routes from route tables:**
+
+Route tables are identified by having a `Method` column header (case-insensitive).
+A route qualifies if ANY of these are true:
+- The `Method` cell is `POST`, `PUT`, `PATCH`, or `DELETE` (case-insensitive)
+- The `Path` cell contains `<int:` (type-converted URL parameter)
+
+A route is EXCLUDED if:
+- The `Method` cell is `GET` AND the `Path` cell does NOT contain `<int:`
+
+This matches actual plan format: route tables have Method as column 1 with
+plain-text values like `POST`, `GET`, `DELETE` -- not Python `methods=[...]`.
 
 If zero qualifying routes: N/A.
 If they exist: find Input Validation Prescriptions heading. Missing = FAIL.
