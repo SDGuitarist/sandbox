@@ -1,25 +1,23 @@
-# Review Context -- RestaurantOps
+# Review Context -- Sandbox (Spec Completeness Checker)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Whether 30+ agents at this feature breadth will produce consistent UX patterns across 14 blueprints."
+**Brainstorm risk:** "Whether the completeness checker can reliably parse spec structure to identify routes/functions/exports without excessive false positives."
 
-**Plan mitigation:** 10-item Coordinated Behaviors table with prescriptive code blocks for flash messages, form styling, table styling, empty states, error handling, database connection pattern, status badges, and navigation.
+**Plan mitigation:** Hybrid parsing strategy (canonical heading prefixes, flexible content). Route-path column allowlist with /prefix guard. 3 Codex rounds hardened N/A flow, enumeration rules, and inter-check dependencies.
 
-**Work risk (from Feed-Forward):** "Whether the 29-agent model/route split produces correct cross-boundary imports."
+**Work risk (from Feed-Forward):** Route-table column parsing, Check 2->1 dependency, heading-prefix matching on future formats.
 
-**Review resolution:** 8 P1 (all fixed), 16 P2 (deferred). Top findings: security infrastructure gaps (3 P1), BEGIN IMMEDIATE scope (1 P1), naming divergence in supplier routes (1 P1). UX consistency risk did NOT materialize -- Coordinated Behaviors worked.
+**Review resolution:** 1 P1 (permission mode list) + 5 P2 (CLAUDE.md method gap, commit step, wording, report format, naming) fixed. 2 P2 deferred (template scaffolding, N/A dedup). 9 P3 deferred.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| restaurantops/app/__init__.py | Auth gate, security headers, CSRF handler | Auth bypass, session security |
-| restaurantops/app/models/order_models.py | BEGIN IMMEDIATE transactions for prepare/cancel | Inventory deduction atomicity |
-| restaurantops/app/models/inventory_models.py | Stock movement + inventory update | Data integrity under concurrent access |
-| restaurantops/app/blueprints/orders/routes.py | Kitchen board, status transitions | TOCTOU races on concurrent updates |
-| restaurantops/app/blueprints/purchase_orders/routes.py | PO receive with stock movements | Transaction boundary correctness |
+| .claude/agents/spec-completeness-checker.md | New agent, 6 checks, BLOCKED status | Check logic correctness, heading detection |
+| .claude/skills/autopilot/SKILL.md | Step 9w.6, permission mode list | Gate integration, retry flow |
+| CLAUDE.md | Mandatory spec sections | Documentation accuracy vs agent behavior |
 
 ## Plan Reference
 
-`docs/plans/2026-05-21-restaurant-kitchen-mgmt-plan.md`
+`docs/plans/2026-05-21-feat-spec-completeness-checker-plan.md`
