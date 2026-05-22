@@ -2,59 +2,99 @@
 
 **Date:** 2026-05-22
 **Branch:** master
-**Phase:** Run 056 complete -- CoWorkFlow deferred fixes (full compound cycle)
+**Phase:** Ready for Run 057 -- Craft Brewery Manager swarm build
 
 ## Current State
 
-CoWorkFlow deferred fixes batch complete. 7 fixes from Run 055's HANDOFF resolved through full compound cycle (brainstorm, plan with deepening, 2 Codex reviews, work, 6-agent review, solution doc, learnings propagation). 9 commits total, smoke tests pass. 3 new spec patterns proposed (Concurrency Contract, Defense-in-Depth Matrix, Derived State).
+Run 056 (CoWorkFlow deferred fixes) is complete. All compound cycle artifacts
+are written, learnings propagated, git clean and pushed. This session chose
+**Craft Brewery Manager** as the Run 057 domain app.
 
-## Key Artifacts
+## Run 057 Brief
 
-| Artifact | Location |
-|----------|----------|
-| Brainstorm | docs/brainstorms/2026-05-22-coworkflow-deferred-fixes-brainstorm.md |
-| Plan (deepened) | docs/plans/2026-05-22-coworkflow-deferred-fixes-plan.md |
-| Review summary | docs/reports/056/review-summary.md |
-| Solution doc | docs/solutions/2026-05-22-coworkflow-deferred-fixes-batch.md |
-| App code | coworkflow/ (66 files, ~3,850 LOC) |
+**App:** Craft Brewery Manager (BrewOps)
+**Stack:** Flask + SQLite (single-admin, same pattern as CoWorkFlow/GymFlow/RestaurantOps)
+**Target:** 20-25 agents, autopilot swarm
+**Key goal:** Validate the 3 new mandatory spec sections proposed in Run 056:
+  1. **Concurrency Contract** -- tag every write function as SERIAL-SAFE, NEEDS-BEGIN-IMMEDIATE, or TRIGGER-BACKED
+  2. **Defense-in-Depth Matrix** -- map every constraint to app-level and DB-level enforcement
+  3. **Derived State** -- declare every field computed from other tables with an explicit owning agent
 
-## Deferred Items
+### Domain Sketch (for brainstorm seed)
+
+A craft brewery management tool for a small brewery/taproom:
+- **Recipes** -- beer recipes with ingredients, target ABV, style
+- **Batches** -- brewing batches linked to recipes, with status tracking (planned, brewing, fermenting, conditioning, ready, tapped, empty)
+- **Ingredients/Inventory** -- grain, hops, yeast, adjuncts with stock levels
+- **Tanks/Fermenters** -- equipment with capacity, current batch assignment, availability
+- **Taproom** -- tap assignments (which batch is on which tap), tap status
+- **Sales** -- pint/growler/case sales by tap, daily totals
+- **Staff** -- brewery staff with roles (brewer, server, admin)
+
+### Derived State Opportunities (to test the new spec section)
+
+- Batch status should auto-update based on timeline/events
+- Inventory levels should auto-decrement when a batch starts brewing
+- Tap status should reflect the assigned batch's remaining volume
+- Sales should auto-decrement batch remaining volume
+
+These cross-table dependencies are exactly what FC44 (implicit derived state)
+is designed to catch. The spec must declare them explicitly.
+
+### TOCTOU Opportunities (to test Concurrency Contract)
+
+- Two batches claiming the same tank simultaneously
+- Two sales reducing the same batch's remaining volume below zero
+- Ingredient stock going negative from concurrent batch starts
+
+## Prior Runs (Reference)
+
+| Run | App | Agents | Key Lesson |
+|-----|-----|--------|------------|
+| 055 | CoWorkFlow | 22 | CSRF syntax in Coordinated Behaviors |
+| 054 | GymFlow | 26 | BEGIN IMMEDIATE needs try/except/ROLLBACK |
+| 052 | RestaurantOps | 29 | Model/route split, auth security checklist |
+| 050 | GigSheet | 31 | CSP-CDN mismatch, PRAGMA per-connection |
+
+## Key Docs to Read Before Starting
+
+| Doc | Why |
+|-----|-----|
+| `~/.claude/docs/agent-pitfalls.md` | Inject FC1-FC44 into agent briefs |
+| `~/.claude/docs/autopilot-tracking-template.md` | Copy to BUILD_TRACKING.md |
+| `docs/solutions/2026-05-22-coworkflow-deferred-fixes-batch.md` | 3 new spec patterns + TOCTOU Fence |
+| `docs/solutions/2026-05-22-coworkflow-22-agent-swarm-build.md` | 22-agent Flask swarm patterns |
+| `docs/solutions/2026-05-21-gymflow-26-agent-swarm-build.md` | Transaction safety lessons |
+
+## Deferred Items (Unrelated to Run 057)
 
 ### CoWorkFlow (Run 056 review -- all pre-existing)
-- [056-D1] P1: `conn.commit()` no-op across all models (isolation_level=None makes it dead code). 15+ files. DEFERRED, MEDIUM severity.
-- [056-D2] P1: Full-table FK validation in billing/desk_bookings routes (get_all_X + any() instead of get_X). DEFERRED, LOW severity.
-- [056-D3] P1: Members re-render vs redirect error-handling pattern inconsistency. DEFERRED, LOW severity.
-- [056-D4] P2: LIKE wildcard injection in member search (not SQL injection). DEFERRED, LOW severity.
-- [056-D5] P2: Missing length limits on free-text fields (reference_number, notes, phone, company). DEFERRED, LOW severity.
-- [056-D6] P2: Hard-delete of payments with no audit trail. DEFERRED, LOW severity.
-- [056-D7] P2: No DB-level overpayment trigger (model check is authoritative). DEFERRED, LOW severity.
-- [056-D8] P2: Email format not validated. DEFERRED, LOW severity.
+- [056-D1] P1: `conn.commit()` no-op across all models. DEFERRED, MEDIUM.
+- [056-D2] P1: Full-table FK validation in billing/desk_bookings. DEFERRED, LOW.
+- [056-D3-D8] P1-P2: 6 additional items. DEFERRED, LOW.
 
 ### Prior
 - GymFlow 054 P2s, spec-consistency-checker P2s, GigSheet 050 P2s
 
-## Three Questions
+## Three Questions (from Run 056)
 
-1. **Hardest decision?** Moving overpayment enforcement inside BEGIN IMMEDIATE (P0 TOCTOU fix). The data-integrity-guardian demonstrated a concrete race sequence.
-2. **What was rejected?** Per-IP dict for brute-force (memory exhaustion P0), UPDATE trigger for desk bookings (no UPDATE path exists), inlined SUM query (DRY violation).
-3. **Least confident about?** The three new mandatory spec sections (Concurrency Contract, Defense-in-Depth Matrix, Derived State). Need to validate on the next swarm build.
+1. **Hardest decision?** Moving overpayment enforcement inside BEGIN IMMEDIATE.
+2. **What was rejected?** Per-IP dict for brute-force, UPDATE trigger for desk bookings.
+3. **Least confident about?** The 3 new spec sections. Run 057 is the validation.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md. This is the Sandbox project.
 
-Run 056 (CoWorkFlow deferred fixes) is complete. Pick next action:
+Run 057: Build a Craft Brewery Manager (BrewOps) as a 20-25 agent Flask+SQLite
+swarm. This build validates 3 new mandatory spec sections from Run 056:
+Concurrency Contract, Defense-in-Depth Matrix, and Derived State.
 
-OPTION A: New build (Run 057). Pick a domain app:
-- Pet daycare manager
-- Community garden manager
-- Craft brewery manager
-Target: 20-25 agents, Flask+SQLite swarm. Test the 3 new spec sections.
+Domain: recipes, batches, ingredients/inventory, tanks, taproom/taps, sales, staff.
+Key test: derived state (batch status, inventory levels, tap volume) and TOCTOU
+(tank assignment, sales volume, ingredient stock).
 
-OPTION B: Fix conn.commit() no-op tech debt across CoWorkFlow models
-(056-D1, highest-severity deferred item, ~15 files).
-
-OPTION C: Fix spec-consistency-checker FK parsing false positives
-(deferred from Run 054, 40% false positive rate).
+Start with /compound-start, then /workflows:brainstorm for the domain.
+Use autopilot for the full build cycle.
 ```
