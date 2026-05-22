@@ -42,14 +42,31 @@ Spec-completeness-checker fully implemented and reviewed. New pre-swarm gate (St
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is the Sandbox project. Spec completeness checker
-fully complete (brainstorm, plan, work, review, compound, learnings).
+Read HANDOFF.md. This is the Sandbox project.
 
-Next options:
-1. New build (run 053) -- first build to validate the completeness gate
-2. RestaurantOps P2 fixes (16 deferred)
-3. GigSheet P2 fixes
-4. Flask spec template scaffolding (add 6 mandatory sections)
-5. Cross-project integration (Lead Scraper -> GigSheet -> VenueConnect)
-```
+Two-part session:
+
+PART 1: Scaffold the Flask spec template (manual, ~30 min).
+Add the 6 mandatory coverage sections from CLAUDE.md (Mandatory Spec
+Coverage Sections) to docs/templates/shared-spec-flask.md as empty
+scaffolds with example rows. The sections are:
+  1. Export Names Table (Name, Type, Defined By, Used By)
+  2. Cross-Boundary Wiring Table (Producer, Consumer, Import Path)
+  3. Input Validation Prescriptions (Route, Input, Validation, Error Response)
+  4. Coordinated Behaviors (blueprint registration, navbar, flash patterns)
+  5. Transaction Contracts (Function, SQL, Commits: yes/no/immediate)
+  6. Authorization Matrix (Route, Mode: public/role-only/role+ownership/admin)
+
+Read docs/templates/shared-spec-flask.md first. Add sections with 1-2
+example rows each so spec authors know the expected format. Commit when done.
+
+PART 2: Run 053 -- new standalone build to validate the completeness gate.
+Gym/fitness center manager. Flask + SQLite + Jinja2. 25+ agent swarm.
+
+Run /autopilot to execute the full compound loop unattended.
+
+The completeness gate (Step 9w.6) will run for the first time on a real
+build. Watch for: false positives from heading detection, route-path
+column parsing, or Check 2 BLOCKED cascade. Note any issues for
+threshold calibration.
 ```
