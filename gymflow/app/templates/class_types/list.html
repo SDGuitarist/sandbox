@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Class Types{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Class Types</h1>
+    <a href="{{ url_for('class_types.new_type') }}" class="btn btn-primary">Add Class Type</a>
+</div>
+
+{% if types %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Duration (min)</th>
+                <th>Default Capacity</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in types %}
+            <tr>
+                <td>{{ t['name'] }}</td>
+                <td>{{ t['duration_minutes'] }}</td>
+                <td>{{ t['default_capacity'] }}</td>
+                <td>{{ t['description'] }}</td>
+                <td>
+                    <a href="{{ url_for('class_types.edit_type', type_id=t['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form method="POST" action="{{ url_for('class_types.delete_type', type_id=t['id']) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No class types yet. <a href="{{ url_for('class_types.new_type') }}">Add one</a>.</p>
+{% endif %}
+{% endblock %}
