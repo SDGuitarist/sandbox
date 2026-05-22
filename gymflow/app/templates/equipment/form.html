@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{% if item %}Edit Equipment{% else %}New Equipment{% endif %}{% endblock %}
+
+{% block content %}
+<h1>{% if item %}Edit Equipment{% else %}New Equipment{% endif %}</h1>
+
+<form method="POST" action="{% if item %}{{ url_for('equipment.update_equipment_route', equipment_id=item['id']) }}{% else %}{{ url_for('equipment.create_equipment_route') }}{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="name" name="name" required maxlength="100" value="{{ item['name'] if item else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="category" class="form-label">Category</label>
+        <input type="text" class="form-control" id="category" name="category" value="{{ item['category'] if item else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="serial_number" class="form-label">Serial Number</label>
+        <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ item['serial_number'] if item else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="purchase_date" class="form-label">Purchase Date</label>
+        <input type="date" class="form-control" id="purchase_date" name="purchase_date" value="{{ item['purchase_date'] if item and item['purchase_date'] else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="purchase_price" class="form-label">Purchase Price ($)</label>
+        <input type="number" class="form-control" id="purchase_price" name="purchase_price" step="0.01" min="0" value="{{ '%.2f'|format(item['purchase_price_cents'] / 100) if item else '0.00' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+        <select class="form-select" id="status" name="status" required>
+            <option value="available" {% if item and item['status'] == 'available' %}selected{% endif %}>Available</option>
+            <option value="in_use" {% if item and item['status'] == 'in_use' %}selected{% endif %}>In Use</option>
+            <option value="maintenance" {% if item and item['status'] == 'maintenance' %}selected{% endif %}>Maintenance</option>
+            <option value="retired" {% if item and item['status'] == 'retired' %}selected{% endif %}>Retired</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Location</label>
+        <input type="text" class="form-control" id="location" name="location" value="{{ item['location'] if item else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ item['notes'] if item else '' }}</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{% if item %}Update Equipment{% else %}Create Equipment{% endif %}</button>
+        <a href="{{ url_for('equipment.list_equipment') }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
