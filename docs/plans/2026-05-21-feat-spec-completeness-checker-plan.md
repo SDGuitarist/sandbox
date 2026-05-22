@@ -119,7 +119,20 @@ This means:
 | Model functions | Lines matching `def <name>(` inside python code blocks | `### *_models.py` or `### models/` sections |
 | Endpoint names | `url_for('<blueprint>.<function>')` patterns in code blocks | Route handler sections |
 | Blueprint names | `### <name>/` section headings or entries in file inventory tables | File inventory, blueprint sections |
-| Route paths | Path column in route tables (e.g., `/suppliers/new`) | Route tables with Method/Path columns |
+| Route paths | Values from the path column in route tables (see column detection rule below) | Route tables identified by headings containing "Route" or "Endpoint" |
+
+**Route-path column detection rule:**
+
+The checker identifies the path column in route tables using a fixed allowlist of accepted column headers (case-insensitive, exact match after trimming whitespace):
+- `Path`
+- `URL`
+- `Route`
+- `Endpoint`
+
+**Behavior:**
+- If exactly one column header matches the allowlist: use that column for route paths.
+- If zero columns match: skip route-path enumeration for this table. Do NOT FAIL -- the table may use a non-standard format. Route paths from this table are simply not checked. Log a WARN: "Route table at [heading] has no recognized path column (expected: Path, URL, Route, or Endpoint)."
+- If multiple columns match (e.g., both "Path" and "URL"): use the FIRST matching column (left to right). Log a WARN noting the ambiguity.
 
 **Note on FC1 scope:** The checker catches naming omissions for the 4 classes above. Route-path drift (e.g., `/new` vs `/create` -- the run 052 FC1 P1) is caught when the route table path doesn't match the Export Names entry. Template filenames and form field names are NOT checked -- those remain human/review concerns until Phase 2 adds FC9.
 
@@ -136,14 +149,23 @@ This means:
 
 **Scope:** Does every cross-boundary function appear in the wiring table? This is a COVERAGE check -- "is the function declared in the wiring table at all?" The consistency checker (Category 6) already verifies that declared wiring entries have matching consumers. This check catches functions that are MISSING from the table entirely.
 
-**Steps (unified N/A flow):**
+**Inter-surface dependency:** Check 2 reads from the Export Names table to identify cross-boundary functions. This creates a dependency on Check 1.
 
-1. **Enumerate qualifying items.** From the Export Names table (which must exist -- Check 1 enforces this), extract all functions that have a "Used By" column listing consumers in other agents. These are the cross-boundary functions.
-2. **If zero cross-boundary functions found:** N/A. Stop. (Possible in single-module builds, unlikely in swarms.)
-3. **If cross-boundary functions exist:** find the Cross-Boundary Wiring section by canonical prefix.
-4. **If section missing:** FAIL with "Cross-Boundary Wiring section not found. <N> cross-boundary functions require wiring entries."
-5. **If section found:** extract all producer names from the wiring table. For each cross-boundary function NOT in the wiring table as a producer: FAIL.
-6. Count: `<N> cross-boundary functions, <M> missing from wiring table`.
+**Blocked-input rule:** The checker MUST run Check 1 before Check 2. If Check 1 produced FAIL because the Export Names section is missing or unparsable:
+- Check 2 does NOT attempt normal evaluation.
+- Check 2 reports: `BLOCKED -- depends on Export Names table (Surface 1 FAIL). Cannot enumerate cross-boundary functions.`
+- This counts as neither FAIL nor N/A in the summary. It is a distinct BLOCKED status that indicates the surface was not evaluated due to an upstream dependency failure.
+- The overall report STATUS is already FAIL (from Surface 1), so the BLOCKED status does not change the gate outcome.
+
+**Steps (unified N/A flow -- only runs if Check 1 found the Export Names table):**
+
+1. **Check dependency.** If Check 1 could not parse the Export Names table: report BLOCKED. Stop.
+2. **Enumerate qualifying items.** From the Export Names table, extract all functions that have a "Used By" column listing consumers in other agents. These are the cross-boundary functions.
+3. **If zero cross-boundary functions found:** N/A. Stop.
+4. **If cross-boundary functions exist:** find the Cross-Boundary Wiring section by canonical prefix.
+5. **If section missing:** FAIL with "Cross-Boundary Wiring section not found. <N> cross-boundary functions require wiring entries."
+6. **If section found:** extract all producer names from the wiring table. For each cross-boundary function NOT in the wiring table as a producer: FAIL.
+7. Count: `<N> cross-boundary functions, <M> missing from wiring table`.
 
 **Boundary with consistency checker:** Completeness asks "is this function in the wiring table?" Consistency asks "do the names in the wiring table match the export names?" No overlap.
 
@@ -256,7 +278,7 @@ If the spec uses code blocks, the checker uses the code-block path. If the spec 
 | Surface | Status | Findings |
 |---------|--------|----------|
 | Export Names (FC1) | PASS/FAIL/N/A | <count> symbols checked, <count> missing |
-| Wiring Completeness (FC3) | PASS/FAIL/N/A | <count> entries, <count> orphaned |
+| Wiring Completeness (FC3) | PASS/FAIL/N/A/BLOCKED | <count> entries, <count> orphaned |
 | Input Validation (FC4) | PASS/FAIL/N/A | <count> routes, <count> unvalidated |
 | Registration Points (FC5) | PASS/FAIL/N/A | <count> blueprints, <count> unregistered |
 | Transaction Contracts (FC29) | PASS/FAIL/N/A | <count> functions, <count> unannotated |
@@ -276,7 +298,8 @@ If the spec uses code blocks, the checker uses the code-block path. If the spec 
 - **PASS:** X
 - **FAIL:** Y
 - **WARN:** Z
-- **N/A (section absent):** W
+- **N/A:** W
+- **BLOCKED:** B
 
 STATUS: PASS
 ```
@@ -290,7 +313,8 @@ Use `STATUS: FAIL -- N omissions found across M surfaces` if any FAILs exist.
 3. FAIL = missing coverage (route/function/export not in coverage table).
 4. WARN = coverage present but ambiguous (e.g., ownership check named but field not specified).
 5. N/A = surface not applicable (e.g., no auth routes, no write functions).
-6. Do not modify the spec. Report only.
+6. BLOCKED = surface could not be evaluated due to upstream dependency failure (only Surface 2 can be BLOCKED, by Surface 1).
+7. Do not modify the spec. Report only.
 
 **Estimated size:** ~120-150 lines. The consistency checker is 107 lines. This one has 6 check categories (vs 6 for consistency) but each check is simpler (presence check vs name matching).
 
@@ -422,6 +446,9 @@ The plan author includes these sections during plan authoring (Steps 4-5 of the 
 - WHEN a swarm plan has zero write functions (no INSERT/UPDATE/DELETE in model sections) THE SYSTEM SHALL mark Transaction Contracts as N/A, not FAIL
 - WHEN a canonical section uses an accepted heading variant (e.g., "## Export Names Table (FC1 Prevention)") THE SYSTEM SHALL still detect it via prefix matching
 - WHEN no accepted heading variant is found for a mandatory surface that has qualifying items THE SYSTEM SHALL FAIL with "section not found" (safe direction -- forces canonical heading adoption)
+- WHEN the Export Names section is missing THE SYSTEM SHALL report Surface 2 (Wiring Coverage) as BLOCKED with "depends on Export Names table (Surface 1 FAIL)" -- not N/A and not a second misleading FAIL
+- WHEN a route table uses a column header "URL" instead of "Path" THE SYSTEM SHALL still enumerate route paths from that column (accepted variant)
+- WHEN a route table has no column matching the accepted allowlist (Path, URL, Route, Endpoint) THE SYSTEM SHALL skip route-path enumeration for that table and log a WARN, not FAIL
 
 ### Verification Commands
 
@@ -465,7 +492,15 @@ grep "STATUS:" docs/reports/<run-id>/spec-completeness-check.md
 
 - **Hardest decision:** The narrow definition of "parsed input" for FC4. Only POST/PUT routes and typed URL params (`<int:id>`) are checked. GET routes with string query params are excluded. This prevents false positives but could miss validation gaps on read endpoints that pass strings to SQL or int() casts deep in model code. The first run validates whether this scope is correct.
 - **Rejected alternatives:** Extending spec-consistency-checker (couples different concerns). Template-only without checker (doesn't prove coverage). All 10 surfaces in v1 (broader than evidence requires). Full markdown parser (fragile, unnecessary with canonical headings).
-- **Least confident:** Whether prefix-based heading matching handles all future plan formats. Explicit verification targets:
+- **Least confident:** Three implementation risks remain, ordered by likelihood of causing problems on the first run:
+
+  **Risk 1: Route-table column parsing.** The checker uses a fixed allowlist (Path, URL, Route, Endpoint) to identify the path column. If a plan uses a non-standard header, route paths are silently skipped (WARN, not FAIL). This is safe but means the Export Names check may miss route-path coverage for that table. Mitigated by the allowlist covering all 18 existing plans.
+
+  **Risk 2: Check 2 → Check 1 dependency.** If the Export Names section is missing, Check 2 reports BLOCKED instead of evaluating. This is the correct behavior, but it means a single missing section produces cascading non-evaluation. The spec author sees "Surface 1: FAIL, Surface 2: BLOCKED" and knows to fix the Export Names table first. No silent failure.
+
+  **Risk 3: Heading-prefix matching on future plan formats.** Validated against 18 plans, but a future plan could use entirely different conventions. Safe direction -- unrecognized headings produce FAIL, forcing canonical heading adoption.
+
+  Explicit verification targets for Risk 3:
 
   **Accepted heading variants (validated against 18 plans):**
   - `## Export Names Table` / `## Export Names Table (FC1 Prevention)` / `### Export Names Table`
