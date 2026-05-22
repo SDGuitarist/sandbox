@@ -41,6 +41,33 @@ Every completed autopilot run must produce:
 
 Missing any of these artifacts fails the run.
 
+## Mandatory Spec Coverage Sections (Swarm Plans)
+
+Every swarm plan's shared interface spec must include these 6 sections.
+The spec-completeness-checker (Step 9w.6) validates they exist and are
+complete. Missing sections FAIL the pre-swarm gate.
+
+1. **Export Names Table** -- every model function, endpoint name (url_for target),
+   blueprint name, and route path that crosses agent boundaries. Columns: Name,
+   Type, Defined By, Used By. (The checker validates these 4 classes; template
+   filenames and form field names should also be listed but are not yet
+   machine-checked.)
+2. **Cross-Boundary Wiring Table** -- every cross-module function call with
+   producer file, consumer file, and import path.
+3. **Input Validation Prescriptions** -- every POST/PUT route and typed URL param
+   with prescribed validation and error response. Columns: Route, Input,
+   Validation, Error Response.
+4. **Coordinated Behaviors** -- blueprint registration, navbar links, role maps,
+   flash message patterns, and any other behavior that must be consistent
+   across agents.
+5. **Transaction Contracts** -- every model function that writes to the DB
+   annotated with: "commits internally", "does NOT commit", or "requires
+   BEGIN IMMEDIATE". Can be a dedicated section or a column in model tables.
+6. **Authorization Matrix** -- every auth-protected route with mode: public,
+   role-only, role+ownership (with field), or admin-only.
+
+Sections 1, 2, and 4 already exist in most specs. Sections 3, 5, and 6 are new.
+
 ## Production Safety
 
 - Never run migration or initialization code against real user data. Copy to `/tmp` first.
