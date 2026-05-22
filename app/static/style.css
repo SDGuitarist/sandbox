@@ -1,0 +1,47 @@
+/* BrewOps Craft Brewery Manager - Base Styles */
+
+body {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.navbar-brand {
+    font-weight: 700;
+}
+
+.container.mt-4 {
+    padding-bottom: 2rem;
+}
+
+/* Flash message spacing */
+.alert {
+    margin-bottom: 1rem;
+}
+
+/* Table styling */
+table {
+    margin-bottom: 1.5rem;
+}
+
+/* Form spacing */
+form .mb-3:last-of-type {
+    margin-bottom: 1rem;
+}
+
+/* Detail page headings */
+h1, h2 {
+    margin-bottom: 1rem;
+}
+
+/* Action button spacing */
+.btn + .btn,
+.btn + form,
+form + .btn,
+form + form {
+    margin-left: 0.25rem;
+}
+
+/* Inline delete forms */
+form.d-inline {
+    display: inline;
+}
