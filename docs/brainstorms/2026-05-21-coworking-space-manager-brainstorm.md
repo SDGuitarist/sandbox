@@ -135,3 +135,24 @@ This build validates 3 infrastructure fixes from Run 054:
   uniqueness invariant so agents do not diverge. Secondary validation target:
   mixed FK behavior on member delete (RESTRICT bookings/invoices + any SET NULL
   children) -- exercises the new Check #7 grouping logic.
+
+## Refinement Findings
+
+**Gaps found:** 5
+
+1. **RestaurantOps** -- `isolation_level=None` not mentioned but mandatory for `BEGIN IMMEDIATE` to work. Python's default `isolation_level=""` creates implicit transactions that crash on manual BEGIN. Spec must prescribe `isolation_level=None` in db setup.
+   - Source: `docs/solutions/2026-05-21-restaurant-kitchen-mgmt-swarm-build.md`
+
+2. **GymFlow** -- `BEGIN IMMEDIATE` prescribed but `try/except/ROLLBACK` wrapper not. GymFlow's `check_in_class` had correct BEGIN IMMEDIATE but no error wrapper; mid-transaction exception left write lock open. Spec Transaction Contracts needs "Error Handling" column.
+   - Source: `docs/solutions/2026-05-21-gymflow-26-agent-swarm-build.md`
+
+3. **Personal Finance Tracker** -- Money has 3 surfaces: display (`|dollars` filter), parse (`round(float*100)`), and form prefill (`'%.2f' % (cents / 100)`). Brainstorm covers first two, misses form prefill for edit forms.
+   - Source: `docs/solutions/2026-04-09-personal-finance-tracker-swarm-build.md`
+
+4. **Solopreneur Command Center** -- POST form field names must be enumerated in spec. Field name mismatch between route and template is invisible to consistency checker. 9 domains with POST routes = high exposure.
+   - Source: `docs/solutions/2026-05-19-solopreneur-command-center-swarm-build.md`
+
+5. **Flask ACID Test** -- Spec must include concrete `get_db()` usage example (`with get_db() as db:`), not just `@contextmanager` in signature table. All 3 agents in prior build made identical mistake without example.
+   - Source: `docs/solutions/2026-04-07-flask-swarm-acid-test.md`
+
+STATUS: PASS
