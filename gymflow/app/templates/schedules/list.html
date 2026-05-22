@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Class Schedules{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Class Schedules</h1>
+    <a href="{{ url_for('schedules.new_schedule') }}" class="btn btn-primary">New Schedule</a>
+</div>
+
+<!-- Date Picker Filter -->
+<form method="GET" action="{{ url_for('schedules.list_schedules') }}" class="mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label for="date" class="form-label">Filter by Date</label>
+            <input type="date" class="form-control" id="date" name="date"
+                   value="{{ selected_date }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-secondary">Filter</button>
+        </div>
+    </div>
+</form>
+
+<!-- Copy Week Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Copy Week</h5>
+        <form method="POST" action="{{ url_for('schedules.copy_week') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label for="source_date" class="form-label">Source Week (any date in week)</label>
+                    <input type="date" class="form-control" id="source_date" name="source_date" required>
+                </div>
+                <div class="col-auto">
+                    <label for="target_date" class="form-label">Target Week (any date in week)</label>
+                    <input type="date" class="form-control" id="target_date" name="target_date" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-primary">Copy Week</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if schedules %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Class</th>
+                <th>Trainer</th>
+                <th>Room</th>
+                <th>Capacity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in schedules %}
+            <tr>
+                <td>{{ s['start_time']|time_format }} - {{ s['end_time']|time_format }}</td>
+                <td>{{ s['class_type_name'] }}</td>
+                <td>{{ s['trainer_name'] or 'Unassigned' }}</td>
+                <td>{{ s['room'] or '-' }}</td>
+                <td>{{ s['capacity'] }}</td>
+                <td>
+                    <a href="{{ url_for('schedules.detail', schedule_id=s['id']) }}" class="btn btn-sm btn-info">View</a>
+                    <a href="{{ url_for('schedules.edit_schedule', schedule_id=s['id']) }}" class="btn btn-sm btn-warning">Edit</a>
+                    <form method="POST" action="{{ url_for('schedules.delete_schedule_route', schedule_id=s['id']) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No classes scheduled for {{ selected_date|date_format }}.</p>
+{% endif %}
+{% endblock %}
