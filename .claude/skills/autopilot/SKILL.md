@@ -316,11 +316,15 @@ historically proceeded past failed gates (Run 054 -- both gates FAIL,
 swarm launched anyway). The artifact is a hard precondition for Step 10w.
 
 1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Find the line
-   containing `STATUS:`. Copy the full line verbatim. Then normalize it:
-   strip any markdown formatting (`**`, `__`, `#`) to get the plain text.
-   Example: `**STATUS: PASS**` normalizes to `STATUS: PASS`.
+   containing `STATUS:`. Copy the full line verbatim. Then normalize it
+   by stripping these specific characters from the start and end of the
+   line: `*` (bold), `_` (italic), `#` (heading), and leading/trailing
+   whitespace. Do NOT strip backticks, brackets, or other characters.
+   Example: `**STATUS: PASS**` → `STATUS: PASS`.
+   Example: `### STATUS: FAIL -- 3 contradictions` → `STATUS: FAIL -- 3 contradictions`.
 2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Same procedure:
-   copy verbatim, then normalize.
+   copy verbatim, normalize by stripping `*`, `_`, `#`, and whitespace
+   from start and end.
 3. Write `docs/reports/<run-id>/gate-verification.md` with this exact format:
    ```
    STATUS: [CLEARED or BLOCKED]

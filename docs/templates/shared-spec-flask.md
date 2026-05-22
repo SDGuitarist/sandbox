@@ -273,6 +273,7 @@ Inline commands trigger security heuristics above `dangerouslySkipPermissions`.
 ```python
 """Smoke tests -- run with: .venv/bin/python test_smoke.py"""
 import os
+import re
 os.environ.setdefault("SECRET_KEY", "test-smoke-key")
 os.environ.setdefault("ADMIN_PASSWORD", "test-strong-pw-123")
 os.environ.setdefault("FLASK_DEBUG", "1")
@@ -302,29 +303,39 @@ check("GET /health (200)", r.status_code == 200, f"got {r.status_code}")
 r = client.get("/login")
 check("GET /login (200)", r.status_code == 200, f"got {r.status_code}")
 
-# Unauthenticated access should redirect to login
 r = client.get("/")
 check("GET / (redirect to login)", r.status_code == 302, f"got {r.status_code}")
 
-# --- Phase 2a: Auth write-side validation ---
-# Verify the actual login route sets the session key declared in
-# Template Contracts. This catches a mismatch where the Session Keys
-# table and base.html agree but the login route writes a different key.
+# --- Phase 2a: Auth write-side with real CSRF ---
+# GET the login page, extract the rendered CSRF token from HTML,
+# POST with that token + real password. This validates:
+#   - {{ csrf_token() }} renders a real token (not the function object)
+#   - The login route sets the declared session key
+# If the template uses {{ csrf_token }} (no parens), the extracted
+# value will be a Python function repr string and CSRF validation fails.
+
+r = client.get("/login")
+html = r.data.decode()
+m = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
+check("Login form has CSRF token", m is not None,
+      "csrf_token input not found -- check {{ csrf_token() }} syntax")
+
+csrf_token = m.group(1) if m else ""
 
 r = client.post("/login", data={
     "password": os.environ["ADMIN_PASSWORD"],
-    "csrf_token": "test"  # CSRF is disabled in test client by default
+    "csrf_token": csrf_token,
 }, follow_redirects=False)
-check("POST /login (redirect)", r.status_code == 302, f"got {r.status_code}")
+check("POST /login (redirect)", r.status_code == 302,
+      f"got {r.status_code} -- CSRF token may be invalid")
 
-# After real login, verify the session contains the declared key
 with client.session_transaction() as sess:
     check("Login sets session['logged_in']",
           sess.get('logged_in') is True,
           f"session keys after login: {list(sess.keys())}")
 
 # --- Phase 2b: Functional navigate (read-side) ---
-# Verify the navbar renders correctly with the session set by login.
+# Verify navbar renders correctly with session set by real login.
 
 r = client.get("/")
 check("GET / (dashboard, logged in)", r.status_code == 200, f"got {r.status_code}")
@@ -356,12 +367,16 @@ else:
   command-line env prefixes (`SECRET_KEY=x python ...` triggers heuristics)
 - No `#` comments that could be misread as argument hiding
 - One `assert` per check with a descriptive failure message
-- Phase 2a (auth write-side) is MANDATORY -- it validates the login
-  route sets the EXACT session key declared in Template Contracts
+- Phase 2a (auth write-side with CSRF) is MANDATORY -- it GETs the
+  login page, extracts the rendered CSRF token, and POSTs with it.
+  This validates three things at once: (1) `{{ csrf_token() }}` renders
+  a real token (not a function repr), (2) CSRF validation passes,
+  (3) the login route sets the declared session key.
 - Phase 2b (navigate read-side) is MANDATORY -- it validates the navbar
   renders correctly with the session state set by the real login route
-- Together, 2a+2b catch both directions of a session key mismatch:
-  login writes wrong key (2a fails) or base.html reads wrong key (2b fails)
+- Together, 2a+2b catch: CSRF parens bug (2a POST returns 400), login
+  writes wrong key (2a session check fails), base.html reads wrong key
+  (2b navbar check fails)
 
 ## File Assignment Boundaries
 
