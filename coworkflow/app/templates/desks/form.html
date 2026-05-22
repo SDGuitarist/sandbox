@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit Desk' if desk else 'New Desk' }} - CoWorkFlow{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('desks.list_desks') }}" class="btn btn-outline-secondary btn-sm mb-3">&larr; Back to Desks</a>
+
+<h1>{{ 'Edit Desk' if desk else 'New Desk' }}</h1>
+
+<form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ desk['name'] if desk else '' }}" required maxlength="100">
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Location</label>
+        <input type="text" class="form-control" id="location" name="location"
+               value="{{ desk['location'] if desk else '' }}">
+    </div>
+
+    {% if desk %}
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="is_active" name="is_active"
+               {% if desk['is_active'] %}checked{% endif %}>
+        <label class="form-check-label" for="is_active">Active</label>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">{{ 'Update Desk' if desk else 'Create Desk' }}</button>
+</form>
+{% endblock %}
