@@ -52,13 +52,33 @@
 
 ## FAILURES
 
-<!-- Filled after review -->
+| # | Agent | Failure Class | Description | Fixed? |
+|---|-------|---------------|-------------|--------|
+| 1 | attendance_models | FC29 (transaction boundary) | check_in_class missing try/except/ROLLBACK on exception paths; schedule_row None crash | Yes (P1-1, commit d410fbc) |
+| 2 | membership_type_models | FC37 (agent divergence) | Redundant conn.row_factory override; Python datetime.now() instead of SQL datetime('now') | Yes (P1-2, P1-3, commit d410fbc) |
+
+**False positives:** Spec-consistency-check 12 FAILs were false positives -- checker misread RESTRICT as CASCADE. Actual schema and code are consistent.
 
 ---
 
 ## RUN_METRICS
 
-<!-- Filled after review -->
+| Metric | Value |
+|--------|-------|
+| Agents spawned | 26 |
+| Agents committed | 26 |
+| Merge conflicts | 0 |
+| Smoke tests (post-assembly) | 26/26 PASS |
+| Smoke tests (post-P1-fix) | 26/26 PASS |
+| Review agents | 4 (security-sentinel, kieran-python-reviewer, learnings-researcher, flow-trace-reviewer) |
+| P1 findings | 3 |
+| P1 fixed | 3 |
+| P2 deferred | 10 |
+| Files (app) | 79 |
+| LOC (app) | ~5,638 |
+| Total commits (swarm) | 26 |
+| Assembly method | sequential merge to swarm-054-assembly |
+| Feed-Forward risk confirmed | Yes (check_in_class missing ROLLBACK) |
 
 ## Template Version
 
