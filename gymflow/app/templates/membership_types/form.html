@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if mtype else 'New' }} Membership Type{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit' if mtype else 'New' }} Membership Type</h1>
+
+<form method="post" action="{{ url_for('membership_types.update_type', type_id=mtype['id']) if mtype else url_for('membership_types.create_type') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ mtype['name'] if mtype else '' }}" required maxlength="100">
+    </div>
+
+    <div class="mb-3">
+        <label for="duration_months" class="form-label">Duration (months)</label>
+        <input type="number" class="form-control" id="duration_months" name="duration_months"
+               value="{{ mtype['duration_months'] if mtype else '' }}" required min="1">
+    </div>
+
+    <div class="mb-3">
+        <label for="price" class="form-label">Price ($)</label>
+        <input type="number" class="form-control" id="price" name="price" step="0.01" min="0"
+               value="{{ '%.2f'|format(mtype['price_cents'] / 100) if mtype else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="3">{{ mtype['description'] if mtype else '' }}</textarea>
+    </div>
+
+    {% if mtype %}
+    <div class="mb-3 form-check">
+        <input type="hidden" name="is_active" value="0">
+        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" value="1"
+               {{ 'checked' if mtype['is_active'] else '' }}>
+        <label class="form-check-label" for="is_active">Active</label>
+    </div>
+    {% endif %}
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{{ 'Update' if mtype else 'Create' }} Membership Type</button>
+        <a href="{{ url_for('membership_types.list_types') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
