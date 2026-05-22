@@ -6,6 +6,11 @@ from app.auth import check_password
 
 bp = Blueprint('auth', __name__)
 
+# Rate limiting: best-effort, per-process only.
+# - Resets on process restart.
+# - Not effective under multi-worker deployments (each worker has its own counter).
+# - Single global counter (not per-IP) -- one user's failures affect all users.
+# - Acceptable for a single-admin, single-process Flask+SQLite tool.
 _fail_count: int = 0
 _first_fail: float = 0.0
 _MAX_ATTEMPTS: int = 5

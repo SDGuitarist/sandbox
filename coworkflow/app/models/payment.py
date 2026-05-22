@@ -33,9 +33,10 @@ def create_payment(conn: sqlite3.Connection, invoice_id: int,
             (invoice_id, amount_cents, payment_date,
              payment_method, reference_number, notes))
         payment_id = cursor.lastrowid
-        # Auto-update invoice status if fully paid (skip cancelled invoices)
+        # Auto-update invoice status if fully paid
+        # (cancelled/paid already rejected above, so status is pending or overdue here)
         new_total = total_paid + amount_cents
-        if new_total >= invoice['amount_cents'] and invoice['status'] != 'cancelled':
+        if new_total >= invoice['amount_cents']:
             conn.execute(
                 "UPDATE invoices SET status='paid', updated_at=datetime('now') "
                 "WHERE id=?", (invoice_id,))

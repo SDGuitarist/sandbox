@@ -1,14 +1,16 @@
+import sqlite3
+
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash, abort
 )
-from app.db import get_db
+
 from app.auth import login_required
+from app.db import get_db
 from app.models.member import (
     create_member, get_member, get_all_members,
     update_member, delete_member, search_members
 )
 from app.models.plan import get_active_plans, get_plan
-import sqlite3
 
 bp = Blueprint('members', __name__)
 
