@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Today's Attendance{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Today's Attendance</h1>
+    <a href="{{ url_for('attendance.check_in_form') }}" class="btn btn-primary">Check In</a>
+</div>
+
+{% if records %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Type</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td>{{ record['member_name'] }}</td>
+                <td>
+                    {% if record['attendance_type'] == 'class' %}
+                        Class
+                    {% else %}
+                        Open Gym
+                    {% endif %}
+                </td>
+                <td>{{ record['check_in_time']|date_format('%b %d, %Y %-I:%M %p') }}</td>
+                <td>
+                    {% if record['check_out_time'] %}
+                        {{ record['check_out_time']|date_format('%b %d, %Y %-I:%M %p') }}
+                    {% else %}
+                        <span class="badge bg-success">Active</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if not record['check_out_time'] %}
+                    <form action="{{ url_for('attendance.check_out', attendance_id=record['id']) }}" method="post" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Check Out</button>
+                    </form>
+                    {% endif %}
+                    <form action="{{ url_for('attendance.delete_attendance', attendance_id=record['id']) }}" method="post" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No check-ins today.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Equipment{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Equipment</h1>
+    <a href="{{ url_for('equipment.new_equipment') }}" class="btn btn-primary">Add Equipment</a>
+</div>
+
+<div class="mb-3">
+    <a href="{{ url_for('equipment.list_equipment') }}" class="btn btn-sm {% if not request.args.get('status') %}btn-secondary{% else %}btn-outline-secondary{% endif %}">All</a>
+    <a href="{{ url_for('equipment.list_equipment', status='available') }}" class="btn btn-sm {% if request.args.get('status') == 'available' %}btn-success{% else %}btn-outline-success{% endif %}">Available</a>
+    <a href="{{ url_for('equipment.list_equipment', status='in_use') }}" class="btn btn-sm {% if request.args.get('status') == 'in_use' %}btn-info{% else %}btn-outline-info{% endif %}">In Use</a>
+    <a href="{{ url_for('equipment.list_equipment', status='maintenance') }}" class="btn btn-sm {% if request.args.get('status') == 'maintenance' %}btn-warning{% else %}btn-outline-warning{% endif %}">Maintenance</a>
+    <a href="{{ url_for('equipment.list_equipment', status='retired') }}" class="btn btn-sm {% if request.args.get('status') == 'retired' %}btn-danger{% else %}btn-outline-danger{% endif %}">Retired</a>
+</div>
+
+{% if equipment_list %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Location</th>
+                <th>Purchase Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in equipment_list %}
+            <tr>
+                <td><a href="{{ url_for('equipment.detail', equipment_id=item['id']) }}">{{ item['name'] }}</a></td>
+                <td>{{ item['category'] }}</td>
+                <td>
+                    {% if item['status'] == 'available' %}
+                        <span class="badge bg-success">Available</span>
+                    {% elif item['status'] == 'in_use' %}
+                        <span class="badge bg-info">In Use</span>
+                    {% elif item['status'] == 'maintenance' %}
+                        <span class="badge bg-warning text-dark">Maintenance</span>
+                    {% elif item['status'] == 'retired' %}
+                        <span class="badge bg-danger">Retired</span>
+                    {% endif %}
+                </td>
+                <td>{{ item['location'] }}</td>
+                <td>{{ item['purchase_price_cents']|dollars }}</td>
+                <td>
+                    <a href="{{ url_for('equipment.edit_equipment', equipment_id=item['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No equipment found.</p>
+{% endif %}
+{% endblock %}

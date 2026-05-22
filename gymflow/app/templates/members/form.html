@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Member' if member else 'New Member' }}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{{ 'Edit Member' if member else 'New Member' }}</h1>
+
+<form method="post"
+      action="{{ url_for('members.update_member', member_id=member['id']) if member else url_for('members.create_member') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+        <input type="text" name="name" id="name" class="form-control" required maxlength="100"
+               value="{{ member['name'] if member else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+        <input type="email" name="email" id="email" class="form-control" required maxlength="200"
+               value="{{ member['email'] if member else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="phone" class="form-label">Phone</label>
+        <input type="text" name="phone" id="phone" class="form-control" maxlength="50"
+               value="{{ member['phone'] if member else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="emergency_contact" class="form-label">Emergency Contact</label>
+        <input type="text" name="emergency_contact" id="emergency_contact" class="form-control" maxlength="200"
+               value="{{ member['emergency_contact'] if member else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="membership_type_id" class="form-label">Membership Type</label>
+        <select name="membership_type_id" id="membership_type_id" class="form-select">
+            <option value="">None</option>
+            {% for mtype in membership_types %}
+            <option value="{{ mtype['id'] }}"
+                {{ 'selected' if member and member['membership_type_id'] == mtype['id'] }}>
+                {{ mtype['name'] }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% if member %}
+    <div class="mb-3">
+        <label for="status" class="form-label">Status</label>
+        <select name="status" id="status" class="form-select">
+            <option value="active" {{ 'selected' if member['status'] == 'active' }}>Active</option>
+            <option value="frozen" {{ 'selected' if member['status'] == 'frozen' }}>Frozen</option>
+            <option value="cancelled" {{ 'selected' if member['status'] == 'cancelled' }}>Cancelled</option>
+        </select>
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea name="notes" id="notes" class="form-control" rows="3" maxlength="1000">{{ member['notes'] if member else '' }}</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{{ 'Update Member' if member else 'Create Member' }}</button>
+        <a href="{{ url_for('members.list_members') }}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}

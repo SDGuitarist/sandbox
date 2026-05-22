@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Dashboard</h1>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Active Members</h5>
+                <p class="card-text display-6">{{ active_members }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-bg-success">
+            <div class="card-body">
+                <h5 class="card-title">New This Month</h5>
+                <p class="card-text display-6">{{ new_this_month }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Revenue This Month</h5>
+                <p class="card-text display-6">{{ revenue_this_month|dollars }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Schedule -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Today's Schedule</h5>
+    </div>
+    <div class="card-body">
+        {% if todays_schedule %}
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Class</th>
+                        <th>Trainer</th>
+                        <th>Room</th>
+                        <th>Capacity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in todays_schedule %}
+                    <tr>
+                        <td>{{ s['start_time']|time_format }} - {{ s['end_time']|time_format }}</td>
+                        <td>{{ s['class_type_name'] }}</td>
+                        <td>{{ s['trainer_name'] or 'Unassigned' }}</td>
+                        <td>{{ s['room'] or '-' }}</td>
+                        <td>{{ s['capacity'] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No classes scheduled for today.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Check-ins -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Recent Check-ins</h5>
+    </div>
+    <div class="card-body">
+        {% if recent_checkins %}
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Type</th>
+                        <th>Class</th>
+                        <th>Check-in Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in recent_checkins %}
+                    <tr>
+                        <td>{{ c['member_name'] }}</td>
+                        <td>{{ c['attendance_type'] }}</td>
+                        <td>{{ c['class_type_name'] or '-' }}</td>
+                        <td>{{ c['check_in_time']|date_format('%b %d, %Y %-I:%M %p') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No recent check-ins.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Equipment Needing Maintenance -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Equipment Needing Maintenance</h5>
+    </div>
+    <div class="card-body">
+        {% if needs_maintenance %}
+        <div class="table-responsive">
+            <table class="table table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Equipment</th>
+                        <th>Category</th>
+                        <th>Location</th>
+                        <th>Maintenance Due</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in needs_maintenance %}
+                    <tr>
+                        <td>{{ e['name'] }}</td>
+                        <td>{{ e['category'] or '-' }}</td>
+                        <td>{{ e['location'] or '-' }}</td>
+                        <td>{{ e['next_due_date']|date_format }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">All equipment is up to date.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Assessments - GymFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Fitness Assessments</h1>
+    <a href="{{ url_for('assessments.new_assessment') }}" class="btn btn-primary">New Assessment</a>
+</div>
+
+{% if assessments %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Member</th>
+                <th>Trainer</th>
+                <th>Weight (kg)</th>
+                <th>Height (cm)</th>
+                <th>BMI</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in assessments %}
+            <tr>
+                <td>{{ a['assessment_date']|date_format }}</td>
+                <td>{{ a['member_name'] }}</td>
+                <td>{{ a['trainer_name'] or '—' }}</td>
+                <td>{{ '%.1f'|format(a['weight_kg']) if a['weight_kg'] is not none else '—' }}</td>
+                <td>{{ '%.1f'|format(a['height_cm']) if a['height_cm'] is not none else '—' }}</td>
+                <td>{{ '%.1f'|format(a['bmi']) if a['bmi'] is not none else '—' }}</td>
+                <td>
+                    <a href="{{ url_for('assessments.detail', assessment_id=a['id']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No assessments found.</p>
+{% endif %}
+{% endblock %}

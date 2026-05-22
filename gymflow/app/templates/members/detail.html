@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}{{ member['name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ member['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('members.edit_member', member_id=member['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <form method="post" action="{{ url_for('members.delete_member', member_id=member['id']) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <dl>
+                    <dt>Email</dt>
+                    <dd>{{ member['email'] }}</dd>
+
+                    <dt>Phone</dt>
+                    <dd>{{ member['phone'] or 'N/A' }}</dd>
+
+                    <dt>Emergency Contact</dt>
+                    <dd>{{ member['emergency_contact'] or 'N/A' }}</dd>
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl>
+                    <dt>Membership Type</dt>
+                    <dd>{{ member['membership_type_name'] or 'None' }}</dd>
+
+                    <dt>Status</dt>
+                    <dd>
+                        <span class="badge bg-{{ 'success' if member['status'] == 'active' else ('warning' if member['status'] == 'frozen' else 'danger') }}">
+                            {{ member['status']|capitalize }}
+                        </span>
+                    </dd>
+
+                    <dt>Join Date</dt>
+                    <dd>{{ member['join_date']|date_format }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        {% if member['notes'] %}
+        <dt>Notes</dt>
+        <dd>{{ member['notes'] }}</dd>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Latest Assessment</h5>
+    </div>
+    <div class="card-body">
+        {% if latest_assessment %}
+        <div class="row">
+            <div class="col-md-6">
+                <dl>
+                    <dt>Date</dt>
+                    <dd>{{ latest_assessment['assessment_date']|date_format }}</dd>
+
+                    {% if latest_assessment['weight_kg'] is not none %}
+                    <dt>Weight</dt>
+                    <dd>{{ latest_assessment['weight_kg'] }} kg</dd>
+                    {% endif %}
+
+                    {% if latest_assessment['height_cm'] is not none %}
+                    <dt>Height</dt>
+                    <dd>{{ latest_assessment['height_cm'] }} cm</dd>
+                    {% endif %}
+                </dl>
+            </div>
+            <div class="col-md-6">
+                <dl>
+                    {% if latest_assessment['body_fat_pct'] is not none %}
+                    <dt>Body Fat</dt>
+                    <dd>{{ latest_assessment['body_fat_pct'] }}%</dd>
+                    {% endif %}
+
+                    {% if latest_assessment['bmi'] is not none %}
+                    <dt>BMI</dt>
+                    <dd>{{ latest_assessment['bmi'] }}</dd>
+                    {% endif %}
+
+                    {% if latest_assessment['resting_heart_rate'] is not none %}
+                    <dt>Resting Heart Rate</dt>
+                    <dd>{{ latest_assessment['resting_heart_rate'] }} bpm</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+        {% if latest_assessment['notes'] %}
+        <dt>Notes</dt>
+        <dd>{{ latest_assessment['notes'] }}</dd>
+        {% endif %}
+        {% else %}
+        <p class="text-muted mb-0">No assessments recorded.</p>
+        {% endif %}
+    </div>
+</div>
+
+<a href="{{ url_for('members.list_members') }}" class="btn btn-outline-secondary">Back to Members</a>
+{% endblock %}

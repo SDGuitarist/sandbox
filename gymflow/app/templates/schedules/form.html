@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit Schedule' if schedule else 'New Schedule' }}{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit Schedule' if schedule else 'New Schedule' }}</h1>
+
+<form method="POST" action="{{ url_for('schedules.update_schedule_route', schedule_id=schedule['id']) if schedule else url_for('schedules.create_schedule_route') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="class_type_id" class="form-label">Class Type <span class="text-danger">*</span></label>
+        <select class="form-select" id="class_type_id" name="class_type_id" required>
+            <option value="">-- Select Class Type --</option>
+            {% for ct in class_types %}
+            <option value="{{ ct['id'] }}" {% if schedule and schedule['class_type_id'] == ct['id'] %}selected{% endif %}>
+                {{ ct['name'] }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="trainer_id" class="form-label">Trainer</label>
+        <select class="form-select" id="trainer_id" name="trainer_id">
+            <option value="">-- No Trainer --</option>
+            {% for t in trainers %}
+            <option value="{{ t['id'] }}" {% if schedule and schedule['trainer_id'] == t['id'] %}selected{% endif %}>
+                {{ t['name'] }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="session_date" class="form-label">Date <span class="text-danger">*</span></label>
+        <input type="date" class="form-control" id="session_date" name="session_date"
+               value="{{ schedule['session_date'] if schedule else '' }}" required>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label for="start_time" class="form-label">Start Time <span class="text-danger">*</span></label>
+            <input type="time" class="form-control" id="start_time" name="start_time"
+                   value="{{ schedule['start_time'] if schedule else '' }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label for="end_time" class="form-label">End Time <span class="text-danger">*</span></label>
+            <input type="time" class="form-control" id="end_time" name="end_time"
+                   value="{{ schedule['end_time'] if schedule else '' }}" required>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label for="room" class="form-label">Room</label>
+        <input type="text" class="form-control" id="room" name="room"
+               value="{{ schedule['room'] if schedule else '' }}">
+    </div>
+
+    <div class="mb-3">
+        <label for="capacity" class="form-label">Capacity <span class="text-danger">*</span></label>
+        <input type="number" class="form-control" id="capacity" name="capacity" min="1"
+               value="{{ schedule['capacity'] if schedule else '20' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="3">{{ schedule['notes'] if schedule else '' }}</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">{{ 'Update' if schedule else 'Create' }} Schedule</button>
+        <a href="{{ url_for('schedules.list_schedules') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
