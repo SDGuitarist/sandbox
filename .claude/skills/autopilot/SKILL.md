@@ -310,21 +310,39 @@ contradictions.
 
 ### Step 9w.7: Pre-Swarm Gate Verification (MANDATORY -- SWARM ONLY)
 
-Before spawning ANY agents, re-read BOTH gate reports and verify they passed.
-This step exists because the orchestrator has historically proceeded past
-failed gates (Run 054 -- both gates FAIL, swarm launched anyway).
+Before spawning ANY agents, re-read BOTH gate reports and write a gate
+verification artifact. This step exists because the orchestrator has
+historically proceeded past failed gates (Run 054 -- both gates FAIL,
+swarm launched anyway). The artifact is a hard precondition for Step 10w.
 
-1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Find the `STATUS:` line.
-2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Find the `STATUS:` line.
+1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Extract the `STATUS:` line.
+2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Extract the `STATUS:` line.
 3. If EITHER report contains `STATUS: FAIL`:
-   - Output: `"PRE-SWARM GATE BLOCKED: [consistency|completeness] check has STATUS: FAIL. Cannot spawn agents. Fix the spec and re-run the failing gate."`
+   - Write file `docs/reports/<run-id>/gate-verification.md` with content:
+     ```
+     STATUS: BLOCKED
+     consistency: [PASS or FAIL]
+     completeness: [PASS or FAIL]
+     ```
+   - Output: `"PRE-SWARM GATE BLOCKED: [which] check has STATUS: FAIL."`
    - Do NOT proceed to Step 10w. This is a hard abort.
-4. If both contain `STATUS: PASS`: proceed to Step 10w.
-
-Do NOT skip this step. Do NOT proceed on WARN-only (WARNs are allowed).
-The only acceptable statuses to proceed are both PASS.
+4. If both contain `STATUS: PASS`:
+   - Write file `docs/reports/<run-id>/gate-verification.md` with content:
+     ```
+     STATUS: CLEARED
+     consistency: PASS
+     completeness: PASS
+     ```
+   - Proceed to Step 10w.
 
 ### Step 10w: Parallel Swarm Work
+
+**PRECONDITION:** Before reading the agent assignment table, verify that
+`docs/reports/<run-id>/gate-verification.md` exists AND contains
+`STATUS: CLEARED`. If the file does not exist or contains `STATUS: BLOCKED`,
+abort with: `"CANNOT SPAWN: gate-verification.md missing or BLOCKED.
+Run Step 9w.7 first."` This check is non-negotiable -- it prevents the
+orchestrator from skipping the gate verification step entirely.
 
 Read the `## Swarm Agent Assignment` section from the plan. Before spawning
 any agents, validate ALL file paths in the assignment table:

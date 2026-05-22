@@ -41,6 +41,12 @@ GymFlow gym management system built and reviewed. 26-agent swarm, zero merge con
 - [054-W5] RESOLVED: Flow-trace reviewer report was written post-self-audit. Report at docs/reports/054/flow-trace-review.md. Found same P1-1 (already fixed) + new P2 (invoice.py missing conn.commit(), deferred as part of P2-3).
 - [054-W6] Learnings-researcher misclassified spec-consistency-check FAILs as P0 CRITICAL (data loss risk) based on checker output without manual verification. Structural fix (recalibrate checker or add mandatory manual verification step) deferred to next session. agent-pitfalls.md updated with new rule. MEDIUM severity.
 
+### Infrastructure Fixes (post-054)
+- Flow-trace reviewer caller dependency: `/workflows:review` (global skill,
+  not editable in this repo) must pass reports directory as input #3.
+  Agent file documents fallback behavior if caller omits it. NOT verified
+  end-to-end -- next build will validate.
+
 ### Spec Completeness Checker
 - P2-D1: Flask spec template missing mandatory section scaffolds
 - P2-D2: N/A flow repeated 6 times in agent file

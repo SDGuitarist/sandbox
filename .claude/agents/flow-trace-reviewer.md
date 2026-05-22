@@ -20,6 +20,14 @@ FC31 in agent-pitfalls.md: "Each file looks correct in isolation. The bug only a
 3. Path to the reports directory (e.g., `docs/reports/054/`) -- write your
    report to `[reports-directory]/flow-trace-review.md`
 
+**Caller integration note:** This agent is invoked by `/workflows:review`
+(global compound-engineering skill, not editable in this repo). The
+caller must pass the reports directory as input #3. If the caller does
+not pass it, construct the path from the run context: look for a
+`docs/reports/` subdirectory matching the current run ID, or fall back
+to writing `flow-trace-review.md` in the project root and noting the
+path in your output so the orchestrator can move it.
+
 ## Process
 
 ### Step 1: Extract Flows from the Plan

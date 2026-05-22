@@ -66,32 +66,69 @@ When the spec's schema section contains FK constraints with ON DELETE
 clauses, verify that delete function docstrings and route error handling
 match the actual FK behavior.
 
-**Step 1:** Extract each FK constraint from CREATE TABLE statements.
-Find the EXACT token after "ON DELETE" -- must be one of: RESTRICT,
-CASCADE, SET NULL, NO ACTION. Use literal string matching on the SQL
-line. Do NOT infer behavior from context or from other FKs in the same
-table.
+**Step 1: Extract FK constraints.**
+For each REFERENCES clause in CREATE TABLE statements, find the ON
+DELETE token using literal string matching on the SQL line:
 
-**Step 2:** For each FK, check the corresponding delete function:
+| What you find in SQL | ON DELETE behavior |
+|---------------------|-------------------|
+| `ON DELETE RESTRICT` | IntegrityError raised |
+| `ON DELETE NO ACTION` | IntegrityError raised (same as RESTRICT in SQLite) |
+| `ON DELETE CASCADE` | Child rows silently deleted |
+| `ON DELETE SET NULL` | FK column set to NULL |
+| No `ON DELETE` clause at all | Defaults to NO ACTION = IntegrityError raised |
 
-| ON DELETE token | Expected behavior | Docstring should say | Route should do |
-|----------------|-------------------|---------------------|-----------------|
-| RESTRICT | SQLite raises IntegrityError | "Raises IntegrityError" or "cannot delete if children exist" | catch `sqlite3.IntegrityError`, flash error |
-| CASCADE | Silently deletes child rows | "Cascades to children" or no mention of IntegrityError | No IntegrityError catch needed |
-| SET NULL | Sets FK column to NULL | "Sets FK to NULL" or no mention of IntegrityError | No IntegrityError catch needed |
+Extract the EXACT token. Do NOT infer behavior from context, from the
+column name, or from other FKs in the same table. If the line says
+`ON DELETE RESTRICT`, the behavior is RESTRICT, period.
 
-**Step 3:** Flag as FAIL if:
-- FK is RESTRICT but docstring says no IntegrityError will be raised
-- FK is CASCADE or SET NULL but docstring claims IntegrityError
-- Route catches IntegrityError for a CASCADE/SET NULL FK (unnecessary)
-- Route does NOT catch IntegrityError for a RESTRICT FK (missing handler)
+**Step 2: Group FKs by parent table.**
+A single parent table may have children with DIFFERENT ON DELETE
+behaviors. For each parent table's delete function, collect ALL child
+FKs that reference it. Example:
 
-CRITICAL: The most common error is confusing which FK constraint applies
-to which child table. A parent table may have RESTRICT children AND
-SET NULL children. Check EACH FK individually. For example, `members`
-may have `attendance ON DELETE RESTRICT` (raises IntegrityError) AND
-`membership_type_id ON DELETE SET NULL` (does not raise). Do not apply
-one FK's behavior to a different FK's child table.
+```
+delete_member affects:
+  - attendance.member_id ON DELETE RESTRICT  -> raises IntegrityError
+  - invoices.member_id ON DELETE RESTRICT    -> raises IntegrityError
+  - fitness_assessments.member_id ON DELETE RESTRICT -> raises IntegrityError
+delete_trainer affects:
+  - class_schedules.trainer_id ON DELETE SET NULL -> no IntegrityError
+  - fitness_assessments.trainer_id ON DELETE SET NULL -> no IntegrityError
+```
+
+**Step 3: Evaluate each delete function.**
+Classify each parent table's delete path:
+
+| Child FK mix | Can IntegrityError fire? | Route should catch? |
+|-------------|------------------------|-------------------|
+| ALL children are RESTRICT or NO ACTION | Yes | Yes -- catch IntegrityError |
+| ALL children are CASCADE and/or SET NULL | No | No -- catch is unnecessary (WARN, not FAIL) |
+| MIX of RESTRICT + CASCADE/SET NULL | Yes (from RESTRICT children) | Yes -- catch is REQUIRED |
+
+CRITICAL RULE: A route-level `try/except sqlite3.IntegrityError` is
+CORRECT if ANY child FK on that parent is RESTRICT or NO ACTION. Do
+NOT flag a route's IntegrityError catch as unnecessary just because
+SOME child FKs are CASCADE or SET NULL. The catch is there for the
+RESTRICT children.
+
+**Step 4: Flag results.**
+- FAIL if ALL child FKs are RESTRICT/NO ACTION but docstring says no
+  IntegrityError, or route does not catch it.
+- FAIL if ALL child FKs are CASCADE/SET NULL but docstring claims
+  IntegrityError will be raised (misleading).
+- WARN (not FAIL) if ALL child FKs are CASCADE/SET NULL but route
+  catches IntegrityError anyway (unnecessary but harmless).
+- FAIL if MIX of behaviors but docstring claims IntegrityError for a
+  CASCADE/SET NULL FK specifically (wrong per-FK claim).
+- PASS if MIX of behaviors and docstring correctly identifies which
+  children raise IntegrityError and which do not.
+
+**Per-FK vs per-function:** Check docstring claims at the individual FK
+level when the docstring names specific child tables. If the docstring
+says "raises IntegrityError if member has attendance records" but
+`attendance.member_id` is CASCADE, that specific claim is wrong even
+if other FKs on `members` are RESTRICT.
 
 ## Rules
 
