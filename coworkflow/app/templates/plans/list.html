@@ -30,7 +30,7 @@
                     <td>
                         <a href="{{ url_for('plans.edit_form', plan_id=plan.id) }}" class="btn btn-secondary">Edit</a>
                         <form method="POST" action="{{ url_for('plans.delete', plan_id=plan.id) }}" style="display:inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button onclick="return confirm('Delete this plan? Members will keep their current plan until reassigned.')" class="btn-danger">Delete</button>
                         </form>
                     </td>
