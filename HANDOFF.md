@@ -2,69 +2,98 @@
 
 **Date:** 2026-05-22
 **Branch:** master
-**Phase:** Ready for Run 057 -- Craft Brewery Manager swarm build
+**Phase:** Run 057 -- Shared Tail (review + compound + learnings + audit)
 
 ## Current State
 
-Run 056 (CoWorkFlow deferred fixes) is complete. All compound cycle artifacts
-are written, learnings propagated, git clean and pushed. This session chose
-**Craft Brewery Manager** as the Run 057 domain app.
+Run 057 (BrewOps Craft Brewery Manager) swarm build is complete through
+Step 15w (assembly merge to master). 21 agents, 54 files, ~4,343 LOC,
+61/61 smoke tests pass, 0 merge conflicts, 0 assembly fixes.
 
-## Run 057 Brief
+**CHECKPOINT.md exists** -- the previous session paused for context after
+the swarm. The tail resume skill (`/tail-resume`) reads CHECKPOINT.md and
+picks up from the next_step field.
 
-**App:** Craft Brewery Manager (BrewOps)
-**Stack:** Flask + SQLite (single-admin, same pattern as CoWorkFlow/GymFlow/RestaurantOps)
-**Target:** 20-25 agents, autopilot swarm
-**Key goal:** Validate the 3 new mandatory spec sections proposed in Run 056:
-  1. **Concurrency Contract** -- tag every write function as SERIAL-SAFE, NEEDS-BEGIN-IMMEDIATE, or TRIGGER-BACKED
-  2. **Defense-in-Depth Matrix** -- map every constraint to app-level and DB-level enforcement
-  3. **Derived State** -- declare every field computed from other tables with an explicit owning agent
+## What's Done
 
-### Domain Sketch (for brainstorm seed)
+| Step | Status |
+|------|--------|
+| Compound Start + Lessons | DONE |
+| BUILD_TRACKING.md | DONE (AGENT_STATUS filled, FAILURES/METRICS pending) |
+| Agent Pitfalls (FC1-FC44) | Loaded and injected |
+| Brainstorm | DONE (docs/brainstorms/2026-05-22-brewops-brainstorm.md) |
+| Brainstorm Refinement | PASS (5 gaps addressed in plan) |
+| Plan | DONE (docs/plans/brewops-plan.md, ~1,530 lines) |
+| Deepen Plan (4 agents) | DONE -- 5 fixes merged (isolation_level, circular FK, session.permanent, float clamp, cookie secure) |
+| Run ID | 057, reports at docs/reports/057/ |
+| Pre-Swarm Gates | CLEARED (consistency: 9 found+fixed, completeness: 59+2 found+fixed) |
+| Swarm (21 agents) | 21/21 committed, 0 FC37 failures |
+| Ownership Gate | PASS |
+| Assembly Merge | 21/21 merged, 0 conflicts |
+| Smoke Tests | 61/61 PASS |
+| Merge to Master | DONE |
 
-A craft brewery management tool for a small brewery/taproom:
-- **Recipes** -- beer recipes with ingredients, target ABV, style
-- **Batches** -- brewing batches linked to recipes, with status tracking (planned, brewing, fermenting, conditioning, ready, tapped, empty)
-- **Ingredients/Inventory** -- grain, hops, yeast, adjuncts with stock levels
-- **Tanks/Fermenters** -- equipment with capacity, current batch assignment, availability
-- **Taproom** -- tap assignments (which batch is on which tap), tap status
-- **Sales** -- pint/growler/case sales by tap, daily totals
-- **Staff** -- brewery staff with roles (brewer, server, admin)
+## What's Remaining (Shared Tail)
 
-### Derived State Opportunities (to test the new spec section)
+All of these are mandatory. Missing any fails the run.
 
-- Batch status should auto-update based on timeline/events
-- Inventory levels should auto-decrement when a batch starts brewing
-- Tap status should reflect the assigned batch's remaining volume
-- Sales should auto-decrement batch remaining volume
+1. **Review** -- `/workflows:review`. Review agents should scrutinize the
+   Feed-Forward risk: sale_models derived state chain (4-step side effect).
+2. **Resolve TODOs** -- `/compound-engineering:resolve_todo_parallel`
+3. **Compound** -- `/workflows:compound`. Solution doc must include Risk
+   Resolution section tracing Feed-Forward through implementation.
+4. **Update Learnings** -- `/update-learnings-noninteractive`
+5. **Verify Learnings Artifacts** -- 4 checks (summary table, HANDOFF date,
+   agent-pitfalls entry, ID uniqueness)
+6. **Fill FAILURES + RUN_METRICS** -- Edit BUILD_TRACKING.md after review
+7. **Verify BUILD_TRACKING** -- Non-empty AGENT_STATUS, FAILURES, RUN_METRICS
+8. **Self-Audit** -- self-audit-reviewer agent writes docs/reports/057/self-audit.md
+9. **Verify Self-Audit** -- `/verify-self-audit 057 docs/reports/057/`
 
-These cross-table dependencies are exactly what FC44 (implicit derived state)
-is designed to catch. The spec must declare them explicitly.
+## Key Files
 
-### TOCTOU Opportunities (to test Concurrency Contract)
+| File | Purpose |
+|------|---------|
+| CHECKPOINT.md | Tail resume state (read by /tail-resume) |
+| docs/plans/brewops-plan.md | Shared interface spec (1,530 lines) |
+| docs/brainstorms/2026-05-22-brewops-brainstorm.md | Brainstorm |
+| BUILD_TRACKING.md | Agent status (filled), failures/metrics (pending) |
+| docs/reports/057/ | All gate reports + deepening audit |
+| app/ | Application source (21 agents' output) |
+| schema.sql | Database schema with CHECK constraints |
+| test_smoke.py | 61 smoke tests |
+| seed.py | Development seed data |
 
-- Two batches claiming the same tank simultaneously
-- Two sales reducing the same batch's remaining volume below zero
-- Ingredient stock going negative from concurrent batch starts
+## Run 057 Validation Targets
+
+This run validates 3 new mandatory spec sections from Run 056:
+
+1. **Concurrency Contract** -- 4 NEEDS-BEGIN-IMMEDIATE functions (start_brewing,
+   advance_batch_status, assign_to_tap, create_sale) with try/except/ROLLBACK
+2. **Defense-in-Depth Matrix** -- 12 constraints with app + DB enforcement
+3. **Derived State** -- 8 cross-table computed fields with owning agents
+
+**Success bar:** Review finds 0 FC43/FC44 issues caused by missing or
+underspecified spec coverage.
+
+## Feed-Forward Risk (for Review)
+
+**Risk:** sale_models derived state chain: sale -> decrement volume -> check
+empty -> update batch status -> clear tap. 4-step side effect chain inside
+one transaction. If any step missing, data integrity breaks silently.
+
+**Review agents should:** Trace the create_sale function end-to-end and verify
+all 4 steps are present and correctly ordered. Also verify the max(0, ...)
+float clamping is in place.
 
 ## Prior Runs (Reference)
 
 | Run | App | Agents | Key Lesson |
 |-----|-----|--------|------------|
+| 057 | BrewOps | 21 | (this run -- pending review) |
+| 056 | CoWorkFlow fixes | solo | TOCTOU Fence, 3 new spec sections |
 | 055 | CoWorkFlow | 22 | CSRF syntax in Coordinated Behaviors |
 | 054 | GymFlow | 26 | BEGIN IMMEDIATE needs try/except/ROLLBACK |
-| 052 | RestaurantOps | 29 | Model/route split, auth security checklist |
-| 050 | GigSheet | 31 | CSP-CDN mismatch, PRAGMA per-connection |
-
-## Key Docs to Read Before Starting
-
-| Doc | Why |
-|-----|-----|
-| `~/.claude/docs/agent-pitfalls.md` | Inject FC1-FC44 into agent briefs |
-| `~/.claude/docs/autopilot-tracking-template.md` | Copy to BUILD_TRACKING.md |
-| `docs/solutions/2026-05-22-coworkflow-deferred-fixes-batch.md` | 3 new spec patterns + TOCTOU Fence |
-| `docs/solutions/2026-05-22-coworkflow-22-agent-swarm-build.md` | 22-agent Flask swarm patterns |
-| `docs/solutions/2026-05-21-gymflow-26-agent-swarm-build.md` | Transaction safety lessons |
 
 ## Deferred Items (Unrelated to Run 057)
 
@@ -76,60 +105,14 @@ is designed to catch. The spec must declare them explicitly.
 ### Prior
 - GymFlow 054 P2s, spec-consistency-checker P2s, GigSheet 050 P2s
 
-## Three Questions (from Run 056)
-
-1. **Hardest decision?** Moving overpayment enforcement inside BEGIN IMMEDIATE.
-2. **What was rejected?** Per-IP dict for brute-force, UPDATE trigger for desk bookings.
-3. **Least confident about?** The 3 new spec sections. Run 057 is the validation.
-
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is the Sandbox project.
+Read HANDOFF.md. This is the Sandbox project, Run 057 (BrewOps).
 
-Run 057: Build BrewOps, a Craft Brewery Manager, as a standalone Flask +
-SQLite autopilot-swarm build. Target 20-25 agents.
+The swarm build is complete (21 agents, 54 files, 61/61 smoke tests pass).
+Resume the shared tail: review, resolve TODOs, compound, update-learnings,
+BUILD_TRACKING, self-audit, verify.
 
-This run validates 3 new mandatory spec sections from Run 056:
-- Concurrency Contract
-- Defense-in-Depth Matrix
-- Derived State
-
-Use the definitions and reference patterns in HANDOFF.md and:
-- docs/solutions/2026-05-22-coworkflow-deferred-fixes-batch.md
-- docs/solutions/2026-05-22-coworkflow-22-agent-swarm-build.md
-- docs/solutions/2026-05-21-gymflow-26-agent-swarm-build.md
-
-Domain scope:
-- recipes
-- batches
-- ingredients / inventory
-- tanks / fermenters
-- taps / taproom
-- sales
-- staff
-
-Constraints:
-- same single-admin Flask + SQLite pattern as recent sandbox swarms
-- keep domains as clean vertical slices, but allow supporting tables where
-  the schema requires them
-- prefer simple CRUD plus only the business rules needed to exercise
-  concurrency, defense-in-depth, and derived state
-- keep overall complexity roughly in CoWorkFlow scale
-
-Primary validation targets:
-- Concurrency: tank assignment, sales decrementing batch volume, inventory
-  decrements on brew start
-- Derived state: batch status, inventory levels, tap status / remaining volume
-- Defense-in-depth: app-level and DB-level enforcement are both prescribed
-  where needed
-
-Success bar:
-- the shared spec includes all 3 new sections clearly
-- review finds 0 FC43/FC44 issues caused by missing or underspecified spec
-  coverage
-
-Read ~/.claude/docs/agent-pitfalls.md before planning.
-
-Run /autopilot
+Run /tail-resume
 ```
