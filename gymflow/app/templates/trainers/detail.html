@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}{{ trainer['name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ trainer['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('trainers.edit_trainer', trainer_id=trainer['id']) }}" class="btn btn-primary">Edit</a>
+        <form method="POST" action="{{ url_for('trainers.delete_trainer', trainer_id=trainer['id']) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9">{{ trainer['email'] }}</dd>
+
+            <dt class="col-sm-3">Phone</dt>
+            <dd class="col-sm-9">{{ trainer['phone'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Specializations</dt>
+            <dd class="col-sm-9">{{ trainer['specializations'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Bio</dt>
+            <dd class="col-sm-9">{{ trainer['bio'] or 'N/A' }}</dd>
+
+            <dt class="col-sm-3">Hire Date</dt>
+            <dd class="col-sm-9">{{ trainer['hire_date']|date_format }}</dd>
+
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+                {% if trainer['status'] == 'active' %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">{{ trainer['created_at']|date_format }}</dd>
+
+            <dt class="col-sm-3">Updated</dt>
+            <dd class="col-sm-9">{{ trainer['updated_at']|date_format }}</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('trainers.list_trainers') }}" class="btn btn-outline-secondary">Back to Trainers</a>
+</div>
+{% endblock %}

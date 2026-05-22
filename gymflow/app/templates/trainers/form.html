@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{% if trainer %}Edit Trainer{% else %}New Trainer{% endif %}{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">{% if trainer %}Edit Trainer{% else %}New Trainer{% endif %}</h1>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{% if trainer %}{{ url_for('trainers.update_trainer', trainer_id=trainer['id']) }}{% else %}{{ url_for('trainers.create_trainer') }}{% endif %}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="name" name="name" required maxlength="100" value="{{ trainer['name'] if trainer else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="email" name="email" required maxlength="200" value="{{ trainer['email'] if trainer else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone</label>
+                <input type="text" class="form-control" id="phone" name="phone" maxlength="50" value="{{ trainer['phone'] if trainer else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="specializations" class="form-label">Specializations</label>
+                <input type="text" class="form-control" id="specializations" name="specializations" maxlength="500" value="{{ trainer['specializations'] if trainer else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="bio" class="form-label">Bio</label>
+                <textarea class="form-control" id="bio" name="bio" rows="3">{{ trainer['bio'] if trainer else '' }}</textarea>
+            </div>
+
+            {% if trainer %}
+            <div class="mb-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="active" {% if trainer['status'] == 'active' %}selected{% endif %}>Active</option>
+                    <option value="inactive" {% if trainer['status'] == 'inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{% if trainer %}Update Trainer{% else %}Create Trainer{% endif %}</button>
+                <a href="{{ url_for('trainers.list_trainers') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
