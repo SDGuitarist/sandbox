@@ -987,7 +987,7 @@ render_template('sales/form.html',
 | `add_recipe_ingredient` | model function | recipe_ingredient_models.py | recipe_routes |
 | `remove_recipe_ingredient` | model function | recipe_ingredient_models.py | recipe_routes |
 | `get_all_batches` | model function | batch_models.py | batch_routes |
-| `get_batch` | model function | batch_models.py | batch_routes, tap_routes |
+| `get_batch` | model function | batch_models.py | batch_routes |
 | `get_batches_by_status` | model function | batch_models.py | dashboard_routes |
 | `create_batch` | model function | batch_models.py | batch_routes |
 | `start_brewing` | model function | batch_models.py | batch_routes |
@@ -1045,6 +1045,48 @@ render_template('sales/form.html',
 | `staff` | blueprint | staff_routes.py | app/__init__.py |
 | `dashboard` | blueprint | dashboard_routes.py | app/__init__.py |
 | `auth` | blueprint | auth_routes.py | app/__init__.py |
+| `/` | route path | dashboard_routes.py | layout (navbar) |
+| `/login` | route path | auth_routes.py | auth.py (login_required) |
+| `/logout` | route path | auth_routes.py | layout (navbar) |
+| `/recipes/` | route path | recipe_routes.py | layout (navbar) |
+| `/recipes/new` | route path | recipe_routes.py | recipe_routes (link) |
+| `/recipes/<int:recipe_id>` | route path | recipe_routes.py | recipe_routes, batch_routes |
+| `/recipes/<int:recipe_id>/edit` | route path | recipe_routes.py | recipe_routes (link) |
+| `/recipes/<int:recipe_id>/delete` | route path | recipe_routes.py | recipe_routes (form) |
+| `/recipes/<int:recipe_id>/ingredients` | route path | recipe_routes.py | recipe_routes (form) |
+| `/recipes/<int:recipe_id>/ingredients/<int:ri_id>/delete` | route path | recipe_routes.py | recipe_routes (form) |
+| `/batches/` | route path | batch_routes.py | layout (navbar) |
+| `/batches/new` | route path | batch_routes.py | batch_routes (link) |
+| `/batches/<int:batch_id>` | route path | batch_routes.py | batch_routes, dashboard_routes |
+| `/batches/<int:batch_id>/edit` | route path | batch_routes.py | batch_routes (link) |
+| `/batches/<int:batch_id>/delete` | route path | batch_routes.py | batch_routes (form) |
+| `/batches/<int:batch_id>/start-brewing` | route path | batch_routes.py | batch_routes (form) |
+| `/batches/<int:batch_id>/advance` | route path | batch_routes.py | batch_routes (form) |
+| `/batches/<int:batch_id>/assign-tap` | route path | batch_routes.py | batch_routes (form) |
+| `/ingredients/` | route path | ingredient_routes.py | layout (navbar) |
+| `/ingredients/new` | route path | ingredient_routes.py | ingredient_routes (link) |
+| `/ingredients/<int:ingredient_id>` | route path | ingredient_routes.py | ingredient_routes |
+| `/ingredients/<int:ingredient_id>/edit` | route path | ingredient_routes.py | ingredient_routes (link) |
+| `/ingredients/<int:ingredient_id>/delete` | route path | ingredient_routes.py | ingredient_routes (form) |
+| `/tanks/` | route path | tank_routes.py | layout (navbar) |
+| `/tanks/new` | route path | tank_routes.py | tank_routes (link) |
+| `/tanks/<int:tank_id>` | route path | tank_routes.py | tank_routes |
+| `/tanks/<int:tank_id>/edit` | route path | tank_routes.py | tank_routes (link) |
+| `/tanks/<int:tank_id>/delete` | route path | tank_routes.py | tank_routes (form) |
+| `/taps/` | route path | tap_routes.py | layout (navbar) |
+| `/taps/new` | route path | tap_routes.py | tap_routes (link) |
+| `/taps/<int:tap_id>` | route path | tap_routes.py | tap_routes |
+| `/taps/<int:tap_id>/edit` | route path | tap_routes.py | tap_routes (link) |
+| `/taps/<int:tap_id>/delete` | route path | tap_routes.py | tap_routes (form) |
+| `/sales/` | route path | sale_routes.py | layout (navbar) |
+| `/sales/new` | route path | sale_routes.py | tap_routes (link) |
+| `/sales/<int:sale_id>` | route path | sale_routes.py | sale_routes |
+| `/staff/` | route path | staff_routes.py | layout (navbar) |
+| `/staff/new` | route path | staff_routes.py | staff_routes (link) |
+| `/staff/<int:staff_id>` | route path | staff_routes.py | staff_routes |
+| `/staff/<int:staff_id>/edit` | route path | staff_routes.py | staff_routes (link) |
+| `/staff/<int:staff_id>/delete` | route path | staff_routes.py | staff_routes (form) |
+| `/health` | route path | app/__init__.py | external |
 
 ### Cross-Boundary Wiring Table
 
@@ -1100,6 +1142,11 @@ render_template('sales/form.html',
 | POST /staff/ | name (form) | strip, 1-200 chars | Flash "Staff name is required" |
 | POST /staff/ | role (form) | must be in enum | Flash "Invalid role" |
 | POST /staff/ | email (form) | strip, optional, basic format | Flash "Invalid email" if malformed |
+| POST /login | password (form) | strip, required, check against env var | Flash "Invalid password" |
+| POST /login | brute-force | 5 attempts in 60s triggers lockout | Flash "Too many attempts. Try again later." |
+| POST /logout | (no form body) | CSRF token only | Redirect to login |
+| All GET detail routes | entity_id (URL) | int, must exist | abort(404) |
+| All EDIT routes (POST) | form body | Same validation as corresponding create route | Same flash messages |
 | All DELETE routes | entity_id (URL) | int, must exist | abort(404) |
 | DELETE /recipes/<id>/delete | recipe_id | Catch IntegrityError (batches RESTRICT) | Flash "Cannot delete: recipe is used in batches" |
 | DELETE /ingredients/<id>/delete | ingredient_id | Catch IntegrityError (recipe_ingredients RESTRICT) | Flash "Cannot delete: ingredient is used in recipes" |
