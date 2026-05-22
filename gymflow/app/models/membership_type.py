@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 
 
 def create_membership_type(conn: sqlite3.Connection, name: str,
@@ -19,12 +18,11 @@ def create_membership_type(conn: sqlite3.Connection, name: str,
 
     Commits: yes -- commits internally.
     """
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor = conn.execute(
         """INSERT INTO membership_types (name, duration_months, price_cents,
                description, is_active, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 1, ?, ?)""",
-        (name, duration_months, price_cents, description, now, now),
+           VALUES (?, ?, ?, ?, 1, datetime('now'), datetime('now'))""",
+        (name, duration_months, price_cents, description),
     )
     conn.commit()
     return cursor.lastrowid
@@ -35,16 +33,13 @@ def get_membership_type(conn: sqlite3.Connection, type_id: int) -> sqlite3.Row |
 
     Returns a Row dict-like object, or None if not found.
     """
-    conn.row_factory = sqlite3.Row
-    row = conn.execute(
+    return conn.execute(
         "SELECT * FROM membership_types WHERE id = ?", (type_id,)
     ).fetchone()
-    return row
 
 
 def get_all_membership_types(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """Get all membership types ordered by name."""
-    conn.row_factory = sqlite3.Row
     return conn.execute(
         "SELECT * FROM membership_types ORDER BY name"
     ).fetchall()
@@ -52,7 +47,6 @@ def get_all_membership_types(conn: sqlite3.Connection) -> list[sqlite3.Row]:
 
 def get_active_membership_types(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """Get membership types where is_active = 1, ordered by name."""
-    conn.row_factory = sqlite3.Row
     return conn.execute(
         "SELECT * FROM membership_types WHERE is_active = 1 ORDER BY name"
     ).fetchall()
@@ -74,13 +68,12 @@ def update_membership_type(conn: sqlite3.Connection, type_id: int, name: str,
 
     Commits: yes -- commits internally.
     """
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     conn.execute(
         """UPDATE membership_types
            SET name = ?, duration_months = ?, price_cents = ?,
-               description = ?, is_active = ?, updated_at = ?
+               description = ?, is_active = ?, updated_at = datetime('now')
            WHERE id = ?""",
-        (name, duration_months, price_cents, description, is_active, now, type_id),
+        (name, duration_months, price_cents, description, is_active, type_id),
     )
     conn.commit()
 

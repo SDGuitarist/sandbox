@@ -5,42 +5,38 @@ def check_in_class(conn: sqlite3.Connection, member_id: int,
                    class_schedule_id: int) -> int:
     """Check in member to a class. Returns new attendance ID.
     Uses BEGIN IMMEDIATE for atomic capacity check.
-    Raises ValueError if class is full.
+    Raises ValueError if class is full or schedule not found.
     Commits: yes (via BEGIN IMMEDIATE ... COMMIT)
     """
-    # Step 1: Start exclusive transaction
     conn.execute('BEGIN IMMEDIATE')
+    try:
+        row = conn.execute(
+            'SELECT COUNT(*) FROM attendance WHERE class_schedule_id = ?',
+            (class_schedule_id,)
+        ).fetchone()
+        count = row[0]
 
-    # Step 2: Count current attendance for this class
-    row = conn.execute(
-        'SELECT COUNT(*) FROM attendance WHERE class_schedule_id = ?',
-        (class_schedule_id,)
-    ).fetchone()
-    count = row[0]
+        schedule_row = conn.execute(
+            'SELECT capacity FROM class_schedules WHERE id = ?',
+            (class_schedule_id,)
+        ).fetchone()
+        if schedule_row is None:
+            raise ValueError('Class schedule not found')
+        capacity = schedule_row[0]
 
-    # Step 3: Get the class capacity
-    schedule_row = conn.execute(
-        'SELECT capacity FROM class_schedules WHERE id = ?',
-        (class_schedule_id,)
-    ).fetchone()
-    capacity = schedule_row[0]
+        if count >= capacity:
+            raise ValueError('Class is full')
 
-    # Step 4: If full, rollback and raise
-    if count >= capacity:
+        cursor = conn.execute(
+            'INSERT INTO attendance (member_id, class_schedule_id, attendance_type) '
+            'VALUES (?, ?, ?)',
+            (member_id, class_schedule_id, 'class')
+        )
+        attendance_id = cursor.lastrowid
+        conn.execute('COMMIT')
+    except Exception:
         conn.execute('ROLLBACK')
-        raise ValueError('Class is full')
-
-    # Step 5: Insert attendance record
-    cursor = conn.execute(
-        'INSERT INTO attendance (member_id, class_schedule_id, attendance_type) '
-        'VALUES (?, ?, ?)',
-        (member_id, class_schedule_id, 'class')
-    )
-    attendance_id = cursor.lastrowid
-
-    # Step 6: Commit the transaction
-    conn.execute('COMMIT')
-
+        raise
     return attendance_id
 
 
