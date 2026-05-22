@@ -30,7 +30,7 @@ directory with dangerouslySkipPermissions enabled in settings.local.json.
 ## Agent Permission Mode (MANDATORY)
 
 ALL agents spawned during this pipeline MUST use `mode: "bypassPermissions"`.
-This includes verification agents (spec-consistency-checker, spec-contract-checker),
+This includes verification agents (spec-consistency-checker, spec-completeness-checker, spec-contract-checker),
 test runners (smoke-test-runner, test-suite-runner), fix agents (assembly-fix),
 review agents (brainstorm-refinement, flow-trace-reviewer), and the self-audit
 agent -- not just swarm workers. Without this, spawned agents inherit the
@@ -296,14 +296,16 @@ The agent writes its report to `docs/reports/<run-id>/spec-completeness-check.md
 Read that file and check STATUS.
 - If PASS: continue to Step 10w (Parallel Swarm Work).
 - If FAIL: read the Details section. Fix the spec omissions identified in the
-  report (add missing entries to the coverage tables). Re-run Step 9w.6. Max
-  1 retry.
+  report (add missing entries to the coverage tables). Commit the fix:
+  `git add docs/plans/<plan-file>`
+  `git commit -m "fix: add missing spec coverage entries (completeness gate)"`
+  Re-run Step 9w.6. Max 1 retry.
 - If still FAIL after retry: abort with
   "SPEC INCOMPLETE: <N> omissions across <M> surfaces. See report."
 
 This gate catches spec-author omissions (missing export names, missing
-ownership checks, unannotated transactions) that produce predictable P1s at
-swarm scale. It is separate from Step 9w.5 (consistency) which catches
+authorization annotations, unannotated transactions) that produce predictable
+P1s at swarm scale. It is separate from Step 9w.5 (consistency) which catches
 contradictions.
 
 ### Step 10w: Parallel Swarm Work

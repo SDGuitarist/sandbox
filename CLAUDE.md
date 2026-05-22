@@ -54,7 +54,7 @@ complete. Missing sections FAIL the pre-swarm gate.
    machine-checked.)
 2. **Cross-Boundary Wiring Table** -- every cross-module function call with
    producer file, consumer file, and import path.
-3. **Input Validation Prescriptions** -- every POST/PUT route and typed URL param
+3. **Input Validation Prescriptions** -- every POST/PUT/PATCH/DELETE route and typed URL param
    with prescribed validation and error response. Columns: Route, Input,
    Validation, Error Response.
 4. **Coordinated Behaviors** -- blueprint registration, navbar links, role maps,

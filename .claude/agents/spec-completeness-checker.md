@@ -174,18 +174,17 @@ Missing route = FAIL finding.
 Write report to `[reports-directory]/spec-completeness-check.md`:
 
 ```markdown
-# Spec Completeness Check -- <project name>
+# Pre-Swarm Spec Completeness Check
 
-**Status:** PASS | FAIL
-**Date:** <date>
 **Plan:** <plan filename>
+**Checked:** <timestamp>
 
 ## Results
 
 | Surface | Status | Findings |
 |---------|--------|----------|
 | Export Names (FC1) | PASS/FAIL/N/A | <N> identifiers checked, <M> missing |
-| Wiring Coverage (FC3) | PASS/FAIL/N/A/BLOCKED | <N> cross-boundary functions, <M> missing |
+| Cross-Boundary Wiring (FC3) | PASS/FAIL/N/A/BLOCKED | <N> cross-boundary functions, <M> missing |
 | Input Validation (FC4) | PASS/FAIL/N/A | <N> qualifying routes, <M> unvalidated |
 | Registration Points (FC5) | PASS/FAIL/N/A | <N> blueprints, <M> unregistered |
 | Transaction Contracts (FC29) | PASS/FAIL/N/A | <N> write functions, <M> unannotated |
