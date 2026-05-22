@@ -131,6 +131,65 @@ if not name:
     flash('Name is required', 'error')
 ```
 
+## Export Names Table
+
+Every model function, endpoint name (`url_for` target), blueprint name, and
+route path that crosses agent boundaries.
+
+| Name | Type | Defined By | Used By |
+|------|------|------------|---------|
+| `create_item` | model function | `app/models.py` | `items` agent |
+| `items.list` | endpoint | `app/blueprints/items/routes.py` | `layout` agent (navbar), `dashboard` agent (links) |
+
+## Cross-Boundary Wiring Table
+
+Every cross-module function call with producer file, consumer file, and import
+path.
+
+| Producer | Consumer | Import Path |
+|----------|----------|-------------|
+| `app/models.py` | `app/blueprints/items/routes.py` | `from app.models import create_item, get_all_items` |
+| `app/db.py` | `app/blueprints/dashboard/routes.py` | `from app.db import get_db` |
+
+## Input Validation Prescriptions
+
+Every POST/PUT/PATCH/DELETE route and typed URL parameter with prescribed
+validation and error response.
+
+| Route | Input | Validation | Error Response |
+|-------|-------|------------|----------------|
+| `POST /items` | `name` (form) | Strip whitespace, 1-100 chars, required | Flash "Name is required", redirect back |
+| `DELETE /items/<int:item_id>` | `item_id` (URL) | Must exist in DB, must be owned by current user | `abort(404)` |
+
+## Coordinated Behaviors
+
+Behaviors that must be consistent across agents: blueprint registration, navbar
+links, role maps, flash message patterns.
+
+| Surface | Rule | Owner |
+|---------|------|-------|
+| Blueprint registration | All blueprints registered in `create_app()` with `url_prefix` | `core` agent |
+| Navbar links | Every blueprint with user-facing routes gets a navbar entry in `base.html` | `layout` agent |
+
+## Transaction Contracts
+
+Every model function that writes to the DB, annotated with commit behavior.
+
+| Function | SQL | Commits |
+|----------|-----|---------|
+| `create_item(conn, name)` | `INSERT INTO items ...` | commits internally (`conn.commit()`) |
+| `transfer_ownership(conn, item_id, new_owner_id)` | `UPDATE items ...` | does NOT commit (caller manages transaction) |
+
+## Authorization Matrix
+
+Every auth-protected route with access mode and ownership check.
+
+| Route | Mode | Ownership Check |
+|-------|------|-----------------|
+| `GET /items` | public | N/A |
+| `POST /items` | role-only (`user`) | N/A |
+| `DELETE /items/<int:item_id>` | role+ownership | `item['user_id'] == current_user.id` |
+
 ## Smoke Test File (FC8 Compliance)
 
 Smoke tests MUST be written to a file, never run as inline `python3 -c`.
