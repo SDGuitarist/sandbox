@@ -20,6 +20,15 @@ def create_app():
 
     csrf.init_app(app)
 
+    @app.after_request
+    def set_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response.headers['Strict-Transport-Security'] = (
+            'max-age=31536000; includeSubDomains')
+        return response
+
     from app.db import init_db, close_db
     app.teardown_appcontext(close_db)
     with app.app_context():
