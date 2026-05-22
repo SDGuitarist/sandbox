@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Ingredients{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Ingredients</h1>
+    <a href="{{ url_for('ingredients.new') }}" class="btn btn-primary">Add Ingredient</a>
+</div>
+
+{% if ingredients %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Stock</th>
+                <th>Unit</th>
+                <th>Low Stock Threshold</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ingredient in ingredients %}
+            <tr>
+                <td><a href="{{ url_for('ingredients.detail', ingredient_id=ingredient['id']) }}">{{ ingredient['name'] }}</a></td>
+                <td>{{ ingredient['category']|capitalize }}</td>
+                <td>{{ ingredient['stock_qty'] }}</td>
+                <td>{{ ingredient['unit'] }}</td>
+                <td>{{ ingredient['low_stock_threshold'] }}</td>
+                <td>
+                    {% if ingredient['stock_qty'] <= ingredient['low_stock_threshold'] %}
+                    <span class="badge bg-warning text-dark">Low Stock</span>
+                    {% else %}
+                    <span class="badge bg-success">In Stock</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No ingredients yet. <a href="{{ url_for('ingredients.new') }}">Add one</a>.</p>
+{% endif %}
+{% endblock %}
