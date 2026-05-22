@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Record Payment{% endblock %}
+
+{% block content %}
+<h1>Record Payment</h1>
+
+<form method="POST" action="{{ url_for('payments.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="invoice_id" class="form-label">Invoice <span class="text-danger">*</span></label>
+        <select name="invoice_id" id="invoice_id" class="form-select" required>
+            <option value="">-- Select Invoice --</option>
+            {% for invoice in invoices %}
+            <option value="{{ invoice['id'] }}">
+                #{{ invoice['id'] }} - {{ invoice['member_name'] }} - {{ invoice['description'] }} ({{ invoice['amount_cents']|dollars }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="amount" class="form-label">Amount ($) <span class="text-danger">*</span></label>
+        <input type="number" name="amount" id="amount" class="form-control" step="0.01" min="0.01" max="999999.99" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="payment_date" class="form-label">Payment Date <span class="text-danger">*</span></label>
+        <input type="date" name="payment_date" id="payment_date" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="payment_method" class="form-label">Payment Method <span class="text-danger">*</span></label>
+        <select name="payment_method" id="payment_method" class="form-select" required>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="other">Other</option>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="reference_number" class="form-label">Reference Number</label>
+        <input type="text" name="reference_number" id="reference_number" class="form-control">
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Record Payment</button>
+        <a href="{{ url_for('payments.list_payments') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
