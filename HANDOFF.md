@@ -23,14 +23,9 @@ CoWorkFlow coworking space management system built and reviewed. 22-agent swarm,
 ## Deferred Items
 
 ### CoWorkFlow (Run 055)
-- P1-2: Invoice status not auto-updated on payment (design gap, spec doesn't require it)
-- P1-3: desk_bookings missing UNIQUE constraint (accepted risk, am/pm/full overlap prevents simple index)
-- P2-1: No login brute-force protection (single-admin, carried from 054)
-- P2-2: No session expiration (carried from 054)
-- P2-3: No security headers (carried from 054)
-- P2-4: Overpayment not prevented (related to P1-2)
-- P2-5: conn.commit() vs conn.execute('COMMIT') inconsistency (harmless)
-- P2-6: Member plan_id validation silently falls through to None
+- [055-W1] P1-2: Invoice status not auto-updated on payment (design gap, spec doesn't require it). DEFERRED, MEDIUM severity.
+- [055-W2] P1-3: desk_bookings missing UNIQUE constraint (accepted risk, am/pm/full overlap prevents simple index). DEFERRED, LOW severity.
+- [055-W3] P2-1 through P2-6: No login brute-force protection, no session expiration, no security headers, overpayment not prevented, conn.commit() inconsistency, member plan_id silent fallthrough. DEFERRED, LOW severity collectively.
 
 ### Prior
 - GymFlow 054 P2s, spec-consistency-checker P2s, GigSheet 050 P2s
