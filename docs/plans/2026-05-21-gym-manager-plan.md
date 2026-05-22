@@ -267,8 +267,8 @@ CREATE INDEX IF NOT EXISTS idx_class_schedules_session_date ON class_schedules(s
 
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    class_schedule_id INTEGER REFERENCES class_schedules(id) ON DELETE CASCADE,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
+    class_schedule_id INTEGER REFERENCES class_schedules(id) ON DELETE RESTRICT,
     check_in_time TEXT NOT NULL DEFAULT (datetime('now')),
     check_out_time TEXT,
     attendance_type TEXT NOT NULL DEFAULT 'class' CHECK(attendance_type IN ('class', 'open_gym')),
@@ -293,7 +293,7 @@ CREATE TABLE IF NOT EXISTS equipment (
 
 CREATE TABLE IF NOT EXISTS maintenance_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+    equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE RESTRICT,
     description TEXT NOT NULL,
     maintenance_date TEXT NOT NULL DEFAULT (date('now')),
     cost_cents INTEGER NOT NULL DEFAULT 0,
@@ -319,7 +319,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE RESTRICT,
     amount_cents INTEGER NOT NULL,
     payment_date TEXT NOT NULL DEFAULT (date('now')),
     payment_method TEXT NOT NULL DEFAULT 'cash' CHECK(payment_method IN ('cash', 'card', 'bank_transfer', 'other')),
@@ -331,7 +331,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
 
 CREATE TABLE IF NOT EXISTS fitness_assessments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
     trainer_id INTEGER REFERENCES trainers(id) ON DELETE SET NULL,
     assessment_date TEXT NOT NULL DEFAULT (date('now')),
     weight_kg REAL,
@@ -460,7 +460,8 @@ def update_trainer(conn: sqlite3.Connection, trainer_id: int, name: str,
 
 def delete_trainer(conn: sqlite3.Connection, trainer_id: int) -> None:
     """Delete trainer. Commits: yes.
-    Raises sqlite3.IntegrityError if trainer has schedules/assessments.
+    FK constraints are SET NULL -- trainer_id on schedules/assessments
+    becomes NULL automatically. No IntegrityError raised.
     """
 ```
 
@@ -495,7 +496,8 @@ def update_membership_type(conn: sqlite3.Connection, type_id: int, name: str,
 
 def delete_membership_type(conn: sqlite3.Connection, type_id: int) -> None:
     """Delete membership type. Commits: yes.
-    Raises sqlite3.IntegrityError if members reference this type.
+    FK constraint is SET NULL -- membership_type_id on members becomes
+    NULL automatically. No IntegrityError raised.
     """
 ```
 
@@ -1466,7 +1468,7 @@ except (ValueError, TypeError):
 | 5 | Login required | Every route handler (except auth + health) decorated with `@login_required` BEFORE `@bp.route` | ALL route agents |
 | 6 | Delete confirmation | All delete buttons use a form with `onclick="return confirm('Are you sure?')"` | ALL route agents |
 | 7 | 404 pattern | `item = get_item(conn, item_id)` then `if item is None: abort(404)` | ALL route agents |
-| 8 | IntegrityError handling | Delete routes catch `sqlite3.IntegrityError` and flash "Cannot delete: referenced by other records." | ALL route agents with delete |
+| 8 | IntegrityError handling | Delete routes with RESTRICT FKs catch `sqlite3.IntegrityError` and flash "Cannot delete: referenced by other records." Routes where all child FKs are SET NULL or CASCADE do NOT need IntegrityError handling (delete_trainer, delete_membership_type). | Route agents with RESTRICT FK children |
 | 9 | Trailing slashes | All navbar links and `url_for()` calls produce URLs with trailing slash for list endpoints (Flask handles this with `@bp.route('/')`) | ALL |
 | 10 | No CSP header | Do NOT add Content-Security-Policy header. Bootstrap 5 loads from CDN. CSP would block it (FC38). | `core` agent |
 | 11 | SQLite PRAGMAs | `journal_mode=WAL`, `foreign_keys=ON`, `busy_timeout=5000` -- set in `get_db()`. No other connection paths exist. | `core` agent |
