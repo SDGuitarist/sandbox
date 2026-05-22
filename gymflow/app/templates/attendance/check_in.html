@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Check In{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Check In</h1>
+
+<form action="{{ url_for('attendance.check_in') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="member_id" class="form-label">Member</label>
+        <select name="member_id" id="member_id" class="form-select" required>
+            <option value="">-- Select Member --</option>
+            {% for member in members %}
+            <option value="{{ member['id'] }}">{{ member['name'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="attendance_type" class="form-label">Type</label>
+        <select name="attendance_type" id="attendance_type" class="form-select" required>
+            <option value="class">Class</option>
+            <option value="open_gym">Open Gym</option>
+        </select>
+    </div>
+
+    <div class="mb-3" id="schedule-group">
+        <label for="class_schedule_id" class="form-label">Class</label>
+        <select name="class_schedule_id" id="class_schedule_id" class="form-select">
+            <option value="">-- Select Class --</option>
+            {% for schedule in schedules %}
+            <option value="{{ schedule['id'] }}">
+                {{ schedule['class_type_name'] }} - {{ schedule['start_time']|time_format }} ({{ schedule['room'] }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Check In</button>
+    <a href="{{ url_for('attendance.list_attendance') }}" class="btn btn-secondary">Cancel</a>
+</form>
+
+<script>
+    // Show/hide schedule dropdown based on attendance type
+    const typeSelect = document.getElementById('attendance_type');
+    const scheduleGroup = document.getElementById('schedule-group');
+
+    function toggleSchedule() {
+        if (typeSelect.value === 'open_gym') {
+            scheduleGroup.style.display = 'none';
+        } else {
+            scheduleGroup.style.display = '';
+        }
+    }
+
+    typeSelect.addEventListener('change', toggleSchedule);
+    toggleSchedule();
+</script>
+{% endblock %}
