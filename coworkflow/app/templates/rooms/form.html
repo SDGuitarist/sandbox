@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if room else 'New' }} Room - CoWorkFlow{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit' if room else 'New' }} Meeting Room</h1>
+
+<form method="POST" action="{{ url_for('rooms.update', room_id=room['id']) if room else url_for('rooms.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="name" class="form-label">Name</label>
+        <input type="text" class="form-control" id="name" name="name"
+               value="{{ room['name'] if room else '' }}" required maxlength="100">
+    </div>
+
+    <div class="mb-3">
+        <label for="capacity" class="form-label">Capacity</label>
+        <input type="number" class="form-control" id="capacity" name="capacity"
+               value="{{ room['capacity'] if room else '' }}" required min="1" max="999">
+    </div>
+
+    <div class="mb-3">
+        <label for="hourly_rate" class="form-label">Hourly Rate ($)</label>
+        <input type="text" class="form-control" id="hourly_rate" name="hourly_rate"
+               value="{{ room['hourly_rate_cents']|dollars_raw if room else '0.00' }}"
+               placeholder="0.00">
+        <div class="form-text">Enter rate in dollars (e.g. 25.00).</div>
+    </div>
+
+    <div class="mb-3">
+        <label for="location" class="form-label">Location</label>
+        <input type="text" class="form-control" id="location" name="location"
+               value="{{ room['location'] if room else '' }}">
+    </div>
+
+    {% if room %}
+    <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" value="1"
+               {{ 'checked' if room['is_active'] else '' }}>
+        <label class="form-check-label" for="is_active">Active</label>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="{{ url_for('rooms.list_rooms') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
