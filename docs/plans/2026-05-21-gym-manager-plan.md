@@ -27,6 +27,8 @@ csrf = CSRFProtect()
 def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-key')
+    if not app.debug and app.config['SECRET_KEY'] == 'dev-fallback-key':
+        raise RuntimeError('SECRET_KEY must be set in production')
     app.config['SESSION_COOKIE_SECURE'] = not app.debug
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
@@ -90,11 +92,11 @@ from flask import g
 DATABASE = os.environ.get('DATABASE_PATH', 'gymflow.db')
 
 def get_db():
-    """Get database connection. ALWAYS use with `with` syntax.
+    """Get database connection. Returns a plain connection (NOT a context manager).
 
     Usage:
-        with get_db() as conn:
-            members = get_all_members(conn)
+        conn = get_db()
+        members = get_all_members(conn)
     """
     if 'db' not in g:
         g.db = sqlite3.connect(DATABASE, isolation_level=None)
@@ -133,10 +135,15 @@ module creates implicit transactions that conflict with manual `BEGIN IMMEDIATE`
 ```python
 # gymflow/app/auth.py
 import os
+import hmac
 import functools
 from flask import session, redirect, url_for, flash, request
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'dev-password-123')
+# Startup guard: core agent must add this check in create_app():
+#   from app.auth import ADMIN_PASSWORD
+#   if not app.debug and ADMIN_PASSWORD == 'dev-password-123':
+#       raise RuntimeError('ADMIN_PASSWORD must be set in production')
 
 def login_required(f):
     """Decorator: redirect to login if not authenticated."""
@@ -149,8 +156,9 @@ def login_required(f):
     return decorated
 
 def check_password(password):
-    """Check if password matches admin password. Returns bool."""
-    return password == ADMIN_PASSWORD
+    """Check if password matches admin password. Returns bool.
+    Uses hmac.compare_digest for timing-safe comparison."""
+    return hmac.compare_digest(password.encode(), ADMIN_PASSWORD.encode())
 ```
 
 **Rule:** Every route except `auth.login_page` and `auth.login` MUST use
@@ -207,7 +215,7 @@ CREATE TABLE IF NOT EXISTS members (
     email TEXT NOT NULL UNIQUE,
     phone TEXT NOT NULL DEFAULT '',
     emergency_contact TEXT NOT NULL DEFAULT '',
-    membership_type_id INTEGER REFERENCES membership_types(id),
+    membership_type_id INTEGER REFERENCES membership_types(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'frozen', 'cancelled')),
     join_date TEXT NOT NULL DEFAULT (date('now')),
     notes TEXT NOT NULL DEFAULT '',
@@ -242,8 +250,8 @@ CREATE TABLE IF NOT EXISTS class_types (
 
 CREATE TABLE IF NOT EXISTS class_schedules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    class_type_id INTEGER NOT NULL REFERENCES class_types(id),
-    trainer_id INTEGER REFERENCES trainers(id),
+    class_type_id INTEGER NOT NULL REFERENCES class_types(id) ON DELETE RESTRICT,
+    trainer_id INTEGER REFERENCES trainers(id) ON DELETE SET NULL,
     session_date TEXT NOT NULL,
     start_time TEXT NOT NULL,
     end_time TEXT NOT NULL,
@@ -259,8 +267,8 @@ CREATE INDEX IF NOT EXISTS idx_class_schedules_session_date ON class_schedules(s
 
 CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    member_id INTEGER NOT NULL REFERENCES members(id),
-    class_schedule_id INTEGER REFERENCES class_schedules(id),
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    class_schedule_id INTEGER REFERENCES class_schedules(id) ON DELETE CASCADE,
     check_in_time TEXT NOT NULL DEFAULT (datetime('now')),
     check_out_time TEXT,
     attendance_type TEXT NOT NULL DEFAULT 'class' CHECK(attendance_type IN ('class', 'open_gym')),
@@ -285,7 +293,7 @@ CREATE TABLE IF NOT EXISTS equipment (
 
 CREATE TABLE IF NOT EXISTS maintenance_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    equipment_id INTEGER NOT NULL REFERENCES equipment(id),
+    equipment_id INTEGER NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
     maintenance_date TEXT NOT NULL DEFAULT (date('now')),
     cost_cents INTEGER NOT NULL DEFAULT 0,
@@ -297,7 +305,7 @@ CREATE INDEX IF NOT EXISTS idx_maintenance_log_equipment_id ON maintenance_log(e
 
 CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    member_id INTEGER NOT NULL REFERENCES members(id),
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
     amount_cents INTEGER NOT NULL,
     description TEXT NOT NULL,
     billing_date TEXT NOT NULL DEFAULT (date('now')),
@@ -311,7 +319,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
 
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    invoice_id INTEGER NOT NULL REFERENCES invoices(id),
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
     amount_cents INTEGER NOT NULL,
     payment_date TEXT NOT NULL DEFAULT (date('now')),
     payment_method TEXT NOT NULL DEFAULT 'cash' CHECK(payment_method IN ('cash', 'card', 'bank_transfer', 'other')),
@@ -323,8 +331,8 @@ CREATE INDEX IF NOT EXISTS idx_payments_invoice_id ON payments(invoice_id);
 
 CREATE TABLE IF NOT EXISTS fitness_assessments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    member_id INTEGER NOT NULL REFERENCES members(id),
-    trainer_id INTEGER REFERENCES trainers(id),
+    member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    trainer_id INTEGER REFERENCES trainers(id) ON DELETE SET NULL,
     assessment_date TEXT NOT NULL DEFAULT (date('now')),
     weight_kg REAL,
     height_cm REAL,
@@ -342,7 +350,7 @@ CREATE INDEX IF NOT EXISTS idx_fitness_assessments_trainer_id ON fitness_assessm
 
 | Table | Owner Module | Read By |
 |-------|-------------|---------|
-| membership_types | models/membership_type.py | member_routes (dropdown), billing_routes (price lookup) |
+| membership_types | models/membership_type.py | member_routes (dropdown) |
 | members | models/member.py | attendance_routes (dropdown), billing_routes (dropdown), assessment_routes (dropdown), dashboard_routes (stats) |
 | trainers | models/trainer.py | schedule_routes (dropdown), assessment_routes (dropdown) |
 | class_types | models/class_type.py | schedule_routes (dropdown) |
@@ -411,7 +419,14 @@ def count_new_members_this_month(conn: sqlite3.Connection) -> int:
     """Count members with join_date in current month. Returns int."""
 
 def search_members(conn: sqlite3.Connection, query: str) -> list[sqlite3.Row]:
-    """Search members by name or email (LIKE %query%). Returns list."""
+    """Search members by name or email (LIKE %query%). Returns list.
+    MUST use parameterized query:
+        cursor.execute(
+            "SELECT ... FROM members WHERE name LIKE ? OR email LIKE ?",
+            (f"%{query}%", f"%{query}%")
+        )
+    NEVER use f-string or .format() with the query parameter.
+    """
 ```
 
 ### models/trainer.py (trainer_models agent)
@@ -1266,13 +1281,13 @@ Every POST form MUST include:
 | `update_schedule` | model function | `app/models/schedule.py` | `schedule_routes` |
 | `delete_schedule` | model function | `app/models/schedule.py` | `schedule_routes` |
 | `copy_week_schedules` | model function | `app/models/schedule.py` | `schedule_routes` |
-| `get_schedule_attendance_count` | model function | `app/models/schedule.py` | `schedule_routes`, `dashboard_routes` |
+| `get_schedule_attendance_count` | model function | `app/models/schedule.py` | `schedule_routes` |
 | `check_in_class` | model function | `app/models/attendance.py` | `attendance_routes` |
 | `check_in_open_gym` | model function | `app/models/attendance.py` | `attendance_routes` |
 | `check_out` | model function | `app/models/attendance.py` | `attendance_routes` |
 | `get_attendance` | model function | `app/models/attendance.py` | `attendance_routes` |
 | `get_attendance_by_schedule` | model function | `app/models/attendance.py` | `schedule_routes` |
-| `get_attendance_by_member` | model function | `app/models/attendance.py` | `member_routes` |
+| `get_attendance_by_member` | model function | `app/models/attendance.py` | `attendance_routes` |
 | `get_recent_checkins` | model function | `app/models/attendance.py` | `dashboard_routes` |
 | `get_today_checkins` | model function | `app/models/attendance.py` | `attendance_routes` |
 | `delete_attendance` | model function | `app/models/attendance.py` | `attendance_routes` |
@@ -1297,7 +1312,7 @@ Every POST form MUST include:
 | `update_invoice` | model function | `app/models/invoice.py` | `billing_routes` |
 | `delete_invoice` | model function | `app/models/invoice.py` | `billing_routes` |
 | `create_payment` | model function | `app/models/payment.py` | `payment_routes` |
-| `get_payment` | model function | `app/models/payment.py` | `payment_routes` |
+| `get_payment` | model function | `app/models/payment.py` | (internal use only) |
 | `get_payments_by_invoice` | model function | `app/models/payment.py` | `billing_routes` |
 | `get_all_payments` | model function | `app/models/payment.py` | `payment_routes` |
 | `delete_payment` | model function | `app/models/payment.py` | `payment_routes` |
@@ -1343,7 +1358,7 @@ Every POST form MUST include:
 | `app/db.py` | ALL routes | `from app.db import get_db` |
 | `app/auth.py` | ALL routes except auth | `from app.auth import login_required` |
 | `app/auth.py` | `app/blueprints/auth/routes.py` | `from app.auth import login_required, check_password` |
-| `app/models/__init__.py` | `app/blueprints/members/routes.py` | `from app.models import create_member, get_member, get_all_members, get_members_by_status, update_member, delete_member, get_active_membership_types, get_latest_assessment` |
+| `app/models/__init__.py` | `app/blueprints/members/routes.py` | `from app.models import create_member, get_member, get_all_members, get_members_by_status, update_member, delete_member, search_members, get_active_membership_types, get_latest_assessment` |
 | `app/models/__init__.py` | `app/blueprints/trainers/routes.py` | `from app.models import create_trainer, get_trainer, get_all_trainers, update_trainer, delete_trainer` |
 | `app/models/__init__.py` | `app/blueprints/membership_types/routes.py` | `from app.models import create_membership_type, get_membership_type, get_all_membership_types, update_membership_type, delete_membership_type` |
 | `app/models/__init__.py` | `app/blueprints/class_types/routes.py` | `from app.models import create_class_type, get_class_type, get_all_class_types, update_class_type, delete_class_type` |
@@ -1415,10 +1430,17 @@ Every POST form MUST include:
 
 **Money parsing pattern (all agents MUST use this exact pattern):**
 ```python
+import math
 try:
-    amount_cents = round(float(request.form.get('amount', '0')) * 100)
+    raw = float(request.form.get('amount', '0'))
+    if math.isnan(raw) or math.isinf(raw):
+        raise ValueError('Invalid amount')
+    amount_cents = round(raw * 100)
     if amount_cents <= 0:
         flash('Amount must be positive.', 'error')
+        return redirect(request.url)
+    if amount_cents > 99999999:  # Cap at $999,999.99
+        flash('Amount too large.', 'error')
         return redirect(request.url)
 except (ValueError, TypeError):
     flash('Valid amount is required.', 'error')
