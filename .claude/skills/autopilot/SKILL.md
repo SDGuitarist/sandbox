@@ -268,7 +268,13 @@ Use the `run-id` from Step 6.1 for branch naming.
 Use `docs/reports/<run-id>/` created in Step 6.1. All report paths in
 subsequent steps use `docs/reports/<run-id>/`.
 
-### Step 9w.5: Pre-Swarm Spec Consistency Gate
+### Pre-Swarm Structural Gates (Steps 9w.5 and 9w.6)
+
+These gates run after run-id generation and before swarm agent spawn.
+Step 9w.5 checks for contradictions. Step 9w.6 checks for omissions.
+Both must PASS for the swarm to launch.
+
+### Step 9w.5: Pre-Swarm Spec Consistency Gate (MANDATORY -- SWARM ONLY)
 
 Use the **spec-consistency-checker** agent. Pass:
 1. The path to the plan document
@@ -276,13 +282,29 @@ Use the **spec-consistency-checker** agent. Pass:
 
 The agent writes its report to `docs/reports/<run-id>/spec-consistency-check.md`.
 Read that file and check STATUS.
-- If PASS: continue to Parallel Swarm Work.
+- If PASS: continue to Step 9w.6.
 - If FAIL: abort the swarm path. Output the contradiction list. The spec
   author must fix the contradictions and re-run. Do not proceed.
 
-This gate catches mechanical contradictions (schema vs route names, SQL vs
-app types) that are invisible to human reviewers because each section looks
-correct in isolation.
+### Step 9w.6: Spec Completeness Gate (MANDATORY -- SWARM ONLY)
+
+Use the **spec-completeness-checker** agent. Pass:
+1. The path to the plan document
+2. `docs/reports/<run-id>/` (the reports directory created in Step 6.1)
+
+The agent writes its report to `docs/reports/<run-id>/spec-completeness-check.md`.
+Read that file and check STATUS.
+- If PASS: continue to Step 10w (Parallel Swarm Work).
+- If FAIL: read the Details section. Fix the spec omissions identified in the
+  report (add missing entries to the coverage tables). Re-run Step 9w.6. Max
+  1 retry.
+- If still FAIL after retry: abort with
+  "SPEC INCOMPLETE: <N> omissions across <M> surfaces. See report."
+
+This gate catches spec-author omissions (missing export names, missing
+ownership checks, unannotated transactions) that produce predictable P1s at
+swarm scale. It is separate from Step 9w.5 (consistency) which catches
+contradictions.
 
 ### Step 10w: Parallel Swarm Work
 
