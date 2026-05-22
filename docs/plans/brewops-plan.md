@@ -979,15 +979,15 @@ render_template('sales/form.html',
 | Name | Type | Defined By | Used By |
 |------|------|------------|---------|
 | `get_all_recipes` | model function | recipe_models.py | recipe_routes, batch_routes |
-| `get_recipe` | model function | recipe_models.py | recipe_routes, batch_routes |
+| `get_recipe` | model function | recipe_models.py | recipe_routes |
 | `create_recipe` | model function | recipe_models.py | recipe_routes |
 | `update_recipe` | model function | recipe_models.py | recipe_routes |
 | `delete_recipe` | model function | recipe_models.py | recipe_routes |
 | `get_recipe_ingredients` | model function | recipe_ingredient_models.py | recipe_routes, batch_models |
 | `add_recipe_ingredient` | model function | recipe_ingredient_models.py | recipe_routes |
 | `remove_recipe_ingredient` | model function | recipe_ingredient_models.py | recipe_routes |
-| `get_all_batches` | model function | batch_models.py | batch_routes, dashboard_routes |
-| `get_batch` | model function | batch_models.py | batch_routes, tap_routes, sale_routes |
+| `get_all_batches` | model function | batch_models.py | batch_routes |
+| `get_batch` | model function | batch_models.py | batch_routes, tap_routes |
 | `get_batches_by_status` | model function | batch_models.py | dashboard_routes |
 | `create_batch` | model function | batch_models.py | batch_routes |
 | `start_brewing` | model function | batch_models.py | batch_routes |
@@ -1009,12 +1009,12 @@ render_template('sales/form.html',
 | `update_tank` | model function | tank_models.py | tank_routes |
 | `delete_tank` | model function | tank_models.py | tank_routes |
 | `get_all_taps` | model function | tap_models.py | tap_routes, sale_routes, dashboard_routes |
-| `get_tap` | model function | tap_models.py | tap_routes, sale_routes |
+| `get_tap` | model function | tap_models.py | tap_routes |
 | `get_available_taps` | model function | tap_models.py | batch_routes |
 | `create_tap` | model function | tap_models.py | tap_routes |
 | `update_tap` | model function | tap_models.py | tap_routes |
 | `delete_tap` | model function | tap_models.py | tap_routes |
-| `get_all_sales` | model function | sale_models.py | sale_routes, dashboard_routes |
+| `get_all_sales` | model function | sale_models.py | sale_routes |
 | `get_sale` | model function | sale_models.py | sale_routes |
 | `get_today_sales_total` | model function | sale_models.py | dashboard_routes |
 | `create_sale` | model function | sale_models.py | sale_routes |
@@ -1065,7 +1065,7 @@ render_template('sales/form.html',
 | app/models/sale_models.py | app/routes/sale_routes.py | `from app.models.sale_models import get_all_sales, get_sale, create_sale` |
 | app/models/tap_models.py | app/routes/sale_routes.py | `from app.models.tap_models import get_all_taps` |
 | app/models/staff_models.py | app/routes/staff_routes.py | `from app.models.staff_models import get_all_staff, get_staff_member, create_staff, update_staff, delete_staff` |
-| app/models/batch_models.py | app/routes/dashboard_routes.py | `from app.models.batch_models import get_all_batches, get_batches_by_status` |
+| app/models/batch_models.py | app/routes/dashboard_routes.py | `from app.models.batch_models import get_batches_by_status` |
 | app/models/ingredient_models.py | app/routes/dashboard_routes.py | `from app.models.ingredient_models import get_low_stock_ingredients` |
 | app/models/tap_models.py | app/routes/dashboard_routes.py | `from app.models.tap_models import get_all_taps` |
 | app/models/sale_models.py | app/routes/dashboard_routes.py | `from app.models.sale_models import get_today_sales_total` |
@@ -1101,6 +1101,10 @@ render_template('sales/form.html',
 | POST /staff/ | role (form) | must be in enum | Flash "Invalid role" |
 | POST /staff/ | email (form) | strip, optional, basic format | Flash "Invalid email" if malformed |
 | All DELETE routes | entity_id (URL) | int, must exist | abort(404) |
+| DELETE /recipes/<id>/delete | recipe_id | Catch IntegrityError (batches RESTRICT) | Flash "Cannot delete: recipe is used in batches" |
+| DELETE /ingredients/<id>/delete | ingredient_id | Catch IntegrityError (recipe_ingredients RESTRICT) | Flash "Cannot delete: ingredient is used in recipes" |
+| DELETE /batches/<id>/delete | batch_id | Catch IntegrityError (sales RESTRICT) | Flash "Cannot delete: batch has sales records" |
+| DELETE /taps/<id>/delete | tap_id | Catch IntegrityError (sales RESTRICT) | Flash "Cannot delete: tap has sales records" |
 | All EDIT routes | entity_id (URL) | int, must exist | abort(404) |
 
 **Money parsing pattern (for price_cents):**
@@ -1135,6 +1139,7 @@ except (ValueError, TypeError):
 | Money display | Use `|dollars` filter for cents-to-dollar display | ALL route agents with prices |
 | Date display | Use `|format_date` filter for ISO date strings | ALL route agents with dates |
 | Error handling | `try: int(val) except ValueError: flash(...) return redirect(...)` for all int URL params | ALL route agents |
+| Delete RESTRICT handling | Wrap delete model calls in `try/except sqlite3.IntegrityError: flash("Cannot delete: [entity] is referenced by [child]", "error")` | recipe_routes, ingredient_routes, batch_routes, tap_routes |
 
 ### Transaction Contracts
 
@@ -1242,7 +1247,7 @@ As defined in the spec template. Adapt route names:
 
 | # | Agent | Files |
 |---|-------|-------|
-| 1 | core | app/__init__.py, app/db.py, app/auth.py, app/filters.py, app/models/__init__.py, schema.sql, requirements.txt, .gitignore, run.py |
+| 1 | core | app/__init__.py, app/db.py, app/auth.py, app/filters.py, app/models/__init__.py, app/routes/__init__.py, schema.sql, requirements.txt, .gitignore, run.py |
 | 2 | layout | app/templates/base.html, app/static/style.css |
 | 3 | auth | app/routes/auth_routes.py, app/templates/auth/login.html |
 | 4 | recipe_models | app/models/recipe_models.py |
