@@ -328,7 +328,7 @@ which already validates the batch/tank association inside BEGIN IMMEDIATE.
 | recipe_ingredients | recipe_ingredient_models | recipe_routes, batch_models |
 | batches | batch_models | batch_routes, tap_routes, sale_models, dashboard_routes |
 | ingredients | ingredient_models | ingredient_routes, batch_models, recipe_routes, dashboard_routes |
-| tanks | tank_models | tank_routes, batch_models, dashboard_routes |
+| tanks | tank_models | tank_routes, batch_models |
 | taps | tap_models | tap_routes, sale_routes, batch_models, dashboard_routes |
 | sales | sale_models | sale_routes, dashboard_routes |
 | staff | staff_models | staff_routes |
@@ -983,7 +983,7 @@ render_template('sales/form.html',
 | `create_recipe` | model function | recipe_models.py | recipe_routes |
 | `update_recipe` | model function | recipe_models.py | recipe_routes |
 | `delete_recipe` | model function | recipe_models.py | recipe_routes |
-| `get_recipe_ingredients` | model function | recipe_ingredient_models.py | recipe_routes, batch_models |
+| `get_recipe_ingredients` | model function | recipe_ingredient_models.py | recipe_routes |
 | `add_recipe_ingredient` | model function | recipe_ingredient_models.py | recipe_routes |
 | `remove_recipe_ingredient` | model function | recipe_ingredient_models.py | recipe_routes |
 | `get_all_batches` | model function | batch_models.py | batch_routes |
@@ -1002,7 +1002,7 @@ render_template('sales/form.html',
 | `update_ingredient` | model function | ingredient_models.py | ingredient_routes |
 | `delete_ingredient` | model function | ingredient_models.py | ingredient_routes |
 | `get_low_stock_ingredients` | model function | ingredient_models.py | dashboard_routes |
-| `get_all_tanks` | model function | tank_models.py | tank_routes, dashboard_routes |
+| `get_all_tanks` | model function | tank_models.py | tank_routes |
 | `get_tank` | model function | tank_models.py | tank_routes |
 | `get_available_tanks` | model function | tank_models.py | batch_routes |
 | `create_tank` | model function | tank_models.py | tank_routes |
