@@ -7,7 +7,7 @@ from app.models.member import (
     create_member, get_member, get_all_members,
     update_member, delete_member, search_members
 )
-from app.models.plan import get_active_plans
+from app.models.plan import get_active_plans, get_plan
 import sqlite3
 
 bp = Blueprint('members', __name__)
@@ -58,8 +58,16 @@ def create():
     if membership_plan_id_raw:
         try:
             membership_plan_id = int(membership_plan_id_raw)
-        except ValueError:
-            membership_plan_id = None
+        except (ValueError, TypeError):
+            flash('Invalid membership plan.', 'error')
+            conn = get_db()
+            plans = get_active_plans(conn)
+            return render_template('members/form.html', member=None, plans=plans)
+        conn = get_db()
+        if get_plan(conn, membership_plan_id) is None:
+            flash('Invalid membership plan.', 'error')
+            plans = get_active_plans(conn)
+            return render_template('members/form.html', member=None, plans=plans)
     else:
         membership_plan_id = None
 
@@ -132,8 +140,14 @@ def update(member_id):
     if membership_plan_id_raw:
         try:
             membership_plan_id = int(membership_plan_id_raw)
-        except ValueError:
-            membership_plan_id = None
+        except (ValueError, TypeError):
+            flash('Invalid membership plan.', 'error')
+            plans = get_active_plans(conn)
+            return render_template('members/form.html', member=member, plans=plans)
+        if get_plan(conn, membership_plan_id) is None:
+            flash('Invalid membership plan.', 'error')
+            plans = get_active_plans(conn)
+            return render_template('members/form.html', member=member, plans=plans)
     else:
         membership_plan_id = None
 
