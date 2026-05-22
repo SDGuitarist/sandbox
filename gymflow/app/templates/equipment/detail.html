@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item['name'] }} - Equipment{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ item['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('equipment.edit_equipment', equipment_id=item['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <form method="POST" action="{{ url_for('equipment.delete_equipment_route', equipment_id=item['id']) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <p><strong>Category:</strong> {{ item['category'] or 'N/A' }}</p>
+                <p><strong>Serial Number:</strong> {{ item['serial_number'] or 'N/A' }}</p>
+                <p><strong>Status:</strong>
+                    {% if item['status'] == 'available' %}
+                        <span class="badge bg-success">Available</span>
+                    {% elif item['status'] == 'in_use' %}
+                        <span class="badge bg-info">In Use</span>
+                    {% elif item['status'] == 'maintenance' %}
+                        <span class="badge bg-warning text-dark">Maintenance</span>
+                    {% elif item['status'] == 'retired' %}
+                        <span class="badge bg-danger">Retired</span>
+                    {% endif %}
+                </p>
+                <p><strong>Location:</strong> {{ item['location'] or 'N/A' }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Purchase Date:</strong> {{ item['purchase_date']|date_format if item['purchase_date'] else 'N/A' }}</p>
+                <p><strong>Purchase Price:</strong> {{ item['purchase_price_cents']|dollars }}</p>
+                <p><strong>Notes:</strong> {{ item['notes'] or 'N/A' }}</p>
+                <p><strong>Added:</strong> {{ item['created_at']|date_format }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2>Maintenance History</h2>
+{% if maintenance_history %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Cost</th>
+                <th>Performed By</th>
+                <th>Next Due</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in maintenance_history %}
+            <tr>
+                <td>{{ record['maintenance_date']|date_format }}</td>
+                <td>{{ record['description'] }}</td>
+                <td>{{ record['cost_cents']|dollars }}</td>
+                <td>{{ record['performed_by'] or 'N/A' }}</td>
+                <td>{{ record['next_due_date']|date_format if record['next_due_date'] else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No maintenance records found.</p>
+{% endif %}
+
+<a href="{{ url_for('equipment.list_equipment') }}" class="btn btn-outline-secondary">Back to Equipment List</a>
+{% endblock %}
