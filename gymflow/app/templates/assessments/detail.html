@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Assessment Detail - GymFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Assessment Detail</h1>
+    <div>
+        <a href="{{ url_for('assessments.edit_assessment', assessment_id=assessment['id']) }}" class="btn btn-warning">Edit</a>
+        <form method="POST" action="{{ url_for('assessments.delete_assessment', assessment_id=assessment['id']) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Member</dt>
+            <dd class="col-sm-9">{{ assessment['member_name'] }}</dd>
+
+            <dt class="col-sm-3">Trainer</dt>
+            <dd class="col-sm-9">{{ assessment['trainer_name'] or '—' }}</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">{{ assessment['assessment_date']|date_format }}</dd>
+
+            <dt class="col-sm-3">Weight (kg)</dt>
+            <dd class="col-sm-9">{{ '%.1f'|format(assessment['weight_kg']) if assessment['weight_kg'] is not none else '—' }}</dd>
+
+            <dt class="col-sm-3">Height (cm)</dt>
+            <dd class="col-sm-9">{{ '%.1f'|format(assessment['height_cm']) if assessment['height_cm'] is not none else '—' }}</dd>
+
+            <dt class="col-sm-3">BMI</dt>
+            <dd class="col-sm-9">{{ '%.1f'|format(assessment['bmi']) if assessment['bmi'] is not none else '—' }}</dd>
+
+            <dt class="col-sm-3">Body Fat %</dt>
+            <dd class="col-sm-9">{{ '%.1f'|format(assessment['body_fat_pct']) if assessment['body_fat_pct'] is not none else '—' }}</dd>
+
+            <dt class="col-sm-3">Resting Heart Rate</dt>
+            <dd class="col-sm-9">{{ assessment['resting_heart_rate'] if assessment['resting_heart_rate'] is not none else '—' }}</dd>
+
+            <dt class="col-sm-3">Notes</dt>
+            <dd class="col-sm-9">{{ assessment['notes'] or '—' }}</dd>
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">{{ assessment['created_at'] }}</dd>
+        </dl>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('assessments.list_assessments') }}" class="btn btn-secondary">Back to List</a>
+</div>
+{% endblock %}
