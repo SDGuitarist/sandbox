@@ -1,0 +1,10 @@
+/* GymFlow custom styles */
+
+body {
+  padding-bottom: 2rem;
+}
+
+/* Flash message spacing */
+.alert {
+  margin-bottom: 1rem;
+}
