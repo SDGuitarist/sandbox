@@ -59,6 +59,20 @@ CREATE INDEX IF NOT EXISTS idx_desk_bookings_desk_id ON desk_bookings(desk_id);
 CREATE INDEX IF NOT EXISTS idx_desk_bookings_member_id ON desk_bookings(member_id);
 CREATE INDEX IF NOT EXISTS idx_desk_bookings_date ON desk_bookings(booking_date);
 
+CREATE TRIGGER IF NOT EXISTS desk_booking_conflict_check
+BEFORE INSERT ON desk_bookings
+WHEN NEW.status = 'confirmed'
+BEGIN
+  SELECT RAISE(ABORT, 'Desk booking conflict')
+  WHERE EXISTS (
+    SELECT 1 FROM desk_bookings
+    WHERE desk_id = NEW.desk_id
+      AND booking_date = NEW.booking_date
+      AND status = 'confirmed'
+      AND (NEW.block = 'full' OR block = 'full' OR block = NEW.block)
+  );
+END;
+
 CREATE TABLE IF NOT EXISTS room_bookings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     room_id INTEGER NOT NULL REFERENCES meeting_rooms(id) ON DELETE RESTRICT,
