@@ -49,8 +49,9 @@
 
 | # | Agent | Failure Class | Description | Resolution |
 |---|-------|--------------|-------------|------------|
-| 1 | plan_routes | FC1 | CSRF token `{{ csrf_token }}` without parens in plans/form.html and plans/list.html | Fixed: added `()` |
-| 2 | core | FC1 | Plan templates used layout.html instead of base.html | Fixed during assembly |
+| 1 | layout | FC1 | Navbar checks session.get('user_id') but login sets session['logged_in'] -- navbar never renders | Fixed: changed to session.get('logged_in') |
+| 2 | plan_routes | FC1 | CSRF token `{{ csrf_token }}` without parens in plans/form.html and plans/list.html | Fixed: added `()` |
+| 3 | core | FC1 | Plan templates used layout.html instead of base.html | Fixed during assembly |
 
 ---
 
@@ -63,7 +64,8 @@
 | Merge conflicts | 0 |
 | Assembly fixes | 1 (FC1: base.html naming) |
 | Smoke tests | 21/21 PASS |
-| Review findings | 3 P1, 6 P2, 2 INFO |
+| Review findings | 1 P0, 3 P1, 6 P2, 2 INFO |
+| P0 fixed | 1 (navbar session key mismatch) |
 | P1 fixed | 1 (CSRF token parens) |
 | P1 deferred | 2 (invoice auto-status, desk UNIQUE) |
 | P2 deferred | 6 |

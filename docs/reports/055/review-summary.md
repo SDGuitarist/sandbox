@@ -9,6 +9,7 @@
 
 | Priority | Count | Fixed | Deferred |
 |----------|-------|-------|----------|
+| P0       | 1     | 1     | 0        |
 | P1       | 3     | 1     | 2        |
 | P2       | 6     | 0     | 6        |
 | INFO     | 2     | 0     | 2        |
@@ -17,6 +18,7 @@
 
 | # | Issue | Priority | Why this order | Unblocks |
 |---|-------|----------|---------------|----------|
+| 0 | P0-1: Navbar session key mismatch (base.html checks user_id, login sets logged_in) | P0 | App unusable -- navbar never renders, no navigation possible | -- |
 | 1 | P1-1: CSRF token missing parens in plans templates | P1 | Breaks plan create/edit/delete -- forms submit function repr instead of token | -- |
 | 2 | P1-2: Invoice status not auto-updated on payment | P1 | Design gap -- spec doesn't require it, admin can manually update. DEFER. | -- |
 | 3 | P1-3: desk_bookings missing DB UNIQUE constraint | P1 | Accepted risk from Feed-Forward. App-level BEGIN IMMEDIATE is correct. DEFER. | -- |
