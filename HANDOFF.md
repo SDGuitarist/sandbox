@@ -2,53 +2,59 @@
 
 **Date:** 2026-05-22
 **Branch:** master
-**Phase:** Run 055 complete -- CoWorkFlow 22-agent swarm build
+**Phase:** Run 056 complete -- CoWorkFlow deferred fixes (full compound cycle)
 
 ## Current State
 
-CoWorkFlow coworking space management system built and reviewed. 22-agent swarm, zero merge conflicts, 1 P1 fixed (CSRF token parens in plans templates), 2 P1s deferred (invoice auto-status, desk booking UNIQUE), 6 P2s deferred. Solution doc written, BUILD_TRACKING complete.
+CoWorkFlow deferred fixes batch complete. 7 fixes from Run 055's HANDOFF resolved through full compound cycle (brainstorm, plan with deepening, 2 Codex reviews, work, 6-agent review, solution doc, learnings propagation). 9 commits total, smoke tests pass. 3 new spec patterns proposed (Concurrency Contract, Defense-in-Depth Matrix, Derived State).
 
 ## Key Artifacts
 
 | Artifact | Location |
 |----------|----------|
-| Brainstorm | docs/brainstorms/2026-05-21-coworking-space-manager-brainstorm.md |
-| Plan (shared spec) | docs/plans/2026-05-21-coworkflow-plan.md |
-| Solution doc | docs/solutions/2026-05-22-coworkflow-22-agent-swarm-build.md |
-| Review reports | docs/reports/055/ (flow-trace, review-summary) |
-| Self-audit | docs/reports/055/self-audit.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
-| App code | coworkflow/ (66 files, ~3,729 LOC) |
+| Brainstorm | docs/brainstorms/2026-05-22-coworkflow-deferred-fixes-brainstorm.md |
+| Plan (deepened) | docs/plans/2026-05-22-coworkflow-deferred-fixes-plan.md |
+| Review summary | docs/reports/056/review-summary.md |
+| Solution doc | docs/solutions/2026-05-22-coworkflow-deferred-fixes-batch.md |
+| App code | coworkflow/ (66 files, ~3,850 LOC) |
 
 ## Deferred Items
 
-### CoWorkFlow (Run 055)
-- [055-W1] P1-2: Invoice status not auto-updated on payment (design gap, spec doesn't require it). DEFERRED, MEDIUM severity.
-- [055-W2] P1-3: desk_bookings missing UNIQUE constraint (accepted risk, am/pm/full overlap prevents simple index). DEFERRED, LOW severity.
-- [055-W3] P2-1 through P2-6: No login brute-force protection, no session expiration, no security headers, overpayment not prevented, conn.commit() inconsistency, member plan_id silent fallthrough. DEFERRED, LOW severity collectively.
+### CoWorkFlow (Run 056 review -- all pre-existing)
+- [056-D1] P1: `conn.commit()` no-op across all models (isolation_level=None makes it dead code). 15+ files. DEFERRED, MEDIUM severity.
+- [056-D2] P1: Full-table FK validation in billing/desk_bookings routes (get_all_X + any() instead of get_X). DEFERRED, LOW severity.
+- [056-D3] P1: Members re-render vs redirect error-handling pattern inconsistency. DEFERRED, LOW severity.
+- [056-D4] P2: LIKE wildcard injection in member search (not SQL injection). DEFERRED, LOW severity.
+- [056-D5] P2: Missing length limits on free-text fields (reference_number, notes, phone, company). DEFERRED, LOW severity.
+- [056-D6] P2: Hard-delete of payments with no audit trail. DEFERRED, LOW severity.
+- [056-D7] P2: No DB-level overpayment trigger (model check is authoritative). DEFERRED, LOW severity.
+- [056-D8] P2: Email format not validated. DEFERRED, LOW severity.
 
 ### Prior
 - GymFlow 054 P2s, spec-consistency-checker P2s, GigSheet 050 P2s
 
 ## Three Questions
 
-1. **Hardest decision?** Deferring the invoice auto-status fix. It's a real data integrity gap, but the spec doesn't require it and adding it means scope expansion with transaction complexity.
-2. **What was rejected?** Partial UNIQUE index for desk bookings (insufficient for am/pm/full overlap), auto-status on payments (scope expansion), trigger-based booking validation (overengineered for single-admin tool).
-3. **Least confident about?** Whether `{{ csrf_token }}` (without parens) actually breaks in Flask-WTF or if there's a Jinja2 fallback. The fix is trivial regardless.
+1. **Hardest decision?** Moving overpayment enforcement inside BEGIN IMMEDIATE (P0 TOCTOU fix). The data-integrity-guardian demonstrated a concrete race sequence.
+2. **What was rejected?** Per-IP dict for brute-force (memory exhaustion P0), UPDATE trigger for desk bookings (no UPDATE path exists), inlined SUM query (DRY violation).
+3. **Least confident about?** The three new mandatory spec sections (Concurrency Contract, Defense-in-Depth Matrix, Derived State). Need to validate on the next swarm build.
 
 ## Prompt for Next Session
 
 ```
 Read HANDOFF.md. This is the Sandbox project.
 
-Run 055 (CoWorkFlow, 22-agent swarm) is complete. Pick next action:
+Run 056 (CoWorkFlow deferred fixes) is complete. Pick next action:
 
-OPTION A: New build (Run 056). Pick a domain app:
+OPTION A: New build (Run 057). Pick a domain app:
 - Pet daycare manager
 - Community garden manager
 - Craft brewery manager
-Target: 20-25 agents, Flask+SQLite swarm.
+Target: 20-25 agents, Flask+SQLite swarm. Test the 3 new spec sections.
 
-OPTION B: Fix spec-consistency-checker false positive problem
-(deferred from Run 054, 40% false positive rate on FK parsing).
+OPTION B: Fix conn.commit() no-op tech debt across CoWorkFlow models
+(056-D1, highest-severity deferred item, ~15 files).
+
+OPTION C: Fix spec-consistency-checker FK parsing false positives
+(deferred from Run 054, 40% false positive rate).
 ```
