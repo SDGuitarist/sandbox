@@ -172,6 +172,7 @@ links, role maps, flash message patterns.
 | Navbar links | Every blueprint with user-facing routes gets a navbar entry in `base.html` | `layout` agent |
 | CSRF token syntax | All POST forms use `{{ csrf_token() }}` (WITH parentheses) | ALL route agents |
 | Session keys | `base.html` reads `session.get('logged_in')` -- must match auth agent's login key exactly | `auth` + `layout` agents |
+| Base template | All templates extend `base.html` (not `layout.html` or `main.html`) via `{% extends "base.html" %}` | ALL route agents |
 | Timestamps | All timestamps use SQL `datetime('now')`, never Python `datetime.now()` | ALL model agents |
 
 ## Template Contracts
@@ -215,6 +216,20 @@ in the Coordinated Behaviors table.
 | Framework | Bootstrap 5.x (CDN with SRI integrity hash) |
 | Custom CSS | `app/static/style.css` (layout agent owns) |
 | Icons | (none unless specified) |
+
+### Base Template Filename
+
+| Item | Value |
+|------|-------|
+| Filename | `app/templates/base.html` |
+| Owner | `layout` agent |
+| Extended by | ALL other template agents via `{% extends "base.html" %}` |
+
+**Rule:** The base template is ALWAYS named `base.html`, never
+`layout.html`, `main.html`, or any other name. This is the single
+most common FC1 template divergence (Run 055: assembly fix for
+`layout.html` vs `base.html`). The filename must appear in the File
+Assignment Boundaries table under the layout agent.
 
 ### Base Template Block Names
 
@@ -291,24 +306,33 @@ check("GET /login (200)", r.status_code == 200, f"got {r.status_code}")
 r = client.get("/")
 check("GET / (redirect to login)", r.status_code == 302, f"got {r.status_code}")
 
-# --- Phase 2: Functional login + navigate ---
-# This catches session key mismatches (P0 in Run 055) and CSRF issues
-# that HTTP-200-only checks miss.
+# --- Phase 2a: Auth write-side validation ---
+# Verify the actual login route sets the session key declared in
+# Template Contracts. This catches a mismatch where the Session Keys
+# table and base.html agree but the login route writes a different key.
 
-# Login with test client (bypass CSRF for test)
+r = client.post("/login", data={
+    "password": os.environ["ADMIN_PASSWORD"],
+    "csrf_token": "test"  # CSRF is disabled in test client by default
+}, follow_redirects=False)
+check("POST /login (redirect)", r.status_code == 302, f"got {r.status_code}")
+
+# After real login, verify the session contains the declared key
 with client.session_transaction() as sess:
-    sess['logged_in'] = True  # Must match the EXACT key from Session Keys table
+    check("Login sets session['logged_in']",
+          sess.get('logged_in') is True,
+          f"session keys after login: {list(sess.keys())}")
 
-# Dashboard should render (not redirect) when logged in
+# --- Phase 2b: Functional navigate (read-side) ---
+# Verify the navbar renders correctly with the session set by login.
+
 r = client.get("/")
 check("GET / (dashboard, logged in)", r.status_code == 200, f"got {r.status_code}")
 
-# Verify navbar renders with actual content (not empty/broken)
 html = r.data.decode()
 check("Dashboard has navbar links", "href=" in html and "Members" in html,
       "navbar may be empty or broken -- check session key in base.html")
 
-# Check a protected list page renders
 r = client.get("/members/")
 check("GET /members/ (200)", r.status_code == 200, f"got {r.status_code}")
 
@@ -332,11 +356,12 @@ else:
   command-line env prefixes (`SECRET_KEY=x python ...` triggers heuristics)
 - No `#` comments that could be misread as argument hiding
 - One `assert` per check with a descriptive failure message
-- Phase 2 (functional login) is MANDATORY -- it catches session key
-  mismatches and broken navbars that Phase 1 HTTP-200 checks miss
-- The session key in `session_transaction()` MUST match the Session Keys
-  table in Template Contracts -- this is the test that validates the
-  cross-agent session contract
+- Phase 2a (auth write-side) is MANDATORY -- it validates the login
+  route sets the EXACT session key declared in Template Contracts
+- Phase 2b (navigate read-side) is MANDATORY -- it validates the navbar
+  renders correctly with the session state set by the real login route
+- Together, 2a+2b catch both directions of a session key mismatch:
+  login writes wrong key (2a fails) or base.html reads wrong key (2b fails)
 
 ## File Assignment Boundaries
 

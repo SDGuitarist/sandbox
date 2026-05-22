@@ -186,3 +186,9 @@ STATUS: PASS
 
 Use `STATUS: PASS` if zero FAILs (WARNs are allowed).
 Use `STATUS: FAIL -- N contradictions found` if any FAILs exist.
+
+**CRITICAL:** The STATUS line MUST be plain text on its own line. Do NOT
+wrap it in markdown bold (`**STATUS: PASS**`), headers, or any other
+formatting. The gate-verification step (Step 9w.7) parses this line
+with exact string matching. Decorated formatting causes false clears
+or false blocks.

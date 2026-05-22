@@ -213,6 +213,11 @@ STATUS: PASS
 Use `STATUS: PASS` if zero FAILs (WARNs and BLOCKED allowed).
 Use `STATUS: FAIL -- N omissions found across M surfaces` if any FAILs.
 
+**CRITICAL:** The STATUS line MUST be plain text on its own line. Do NOT
+wrap it in markdown bold (`**STATUS: PASS**`), headers, or any other
+formatting. The gate-verification step (Step 9w.7) parses this line
+with exact string matching.
+
 ## Rules
 
 1. Run Check 1 before Check 2 (dependency).

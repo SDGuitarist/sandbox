@@ -316,18 +316,22 @@ historically proceeded past failed gates (Run 054 -- both gates FAIL,
 swarm launched anyway). The artifact is a hard precondition for Step 10w.
 
 1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Find the line
-   starting with `STATUS:`. Copy the full line verbatim.
-2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Find the line
-   starting with `STATUS:`. Copy the full line verbatim.
+   containing `STATUS:`. Copy the full line verbatim. Then normalize it:
+   strip any markdown formatting (`**`, `__`, `#`) to get the plain text.
+   Example: `**STATUS: PASS**` normalizes to `STATUS: PASS`.
+2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Same procedure:
+   copy verbatim, then normalize.
 3. Write `docs/reports/<run-id>/gate-verification.md` with this exact format:
    ```
    STATUS: [CLEARED or BLOCKED]
-   consistency_status_line: "[verbatim STATUS line from consistency report]"
-   completeness_status_line: "[verbatim STATUS line from completeness report]"
+   consistency_raw: "[verbatim STATUS line from consistency report]"
+   consistency_normalized: "[after stripping markdown formatting]"
+   completeness_raw: "[verbatim STATUS line from completeness report]"
+   completeness_normalized: "[after stripping markdown formatting]"
    ```
    The `STATUS:` value in gate-verification.md MUST be derived from the
-   two quoted lines above. It is CLEARED only if both quoted lines say
-   `STATUS: PASS`. Any other content in either line means BLOCKED.
+   two NORMALIZED lines. It is CLEARED only if both normalized lines
+   start with `STATUS: PASS`. Any other content means BLOCKED.
    Do NOT write CLEARED speculatively or without reading both reports.
 4. If BLOCKED: output `"PRE-SWARM GATE BLOCKED"` with the two quoted
    status lines. Do NOT proceed to Step 10w. This is a hard abort.
