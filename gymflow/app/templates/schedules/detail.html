@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule Detail{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Schedule Detail</h1>
+    <div>
+        <a href="{{ url_for('schedules.edit_schedule', schedule_id=schedule['id']) }}" class="btn btn-warning">Edit</a>
+        <a href="{{ url_for('schedules.list_schedules') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Class Type</dt>
+            <dd class="col-sm-9">{{ schedule['class_type_name'] }}</dd>
+
+            <dt class="col-sm-3">Trainer</dt>
+            <dd class="col-sm-9">{{ schedule['trainer_name'] or 'Unassigned' }}</dd>
+
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">{{ schedule['session_date']|date_format }}</dd>
+
+            <dt class="col-sm-3">Time</dt>
+            <dd class="col-sm-9">{{ schedule['start_time']|time_format }} - {{ schedule['end_time']|time_format }}</dd>
+
+            <dt class="col-sm-3">Room</dt>
+            <dd class="col-sm-9">{{ schedule['room'] or '-' }}</dd>
+
+            <dt class="col-sm-3">Capacity</dt>
+            <dd class="col-sm-9">{{ schedule['capacity'] }}</dd>
+
+            <dt class="col-sm-3">Attendance</dt>
+            <dd class="col-sm-9">{{ attendance_count }} / {{ schedule['capacity'] }}</dd>
+
+            {% if schedule['notes'] %}
+            <dt class="col-sm-3">Notes</dt>
+            <dd class="col-sm-9">{{ schedule['notes'] }}</dd>
+            {% endif %}
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">{{ schedule['created_at'] }}</dd>
+
+            <dt class="col-sm-3">Updated</dt>
+            <dd class="col-sm-9">{{ schedule['updated_at'] }}</dd>
+        </dl>
+    </div>
+</div>
+
+<!-- Attendees List -->
+<h3>Attendees ({{ attendance_count }})</h3>
+{% if attendees %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Member</th>
+                <th>Check-in Time</th>
+                <th>Check-out Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in attendees %}
+            <tr>
+                <td>{{ a['member_name'] }}</td>
+                <td>{{ a['check_in_time'] }}</td>
+                <td>{{ a['check_out_time'] or 'Still here' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No attendees yet.</p>
+{% endif %}
+
+<div class="mt-3">
+    <form method="POST" action="{{ url_for('schedules.delete_schedule_route', schedule_id=schedule['id']) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete Schedule</button>
+    </form>
+</div>
+{% endblock %}
