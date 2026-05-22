@@ -39,17 +39,20 @@ def get_batch(conn: sqlite3.Connection, batch_id: int):
     ''', (batch_id,)).fetchone()
 
 
-# get_batches_by_status(conn, status) -> list[sqlite3.Row]
-# Returns batches filtered by status, joined with recipe name
-# Usage: brewing_batches = get_batches_by_status(conn, 'brewing')
-def get_batches_by_status(conn: sqlite3.Connection, status: str) -> list:
-    return conn.execute('''
+def get_batches_by_statuses(conn: sqlite3.Connection, statuses: list) -> dict:
+    """Return batches grouped by status in a single query."""
+    placeholders = ','.join('?' * len(statuses))
+    rows = conn.execute(f'''
         SELECT b.*, r.name as recipe_name
         FROM batches b
         LEFT JOIN recipes r ON b.recipe_id = r.id
-        WHERE b.status = ?
+        WHERE b.status IN ({placeholders})
         ORDER BY b.created_at DESC
-    ''', (status,)).fetchall()
+    ''', statuses).fetchall()
+    result = {s: [] for s in statuses}
+    for row in rows:
+        result[row['status']].append(row)
+    return result
 
 
 # create_batch(conn, recipe_id, name, volume_gallons, notes) -> int

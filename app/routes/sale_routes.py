@@ -17,8 +17,13 @@ VALID_SALE_TYPES = ('pint', 'half_pint', 'growler', 'case')
 @login_required
 def list():
     conn = get_db()
-    sales = get_all_sales(conn)
-    return render_template('sales/list.html', sales=sales)
+    page = request.args.get('page', 1, type=int)
+    if page < 1:
+        page = 1
+    sales, total = get_all_sales(conn, page=page)
+    total_pages = max(1, (total + 49) // 50)
+    return render_template('sales/list.html', sales=sales, page=page,
+                           total_pages=total_pages, total=total)
 
 
 @bp.route('/new')

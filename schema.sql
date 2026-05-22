@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS sales (
 );
 CREATE INDEX IF NOT EXISTS idx_sales_tap_id ON sales(tap_id);
 CREATE INDEX IF NOT EXISTS idx_sales_batch_id ON sales(batch_id);
+CREATE INDEX IF NOT EXISTS idx_sales_created_at ON sales(created_at);
 
 CREATE TABLE IF NOT EXISTS staff (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

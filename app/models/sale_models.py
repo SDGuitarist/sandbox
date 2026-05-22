@@ -1,16 +1,21 @@
 import sqlite3
 
 
-def get_all_sales(conn: sqlite3.Connection) -> list:
-    """Return all sales joined with tap, batch, and recipe info, newest first."""
-    return conn.execute('''
+def get_all_sales(conn: sqlite3.Connection, page: int = 1, per_page: int = 50) -> tuple:
+    """Return paginated sales joined with tap, batch, and recipe info, newest first.
+    Returns (rows, total_count)."""
+    offset = (page - 1) * per_page
+    rows = conn.execute('''
         SELECT s.*, t.name as tap_name, b.name as batch_name, r.name as recipe_name
         FROM sales s
         JOIN taps t ON s.tap_id = t.id
         JOIN batches b ON s.batch_id = b.id
         LEFT JOIN recipes r ON b.recipe_id = r.id
         ORDER BY s.created_at DESC
-    ''').fetchall()
+        LIMIT ? OFFSET ?
+    ''', (per_page, offset)).fetchall()
+    total = conn.execute('SELECT COUNT(*) FROM sales').fetchone()[0]
+    return rows, total
 
 
 def get_sale(conn: sqlite3.Connection, sale_id: int):
@@ -27,7 +32,8 @@ def get_sale(conn: sqlite3.Connection, sale_id: int):
 def get_today_sales_total(conn: sqlite3.Connection) -> int:
     """Return total sales in cents for today. Returns 0 if no sales."""
     row = conn.execute(
-        "SELECT COALESCE(SUM(price_cents), 0) as total FROM sales WHERE date(created_at) = date('now')"
+        "SELECT COALESCE(SUM(price_cents), 0) as total FROM sales "
+        "WHERE created_at >= date('now') AND created_at < date('now', '+1 day')"
     ).fetchone()
     return row['total']
 

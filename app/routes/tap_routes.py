@@ -20,7 +20,7 @@ def list():
 @bp.route('/new')
 @login_required
 def new():
-    return render_template('taps/form.html')
+    return render_template('taps/form.html', tap=None)
 
 
 @bp.route('/', methods=['POST'])
@@ -111,6 +111,10 @@ def delete(tap_id):
     tap = get_tap(conn, tap_id)
     if tap is None:
         abort(404)
+
+    if tap['batch_id'] is not None:
+        flash('Cannot delete: tap has an active batch assigned', 'error')
+        return redirect(url_for('taps.detail', tap_id=tap_id))
 
     try:
         delete_tap(conn, tap_id)
