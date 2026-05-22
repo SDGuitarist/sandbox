@@ -44,8 +44,17 @@ GymFlow gym management system built and reviewed. 26-agent swarm, zero merge con
 ### Infrastructure Fixes (post-054)
 - Flow-trace reviewer caller dependency: `/workflows:review` (global skill,
   not editable in this repo) must pass reports directory as input #3.
-  Agent file documents fallback behavior if caller omits it. NOT verified
-  end-to-end -- next build will validate.
+  Agent has deterministic fallback (resolve from docs/reports/) or hard-fail.
+  NOT verified end-to-end -- next build will validate.
+- Learnings-researcher propagation risk: The learnings-researcher is a
+  global agent type (compound-engineering:research:learnings-researcher),
+  not editable in this repo. No local wrapper exists. It can still
+  escalate automated checker FAILs to P0 without manual verification.
+  The consistency checker is now more accurate (reduces false positives
+  at the source), and agent-pitfalls.md has a rule to verify manually,
+  but there is no structural gate on the researcher itself. A structural
+  fix would require editing the global agent definition or creating a
+  local wrapper agent that adds the verification rule.
 
 ### Spec Completeness Checker
 - P2-D1: Flask spec template missing mandatory section scaffolds

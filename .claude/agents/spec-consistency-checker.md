@@ -67,20 +67,33 @@ clauses, verify that delete function docstrings and route error handling
 match the actual FK behavior.
 
 **Step 1: Extract FK constraints.**
-For each REFERENCES clause in CREATE TABLE statements, find the ON
-DELETE token using literal string matching on the SQL line:
+For each column or constraint that contains REFERENCES in a CREATE TABLE
+block, extract the full FK clause -- from the column name through the
+ON DELETE token (if present). The clause may span multiple lines in the
+spec. Do NOT assume REFERENCES and ON DELETE appear on the same line.
 
-| What you find in SQL | ON DELETE behavior |
-|---------------------|-------------------|
-| `ON DELETE RESTRICT` | IntegrityError raised |
-| `ON DELETE NO ACTION` | IntegrityError raised (same as RESTRICT in SQLite) |
-| `ON DELETE CASCADE` | Child rows silently deleted |
-| `ON DELETE SET NULL` | FK column set to NULL |
-| No `ON DELETE` clause at all | Defaults to NO ACTION = IntegrityError raised |
+**Extraction procedure:**
+1. Find each `REFERENCES <table>(<column>)` in the schema section.
+2. From that point, scan forward (possibly across line breaks) for
+   `ON DELETE <token>`. Stop scanning at the next comma, closing
+   parenthesis, or next column definition.
+3. If you find `ON DELETE`, extract the token immediately after it.
+4. If you reach the end of the column definition without finding
+   `ON DELETE`, the behavior is NO ACTION (the SQLite default).
+
+**Token-to-behavior mapping:**
+
+| ON DELETE token (or absence) | Behavior |
+|-----------------------------|----------|
+| `RESTRICT` | IntegrityError raised |
+| `NO ACTION` (explicit) | IntegrityError raised (same as RESTRICT in SQLite) |
+| (omitted entirely) | Defaults to NO ACTION = IntegrityError raised |
+| `CASCADE` | Child rows silently deleted |
+| `SET NULL` | FK column set to NULL |
+| `SET DEFAULT` | FK column set to default value (rare) |
 
 Extract the EXACT token. Do NOT infer behavior from context, from the
-column name, or from other FKs in the same table. If the line says
-`ON DELETE RESTRICT`, the behavior is RESTRICT, period.
+column name, or from other FKs in the same table.
 
 **Step 2: Group FKs by parent table.**
 A single parent table may have children with DIFFERENT ON DELETE

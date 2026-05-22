@@ -315,25 +315,23 @@ verification artifact. This step exists because the orchestrator has
 historically proceeded past failed gates (Run 054 -- both gates FAIL,
 swarm launched anyway). The artifact is a hard precondition for Step 10w.
 
-1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Extract the `STATUS:` line.
-2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Extract the `STATUS:` line.
-3. If EITHER report contains `STATUS: FAIL`:
-   - Write file `docs/reports/<run-id>/gate-verification.md` with content:
-     ```
-     STATUS: BLOCKED
-     consistency: [PASS or FAIL]
-     completeness: [PASS or FAIL]
-     ```
-   - Output: `"PRE-SWARM GATE BLOCKED: [which] check has STATUS: FAIL."`
-   - Do NOT proceed to Step 10w. This is a hard abort.
-4. If both contain `STATUS: PASS`:
-   - Write file `docs/reports/<run-id>/gate-verification.md` with content:
-     ```
-     STATUS: CLEARED
-     consistency: PASS
-     completeness: PASS
-     ```
-   - Proceed to Step 10w.
+1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Find the line
+   starting with `STATUS:`. Copy the full line verbatim.
+2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Find the line
+   starting with `STATUS:`. Copy the full line verbatim.
+3. Write `docs/reports/<run-id>/gate-verification.md` with this exact format:
+   ```
+   STATUS: [CLEARED or BLOCKED]
+   consistency_status_line: "[verbatim STATUS line from consistency report]"
+   completeness_status_line: "[verbatim STATUS line from completeness report]"
+   ```
+   The `STATUS:` value in gate-verification.md MUST be derived from the
+   two quoted lines above. It is CLEARED only if both quoted lines say
+   `STATUS: PASS`. Any other content in either line means BLOCKED.
+   Do NOT write CLEARED speculatively or without reading both reports.
+4. If BLOCKED: output `"PRE-SWARM GATE BLOCKED"` with the two quoted
+   status lines. Do NOT proceed to Step 10w. This is a hard abort.
+5. If CLEARED: proceed to Step 10w.
 
 ### Step 10w: Parallel Swarm Work
 

@@ -22,11 +22,18 @@ FC31 in agent-pitfalls.md: "Each file looks correct in isolation. The bug only a
 
 **Caller integration note:** This agent is invoked by `/workflows:review`
 (global compound-engineering skill, not editable in this repo). The
-caller must pass the reports directory as input #3. If the caller does
-not pass it, construct the path from the run context: look for a
-`docs/reports/` subdirectory matching the current run ID, or fall back
-to writing `flow-trace-review.md` in the project root and noting the
-path in your output so the orchestrator can move it.
+caller must pass the reports directory as input #3.
+
+If input #3 is not provided, attempt to resolve it deterministically:
+1. List subdirectories under `docs/reports/`.
+2. If exactly one numeric subdirectory exists (e.g., `054/`), use it.
+3. If multiple exist, use the highest-numbered one (most recent run).
+4. If `docs/reports/` does not exist or has no numeric subdirectories,
+   FAIL with: `"CANNOT WRITE REPORT: reports directory not provided
+   and could not be resolved from docs/reports/. Pass it as input #3."`
+
+Do NOT write the report to the project root or any ad hoc path. Either
+resolve the correct reports directory or fail explicitly.
 
 ## Process
 
