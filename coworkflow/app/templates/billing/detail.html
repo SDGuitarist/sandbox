@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice #{{ invoice['id'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Invoice #{{ invoice['id'] }}</h1>
+    <div>
+        <a href="{{ url_for('billing.edit_form', invoice_id=invoice['id']) }}" class="btn btn-warning">Edit</a>
+        <form method="POST" action="{{ url_for('billing.delete', invoice_id=invoice['id']) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Member</dt>
+            <dd class="col-sm-9">{{ invoice['member_name'] }}</dd>
+
+            <dt class="col-sm-3">Description</dt>
+            <dd class="col-sm-9">{{ invoice['description'] }}</dd>
+
+            <dt class="col-sm-3">Amount</dt>
+            <dd class="col-sm-9">{{ invoice['amount_cents']|dollars }}</dd>
+
+            <dt class="col-sm-3">Total Paid</dt>
+            <dd class="col-sm-9">{{ total_paid|dollars }}</dd>
+
+            <dt class="col-sm-3">Balance</dt>
+            <dd class="col-sm-9">{{ (invoice['amount_cents'] - total_paid)|dollars }}</dd>
+
+            <dt class="col-sm-3">Billing Date</dt>
+            <dd class="col-sm-9">{{ invoice['billing_date']|date_format }}</dd>
+
+            <dt class="col-sm-3">Due Date</dt>
+            <dd class="col-sm-9">{{ invoice['due_date']|date_format }}</dd>
+
+            <dt class="col-sm-3">Status</dt>
+            <dd class="col-sm-9">
+                {% if invoice['status'] == 'pending' %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                {% elif invoice['status'] == 'paid' %}
+                    <span class="badge bg-success">Paid</span>
+                {% elif invoice['status'] == 'overdue' %}
+                    <span class="badge bg-danger">Overdue</span>
+                {% else %}
+                    <span class="badge bg-secondary">Cancelled</span>
+                {% endif %}
+            </dd>
+
+            <dt class="col-sm-3">Created</dt>
+            <dd class="col-sm-9">{{ invoice['created_at'] }}</dd>
+
+            <dt class="col-sm-3">Updated</dt>
+            <dd class="col-sm-9">{{ invoice['updated_at'] }}</dd>
+        </dl>
+    </div>
+</div>
+
+<h2 class="mb-3">Payments</h2>
+
+{% if payments %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Reference</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payments %}
+            <tr>
+                <td>{{ payment['id'] }}</td>
+                <td>{{ payment['amount_cents']|dollars }}</td>
+                <td>{{ payment['payment_date']|date_format }}</td>
+                <td>{{ payment['payment_method'] }}</td>
+                <td>{{ payment['reference_number'] }}</td>
+                <td>{{ payment['notes'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No payments recorded yet.</p>
+{% endif %}
+
+<a href="{{ url_for('billing.list_invoices') }}" class="btn btn-secondary">Back to Invoices</a>
+{% endblock %}
