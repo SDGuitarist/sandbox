@@ -5,17 +5,21 @@ def create_payment(conn: sqlite3.Connection, invoice_id: int,
                    amount_cents: int, payment_date: str,
                    payment_method: str, reference_number: str,
                    notes: str) -> int | None:
-    """Create payment. Returns payment ID, or None if overpayment rejected.
+    """Create payment. Returns payment ID, or None if rejected.
+    Rejects: invalid invoice, paid/cancelled invoice, overpayment.
     Commits: yes (BEGIN IMMEDIATE / COMMIT).
     Auto-updates invoice status to 'paid' when fully paid."""
     try:
         conn.execute('BEGIN IMMEDIATE')
-        # Overpayment check INSIDE the transaction (TOCTOU-safe)
         total_paid = get_total_paid_for_invoice(conn, invoice_id)
         invoice = conn.execute(
             "SELECT amount_cents, status FROM invoices WHERE id=?",
             (invoice_id,)).fetchone()
         if invoice is None:
+            conn.execute('ROLLBACK')
+            return None
+        # Reject paid/cancelled invoices (authoritative, TOCTOU-safe)
+        if invoice['status'] in ('paid', 'cancelled'):
             conn.execute('ROLLBACK')
             return None
         remaining = invoice['amount_cents'] - total_paid
