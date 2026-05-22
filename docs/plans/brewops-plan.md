@@ -41,6 +41,7 @@ def create_app():
     app.config['PERMANENT_SESSION_LIFETIME'] = 28800  # 8 hours
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_SECURE'] = not app.debug
 
     csrf.init_app(app)
 
@@ -113,7 +114,7 @@ DB_PATH = os.environ.get('DATABASE_PATH', 'brewops.db')
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DB_PATH)
+        g.db = sqlite3.connect(DB_PATH, isolation_level=None)
         g.db.row_factory = sqlite3.Row
         g.db.execute('PRAGMA journal_mode=WAL')
         g.db.execute('PRAGMA foreign_keys=ON')
@@ -149,6 +150,15 @@ conn = get_db()
 recipes = get_all_recipes(conn)
 ```
 
+**Note on isolation_level=None:** With `isolation_level=None`, Python's sqlite3
+module does NOT issue implicit BEGIN statements. This means:
+- SERIAL-SAFE functions execute in autocommit mode (each statement commits
+  individually). Route handlers call `conn.commit()` after the model call
+  to ensure the write is flushed, but with autocommit this is a no-op.
+  Include the `conn.commit()` call anyway for clarity.
+- NEEDS-BEGIN-IMMEDIATE functions issue explicit `BEGIN IMMEDIATE` / `COMMIT`
+  / `ROLLBACK` which work correctly because no implicit transaction is open.
+
 **DO NOT rules for model agents:**
 - Do NOT set `conn.row_factory` in model functions -- `get_db()` handles it
 - Do NOT use Python `datetime.now()` -- use SQL `datetime('now')`
@@ -178,6 +188,7 @@ def login_required(f):
 | Key | Set By | Value |
 |-----|--------|-------|
 | `session['logged_in']` | auth_routes (login) | `True` |
+| `session.permanent` | auth_routes (login) | `True` (MUST be set or PERMANENT_SESSION_LIFETIME is ignored) |
 
 ### Template Filters
 
@@ -243,7 +254,7 @@ CREATE TABLE IF NOT EXISTS tanks (
     name TEXT NOT NULL UNIQUE,
     capacity_gallons REAL NOT NULL CHECK(capacity_gallons > 0),
     tank_type TEXT NOT NULL CHECK(tank_type IN ('fermenter', 'brite', 'conditioning')),
-    current_batch_id INTEGER UNIQUE REFERENCES batches(id) ON DELETE SET NULL,
+    current_batch_id INTEGER UNIQUE,  -- FK enforced in application code (circular FK with batches.tank_id is unreliable in SQLite)
     notes TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -301,12 +312,13 @@ CREATE TABLE IF NOT EXISTS staff (
 );
 ```
 
-**Note on circular FK:** `tanks.current_batch_id` references `batches(id)` and
-`batches.tank_id` references `tanks(id)`. To handle this in SQLite, create
-the `tanks` table first with the FK but batches table must exist. Use
-`CREATE TABLE IF NOT EXISTS` so order doesn't matter on re-init. The
-`current_batch_id UNIQUE` constraint on tanks ensures one-to-one: only one
-tank can hold a given batch.
+**Note on circular reference:** `tanks.current_batch_id` and `batches.tank_id`
+form a circular reference. The FK on `tanks.current_batch_id` is removed
+(circular FKs are unreliable in SQLite -- the CREATE TABLE order matters and
+executescript doesn't guarantee FK resolution). The UNIQUE constraint on
+`current_batch_id` is kept to enforce one-batch-per-tank. The relationship
+is enforced in application code (`start_brewing`, `advance_batch_status`)
+which already validates the batch/tank association inside BEGIN IMMEDIATE.
 
 ### Data Ownership
 
@@ -817,8 +829,8 @@ def create_sale(conn: sqlite3.Connection, tap_id: int, quantity_oz: float,
             (tap_id, batch_id, quantity_oz, sale_type, price_cents))
         sale_id = cur.lastrowid
 
-        # Decrement remaining volume
-        new_remaining = batch['remaining_volume_oz'] - quantity_oz
+        # Decrement remaining volume (clamp to 0 for float precision safety)
+        new_remaining = max(0, batch['remaining_volume_oz'] - quantity_oz)
         conn.execute(
             "UPDATE batches SET remaining_volume_oz = ?, updated_at = datetime('now') WHERE id = ?",
             (new_remaining, batch_id))
