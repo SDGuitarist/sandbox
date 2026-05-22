@@ -5,7 +5,10 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from app.db import get_db
 from app.auth import login_required
-from app.models.payment import create_payment, get_payment, get_all_payments, delete_payment
+from app.models.payment import (
+    create_payment, get_payment, get_all_payments, delete_payment,
+    get_total_paid_for_invoice,
+)
 from app.models.invoice import get_invoice, get_invoices_by_status
 
 bp = Blueprint('payments', __name__)
@@ -85,9 +88,27 @@ def create():
     reference_number = request.form.get('reference_number', '').strip()
     notes = request.form.get('notes', '').strip()
 
-    # FC37: create_payment commits internally
-    create_payment(conn, invoice_id, amount_cents, payment_date,
-                   payment_method, reference_number, notes)
+    # Reject payments on paid/cancelled invoices
+    if invoice['status'] in ('paid', 'cancelled'):
+        flash('This invoice cannot receive payments.', 'error')
+        return redirect(url_for('payments.new_payment'))
+
+    # Overpayment check (UX gate -- authoritative check is inside create_payment)
+    total_paid = get_total_paid_for_invoice(conn, invoice_id)
+    remaining = invoice['amount_cents'] - total_paid
+    if remaining <= 0:
+        flash('Invoice is already fully paid.', 'error')
+        return redirect(url_for('payments.new_payment'))
+    if amount_cents > remaining:
+        flash('Payment exceeds remaining balance.', 'error')
+        return redirect(url_for('payments.new_payment'))
+
+    # create_payment commits internally (BEGIN IMMEDIATE)
+    payment_id = create_payment(conn, invoice_id, amount_cents, payment_date,
+                                payment_method, reference_number, notes)
+    if payment_id is None:
+        flash('Payment rejected.', 'error')
+        return redirect(url_for('payments.new_payment'))
     flash('Payment created successfully.', 'success')
     return redirect(url_for('payments.list_payments'))
 
