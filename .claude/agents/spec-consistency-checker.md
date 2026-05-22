@@ -61,6 +61,38 @@ If the spec has a wiring table or assignment table, verify that every
 exported function has at least one declared consumer. Flag exports with
 zero consumers.
 
+### 7. ON DELETE Behavior vs Function Docstrings (CRITICAL)
+When the spec's schema section contains FK constraints with ON DELETE
+clauses, verify that delete function docstrings and route error handling
+match the actual FK behavior.
+
+**Step 1:** Extract each FK constraint from CREATE TABLE statements.
+Find the EXACT token after "ON DELETE" -- must be one of: RESTRICT,
+CASCADE, SET NULL, NO ACTION. Use literal string matching on the SQL
+line. Do NOT infer behavior from context or from other FKs in the same
+table.
+
+**Step 2:** For each FK, check the corresponding delete function:
+
+| ON DELETE token | Expected behavior | Docstring should say | Route should do |
+|----------------|-------------------|---------------------|-----------------|
+| RESTRICT | SQLite raises IntegrityError | "Raises IntegrityError" or "cannot delete if children exist" | catch `sqlite3.IntegrityError`, flash error |
+| CASCADE | Silently deletes child rows | "Cascades to children" or no mention of IntegrityError | No IntegrityError catch needed |
+| SET NULL | Sets FK column to NULL | "Sets FK to NULL" or no mention of IntegrityError | No IntegrityError catch needed |
+
+**Step 3:** Flag as FAIL if:
+- FK is RESTRICT but docstring says no IntegrityError will be raised
+- FK is CASCADE or SET NULL but docstring claims IntegrityError
+- Route catches IntegrityError for a CASCADE/SET NULL FK (unnecessary)
+- Route does NOT catch IntegrityError for a RESTRICT FK (missing handler)
+
+CRITICAL: The most common error is confusing which FK constraint applies
+to which child table. A parent table may have RESTRICT children AND
+SET NULL children. Check EACH FK individually. For example, `members`
+may have `attendance ON DELETE RESTRICT` (raises IntegrityError) AND
+`membership_type_id ON DELETE SET NULL` (does not raise). Do not apply
+one FK's behavior to a different FK's child table.
+
 ## Rules
 
 1. Extract all checkable assertions from the spec first, then verify each.

@@ -308,6 +308,22 @@ authorization annotations, unannotated transactions) that produce predictable
 P1s at swarm scale. It is separate from Step 9w.5 (consistency) which catches
 contradictions.
 
+### Step 9w.7: Pre-Swarm Gate Verification (MANDATORY -- SWARM ONLY)
+
+Before spawning ANY agents, re-read BOTH gate reports and verify they passed.
+This step exists because the orchestrator has historically proceeded past
+failed gates (Run 054 -- both gates FAIL, swarm launched anyway).
+
+1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Find the `STATUS:` line.
+2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Find the `STATUS:` line.
+3. If EITHER report contains `STATUS: FAIL`:
+   - Output: `"PRE-SWARM GATE BLOCKED: [consistency|completeness] check has STATUS: FAIL. Cannot spawn agents. Fix the spec and re-run the failing gate."`
+   - Do NOT proceed to Step 10w. This is a hard abort.
+4. If both contain `STATUS: PASS`: proceed to Step 10w.
+
+Do NOT skip this step. Do NOT proceed on WARN-only (WARNs are allowed).
+The only acceptable statuses to proceed are both PASS.
+
 ### Step 10w: Parallel Swarm Work
 
 Read the `## Swarm Agent Assignment` section from the plan. Before spawning

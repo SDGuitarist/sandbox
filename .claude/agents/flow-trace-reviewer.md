@@ -1,7 +1,7 @@
 ---
 name: flow-trace-reviewer
 description: Traces critical data flows end-to-end through 3+ files to catch cross-flow data integrity bugs. Use after review agents complete to catch bugs that single-file analysis misses.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, Write
 model: sonnet
 ---
 
@@ -17,6 +17,8 @@ FC31 in agent-pitfalls.md: "Each file looks correct in isolation. The bug only a
 
 1. Path to the plan document (contains the state machine and API contract)
 2. Path to the project root
+3. Path to the reports directory (e.g., `docs/reports/054/`) -- write your
+   report to `[reports-directory]/flow-trace-review.md`
 
 ## Process
 
@@ -57,9 +59,13 @@ For each value that crosses file boundaries:
 3. Is the value stored in the correct column? (square_order_id vs square_payment_id)
 4. If the value can be None, does the consumer handle None?
 
-## Output Format
+## Output
 
-Write findings to stdout. For each flow traced:
+Write findings to the reports directory provided in your inputs. If given
+a reports directory like `docs/reports/054/`, write to
+`docs/reports/054/flow-trace-review.md`. Use the Write tool.
+
+For each flow traced:
 
 ```markdown
 ### Flow: [name] ([file A] -> [file B] -> [file C])
