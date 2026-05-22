@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if staff else 'New' }} Staff Member{% endblock %}
+
+{% block content %}
+<h1>{{ 'Edit' if staff else 'New' }} Staff Member</h1>
+
+<form method="post" action="{{ url_for('staff.update', staff_id=staff['id']) if staff else url_for('staff.create') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label for="name" class="form-label">Name</label>
+    <input type="text" class="form-control" id="name" name="name"
+           value="{{ staff['name'] if staff else '' }}" required maxlength="200">
+  </div>
+
+  <div class="mb-3">
+    <label for="role" class="form-label">Role</label>
+    <select class="form-select" id="role" name="role" required>
+      <option value="">Select a role</option>
+      {% for r in roles %}
+      <option value="{{ r }}" {{ 'selected' if staff and staff['role'] == r else '' }}>{{ r|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="email" class="form-label">Email (optional)</label>
+    <input type="email" class="form-control" id="email" name="email"
+           value="{{ staff['email'] if staff and staff['email'] else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="phone" class="form-label">Phone</label>
+    <input type="text" class="form-control" id="phone" name="phone"
+           value="{{ staff['phone'] if staff else '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="hire_date" class="form-label">Hire Date</label>
+    <input type="date" class="form-control" id="hire_date" name="hire_date"
+           value="{{ staff['hire_date'] if staff and staff['hire_date'] else '' }}">
+  </div>
+
+  {% if staff %}
+  <div class="mb-3">
+    <label for="status" class="form-label">Status</label>
+    <select class="form-select" id="status" name="status" required>
+      {% for s in statuses %}
+      <option value="{{ s }}" {{ 'selected' if staff['status'] == s else '' }}>{{ s|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <button type="submit" class="btn btn-primary">{{ 'Update' if staff else 'Create' }}</button>
+  <a href="{{ url_for('staff.list') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
