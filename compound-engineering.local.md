@@ -1,23 +1,25 @@
-# Review Context -- Sandbox (Spec Completeness Checker)
+# Review Context -- CoWorkFlow (Run 055)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Whether the completeness checker can reliably parse spec structure to identify routes/functions/exports without excessive false positives."
+**Brainstorm risk:** Desk booking conflict logic for AM/PM/full overlap -- 3-way check has no UNIQUE constraint equivalent.
 
-**Plan mitigation:** Hybrid parsing strategy (canonical heading prefixes, flexible content). Route-path column allowlist with /prefix guard. 3 Codex rounds hardened N/A flow, enumeration rules, and inter-check dependencies.
+**Plan mitigation:** Prescribed BEGIN IMMEDIATE + try/except/ROLLBACK for both booking models. Partial UNIQUE index for room bookings. Accepted that desk bookings rely on app-level logic only.
 
-**Work risk (from Feed-Forward):** Route-table column parsing, Check 2->1 dependency, heading-prefix matching on future formats.
+**Work risk (from Feed-Forward):** Plans agent diverged on CSRF token syntax (FC1 variant). All other patterns correctly applied across 22 agents.
 
-**Review resolution:** 1 P1 (permission mode list) + 5 P2 (CLAUDE.md method gap, commit step, wording, report format, naming) fixed. 2 P2 deferred (template scaffolding, N/A dedup). 9 P3 deferred.
+**Review resolution:** 3 P1 (1 fixed: CSRF token parens, 2 deferred: invoice auto-status + desk UNIQUE), 6 P2 deferred, 2 INFO. Flow-trace verified desk booking overlap logic is correct.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| .claude/agents/spec-completeness-checker.md | New agent, 6 checks, BLOCKED status | Check logic correctness, heading detection |
-| .claude/skills/autopilot/SKILL.md | Step 9w.6, permission mode list | Gate integration, retry flow |
-| CLAUDE.md | Mandatory spec sections | Documentation accuracy vs agent behavior |
+| coworkflow/app/templates/plans/form.html | Fixed CSRF token parens | FC1 naming divergence |
+| coworkflow/app/templates/plans/list.html | Fixed CSRF token parens | FC1 naming divergence |
+| coworkflow/app/models/desk_booking.py | New -- BEGIN IMMEDIATE booking | FC29 transaction boundary |
+| coworkflow/app/models/room_booking.py | New -- BEGIN IMMEDIATE booking | FC29 transaction boundary |
+| coworkflow/app/models/payment.py | New -- no invoice status update | FC31 cross-flow integrity |
 
 ## Plan Reference
 
-`docs/plans/2026-05-21-feat-spec-completeness-checker-plan.md`
+`docs/plans/2026-05-21-coworkflow-plan.md`
