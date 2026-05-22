@@ -46,18 +46,27 @@ auth with `@login_required` decorator. Logout via POST (CSRF-protected).
 **Rationale:** Same proven pattern as GymFlow. Single manager runs the space.
 
 ### 2. Hot Desk Booking Model
-Desks are shared resources with no permanent assignment. Members book any
-available desk for a date, choosing half-day (AM/PM) or full-day. No
-arbitrary time ranges -- discrete slots only.
+Desks are individual named resources (e.g., "Desk A1", "Desk B3"). Members
+book a specific desk for a date, choosing half-day (AM: 8:00-13:00, PM:
+13:00-18:00) or full-day (8:00-18:00). No arbitrary time ranges -- discrete
+slots only. Each desk holds one person, so booking a desk for a slot is
+exclusive (no capacity count needed -- just check if the slot is taken).
+Desk booking also uses BEGIN IMMEDIATE to prevent double-booking the same
+desk+date+slot, but the check is simpler than room bookings (existence
+check vs. capacity count).
 
 **Rationale:** Keeps the booking model discrete, easier to spec and implement
-correctly. Avoids overlap-detection complexity. Maps to GymFlow's constrained
-availability pattern.
+correctly. Per-desk exclusivity means a simple "does a booking exist for this
+desk+date+slot?" check, no capacity counting. Both booking types use BEGIN
+IMMEDIATE for atomicity, but desk bookings are the simpler variant.
 
 ### 3. Meeting Room 30-Minute Slots
-Meeting rooms bookable in 30-minute increments only. Bookings must align to
-slot boundaries (9:00, 9:30, 10:00, etc.). Availability checked per slot.
-Booking creation must be transaction-safe to prevent double-booking.
+Meeting rooms bookable in 30-minute increments during operating hours
+(8:00-18:00, yielding 20 slots per day). Bookings must align to slot
+boundaries (8:00, 8:30, 9:00, ..., 17:30). Each room has a capacity
+(e.g., 4, 8, 12 people) but a booking reserves the entire room -- capacity
+is informational, not a per-seat booking. Booking creation must be
+transaction-safe (BEGIN IMMEDIATE) to prevent double-booking the same slot.
 
 **Rationale:** Discrete slots avoid overlap-detection queries. 30 minutes is
 the industry standard. Compound uniqueness key (room_id, booking_date,
@@ -68,9 +77,15 @@ GymFlow's single-key attendance check.
 Members, membership plans, desks, meeting rooms, desk bookings, room bookings,
 billing/invoices, payments, amenities.
 
-**Rationale:** Core 8 gives the operational spine. Amenities adds one
-cross-boundary domain (rooms/desks have amenities) without bloating scope.
-Events, community board, and multi-tier plans deferred to Phase 2.
+Amenities are space-wide features (WiFi, printing, coffee, parking, lockers)
+that the admin tracks as a simple CRUD list. No many-to-many junction table
+with desks/rooms -- amenities are informational ("this space offers these
+things"), not per-resource. This avoids junction table complexity while still
+exercising a standalone CRUD domain.
+
+**Rationale:** Core 8 gives the operational spine. Amenities adds a lightweight
+domain without bloating scope. Events, community board, and multi-tier plans
+deferred to Phase 2.
 
 ### 5. Integer Cents for Money
 All monetary values stored as INTEGER cents. Displayed with `{{ value|dollars }}`
@@ -92,8 +107,9 @@ This build validates 3 infrastructure fixes from Run 054:
 
 1. **Consistency checker Check #7** -- ON DELETE FK parsing with multiline
    extraction, mixed-FK grouping, NO ACTION/omitted handling. The coworking
-   schema should exercise mixed FKs (e.g., member delete with RESTRICT
-   bookings + SET NULL amenity preferences).
+   schema exercises RESTRICT FKs (member delete blocked by bookings/invoices)
+   and SET NULL FKs (room bookings referencing a member's plan). At minimum
+   validates the token extraction and per-parent grouping logic.
 2. **Gate-verification artifact (Step 9w.7)** -- The new artifact-based gate
    enforcement. Both pre-swarm gates must write CLEARED to
    `gate-verification.md` before agents spawn.
@@ -106,8 +122,9 @@ This build validates 3 infrastructure fixes from Run 054:
 
 ## Feed-Forward
 
-- **Hardest decision:** Scoping to 9 domains. Amenities adds the many-to-many
-  exercise without events' scheduling complexity. Events is Phase 2.
+- **Hardest decision:** Scoping to 9 domains. Amenities adds a lightweight
+  standalone CRUD domain without events' scheduling complexity. Events is
+  Phase 2.
 - **Rejected alternatives:** Assigned desks (removes scheduling), zones
   (tier complexity), events (GymFlow overlap), community board (low value).
 - **Least confident:** Room booking double-booking prevention. Meeting rooms
@@ -116,5 +133,5 @@ This build validates 3 infrastructure fixes from Run 054:
   without race conditions. This is FC29 territory again: the spec must
   prescribe the exact transaction pattern, error-handling wrapper, and
   uniqueness invariant so agents do not diverge. Secondary validation target:
-  mixed FK behavior on member delete (RESTRICT bookings + SET NULL amenity
-  preferences) -- exercises the new Check #7 edge case.
+  mixed FK behavior on member delete (RESTRICT bookings/invoices + any SET NULL
+  children) -- exercises the new Check #7 grouping logic.
