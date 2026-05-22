@@ -47,13 +47,30 @@
 
 ## FAILURES
 
-<!-- Filled after review -->
+| # | Agent | Failure Class | Description | Resolution |
+|---|-------|--------------|-------------|------------|
+| 1 | plan_routes | FC1 | CSRF token `{{ csrf_token }}` without parens in plans/form.html and plans/list.html | Fixed: added `()` |
+| 2 | core | FC1 | Plan templates used layout.html instead of base.html | Fixed during assembly |
 
 ---
 
 ## RUN_METRICS
 
-<!-- Filled after review -->
+| Metric | Value |
+|--------|-------|
+| Total agents | 22 |
+| Agents PASS | 22/22 |
+| Merge conflicts | 0 |
+| Assembly fixes | 1 (FC1: base.html naming) |
+| Smoke tests | 21/21 PASS |
+| Review findings | 3 P1, 6 P2, 2 INFO |
+| P1 fixed | 1 (CSRF token parens) |
+| P1 deferred | 2 (invoice auto-status, desk UNIQUE) |
+| P2 deferred | 6 |
+| FC37 failures | 0/22 (100% commit rate) |
+| LOC | ~3,729 |
+| Files | 66 |
+| Solution doc | docs/solutions/2026-05-22-coworkflow-22-agent-swarm-build.md |
 
 ## Template Version
 
