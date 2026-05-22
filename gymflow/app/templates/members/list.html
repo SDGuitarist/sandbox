@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Members{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Members</h1>
+    <a href="{{ url_for('members.new_member') }}" class="btn btn-primary">Add Member</a>
+</div>
+
+<form method="get" action="{{ url_for('members.list_members') }}" class="row g-3 mb-4">
+    <div class="col-auto">
+        <input type="text" name="q" class="form-control" placeholder="Search by name or email"
+               value="{{ request.args.get('q', '') }}">
+    </div>
+    <div class="col-auto">
+        <select name="status" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="active" {{ 'selected' if request.args.get('status') == 'active' }}>Active</option>
+            <option value="frozen" {{ 'selected' if request.args.get('status') == 'frozen' }}>Frozen</option>
+            <option value="cancelled" {{ 'selected' if request.args.get('status') == 'cancelled' }}>Cancelled</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary">Filter</button>
+    </div>
+</form>
+
+{% if members %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Membership</th>
+                <th>Status</th>
+                <th>Join Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members %}
+            <tr>
+                <td><a href="{{ url_for('members.detail', member_id=member['id']) }}">{{ member['name'] }}</a></td>
+                <td>{{ member['email'] }}</td>
+                <td>{{ member['phone'] }}</td>
+                <td>{{ member['membership_type_name'] or 'None' }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if member['status'] == 'active' else ('warning' if member['status'] == 'frozen' else 'danger') }}">
+                        {{ member['status']|capitalize }}
+                    </span>
+                </td>
+                <td>{{ member['join_date']|date_format }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No members found.</p>
+{% endif %}
+{% endblock %}
