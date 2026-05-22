@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}New Desk Booking - CoWorkFlow{% endblock %}
+
+{% block content %}
+<h1>New Desk Booking</h1>
+
+<form method="POST" action="{{ url_for('desk_bookings.create') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="desk_id" class="form-label">Desk</label>
+        <select class="form-control" id="desk_id" name="desk_id" required>
+            <option value="">-- Select Desk --</option>
+            {% for d in desks %}
+            <option value="{{ d['id'] }}">{{ d['name'] }} ({{ d['location'] }})</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="member_id" class="form-label">Member</label>
+        <select class="form-control" id="member_id" name="member_id" required>
+            <option value="">-- Select Member --</option>
+            {% for m in members %}
+            <option value="{{ m['id'] }}">{{ m['name'] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="booking_date" class="form-label">Date</label>
+        <input type="date" class="form-control" id="booking_date" name="booking_date" required>
+    </div>
+
+    <div class="mb-3">
+        <label for="block" class="form-label">Block</label>
+        <select class="form-control" id="block" name="block" required>
+            <option value="">-- Select Block --</option>
+            <option value="am">AM</option>
+            <option value="pm">PM</option>
+            <option value="full">Full Day</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create Booking</button>
+    <a href="{{ url_for('desk_bookings.list_bookings') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
