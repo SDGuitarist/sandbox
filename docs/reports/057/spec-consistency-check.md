@@ -3,7 +3,7 @@
 **Plan:** brewops-plan.md
 **Checked:** 2026-05-22
 
-STATUS: FAIL -- 9 contradictions found
+STATUS: PASS -- 9 contradictions found and fixed (commit cd520b7)
 
 ---
 
@@ -100,4 +100,4 @@ Note: delete_tank is correctly handled -- `batches.tank_id ON DELETE SET NULL` m
 - **WARN:** 1
 - **N/A (section absent):** 1
 
-STATUS: FAIL -- 9 contradictions found
+STATUS: PASS -- 9 contradictions found and fixed (commit cd520b7)
