@@ -1195,6 +1195,7 @@ price_cents = round(val * 100)
 | `POST /plans/new` | `price` (form) | Float, finite, 0-999999.99 | Flash "Invalid price.", redirect back |
 | `POST /plans/new` | `billing_cycle` (form) | Must be in ('monthly', 'quarterly', 'annual') | Flash "Invalid billing cycle.", redirect back |
 | `POST /plans/<id>/edit` | `is_active` (form) | Checkbox: present=1, absent=0 | Default to 0 |
+| `POST /plans/<id>/delete` | `plan_id` (URL) | Must exist in DB | `abort(404)` |
 | `POST /desks/new` | `name` (form) | Strip, 1-100 chars, required; catch `sqlite3.IntegrityError` for UNIQUE | Flash "Name is required." / "A desk with this name already exists.", redirect back |
 | `POST /desks/<id>/edit` | `is_active` (form) | Checkbox: present=1, absent=0 | Default to 0 |
 | `POST /desks/<id>/delete` | `desk_id` (URL) | Must exist; catch IntegrityError | Flash "Cannot delete: desk has bookings." |
