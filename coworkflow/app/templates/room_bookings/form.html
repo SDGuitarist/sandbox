@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}New Room Booking{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">New Room Booking</h1>
+    <a href="{{ url_for('room_bookings.list_bookings') }}" class="btn btn-outline-secondary">
+        Back to List
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('room_bookings.create') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="room_id" class="form-label">Room</label>
+                <select class="form-select" id="room_id" name="room_id" required>
+                    <option value="">Select a room...</option>
+                    {% for room in rooms %}
+                    <option value="{{ room['id'] }}">
+                        {{ room['name'] }} (Capacity: {{ room['capacity'] }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="member_id" class="form-label">Member</label>
+                <select class="form-select" id="member_id" name="member_id" required>
+                    <option value="">Select a member...</option>
+                    {% for member in members %}
+                    <option value="{{ member['id'] }}">{{ member['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="booking_date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="booking_date"
+                       name="booking_date" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="slot_start" class="form-label">Time Slot</label>
+                <select class="form-select" id="slot_start" name="slot_start" required>
+                    <option value="">Select a time slot...</option>
+                    {% for slot in slot_starts %}
+                    <option value="{{ slot }}">{{ slot }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="purpose" class="form-label">Purpose (optional)</label>
+                <textarea class="form-control" id="purpose" name="purpose"
+                          rows="3" maxlength="500"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create Booking</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
