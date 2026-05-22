@@ -134,7 +134,16 @@ def delete(tank_id):
     if tank is None:
         abort(404)
 
-    delete_tank(conn, tank_id)
-    conn.commit()
+    if tank['current_batch_id'] is not None:
+        flash('Cannot delete: tank has an active batch', 'error')
+        return redirect(url_for('tanks.detail', tank_id=tank_id))
+
+    try:
+        delete_tank(conn, tank_id)
+        conn.commit()
+    except sqlite3.IntegrityError:
+        flash('Cannot delete: tank is referenced by other records', 'error')
+        return redirect(url_for('tanks.detail', tank_id=tank_id))
+
     flash('Tank deleted successfully', 'success')
     return redirect(url_for('tanks.list'))

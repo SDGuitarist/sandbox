@@ -7,14 +7,14 @@ project_name: "BrewOps (Craft Brewery Manager)"
 ---
 
 plan_path: docs/plans/brewops-plan.md
-solution_doc_path: TBD (not yet written -- compound phase pending)
-review_summary_path: TBD (review not yet run)
+solution_doc_path: docs/solutions/2026-05-22-brewops-21-agent-swarm-build.md
+review_summary_path: docs/reports/057/review-summary.md
 reports_dir: docs/reports/057/
 build_tracking_path: BUILD_TRACKING.md
 handoff_path: HANDOFF.md
 
-last_completed_step: "Step 15w: Merge Assembly to Main"
-next_step: "Shared Tail: Review + Compound + Learnings + Self-Audit"
+last_completed_step: "Learnings propagation + BUILD_TRACKING fill"
+next_step: "Verify BUILD_TRACKING"
 
 completed_artifacts:
   - docs/brainstorms/2026-05-22-brewops-brainstorm.md
@@ -25,29 +25,16 @@ completed_artifacts:
   - docs/reports/057/gate-verification.md
   - docs/reports/057/swarm-assignment.md
   - docs/reports/057/ownership-gate.md
-  - BUILD_TRACKING.md (AGENT_STATUS filled, 21/21 PASS)
-  - 54 source files (app/, schema.sql, seed.py, test_smoke.py, etc.)
+  - docs/reports/057/review-summary.md
+  - docs/reports/057/flow-trace-review.md
+  - docs/solutions/2026-05-22-brewops-21-agent-swarm-build.md
+  - BUILD_TRACKING.md (complete -- AGENT_STATUS, FAILURES, RUN_METRICS filled)
+  - 54 source files (app/, schema.sql, seed.py, test_smoke.py)
+  - 17 todos (7 P1 complete, 6 P2 pending, 4 P3 pending)
+  - Agent-pitfalls updated (FC45, FC46 added)
 
 pending_mandatory_artifacts:
-  - Review (multi-agent code review)
-  - Resolve TODOs
-  - Compound (solution doc in docs/solutions/)
-  - Update learnings (/update-learnings-noninteractive)
-  - Verify learnings artifacts
-  - Fill FAILURES and RUN_METRICS in BUILD_TRACKING.md
   - Verify BUILD_TRACKING.md completeness
   - Self-audit report (docs/reports/057/self-audit.md)
   - Verify self-audit (9 gates)
-  - Update HANDOFF.md
-
-swarm_stats:
-  agents_spawned: 21
-  agents_completed: 21
-  fc37_failures: 0
-  merge_conflicts: 0
-  assembly_fixes: 0
-  smoke_test: "61/61 PASS"
-  files_created: 54
-  loc_estimate: 4343
-
-feed_forward_risk: "sale_models derived state chain: sale -> decrement volume -> check empty -> update batch status -> clear tap. 4-step side effect in one transaction."
+  - Final HANDOFF.md update

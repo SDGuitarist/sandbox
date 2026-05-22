@@ -7,7 +7,7 @@ DB_PATH = os.environ.get('DATABASE_PATH', 'brewops.db')
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DB_PATH, isolation_level=None)
+        g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
         g.db.execute('PRAGMA journal_mode=WAL')
         g.db.execute('PRAGMA foreign_keys=ON')

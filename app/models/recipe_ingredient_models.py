@@ -32,5 +32,9 @@ def add_recipe_ingredient(conn: sqlite3.Connection, recipe_id: int,
 # Usage: remove_recipe_ingredient(conn, ri_id)
 #        conn.commit()
 # Tag: SERIAL-SAFE
-def remove_recipe_ingredient(conn: sqlite3.Connection, ri_id: int) -> None:
-    conn.execute('DELETE FROM recipe_ingredients WHERE id = ?', (ri_id,))
+def remove_recipe_ingredient(conn: sqlite3.Connection, ri_id: int, recipe_id: int) -> bool:
+    """Delete a recipe ingredient. Returns True if deleted, False if not found or wrong recipe."""
+    cur = conn.execute(
+        'DELETE FROM recipe_ingredients WHERE id = ? AND recipe_id = ?',
+        (ri_id, recipe_id))
+    return cur.rowcount > 0

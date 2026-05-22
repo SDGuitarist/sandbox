@@ -7,7 +7,7 @@ VALID_TRANSITIONS = {
     'fermenting': ['conditioning'],
     'conditioning': ['ready'],
     'ready': ['tapped'],
-    'tapped': ['empty'],
+    'tapped': [],  # Only create_sale() can transition tapped->empty (clears tap atomically)
     'empty': [],
 }
 

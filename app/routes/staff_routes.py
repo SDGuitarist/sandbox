@@ -173,8 +173,12 @@ def delete(staff_id):
     if member is None:
         abort(404)
 
-    delete_staff(conn, staff_id)
-    conn.commit()
+    try:
+        delete_staff(conn, staff_id)
+        conn.commit()
+    except sqlite3.IntegrityError:
+        flash('Cannot delete: staff member is referenced by other records', 'error')
+        return redirect(url_for('staff.detail', staff_id=staff_id))
 
     flash('Staff member deleted', 'success')
     return redirect(url_for('staff.list'))

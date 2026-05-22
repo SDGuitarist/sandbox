@@ -10,7 +10,7 @@ from app.models.recipe_models import (
 from app.models.recipe_ingredient_models import (
     get_recipe_ingredients, add_recipe_ingredient, remove_recipe_ingredient
 )
-from app.models.ingredient_models import get_all_ingredients
+from app.models.ingredient_models import get_all_ingredients, get_ingredient
 
 bp = Blueprint('recipes', __name__)
 
@@ -184,14 +184,17 @@ def add_ingredient(recipe_id):
     unit = request.form.get('unit', 'lb').strip()
 
     # Verify ingredient exists
-    from app.models.ingredient_models import get_ingredient
     ingredient = get_ingredient(conn, ingredient_id)
     if ingredient is None:
         flash('Invalid ingredient', 'error')
         return redirect(url_for('recipes.detail', recipe_id=recipe_id))
 
-    add_recipe_ingredient(conn, recipe_id, ingredient_id, quantity, unit)
-    conn.commit()
+    try:
+        add_recipe_ingredient(conn, recipe_id, ingredient_id, quantity, unit)
+        conn.commit()
+    except sqlite3.IntegrityError:
+        flash('This ingredient is already in the recipe', 'error')
+        return redirect(url_for('recipes.detail', recipe_id=recipe_id))
 
     flash('Ingredient added to recipe', 'success')
     return redirect(url_for('recipes.detail', recipe_id=recipe_id))
@@ -206,7 +209,8 @@ def remove_ingredient(recipe_id, ri_id):
     if recipe is None:
         abort(404)
 
-    remove_recipe_ingredient(conn, ri_id)
+    if not remove_recipe_ingredient(conn, ri_id, recipe_id):
+        abort(404)
     conn.commit()
 
     flash('Ingredient removed from recipe', 'success')

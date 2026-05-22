@@ -18,8 +18,6 @@ def create_app():
     from app.db import init_app
     init_app(app)
 
-    from app.auth import login_required  # noqa: F401
-
     from app.filters import dollars, format_date
     app.jinja_env.filters['dollars'] = dollars
     app.jinja_env.filters['format_date'] = format_date

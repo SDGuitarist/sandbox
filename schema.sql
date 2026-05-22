@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS recipe_ingredients (
     ingredient_id INTEGER NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
     quantity REAL NOT NULL CHECK(quantity > 0),
     unit TEXT NOT NULL DEFAULT 'lb',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(recipe_id, ingredient_id)
 );
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
 CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient_id ON recipe_ingredients(ingredient_id);
@@ -35,7 +36,7 @@ CREATE TABLE IF NOT EXISTS tanks (
     name TEXT NOT NULL UNIQUE,
     capacity_gallons REAL NOT NULL CHECK(capacity_gallons > 0),
     tank_type TEXT NOT NULL CHECK(tank_type IN ('fermenter', 'brite', 'conditioning')),
-    current_batch_id INTEGER UNIQUE,
+    current_batch_id INTEGER UNIQUE REFERENCES batches(id) ON DELETE SET NULL,
     notes TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))

@@ -2,17 +2,15 @@
 
 **Date:** 2026-05-22
 **Branch:** master
-**Phase:** Run 057 -- Shared Tail (review + compound + learnings + audit)
+**Phase:** Run 057 -- COMPLETE
 
 ## Current State
 
-Run 057 (BrewOps Craft Brewery Manager) swarm build is complete through
-Step 15w (assembly merge to master). 21 agents, 54 files, ~4,343 LOC,
-61/61 smoke tests pass, 0 merge conflicts, 0 assembly fixes.
+Run 057 (BrewOps Craft Brewery Manager) is COMPLETE. Full compound cycle:
+brainstorm -> plan -> deepen -> swarm (21 agents) -> review (10 agents) ->
+resolve P1s -> compound -> learnings -> self-audit -> verify.
 
-**CHECKPOINT.md exists** -- the previous session paused for context after
-the swarm. The tail resume skill (`/tail-resume`) reads CHECKPOINT.md and
-picks up from the next_step field.
+21 agents, 54 files, ~4,343 LOC, 61/61 smoke tests pass, 7 P1s resolved.
 
 ## What's Done
 
@@ -33,22 +31,9 @@ picks up from the next_step field.
 | Smoke Tests | 61/61 PASS |
 | Merge to Master | DONE |
 
-## What's Remaining (Shared Tail)
+## What's Remaining
 
-All of these are mandatory. Missing any fails the run.
-
-1. **Review** -- `/workflows:review`. Review agents should scrutinize the
-   Feed-Forward risk: sale_models derived state chain (4-step side effect).
-2. **Resolve TODOs** -- `/compound-engineering:resolve_todo_parallel`
-3. **Compound** -- `/workflows:compound`. Solution doc must include Risk
-   Resolution section tracing Feed-Forward through implementation.
-4. **Update Learnings** -- `/update-learnings-noninteractive`
-5. **Verify Learnings Artifacts** -- 4 checks (summary table, HANDOFF date,
-   agent-pitfalls entry, ID uniqueness)
-6. **Fill FAILURES + RUN_METRICS** -- Edit BUILD_TRACKING.md after review
-7. **Verify BUILD_TRACKING** -- Non-empty AGENT_STATUS, FAILURES, RUN_METRICS
-8. **Self-Audit** -- self-audit-reviewer agent writes docs/reports/057/self-audit.md
-9. **Verify Self-Audit** -- `/verify-self-audit 057 docs/reports/057/`
+P2 and P3 todos remain in `todos/` directory. No mandatory tail steps outstanding.
 
 ## Key Files
 
@@ -95,7 +80,13 @@ float clamping is in place.
 | 055 | CoWorkFlow | 22 | CSRF syntax in Coordinated Behaviors |
 | 054 | GymFlow | 26 | BEGIN IMMEDIATE needs try/except/ROLLBACK |
 
-## Deferred Items (Unrelated to Run 057)
+## Deferred Items
+
+### BrewOps (Run 057)
+- [057-W1] WARN: `get_batch` Export Names ambiguity. DEFERRED, LOW.
+- [057-W2] WARN: 6 P2 review findings deferred (dashboard queries, missing index, no pagination, dollars filter, tap/tank delete guard, lazy import). DEFERRED, MEDIUM.
+- [057-W3] WARN: 4 P3 review findings deferred (swarm consistency, security hardening, no JSON API, WAL pragma). DEFERRED, LOW.
+- [057-W4] WARN: isolation_level=None recurred for 3rd build -- template-copy behavior. DEFERRED, MEDIUM.
 
 ### CoWorkFlow (Run 056 review -- all pre-existing)
 - [056-D1] P1: `conn.commit()` no-op across all models. DEFERRED, MEDIUM.
@@ -108,11 +99,7 @@ float clamping is in place.
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is the Sandbox project, Run 057 (BrewOps).
-
-The swarm build is complete (21 agents, 54 files, 61/61 smoke tests pass).
-Resume the shared tail: review, resolve TODOs, compound, update-learnings,
-BUILD_TRACKING, self-audit, verify.
-
-Run /tail-resume
+Read HANDOFF.md. Run 057 (BrewOps) is complete.
+P2/P3 todos in todos/ directory if you want to continue polishing.
+Otherwise, start a new project.
 ```
