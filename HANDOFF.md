@@ -15,7 +15,7 @@ GymFlow gym management system built and reviewed. 26-agent swarm, zero merge con
 | Brainstorm | docs/brainstorms/2026-05-21-gym-manager-brainstorm.md |
 | Plan (shared spec) | docs/plans/2026-05-21-gym-manager-plan.md |
 | Solution doc | docs/solutions/2026-05-21-gymflow-26-agent-swarm-build.md |
-| Review reports | docs/reports/054/ (security, python, learnings, summary; flow-trace report absent -- see 054-W5) |
+| Review reports | docs/reports/054/ (security, python, learnings, flow-trace, summary) |
 | Self-audit | docs/reports/054/self-audit.md |
 | BUILD_TRACKING | BUILD_TRACKING.md |
 | App code | gymflow/ (79 files, ~5,638 LOC) |
@@ -38,7 +38,7 @@ GymFlow gym management system built and reviewed. 26-agent swarm, zero merge con
 
 - [054-W1] Spec-completeness-check STATUS: FAIL (11 omissions: 7 edit routes missing from Input Validation Prescriptions, 3 functions missing from Wiring Table, 1 endpoint missing from Export Names). Swarm proceeded despite gate failure. Spec gaps remain as technical debt. MEDIUM severity.
 - [054-W3] 6 OWASP WARNs remain open: no duplicate check-in guard (P2-1), no brute-force protection on login (P2-2), no security headers (P2-6), no session expiration (P2-7), plaintext admin password in env var. All deferred as P2. MEDIUM severity for any production deployment.
-- [054-W5] Flow-trace reviewer report missing. HANDOFF and BUILD_TRACKING list the reviewer as having run, but docs/reports/054/flow-trace-review.md does not exist. Prior runs show flow-trace review finds the highest-ROI bugs in cross-template flows. If not run, cross-blueprint template bugs may be undetected. MEDIUM severity.
+- [054-W5] RESOLVED: Flow-trace reviewer report was written post-self-audit. Report at docs/reports/054/flow-trace-review.md. Found same P1-1 (already fixed) + new P2 (invoice.py missing conn.commit(), deferred as part of P2-3).
 - [054-W6] Learnings-researcher misclassified spec-consistency-check FAILs as P0 CRITICAL (data loss risk) based on checker output without manual verification. Structural fix (recalibrate checker or add mandatory manual verification step) deferred to next session. agent-pitfalls.md updated with new rule. MEDIUM severity.
 
 ### Spec Completeness Checker
