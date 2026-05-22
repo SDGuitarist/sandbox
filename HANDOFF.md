@@ -87,14 +87,49 @@ is designed to catch. The spec must declare them explicitly.
 ```
 Read HANDOFF.md. This is the Sandbox project.
 
-Run 057: Build a Craft Brewery Manager (BrewOps) as a 20-25 agent Flask+SQLite
-swarm. This build validates 3 new mandatory spec sections from Run 056:
-Concurrency Contract, Defense-in-Depth Matrix, and Derived State.
+Run 057: Build BrewOps, a Craft Brewery Manager, as a standalone Flask +
+SQLite autopilot-swarm build. Target 20-25 agents.
 
-Domain: recipes, batches, ingredients/inventory, tanks, taproom/taps, sales, staff.
-Key test: derived state (batch status, inventory levels, tap volume) and TOCTOU
-(tank assignment, sales volume, ingredient stock).
+This run validates 3 new mandatory spec sections from Run 056:
+- Concurrency Contract
+- Defense-in-Depth Matrix
+- Derived State
 
-Start with /compound-start, then /workflows:brainstorm for the domain.
-Use autopilot for the full build cycle.
+Use the definitions and reference patterns in HANDOFF.md and:
+- docs/solutions/2026-05-22-coworkflow-deferred-fixes-batch.md
+- docs/solutions/2026-05-22-coworkflow-22-agent-swarm-build.md
+- docs/solutions/2026-05-21-gymflow-26-agent-swarm-build.md
+
+Domain scope:
+- recipes
+- batches
+- ingredients / inventory
+- tanks / fermenters
+- taps / taproom
+- sales
+- staff
+
+Constraints:
+- same single-admin Flask + SQLite pattern as recent sandbox swarms
+- keep domains as clean vertical slices, but allow supporting tables where
+  the schema requires them
+- prefer simple CRUD plus only the business rules needed to exercise
+  concurrency, defense-in-depth, and derived state
+- keep overall complexity roughly in CoWorkFlow scale
+
+Primary validation targets:
+- Concurrency: tank assignment, sales decrementing batch volume, inventory
+  decrements on brew start
+- Derived state: batch status, inventory levels, tap status / remaining volume
+- Defense-in-depth: app-level and DB-level enforcement are both prescribed
+  where needed
+
+Success bar:
+- the shared spec includes all 3 new sections clearly
+- review finds 0 FC43/FC44 issues caused by missing or underspecified spec
+  coverage
+
+Read ~/.claude/docs/agent-pitfalls.md before planning.
+
+Run /autopilot
 ```
