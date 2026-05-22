@@ -94,8 +94,8 @@ def detail(id):
     # Build set of lead IDs already in this campaign for exclusion
     recipient_lead_ids = {r['lead_id'] for r in recipients}
 
-    # Get all workspace leads (no pagination -- need full list for checkbox selection)
-    all_leads = get_leads_by_workspace(conn, g.workspace['id'], page=1, per_page=10000)
+    # Get workspace leads with reasonable limit for checkbox selection
+    all_leads = get_leads_by_workspace(conn, g.workspace['id'], page=1, per_page=500)
     available_leads = [lead for lead in all_leads if lead['id'] not in recipient_lead_ids]
 
     return render_template(

@@ -21,8 +21,10 @@ def campaign_progress(campaign_id):
         import sqlite3
         from flask import current_app
         db_path = current_app.config['DATABASE']
-        poll_conn = sqlite3.connect(db_path)
+        poll_conn = sqlite3.connect(db_path, timeout=5.0)
         poll_conn.row_factory = sqlite3.Row
+        poll_conn.execute("PRAGMA journal_mode=WAL")
+        poll_conn.execute("PRAGMA busy_timeout=5000")
         max_polls = 300  # 5-minute timeout (300 * 1s)
         poll_count = 0
         try:

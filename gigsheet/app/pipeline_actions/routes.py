@@ -59,24 +59,28 @@ def bulk_move():
         return jsonify({'error': f'Invalid stage. Must be one of: {PIPELINE_STAGES}'}), 400
 
     conn = get_db()
-    moved = 0
+
+    # Batch validate all lead IDs belong to this workspace (avoids N+1)
+    placeholders = ','.join('?' for _ in lead_ids)
+    valid_leads = conn.execute(
+        f'SELECT id FROM leads WHERE id IN ({placeholders}) AND workspace_id = ?',
+        (*lead_ids, g.workspace['id'])
+    ).fetchall()
+    valid_ids = {row['id'] for row in valid_leads}
+
+    if len(valid_ids) != len(lead_ids):
+        invalid = [lid for lid in lead_ids if lid not in valid_ids]
+        return jsonify({'error': f'Invalid or unauthorized lead IDs: {invalid}'}), 400
 
     for lid in lead_ids:
-        lead = get_lead(conn, lid)
-        if lead is None:
-            abort(404)
-        if lead['workspace_id'] != g.workspace['id']:
-            abort(403)
-
         update_lead_stage(conn, lid, stage)
         log_activity(conn, g.workspace['id'], g.user['id'],
                      'moved_lead_stage', 'lead', lid,
                      f"Moved to {stage}")
-        moved += 1
 
     conn.commit()
 
-    return jsonify({'status': 'ok', 'moved': moved})
+    return jsonify({'status': 'ok', 'moved': len(lead_ids)})
 
 
 @pipeline_actions_bp.route('/note', methods=['POST'])

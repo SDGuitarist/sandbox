@@ -227,11 +227,14 @@ def search_leads(conn, workspace_id: int, query: str, limit: int = 50):
 
 
 # Returns: list[sqlite3.Row] (leads grouped by pipeline_stage for kanban board)
-def get_leads_by_stage(conn, workspace_id: int):
+def get_leads_by_stage(conn, workspace_id: int, per_stage_limit: int = 50):
     return conn.execute('''
-        SELECT * FROM leads WHERE workspace_id = ?
+        SELECT * FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY pipeline_stage ORDER BY updated_at DESC) as rn
+            FROM leads WHERE workspace_id = ?
+        ) WHERE rn <= ?
         ORDER BY pipeline_stage, updated_at DESC
-    ''', (workspace_id,)).fetchall()
+    ''', (workspace_id, per_stage_limit)).fetchall()
 
 
 # ---------------------------------------------------------------------------
@@ -358,15 +361,15 @@ def get_campaign(conn, campaign_id: int):
 
 
 # Returns: list[sqlite3.Row]
-def get_campaigns_by_workspace(conn, workspace_id: int, status: str = None):
+def get_campaigns_by_workspace(conn, workspace_id: int, status: str = None, limit: int = 100):
     if status:
         return conn.execute(
-            'SELECT * FROM campaigns WHERE workspace_id = ? AND status = ? ORDER BY created_at DESC',
-            (workspace_id, status)
+            'SELECT * FROM campaigns WHERE workspace_id = ? AND status = ? ORDER BY created_at DESC LIMIT ?',
+            (workspace_id, status, limit)
         ).fetchall()
     return conn.execute(
-        'SELECT * FROM campaigns WHERE workspace_id = ? ORDER BY created_at DESC',
-        (workspace_id,)
+        'SELECT * FROM campaigns WHERE workspace_id = ? ORDER BY created_at DESC LIMIT ?',
+        (workspace_id, limit)
     ).fetchall()
 
 

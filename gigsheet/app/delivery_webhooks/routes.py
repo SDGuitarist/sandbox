@@ -1,7 +1,10 @@
 """Delivery webhooks blueprint -- receives SendGrid event webhooks."""
 
+import hashlib
+import hmac
 import json
 import logging
+import os
 
 from flask import Blueprint, request, jsonify
 
@@ -20,6 +23,8 @@ delivery_webhooks_bp = Blueprint('delivery_webhooks', __name__)
 
 # CSRF MUST be exempted -- SendGrid cannot provide CSRF tokens
 csrf.exempt(delivery_webhooks_bp)
+
+SENDGRID_WEBHOOK_KEY = os.environ.get('SENDGRID_WEBHOOK_VERIFICATION_KEY', '')
 
 # Map SendGrid event names to our internal event types.
 # Keys are SendGrid's webhook event strings; values are what we store.
@@ -52,6 +57,20 @@ def handle():
     message_id, then record the event, update recipient status, and bump the
     campaign counter.  A single commit covers the whole batch.
     """
+    # Verify SendGrid webhook signature if key is configured
+    if SENDGRID_WEBHOOK_KEY:
+        signature = request.headers.get('X-Twilio-Email-Event-Webhook-Signature', '')
+        timestamp = request.headers.get('X-Twilio-Email-Event-Webhook-Timestamp', '')
+        payload = request.get_data(as_text=True)
+        expected = hmac.new(
+            SENDGRID_WEBHOOK_KEY.encode(),
+            (timestamp + payload).encode(),
+            hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            logger.warning('SendGrid webhook signature verification failed')
+            return jsonify(status='error', message='Invalid signature'), 403
+
     events = request.get_json(silent=True)
     if not isinstance(events, list):
         return jsonify(status='error', message='Expected JSON array'), 400

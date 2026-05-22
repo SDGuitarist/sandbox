@@ -84,7 +84,7 @@ def register_post():
     return redirect(url_for('auth.select_workspace'))
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 def logout():
     session.clear()
     flash('Logged out.', 'success')
