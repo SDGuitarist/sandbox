@@ -1061,7 +1061,7 @@ price_cents = round(val * 100)
 | `create_plan` | model function | `app/models/plan.py` | `plan_routes` agent |
 | `get_plan` | model function | `app/models/plan.py` | `plan_routes` agent |
 | `get_all_plans` | model function | `app/models/plan.py` | `plan_routes` agent |
-| `get_active_plans` | model function | `app/models/plan.py` | `member_routes` agent (dropdown) |
+| `get_active_plans` | model function | `app/models/plan.py` | `member_routes` agent (dropdown), `plan_routes` agent |
 | `update_plan` | model function | `app/models/plan.py` | `plan_routes` agent |
 | `delete_plan` | model function | `app/models/plan.py` | `plan_routes` agent |
 | `create_desk` | model function | `app/models/desk.py` | `desk_routes` agent |
@@ -1190,7 +1190,7 @@ price_cents = round(val * 100)
 | `POST /members/new` | `membership_plan_id` (form) | Optional; if provided, must be valid int | Treat empty as None |
 | `POST /members/<id>/edit` | `email` (form) | Catch `sqlite3.IntegrityError` for UNIQUE on update | Flash "A member with this email already exists.", redirect back |
 | `POST /members/<id>/edit` | `status` (form) | Must be in ('active', 'frozen', 'cancelled') | Flash "Invalid status.", redirect back |
-| `POST /members/<id>/delete` | `member_id` (URL) | Must exist in DB | `abort(404)` |
+| `POST /members/<id>/delete` | `member_id` (URL) | Must exist in DB; catch `sqlite3.IntegrityError` | `abort(404)` if not found; Flash "Cannot delete: member has bookings or invoices." if IntegrityError |
 | `POST /plans/new` | `name` (form) | Strip, 1-100 chars, required, unique | Flash "Name is required." / catch IntegrityError for duplicate |
 | `POST /plans/new` | `price` (form) | Float, finite, 0-999999.99 | Flash "Invalid price.", redirect back |
 | `POST /plans/new` | `billing_cycle` (form) | Must be in ('monthly', 'quarterly', 'annual') | Flash "Invalid billing cycle.", redirect back |
@@ -1239,7 +1239,7 @@ price_cents = round(val * 100)
 | 5 | Login required | Every route handler (except auth + health) decorated with `@login_required` AFTER `@bp.route` | ALL route agents |
 | 6 | Delete confirmation | All delete/cancel buttons use a form with `onclick="return confirm('Are you sure?')"` | ALL route agents |
 | 7 | 404 pattern | `item = get_item(conn, item_id)` then `if item is None: abort(404)` | ALL route agents |
-| 8 | IntegrityError handling | Delete routes with RESTRICT FKs catch `sqlite3.IntegrityError` specifically (NOT bare `except Exception`) and flash "Cannot delete: referenced by other records." Routes where all child FKs are SET NULL do NOT need IntegrityError handling (delete_plan). | Route agents with RESTRICT FK children |
+| 8 | IntegrityError handling | Delete routes with RESTRICT FKs catch `sqlite3.IntegrityError` specifically (NOT bare `except Exception`) and flash an entity-specific message as defined in Input Validation Prescriptions (e.g., "Cannot delete: member has bookings or invoices.", "Cannot delete: desk has bookings."). Routes where all child FKs are SET NULL do NOT need IntegrityError handling (delete_plan). | Route agents with RESTRICT FK children |
 | 9 | No CSP header | Do NOT add Content-Security-Policy header. Bootstrap 5 loads from CDN. CSP would block it (FC38). | `core` agent |
 | 10 | SQLite PRAGMAs | `journal_mode=WAL`, `foreign_keys=ON`, `busy_timeout=5000` -- set in `get_db()`. No other connection paths exist. (FC40) | `core` agent |
 | 11 | Money display | All monetary values stored as INTEGER cents. Display: `{{ value\|dollars }}`. Form prefill: `{{ value\|dollars_raw }}`. Parse: `round(float(val) * 100)` with guards. | ALL agents with money |
