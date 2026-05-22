@@ -1330,6 +1330,7 @@ Every POST form MUST include:
 | `check_password` | auth function | `app/auth.py` | `auth` agent |
 | `dashboard.index` | endpoint | `app/blueprints/dashboard/routes.py` | `layout` (navbar) |
 | `auth.login_page` | endpoint | `app/blueprints/auth/routes.py` | `layout` (navbar), `auth.py` (redirect) |
+| `auth.login` | endpoint | `app/blueprints/auth/routes.py` | `auth` (form action) |
 | `auth.logout` | endpoint | `app/blueprints/auth/routes.py` | `layout` (navbar) |
 | `members.list_members` | endpoint | `app/blueprints/members/routes.py` | `layout` (navbar) |
 | `members.detail` | endpoint | `app/blueprints/members/routes.py` | `member_routes`, `dashboard_routes` |
@@ -1363,10 +1364,10 @@ Every POST form MUST include:
 | `app/models/__init__.py` | `app/blueprints/membership_types/routes.py` | `from app.models import create_membership_type, get_membership_type, get_all_membership_types, update_membership_type, delete_membership_type` |
 | `app/models/__init__.py` | `app/blueprints/class_types/routes.py` | `from app.models import create_class_type, get_class_type, get_all_class_types, update_class_type, delete_class_type` |
 | `app/models/__init__.py` | `app/blueprints/schedules/routes.py` | `from app.models import create_schedule, get_schedule, get_schedules_by_date, get_schedules_by_date_range, get_schedules_by_trainer, update_schedule, delete_schedule, copy_week_schedules, get_schedule_attendance_count, get_all_class_types, get_active_trainers, get_attendance_by_schedule` |
-| `app/models/__init__.py` | `app/blueprints/attendance/routes.py` | `from app.models import check_in_class, check_in_open_gym, check_out, get_today_checkins, delete_attendance, get_all_members, get_schedules_by_date` |
+| `app/models/__init__.py` | `app/blueprints/attendance/routes.py` | `from app.models import check_in_class, check_in_open_gym, check_out, get_attendance, get_attendance_by_member, get_today_checkins, delete_attendance, get_all_members, get_schedules_by_date` |
 | `app/models/__init__.py` | `app/blueprints/equipment/routes.py` | `from app.models import create_equipment, get_equipment, get_all_equipment, get_equipment_by_status, update_equipment, delete_equipment, get_maintenance_by_equipment` |
 | `app/models/__init__.py` | `app/blueprints/maintenance/routes.py` | `from app.models import create_maintenance, get_maintenance, get_all_maintenance, update_maintenance, delete_maintenance, get_all_equipment` |
-| `app/models/__init__.py` | `app/blueprints/billing/routes.py` | `from app.models import create_invoice, get_invoice, get_all_invoices, get_invoices_by_status, update_invoice, delete_invoice, get_all_members, get_payments_by_invoice, get_invoice_paid_amount` |
+| `app/models/__init__.py` | `app/blueprints/billing/routes.py` | `from app.models import create_invoice, get_invoice, get_invoices_by_member, get_all_invoices, get_invoices_by_status, update_invoice, delete_invoice, get_all_members, get_payments_by_invoice, get_invoice_paid_amount` |
 | `app/models/__init__.py` | `app/blueprints/payments/routes.py` | `from app.models import create_payment, get_all_payments, delete_payment, get_all_invoices, get_invoice` |
 | `app/models/__init__.py` | `app/blueprints/assessments/routes.py` | `from app.models import create_assessment, get_assessment, get_all_assessments, get_assessments_by_member, update_assessment, delete_assessment, get_all_members, get_active_trainers` |
 | `app/models/__init__.py` | `app/blueprints/dashboard/routes.py` | `from app.models import count_active_members, count_new_members_this_month, get_revenue_this_month, get_schedules_by_date, get_recent_checkins, get_equipment_needing_maintenance` |
@@ -1425,6 +1426,13 @@ Every POST form MUST include:
 | `POST /assessments/` | `height_cm` (form) | float or empty -> None, if present >= 0 | Flash "Invalid height", redirect back |
 | `POST /assessments/` | `body_fat_pct` (form) | float or empty -> None, if present 0-100 | Flash "Body fat % must be 0-100", redirect back |
 | `POST /assessments/` | `resting_heart_rate` (form) | int or empty -> None, if present >= 0 | Flash "Invalid heart rate", redirect back |
+| `POST /membership-types/<id>/edit` | all fields | Same validation as create, plus `is_active` must be 0 or 1 | Same flash patterns as create |
+| `POST /class-types/<id>/edit` | all fields | Same validation as create | Same flash patterns as create |
+| `POST /schedules/<id>/edit` | all fields | Same validation as create | Same flash patterns as create |
+| `POST /attendance/<id>/check-out` | `attendance_id` (URL) | Must exist, check_out_time must be NULL | Flash "Already checked out", redirect back |
+| `POST /equipment/<id>/edit` | all fields | Same validation as create | Same flash patterns as create |
+| `POST /maintenance/<id>/edit` | all fields | Same validation as create | Same flash patterns as create |
+| `POST /assessments/<id>/edit` | all fields | Same validation as create | Same flash patterns as create |
 | ALL `<int:*_id>` URL params | URL param | Must exist in DB after int parse | `abort(404)` |
 | ALL delete routes | `*_id` (URL) | Must exist, try/except `sqlite3.IntegrityError` | Flash "Cannot delete: referenced by other records", redirect to list |
 
