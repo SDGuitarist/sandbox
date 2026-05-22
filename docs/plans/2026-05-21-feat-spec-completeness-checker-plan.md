@@ -1,7 +1,7 @@
 ---
 title: "feat: Pre-Swarm Spec Completeness Checker"
 type: feat
-status: active
+status: completed
 date: 2026-05-21
 origin: docs/brainstorms/2026-05-21-spec-completeness-checker-brainstorm.md
 swarm: false
