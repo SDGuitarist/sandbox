@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if amenity else 'New' }} Amenity{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('amenities.list_amenities') }}" class="text-decoration-none text-muted">
+        &larr; Amenities
+    </a>
+    <h1 class="h3 mt-1">{{ 'Edit Amenity' if amenity else 'New Amenity' }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post"
+              action="{{ url_for('amenities.update', amenity_id=amenity['id']) if amenity else url_for('amenities.create') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="{{ amenity['name'] if amenity else '' }}" required maxlength="100">
+                </div>
+
+                <div class="col-12">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" name="description"
+                              rows="3">{{ amenity['description'] if amenity else '' }}</textarea>
+                </div>
+
+                {% if amenity %}
+                <div class="col-md-6">
+                    <div class="form-check mt-2">
+                        <input type="checkbox" class="form-check-input" id="is_available"
+                               name="is_available" value="1"
+                               {% if amenity['is_available'] %}checked{% endif %}>
+                        <label class="form-check-label" for="is_available">Available</label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    {{ 'Update Amenity' if amenity else 'Create Amenity' }}
+                </button>
+                <a href="{{ url_for('amenities.list_amenities') }}"
+                   class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

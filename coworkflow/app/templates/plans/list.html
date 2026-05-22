@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Plans - CoWorkFlow{% endblock %}
+
+{% block content %}
+<h1>Membership Plans</h1>
+
+<a href="{{ url_for('plans.new_plan') }}" class="btn">New Plan</a>
+
+{% if plans|length == 0 %}
+    <div class="empty-state">No plans yet. Create one to get started!</div>
+{% else %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Billing Cycle</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in plans %}
+                <tr>
+                    <td>{{ plan.name }}</td>
+                    <td>{{ plan.price_cents|dollars }}</td>
+                    <td>{{ plan.billing_cycle|capitalize }}</td>
+                    <td>{% if plan.is_active %}Active{% else %}Inactive{% endif %}</td>
+                    <td>
+                        <a href="{{ url_for('plans.edit_form', plan_id=plan.id) }}" class="btn btn-secondary">Edit</a>
+                        <form method="POST" action="{{ url_for('plans.delete', plan_id=plan.id) }}" style="display:inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button onclick="return confirm('Delete this plan? Members will keep their current plan until reassigned.')" class="btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+{% endblock %}

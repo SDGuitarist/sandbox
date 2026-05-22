@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Edit' if member else 'New' }} Member{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('members.list_members') }}" class="text-decoration-none text-muted">
+        &larr; Members
+    </a>
+    <h1 class="h3 mt-1">{{ 'Edit Member' if member else 'New Member' }}</h1>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post"
+              action="{{ url_for('members.update', member_id=member['id']) if member else url_for('members.create') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="{{ member['name'] if member else '' }}" required maxlength="100">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="email" name="email"
+                           value="{{ member['email'] if member else '' }}" required maxlength="200">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="phone" name="phone"
+                           value="{{ member['phone'] if member else '' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="company" class="form-label">Company</label>
+                    <input type="text" class="form-control" id="company" name="company"
+                           value="{{ member['company'] if member else '' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label for="membership_plan_id" class="form-label">Membership Plan</label>
+                    <select class="form-select" id="membership_plan_id" name="membership_plan_id">
+                        <option value="">-- None --</option>
+                        {% for plan in plans %}
+                        <option value="{{ plan['id'] }}"
+                                {% if member and member['membership_plan_id'] == plan['id'] %}selected{% endif %}>
+                            {{ plan['name'] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {% if member %}
+                <div class="col-md-6">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="active" {% if member['status'] == 'active' %}selected{% endif %}>Active</option>
+                        <option value="frozen" {% if member['status'] == 'frozen' %}selected{% endif %}>Frozen</option>
+                        <option value="cancelled" {% if member['status'] == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <div class="col-12">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="3">{{ member['notes'] if member else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">
+                    {{ 'Update Member' if member else 'Create Member' }}
+                </button>
+                <a href="{{ url_for('members.detail', member_id=member['id']) if member else url_for('members.list_members') }}"
+                   class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

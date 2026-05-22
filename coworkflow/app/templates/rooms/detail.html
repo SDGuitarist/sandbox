@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ room['name'] }} - Meeting Rooms - CoWorkFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ room['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('rooms.edit_form', room_id=room['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <form method="POST" action="{{ url_for('rooms.delete', room_id=room['id']) }}" class="d-inline"
+              onsubmit="return confirm('Are you sure?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger">Delete</button>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Details</h5>
+        <table class="table table-borderless mb-0">
+            <tr>
+                <th style="width:150px;">Name</th>
+                <td>{{ room['name'] }}</td>
+            </tr>
+            <tr>
+                <th>Capacity</th>
+                <td>{{ room['capacity'] }}</td>
+            </tr>
+            <tr>
+                <th>Hourly Rate</th>
+                <td>{{ room['hourly_rate_cents']|dollars }}</td>
+            </tr>
+            <tr>
+                <th>Location</th>
+                <td>{{ room['location'] if room['location'] else '-' }}</td>
+            </tr>
+            <tr>
+                <th>Active</th>
+                <td>
+                    {% if room['is_active'] %}
+                    <span class="badge bg-success">Yes</span>
+                    {% else %}
+                    <span class="badge bg-secondary">No</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>Created</th>
+                <td>{{ room['created_at']|date_format }}</td>
+            </tr>
+            <tr>
+                <th>Updated</th>
+                <td>{{ room['updated_at']|date_format }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<a href="{{ url_for('rooms.list_rooms') }}" class="btn btn-secondary">Back to Rooms</a>
+{% endblock %}

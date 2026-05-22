@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Desks - CoWorkFlow{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Desks</h1>
+    <a href="{{ url_for('desks.new_desk') }}" class="btn btn-primary">Add Desk</a>
+</div>
+
+{% if desks %}
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for desk in desks %}
+            <tr>
+                <td>{{ desk['name'] }}</td>
+                <td>{{ desk['location'] or '' }}</td>
+                <td>
+                    {% if desk['is_active'] %}
+                        <span class="badge bg-success">Active</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('desks.edit_form', desk_id=desk['id']) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form method="POST" action="{{ url_for('desks.delete', desk_id=desk['id']) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No desks yet. Add your first desk to get started.</p>
+{% endif %}
+{% endblock %}
