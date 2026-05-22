@@ -170,6 +170,61 @@ links, role maps, flash message patterns.
 |---------|------|-------|
 | Blueprint registration | All blueprints registered in `create_app()` with `url_prefix` | `core` agent |
 | Navbar links | Every blueprint with user-facing routes gets a navbar entry in `base.html` | `layout` agent |
+| CSRF token syntax | All POST forms use `{{ csrf_token() }}` (WITH parentheses) | ALL route agents |
+| Session keys | `base.html` reads `session.get('logged_in')` -- must match auth agent's login key exactly | `auth` + `layout` agents |
+| Timestamps | All timestamps use SQL `datetime('now')`, never Python `datetime.now()` | ALL model agents |
+
+## Template Contracts
+
+Cross-agent conventions for templates. These prevent FC1 at the template
+layer, where agents produce HTML independently and the Export Names Table
+doesn't cover template-level conventions.
+
+### Session Keys
+
+The auth agent sets session keys on login. Every other agent that reads
+session state (base template, decorators, route handlers) must use the
+EXACT same key names.
+
+| Key | Set By | Read By | Example |
+|-----|--------|---------|---------|
+| `session['logged_in']` | auth agent (login route) | `login_required` decorator, `base.html` navbar | `session['logged_in'] = True` |
+
+**Rule:** List every `session[...]` key in this table. If the layout
+agent's `base.html` uses `session.get('user_id')` but the auth agent
+sets `session['logged_in']`, the navbar breaks silently (renders empty
+instead of crashing). This is a P0 that passes all HTTP 200 smoke tests.
+
+### CSRF Token Syntax
+
+All POST forms MUST use this exact syntax:
+
+```html
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+```
+
+**Rule:** `csrf_token()` requires parentheses. `{{ csrf_token }}` (no
+parens) renders the function object as a string, not the token value.
+This produces a CSRF validation failure on every POST. Include this line
+in the Coordinated Behaviors table.
+
+### CSS Framework
+
+| Item | Value |
+|------|-------|
+| Framework | Bootstrap 5.x (CDN with SRI integrity hash) |
+| Custom CSS | `app/static/style.css` (layout agent owns) |
+| Icons | (none unless specified) |
+
+### Base Template Block Names
+
+The layout agent defines these blocks in `base.html`. All other
+template agents extend `base.html` and fill these blocks.
+
+| Block | Purpose | Required? |
+|-------|---------|-----------|
+| `{% block title %}` | Page title in `<title>` tag | Yes |
+| `{% block content %}` | Main page content | Yes |
 
 ## Transaction Contracts
 
@@ -212,14 +267,62 @@ from app import create_app
 app = create_app()
 client = app.test_client()
 
-# Health check
-r = client.get("/health")
-assert r.status_code == 200, f"Health failed: {r.status_code}"
-print("PASS: health")
+passed = 0
+failed = 0
 
+def check(name, condition, detail=""):
+    global passed, failed
+    if condition:
+        print(f"PASS: {name}")
+        passed += 1
+    else:
+        print(f"FAIL: {name} -- {detail}")
+        failed += 1
+
+# --- Phase 1: HTTP status checks ---
+
+r = client.get("/health")
+check("GET /health (200)", r.status_code == 200, f"got {r.status_code}")
+
+r = client.get("/login")
+check("GET /login (200)", r.status_code == 200, f"got {r.status_code}")
+
+# Unauthenticated access should redirect to login
+r = client.get("/")
+check("GET / (redirect to login)", r.status_code == 302, f"got {r.status_code}")
+
+# --- Phase 2: Functional login + navigate ---
+# This catches session key mismatches (P0 in Run 055) and CSRF issues
+# that HTTP-200-only checks miss.
+
+# Login with test client (bypass CSRF for test)
+with client.session_transaction() as sess:
+    sess['logged_in'] = True  # Must match the EXACT key from Session Keys table
+
+# Dashboard should render (not redirect) when logged in
+r = client.get("/")
+check("GET / (dashboard, logged in)", r.status_code == 200, f"got {r.status_code}")
+
+# Verify navbar renders with actual content (not empty/broken)
+html = r.data.decode()
+check("Dashboard has navbar links", "href=" in html and "Members" in html,
+      "navbar may be empty or broken -- check session key in base.html")
+
+# Check a protected list page renders
+r = client.get("/members/")
+check("GET /members/ (200)", r.status_code == 200, f"got {r.status_code}")
+
+# --- Phase 3: Route-specific checks ---
 # Add route-specific tests here...
 
-print("ALL SMOKE TESTS PASSED")
+# --- Summary ---
+print(f"\n{'=' * 40}")
+print(f"RESULTS: {passed} passed, {failed} failed out of {passed + failed}")
+if failed == 0:
+    print("ALL SMOKE TESTS PASSED")
+else:
+    print("SMOKE TESTS FAILED")
+    exit(1)
 ```
 
 3. Run with: `.venv/bin/python test_smoke.py`
@@ -229,6 +332,11 @@ print("ALL SMOKE TESTS PASSED")
   command-line env prefixes (`SECRET_KEY=x python ...` triggers heuristics)
 - No `#` comments that could be misread as argument hiding
 - One `assert` per check with a descriptive failure message
+- Phase 2 (functional login) is MANDATORY -- it catches session key
+  mismatches and broken navbars that Phase 1 HTTP-200 checks miss
+- The session key in `session_transaction()` MUST match the Session Keys
+  table in Template Contracts -- this is the test that validates the
+  cross-agent session contract
 
 ## File Assignment Boundaries
 
