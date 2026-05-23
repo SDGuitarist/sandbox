@@ -12,6 +12,7 @@ limiter = Limiter(get_remote_address, storage_uri="memory://")
 
 def create_app():
     app = Flask(__name__, instance_relative_config=True)
+    app.url_map.strict_slashes = False
     os.makedirs(app.instance_path, exist_ok=True)
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-insecure')
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
