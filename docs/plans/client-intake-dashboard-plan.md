@@ -759,11 +759,11 @@ def list_notes(conn: sqlite3.Connection,
 | GET/POST | /login | auth | login | `auth.login` | auth/login.html |
 | POST | /logout | auth | logout | `auth.logout` | redirect |
 | GET | /admin/ | dashboard | index | `dashboard.index` | dashboard/index.html |
-| GET | /admin/submissions | submissions | list_submissions | `submissions.list_submissions` | submissions/list.html |
+| GET | /admin/submissions | submissions | list_view | `submissions.list_view` | submissions/list.html |
 | GET | /admin/submissions/&lt;int:submission_id&gt; | detail | view_submission | `detail.view_submission` | detail/show.html |
 | POST | /admin/submissions/&lt;int:submission_id&gt;/notes | detail | add_note | `detail.add_note` | redirect |
-| POST | /admin/submissions/&lt;int:submission_id&gt;/status | status | update_status | `status.update_status` | redirect |
-| POST | /admin/submissions/&lt;int:submission_id&gt;/audit-fit | status | toggle_audit_fit | `status.toggle_audit_fit` | redirect |
+| POST | /admin/submissions/&lt;int:submission_id&gt;/status | status | change_status | `status.change_status` | redirect |
+| POST | /admin/submissions/&lt;int:submission_id&gt;/audit-fit | status | toggle_fit | `status.toggle_fit` | redirect |
 | GET/POST | /admin/submissions/&lt;int:submission_id&gt;/assessment | assessments | assessment_form | `assessments.assessment_form` | assessments/form.html |
 | GET | /health | (app) | health | `health` | JSON |
 
@@ -860,13 +860,25 @@ render_template('assessments/form.html',
 | `auth.login` | endpoint | auth | auth (redirect), ALL admin routes (login_required redirect) |
 | `auth.logout` | endpoint | auth | layout (navbar) |
 | `dashboard.index` | endpoint | dashboard_routes | auth (redirect after login), layout (navbar) |
-| `submissions.list_submissions` | endpoint | submissions_routes | layout (navbar), dashboard_routes (link) |
+| `submissions.list_view` | endpoint | submissions_routes | layout (navbar), dashboard_routes (link) |
 | `detail.view_submission` | endpoint | detail_routes | submissions_routes (link), detail_routes (redirect), status_routes (redirect), assessment_routes (redirect) |
 | `detail.add_note` | endpoint | detail_routes | detail/show.html (form action) |
-| `status.update_status` | endpoint | status_routes | detail/show.html (form action) |
-| `status.toggle_audit_fit` | endpoint | status_routes | detail/show.html (form action) |
+| `status.change_status` | endpoint | status_routes | detail/show.html (form action) |
+| `status.toggle_fit` | endpoint | status_routes | detail/show.html (form action) |
 | `assessments.assessment_form` | endpoint | assessment_routes | detail/show.html (link) |
 | `health` | endpoint | core | tests |
+| `/intake` | route path | intake_routes | layout (navbar link) |
+| `/intake/thank-you` | route path | intake_routes | intake_routes (redirect) |
+| `/login` | route path | auth | auth (redirect), login_required |
+| `/logout` | route path | auth | layout (navbar form) |
+| `/admin/` | route path | dashboard_routes | auth (redirect after login) |
+| `/admin/submissions` | route path | submissions_routes | layout (navbar link) |
+| `/admin/submissions/<int:submission_id>` | route path | detail_routes | submissions_routes (link) |
+| `/admin/submissions/<int:submission_id>/notes` | route path | detail_routes | detail/show.html (form) |
+| `/admin/submissions/<int:submission_id>/status` | route path | status_routes | detail/show.html (form) |
+| `/admin/submissions/<int:submission_id>/audit-fit` | route path | status_routes | detail/show.html (form) |
+| `/admin/submissions/<int:submission_id>/assessment` | route path | assessment_routes | detail/show.html (link) |
+| `/health` | route path | core | tests |
 
 ## 13. Cross-Boundary Wiring Table
 
@@ -888,12 +900,17 @@ render_template('assessments/form.html',
 | app/models/submissions.py | app/blueprints/intake/routes.py | `from app.models.submissions import create_submission` |
 | app/models/submissions.py | app/blueprints/submissions/routes.py | `from app.models.submissions import list_submissions, VALID_STATUSES` |
 | app/models/submissions.py | app/blueprints/detail/routes.py | `from app.models.submissions import get_submission, VALID_STATUSES, TERMINAL_STATUSES` |
-| app/models/submissions.py | app/blueprints/status/routes.py | `from app.models.submissions import get_submission, update_status, toggle_audit_fit, TERMINAL_STATUSES` |
+| app/models/submissions.py | app/blueprints/status/routes.py | `from app.models.submissions import get_submission, update_status, toggle_audit_fit, VALID_STATUSES, TERMINAL_STATUSES` |
 | app/models/submissions.py | app/blueprints/assessments/routes.py | `from app.models.submissions import get_submission` |
 | app/models/submissions.py | app/blueprints/dashboard/routes.py | `from app.models.submissions import count_by_status` |
 | app/models/assessments.py | app/blueprints/detail/routes.py | `from app.models.assessments import get_assessment_by_submission` |
 | app/models/assessments.py | app/blueprints/assessments/routes.py | `from app.models.assessments import create_assessment, get_assessment_by_submission, update_assessment` |
 | app/models/notes.py | app/blueprints/detail/routes.py | `from app.models.notes import create_note, list_notes` |
+| app/models/submissions.py | seed.py | `from app.models.submissions import create_submission` |
+| app/models/assessments.py | seed.py | `from app.models.assessments import create_assessment` |
+| app/models/notes.py | seed.py | `from app.models.notes import create_note` |
+| app/filters.py | app/__init__.py | `from app.filters import register_filters` |
+| app/db.py | app/__init__.py | `from app.db import close_db, init_db` |
 
 ## 14. Input Validation Prescriptions
 
@@ -922,6 +939,9 @@ render_template('assessments/form.html',
 | POST .../assessment | next_steps | `next_steps` | Strip, 0-5000 chars, optional | (none) |
 | POST .../assessment | audit_fit_recommendation | `audit_fit_recommendation` | Strip, 0-5000 chars, optional | (none) |
 | POST .../assessment | admin_notes | `admin_notes` | Strip, 0-5000 chars, optional | (none) |
+| POST /logout | (none) | N/A | No user inputs (CSRF only) | N/A |
+| GET .../&lt;int:submission_id&gt; | submission_id | URL param | Must be valid int (Flask enforces), must exist in DB | `abort(404)` |
+| POST .../audit-fit | (none) | N/A | No user inputs beyond CSRF. Submission must exist | `abort(404)` if not found |
 
 **Email validation prescriptive code:**
 
@@ -964,7 +984,7 @@ if website:
 | Flash rendering | `get_flashed_messages(with_categories=true)` in base.html | layout |
 | Status constants | Import `VALID_STATUSES` and `TERMINAL_STATUSES` from `app.models.submissions` -- do NOT redefine | ALL route agents that need them |
 | Login redirect | `login_required` redirects to `url_for('auth.login')` | auth |
-| Post-action redirects | All POST handlers redirect with `redirect(url_for(...))` -- no POST renders | ALL route agents |
+| Post-action redirects | Successful POST handlers redirect with `redirect(url_for(...))`. Validation failures may re-render the form (intake, login) | ALL route agents |
 | 404 pattern | `if submission is None: abort(404)` after `get_submission()` | ALL detail/status/assessment routes |
 
 ## 16. Template Contracts
@@ -1025,7 +1045,7 @@ function object as a string, and every POST gets a CSRF validation failure.
                 <a class="nav-link" href="{{ url_for('intake.intake_form') }}">Intake Form</a>
                 {% if session.get('logged_in') %}
                     <a class="nav-link" href="{{ url_for('dashboard.index') }}">Dashboard</a>
-                    <a class="nav-link" href="{{ url_for('submissions.list_submissions') }}">Submissions</a>
+                    <a class="nav-link" href="{{ url_for('submissions.list_view') }}">Submissions</a>
                     <form method="POST" action="{{ url_for('auth.logout') }}" class="d-inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-link nav-link">Logout</button>
@@ -1083,7 +1103,7 @@ that commit immediately. No function leaves an uncommitted transaction.
 | GET /intake/thank-you | GET | public | N/A |
 | GET /login | GET | public | N/A |
 | POST /login | POST | public | N/A |
-| POST /logout | POST | login-required | `@login_required` |
+| POST /logout | POST | public | N/A (unauthenticated logout is safe) |
 | GET /admin/ | GET | login-required | `@login_required` |
 | GET /admin/submissions | GET | login-required | `@login_required` |
 | GET /admin/submissions/&lt;id&gt; | GET | login-required | `@login_required` |
