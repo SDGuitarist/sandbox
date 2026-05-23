@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Client Intake Form{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <h1 class="mb-4">Client Intake Form</h1>
+    <p class="text-muted mb-4">
+      Please fill out the form below so we can understand your business needs.
+      All fields are required unless marked optional.
+    </p>
+
+    <form method="POST" action="{{ url_for('intake.intake_form') }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Honeypot field: hidden from real users -->
+      <div style="position:absolute; left:-9999px;" aria-hidden="true">
+        <label for="website">Website</label>
+        <input type="text" name="website" id="website"
+               tabindex="-1" autocomplete="one-time-code">
+      </div>
+
+      <!-- Contact Name -->
+      <div class="mb-3">
+        <label for="contact_name" class="form-label">Contact Name</label>
+        <input type="text" class="form-control" id="contact_name"
+               name="contact_name" maxlength="100" required>
+      </div>
+
+      <!-- Email -->
+      <div class="mb-3">
+        <label for="email" class="form-label">Email Address</label>
+        <input type="email" class="form-control" id="email"
+               name="email" maxlength="254" required>
+      </div>
+
+      <!-- Business Name -->
+      <div class="mb-3">
+        <label for="business_name" class="form-label">Business Name</label>
+        <input type="text" class="form-control" id="business_name"
+               name="business_name" maxlength="200" required>
+      </div>
+
+      <!-- Business Type -->
+      <div class="mb-3">
+        <label for="business_type" class="form-label">Business Type / Industry</label>
+        <input type="text" class="form-control" id="business_type"
+               name="business_type" maxlength="200" required>
+      </div>
+
+      <!-- Team Size -->
+      <div class="mb-3">
+        <label for="team_size" class="form-label">Team Size</label>
+        <input type="text" class="form-control" id="team_size"
+               name="team_size" maxlength="100" required>
+      </div>
+
+      <!-- Current Workflows -->
+      <div class="mb-3">
+        <label for="current_workflows" class="form-label">
+          Describe Your Current Workflows
+        </label>
+        <textarea class="form-control" id="current_workflows"
+                  name="current_workflows" rows="4" maxlength="2000"
+                  required></textarea>
+      </div>
+
+      <!-- Pain Points -->
+      <div class="mb-3">
+        <label for="pain_points" class="form-label">
+          What Are Your Biggest Pain Points?
+        </label>
+        <textarea class="form-control" id="pain_points"
+                  name="pain_points" rows="4" maxlength="2000"
+                  required></textarea>
+      </div>
+
+      <!-- Tools Used -->
+      <div class="mb-3">
+        <label for="tools_used" class="form-label">
+          Tools / Software Currently Used
+        </label>
+        <textarea class="form-control" id="tools_used"
+                  name="tools_used" rows="4" maxlength="2000"
+                  required></textarea>
+      </div>
+
+      <!-- Goals -->
+      <div class="mb-3">
+        <label for="goals" class="form-label">
+          Goals / Desired Outcomes
+        </label>
+        <textarea class="form-control" id="goals"
+                  name="goals" rows="4" maxlength="2000"
+                  required></textarea>
+      </div>
+
+      <!-- Urgency -->
+      <div class="mb-3">
+        <label for="urgency" class="form-label">Urgency / Timeline</label>
+        <input type="text" class="form-control" id="urgency"
+               name="urgency" maxlength="200" required>
+      </div>
+
+      <!-- Submitter Notes (optional) -->
+      <div class="mb-3">
+        <label for="submitter_notes" class="form-label">
+          Additional Notes <span class="text-muted">(optional)</span>
+        </label>
+        <textarea class="form-control" id="submitter_notes"
+                  name="submitter_notes" rows="3"
+                  maxlength="2000"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg w-100">
+        Submit Intake Form
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
