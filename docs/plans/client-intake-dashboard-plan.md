@@ -911,6 +911,13 @@ render_template('assessments/form.html',
 | app/models/notes.py | seed.py | `from app.models.notes import create_note` |
 | app/filters.py | app/__init__.py | `from app.filters import register_filters` |
 | app/db.py | app/__init__.py | `from app.db import close_db, init_db` |
+| app/auth.py | app/__init__.py | `from app.auth import auth_bp` |
+| app/blueprints/intake/routes.py | app/__init__.py | `from app.blueprints.intake.routes import intake_bp` |
+| app/blueprints/dashboard/routes.py | app/__init__.py | `from app.blueprints.dashboard.routes import dashboard_bp` |
+| app/blueprints/submissions/routes.py | app/__init__.py | `from app.blueprints.submissions.routes import submissions_bp` |
+| app/blueprints/detail/routes.py | app/__init__.py | `from app.blueprints.detail.routes import detail_bp` |
+| app/blueprints/status/routes.py | app/__init__.py | `from app.blueprints.status.routes import status_bp` |
+| app/blueprints/assessments/routes.py | app/__init__.py | `from app.blueprints.assessments.routes import assessments_bp` |
 
 ## 14. Input Validation Prescriptions
 
