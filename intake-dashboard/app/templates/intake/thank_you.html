@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Thank You{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8 text-center py-5">
+    <h1 class="mb-3">Thank You!</h1>
+    <p class="lead">
+      Thank you for your submission! We will review it shortly.
+    </p>
+    <a href="{{ url_for('intake.intake_form') }}" class="btn btn-outline-primary mt-3">
+      Submit Another
+    </a>
+  </div>
+</div>
+{% endblock %}
