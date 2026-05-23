@@ -46,9 +46,9 @@ resolve P1s -> compound -> learnings -> self-audit -> verify.
 ## Deferred Items
 
 ### Client Intake Dashboard (Run 058)
-- [058-D1] P1: TOCTOU gap in status change outer 404 guard. No delete endpoint exists, so the race cannot be triggered. DEFERRED, LOW.
-- [058-D2] 11 P2 findings (pagination, query optimization, JSON API, etc). DEFERRED, MEDIUM.
-- [058-D3] 15 P3 findings (security hardening, code style). DEFERRED, LOW.
+- [058-W3] P1: TOCTOU gap in status change outer 404 guard. No delete endpoint exists, so the race cannot be triggered. DEFERRED, LOW.
+- [058-W4] 11 P2 findings (pagination, query optimization, JSON API, etc). DEFERRED, MEDIUM.
+- [058-W4] 15 P3 findings (security hardening, code style). DEFERRED, LOW.
 
 ### Prior Runs
 - [057-W1..W4] BrewOps P2/P3 findings. DEFERRED.
