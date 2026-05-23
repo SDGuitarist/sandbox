@@ -40,13 +40,39 @@
 
 ## FAILURES
 
-<!-- Filled after review -->
+| # | Failure | Class | Agent | Fixed? | Commit |
+|---|---------|-------|-------|--------|--------|
+| 1 | CRASH: `audit_fit` -> `is_audit_fit` key mismatch in detail template | FC43 (cross-section name mismatch) | detail_routes | YES | 0af322a |
+| 2 | SECRET_KEY had insecure dev fallback | FC15 (secret in source) | core | YES | 0af322a |
+| 3 | Login not rate-limited | FC25 (missing rate limit) | auth | YES | 0af322a |
+| 4 | XSS: `status_badge` filter did not escape input | FC20 (XSS) | filters | YES | 0af322a |
+| 5 | Missing index on `submissions.status` | FC31 (missing index) | core | YES | 0af322a |
+| 6 | Dead import in status routes | FC10 (dead code) | status_routes | YES | 0af322a |
+| 7 | Same-status transition not rejected | FC44 (missing validation) | status_routes | YES | 0af322a |
+| 8 | Assessment form allowed empty summary | FC44 (missing validation) | assessment_routes | YES | 0af322a |
+| 9 | Logout used `session.pop` instead of `session.clear()` | FC18 (session fixation) | auth | YES | 0af322a |
+| 10 | TOCTOU gap in status change outer 404 guard | FC43 (double-read) | status_routes | DEFERRED (P1 -- no delete endpoint exists) | -- |
+| 11 | 11 P2 findings | various | various | DEFERRED | -- |
+| 12 | 15 P3 findings | various | various | DEFERRED | -- |
 
 ---
 
 ## RUN_METRICS
 
-<!-- Filled after review -->
+| Metric | Value |
+|--------|-------|
+| Total agents | 15 |
+| Agents passed | 15 |
+| Agents failed | 0 |
+| Merge conflicts | 0 |
+| Smoke tests | 36/36 PASS |
+| P1 findings | 9 fixed + 1 deferred (TOCTOU gap, no delete endpoint) |
+| P2 findings | 11 deferred |
+| P3 findings | 15 deferred |
+| Review agents | 5 (security-sentinel, kieran-python-reviewer, performance-oracle, learnings-researcher, flow-trace-reviewer) |
+| Fix commits | 1 (0af322a -- 9 P1 fixes) |
+| Assembly method | 11 worktree merges + 4 master-direct |
+| Ownership violations | 1 minor (submissions_routes also created status/routes.py) |
 
 ## Template Version
 
