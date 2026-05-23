@@ -1,0 +1,6 @@
+flask>=3.0
+flask-wtf>=1.2
+flask-limiter>=3.5
+email-validator>=2.0
+markupsafe>=2.1
+werkzeug>=3.0
