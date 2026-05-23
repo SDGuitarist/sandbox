@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if assessment %}Edit Assessment for {{ submission['business_name'] }}{% else %}Assessment for {{ submission['business_name'] }}{% endif %} - Client Intake Dashboard
+{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('detail.view_submission', submission_id=submission['id']) }}"
+       class="btn btn-outline-secondary">
+        &larr; Back to Submission
+    </a>
+</div>
+
+<h1>
+    {% if assessment %}
+        Edit Assessment for {{ submission['business_name'] }}
+    {% else %}
+        Assessment for {{ submission['business_name'] }}
+    {% endif %}
+</h1>
+
+<form method="POST" class="mt-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="summary" class="form-label">Summary</label>
+        <textarea name="summary" id="summary" class="form-control" rows="4"
+                  maxlength="5000">{{ assessment['summary'] if assessment else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="bottlenecks" class="form-label">Bottlenecks</label>
+        <textarea name="bottlenecks" id="bottlenecks" class="form-control" rows="4"
+                  maxlength="5000">{{ assessment['bottlenecks'] if assessment else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="root_causes" class="form-label">Root Causes</label>
+        <textarea name="root_causes" id="root_causes" class="form-control" rows="4"
+                  maxlength="5000">{{ assessment['root_causes'] if assessment else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="next_steps" class="form-label">Next Steps</label>
+        <textarea name="next_steps" id="next_steps" class="form-control" rows="4"
+                  maxlength="5000">{{ assessment['next_steps'] if assessment else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="audit_fit_recommendation" class="form-label">Audit Fit Recommendation</label>
+        <textarea name="audit_fit_recommendation" id="audit_fit_recommendation" class="form-control" rows="4"
+                  maxlength="5000">{{ assessment['audit_fit_recommendation'] if assessment else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="admin_notes" class="form-label">Admin Notes</label>
+        <textarea name="admin_notes" id="admin_notes" class="form-control" rows="4"
+                  maxlength="5000">{{ assessment['admin_notes'] if assessment else '' }}</textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Assessment</button>
+</form>
+{% endblock %}
