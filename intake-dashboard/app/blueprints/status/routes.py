@@ -1,7 +1,7 @@
 from flask import Blueprint, abort, flash, redirect, request, url_for
 from app.db import get_db
 from app.auth import login_required
-from app.models.submissions import get_submission, update_status, toggle_audit_fit, VALID_STATUSES, TERMINAL_STATUSES
+from app.models.submissions import get_submission, update_status, toggle_audit_fit, VALID_STATUSES
 
 status_bp = Blueprint('status', __name__)
 
@@ -16,6 +16,9 @@ def change_status(submission_id):
     new_status = request.form.get('new_status', '').strip()
     if new_status not in VALID_STATUSES:
         flash('Invalid status', 'error')
+        return redirect(url_for('detail.view_submission', submission_id=submission_id))
+    if new_status == submission['status']:
+        flash('Status is already ' + new_status, 'info')
         return redirect(url_for('detail.view_submission', submission_id=submission_id))
     success = update_status(conn, submission_id, new_status)
     if not success:

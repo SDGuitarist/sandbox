@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS submissions (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_submissions_status
+    ON submissions(status);
+
 CREATE TABLE IF NOT EXISTS assessments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     submission_id INTEGER NOT NULL UNIQUE,

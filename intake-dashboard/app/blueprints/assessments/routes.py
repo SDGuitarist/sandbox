@@ -25,6 +25,10 @@ def assessment_form(submission_id):
             'audit_fit_recommendation': request.form.get('audit_fit_recommendation', '').strip()[:5000],
             'admin_notes': request.form.get('admin_notes', '').strip()[:5000],
         }
+        if not data['summary']:
+            flash('Summary is required', 'error')
+            return render_template('assessments/form.html',
+                submission=submission, assessment=assessment)
         if assessment:
             update_assessment(conn, assessment['id'], data)
             flash('Assessment updated', 'success')

@@ -14,7 +14,10 @@ def create_app():
     app = Flask(__name__, instance_relative_config=True)
     app.url_map.strict_slashes = False
     os.makedirs(app.instance_path, exist_ok=True)
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback-insecure')
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key:
+        raise RuntimeError("SECRET_KEY environment variable is required")
+    app.config['SECRET_KEY'] = secret_key
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'

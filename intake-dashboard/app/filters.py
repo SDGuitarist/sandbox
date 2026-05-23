@@ -1,4 +1,4 @@
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 
 def register_filters(app):
@@ -14,7 +14,7 @@ def register_filters(app):
             'archived': 'dark',
         }
         color = colors.get(status, 'secondary')
-        return Markup(f'<span class="badge bg-{color}">{status}</span>')
+        return Markup(f'<span class="badge bg-{color}">{escape(status)}</span>')
 
     @app.template_filter('datetime_format')
     def datetime_format(value):

@@ -4,6 +4,7 @@ from flask import (
     session, url_for, current_app
 )
 from werkzeug.security import check_password_hash
+from app import limiter
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -18,6 +19,7 @@ def login_required(view):
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=['POST'])
 def login():
     if session.get('logged_in'):
         return redirect(url_for('dashboard.index'))
@@ -37,5 +39,5 @@ def login():
 
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
-    session.pop('logged_in', None)
+    session.clear()
     return redirect(url_for('auth.login'))
