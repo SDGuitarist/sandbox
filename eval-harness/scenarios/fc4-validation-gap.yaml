@@ -1,0 +1,66 @@
+fc_id: fc4
+fc_slug: validation-gap
+scenarios:
+  - id: fc4-update-profile
+    title: "Update user profile endpoint"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /profile/edit that accepts form fields:
+      name (required, max 100 chars), email (required, valid format),
+      bio (optional, max 500 chars). Update the user record in SQLite.
+      The route should use get_db() for database access.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, validation, form]
+    pair_group: fc4-profile
+    variant: with_rule
+
+  - id: fc4-update-profile-norule
+    title: "Update user profile endpoint (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /profile/edit that accepts form fields:
+      name (required, max 100 chars), email (required, valid format),
+      bio (optional, max 500 chars). Update the user record in SQLite.
+      The route should use get_db() for database access.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, validation, form]
+    pair_group: fc4-profile
+    variant: without_rule
+
+  - id: fc4-create-and-update-item
+    title: "Create and update item with shared model"
+    stack: flask
+    task_brief: |
+      Write two Flask routes:
+      1. POST /items -- creates an item with name (required, 1-200 chars) and price (required, positive number)
+      2. POST /items/<id>/edit -- updates an existing item's name and price
+
+      Both should call a shared update_item(conn, item_id, name, price) model function.
+      Include proper input validation.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, validation, parity]
+    pair_group: fc4-item-parity
+    variant: with_rule
+
+  - id: fc4-create-and-update-item-norule
+    title: "Create and update item with shared model (no rule)"
+    stack: flask
+    task_brief: |
+      Write two Flask routes:
+      1. POST /items -- creates an item with name (required, 1-200 chars) and price (required, positive number)
+      2. POST /items/<id>/edit -- updates an existing item's name and price
+
+      Both should call a shared update_item(conn, item_id, name, price) model function.
+      Include proper input validation.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, validation, parity]
+    pair_group: fc4-item-parity
+    variant: without_rule

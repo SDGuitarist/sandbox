@@ -1,0 +1,14 @@
+FC10: Fail-Open on Infrastructure Errors
+
+Look for these specific patterns:
+
+PASS if:
+- Infrastructure errors (DB connection, external API, auth service) result in denied access or error response
+- SECRET_KEY / API keys missing at startup cause crash (fail-closed)
+- Auth/session failures result in redirect to login or 401, not continued access
+
+FAIL if:
+- Missing env var falls back to a permissive default (e.g., SECRET_KEY = 'dev-secret' in production)
+- Failed auth check allows the request to proceed (bare except that continues)
+- Database connection error returns partial/empty data instead of 500/503
+- Rate limiter failure allows unlimited requests through

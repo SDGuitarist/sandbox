@@ -1,0 +1,14 @@
+FC35: IDOR - Role Checked but Resource Ownership Not Verified
+
+Look for these specific patterns:
+
+PASS if:
+- Route checks BOTH role/permission AND resource ownership (e.g., "is this user's project?")
+- Ownership verified via query filter (WHERE user_id = current_user.id) or explicit check before action
+- Admin routes explicitly bypass ownership (documented/intentional)
+
+FAIL if:
+- Route has a role decorator (@login_required, @require_role) but never checks if the resource belongs to the user
+- User can access /projects/<id> for ANY project ID as long as they're authenticated
+- DELETE/UPDATE routes check authentication but not "is this mine?"
+- The ownership field exists in the schema but is never compared to the current user in the route

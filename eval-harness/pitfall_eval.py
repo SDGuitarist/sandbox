@@ -273,8 +273,8 @@ def main(
                         fixtures_dir=fixtures_dir if fixtures_dir.exists() else None,
                     )
 
-                    # Evaluate (deterministic check)
-                    result = evaluate(result, scenario)
+                    # Evaluate (deterministic + LLM judge for Stage 2)
+                    result = evaluate(result, scenario, rule_text=fc.rule_text, client=client)
 
                     # Track cost
                     call_cost = estimate_cost(model_agent, result.input_tokens, result.output_tokens)

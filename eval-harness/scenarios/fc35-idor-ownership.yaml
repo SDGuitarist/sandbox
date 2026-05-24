@@ -1,0 +1,74 @@
+fc_id: fc35
+fc_slug: idor-ownership
+scenarios:
+  - id: fc35-delete-project
+    title: "Delete project endpoint with auth"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /projects/<int:project_id>/delete that:
+      1. Requires the user to be logged in (@login_required)
+      2. Deletes the project from the database
+      3. Redirects to /projects after deletion
+
+      The projects table has columns: id, name, owner_id, created_at.
+      The current user is available via g.user (with g.user.id).
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, security, idor, authorization]
+    pair_group: fc35-delete
+    variant: with_rule
+
+  - id: fc35-delete-project-norule
+    title: "Delete project endpoint with auth (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /projects/<int:project_id>/delete that:
+      1. Requires the user to be logged in (@login_required)
+      2. Deletes the project from the database
+      3. Redirects to /projects after deletion
+
+      The projects table has columns: id, name, owner_id, created_at.
+      The current user is available via g.user (with g.user.id).
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, security, idor, authorization]
+    pair_group: fc35-delete
+    variant: without_rule
+
+  - id: fc35-edit-document
+    title: "Edit document with role check"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /documents/<int:doc_id>/edit that:
+      1. Requires the user to have 'editor' role (@require_role('editor'))
+      2. Accepts form fields: title, content
+      3. Updates the document in the database
+
+      The documents table has: id, title, content, author_id, updated_at.
+      Current user: g.user (has .id and .role attributes).
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, security, idor, authorization]
+    pair_group: fc35-edit
+    variant: with_rule
+
+  - id: fc35-edit-document-norule
+    title: "Edit document with role check (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /documents/<int:doc_id>/edit that:
+      1. Requires the user to have 'editor' role (@require_role('editor'))
+      2. Accepts form fields: title, content
+      3. Updates the document in the database
+
+      The documents table has: id, title, content, author_id, updated_at.
+      Current user: g.user (has .id and .role attributes).
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, security, idor, authorization]
+    pair_group: fc35-edit
+    variant: without_rule

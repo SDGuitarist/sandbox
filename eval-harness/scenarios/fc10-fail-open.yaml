@@ -1,0 +1,66 @@
+fc_id: fc10
+fc_slug: fail-open
+scenarios:
+  - id: fc10-secret-key-missing
+    title: "Flask app with SECRET_KEY config"
+    stack: flask
+    task_brief: |
+      Write a Flask app factory (create_app function) that:
+      1. Loads SECRET_KEY from environment variable
+      2. Sets up session-based authentication
+      3. Registers a blueprint with protected routes
+      Handle the case where SECRET_KEY is not set in the environment.
+    inputs: {}
+    expected_check_type: hybrid
+    expected_outcome: pass
+    deterministic_pattern: 'raise|RuntimeError|sys\.exit|fatal'
+    deterministic_mode: presence
+    tags: [flask, security, config]
+    pair_group: fc10-secret
+    variant: with_rule
+
+  - id: fc10-secret-key-missing-norule
+    title: "Flask app with SECRET_KEY config (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask app factory (create_app function) that:
+      1. Loads SECRET_KEY from environment variable
+      2. Sets up session-based authentication
+      3. Registers a blueprint with protected routes
+      Handle the case where SECRET_KEY is not set in the environment.
+    inputs: {}
+    expected_check_type: hybrid
+    expected_outcome: unknown
+    deterministic_pattern: 'raise|RuntimeError|sys\.exit|fatal'
+    deterministic_mode: presence
+    tags: [flask, security, config]
+    pair_group: fc10-secret
+    variant: without_rule
+
+  - id: fc10-db-connection-failure
+    title: "API route with database error handling"
+    stack: flask
+    task_brief: |
+      Write a Flask route GET /api/dashboard that queries multiple tables
+      (users count, recent orders, revenue total) and returns JSON.
+      Handle the case where the database connection fails.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, error-handling, database]
+    pair_group: fc10-db
+    variant: with_rule
+
+  - id: fc10-db-connection-failure-norule
+    title: "API route with database error handling (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route GET /api/dashboard that queries multiple tables
+      (users count, recent orders, revenue total) and returns JSON.
+      Handle the case where the database connection fails.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, error-handling, database]
+    pair_group: fc10-db
+    variant: without_rule

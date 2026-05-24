@@ -1,0 +1,14 @@
+FC4: Validation Responsibility Gap
+
+Look for these specific patterns:
+
+PASS if:
+- Route validates input before passing to model/service layer
+- Validation includes type checking, length bounds, and required fields
+- Error responses are user-friendly (flash message, 400 with reason)
+
+FAIL if:
+- Route passes raw form/request data directly to model without validation
+- Model function assumes clean input and would crash on None/empty/wrong-type
+- Multiple routes call the same model function but only some validate first
+- PATCH/PUT handler skips validation that the corresponding POST handler has
