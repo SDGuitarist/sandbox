@@ -42,7 +42,7 @@ def dashboard():
 
 @habits_bp.route("/habits/new")
 def new_habit():
-    return render_template("habits/form.html", habit=None, action_url=url_for("habits.create_habit"))
+    return render_template("habits/form.html", habit=None, action_url=url_for("habits.create_habit_route"))
 
 
 @habits_bp.route("/habits", methods=["POST"])
