@@ -186,61 +186,34 @@ list it, act on it.
 4. If `FAIL` or `IN_PROGRESS`: retry once. Abort on second failure.
 5. Extract `plan_path` and `feed_forward_*` fields for injection into deepen phase.
 
-### Step 6: Deepen Plan
-
-Run `/compound-engineering:deepen-plan`
-
-After deepening completes, read the plan document in `docs/plans/`. Extract the
-`swarm:` field from its YAML frontmatter.
-
-### Step 6.05: Plan Review and Refine (Pass 1)
-
-Run `/compound-engineering:document-review` on the plan document in `docs/plans/`.
-
-This is the first review pass -- it assesses clarity, completeness, specificity,
-and YAGNI compliance, then fixes issues inline. The skill will identify the
-single most impactful improvement and apply it.
-
-If the skill asks whether to refine again or mark as complete, choose
-**refine again** (this feeds into Step 6.07).
-
-### Step 6.07: Plan Review and Refine (Pass 2)
-
-Run `/compound-engineering:document-review` on the same plan document again.
-
-This second pass catches issues introduced or exposed by the first refinement.
-After this pass, the skill will recommend completion (diminishing returns after
-2 passes). Accept completion and proceed.
-
 ### Step 6.1: Generate Run ID and Reports Directory (MANDATORY)
 
 Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
 the `run-id` (e.g., 21 solutions = run `022`). Create `docs/reports/<run-id>/`.
 
-This step runs before the deepening merge so `docs/reports/<run-id>/` exists
-for the audit trail. Both solo and swarm paths use this run-id -- the duplicate
-generation in Steps 7s.0 and 8w/9w is removed.
+This step runs before deepen so the reports directory exists for the agent.
+Both solo and swarm paths use this run-id.
 
-### Step 6.5: Merge Deepening Into Plan (MANDATORY)
+### Step 6: Deepen + Merge + Review (Delegated)
 
-After deepening completes, merge all accepted corrections into the plan file
-in-place. The orchestrator already has the plan and amendment outputs in context.
+1. Spawn the **phase-deepen** agent:
+   - `mode: "bypassPermissions"`
+   - `run_in_background: false` (sequential -- need result before branch point)
+   - Prompt includes: `plan_path` (from plan manifest), `run_id`, `reports_dir`
+     (`docs/reports/<run-id>/`), agent-pitfalls,
+     Feed-Forward from plan manifest (`phase-plan.manifest.yaml`).
+2. After agent completes, read manifest at
+   `docs/reports/<run-id>/phase-deepen.manifest.yaml`.
+3. Verify:
+   - `phase_status` is `PASS`
+   - `plan_path` file exists and was modified
+   - `deepening-applied.md` exists in reports dir
+   - `deepen-raw/` directory exists with at least one file
+   - `feed_forward_*` fields present
+4. If `FAIL` or `IN_PROGRESS`: retry once. Abort on second failure.
+5. Extract `plan_path` and `feed_forward_*` for next phase (work or swarm).
 
-1. Read all deepening agent outputs. Identify changes per plan section.
-2. If multiple agents modified the same section: synthesize a single merged
-   edit. Document conflicts in the audit trail.
-3. Use Write tool to overwrite the plan file with the merged version.
-4. Use Write tool to create `docs/reports/<run-id>/deepening-applied.md` with
-   a summary of what changed and why (audit trail only, not execution input).
-5. Commit the rewritten plan:
-   `git add docs/plans/<plan-file>`
-6. Commit the audit trail:
-   `git add docs/reports/<run-id>/deepening-applied.md`
-7. Create the commit:
-   `git commit -m "chore: merge deepening corrections into plan"`
-
-All downstream steps (swarm planner, agents, contract check) read the
-rewritten plan. No agent should see raw amendment notes.
+Read the plan's YAML frontmatter from `plan_path`. Extract the `swarm:` field.
 
 ---
 
@@ -633,10 +606,13 @@ RUN_METRICS as canonical sources.
 
 Calculate orchestration load:
 - `swarm_agents` = number of agents spawned in Step 10w (count from assignment table; 0 for solo)
-- `deepening_agents` = number of agents spawned in Step 6 (count from deepen-plan output, default 4)
 - `review_agents` = number of review agents spawned during Review
 - `fix_retries` = number of assembly-fix agent invocations in Steps 12w-14w (count from report files; 0 for solo)
-- `load = swarm_agents + (deepening_agents * 2) + (review_agents * 1.5) + (fix_retries * 3)`
+- `load = swarm_agents + (review_agents * 1.5) + (fix_retries * 3)`
+
+Note: `deepening_agents * 2` was removed from this formula because Step 6
+is now delegated -- deepen agents run in their own context window and do
+not contribute to orchestrator context.
 
 If `load > 30`:
 
