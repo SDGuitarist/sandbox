@@ -19,7 +19,7 @@ def check_deterministic(output: str, scenario: Scenario) -> CheckResult:
         )
 
     pattern = scenario.deterministic_pattern
-    match = re.search(pattern, output, re.IGNORECASE | re.MULTILINE)
+    match = re.search(pattern, output, re.IGNORECASE | re.MULTILINE | re.DOTALL)
 
     if scenario.deterministic_mode == "absence":
         # Pattern must NOT appear (e.g., /categories/categories/)
