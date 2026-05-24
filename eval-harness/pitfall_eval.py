@@ -18,8 +18,8 @@ import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskID
 
-from judge import evaluate
-from models import EvalResult, RunReport, ScenarioFile
+from judge import check_llm_judge, evaluate
+from models import EvalResult, RunReport, Scenario, ScenarioFile
 from parser import parse_pitfalls
 from reporter import write_report
 from runner import run_scenario
@@ -27,23 +27,22 @@ from scorer import score_all
 
 console = Console()
 
-# Haiku pricing per million tokens (standard, not batch)
 PRICING = {
     "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
     "claude-sonnet-4-6-20250514": {"input": 3.00, "output": 15.00},
 }
 
-# Stage 1 FC IDs (deterministic only)
 STAGE_1_FCS = {
     "fc7", "fc14", "fc16", "fc19", "fc20", "fc23",
     "fc24", "fc28", "fc33", "fc36", "fc46", "fc47",
 }
 
-# Stage 2 FC IDs (hybrid + LLM-judge + Tier 1b)
 STAGE_2_FCS = {
     "fc1", "fc2", "fc4", "fc9", "fc10", "fc15",
     "fc17", "fc25", "fc26", "fc27", "fc35", "fc39", "fc41",
 }
+
+CALIBRATION_THRESHOLD = 0.85
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
@@ -68,11 +67,9 @@ def load_scenarios(scenarios_dir: Path, fc_filter: set[str] | None = None) -> di
             console.print(f"[red]Error in {yaml_path.name}:[/red] {e}")
             sys.exit(1)
 
-        # Filter by FC if requested
         if fc_filter and sf.fc_id not in fc_filter:
             continue
 
-        # Check ID uniqueness
         for s in sf.scenarios:
             if s.id in seen_ids:
                 console.print(f"[red]Duplicate scenario ID:[/red] {s.id} in {yaml_path.name}")
@@ -85,11 +82,7 @@ def load_scenarios(scenarios_dir: Path, fc_filter: set[str] | None = None) -> di
 
 
 def load_checkpoint(checkpoint_path: Path) -> set[str]:
-    """Load completed result keys from JSONL checkpoint.
-
-    Returns set of keys like "fc7-fc7-flask-categories-with_rule-1".
-    Skips malformed lines with a warning.
-    """
+    """Load completed result keys from JSONL checkpoint."""
     completed = set()
     if not checkpoint_path.exists():
         return completed
@@ -120,6 +113,91 @@ def result_key(fc_id: str, scenario_id: str, variant: str, run_number: int) -> s
     return f"{fc_id}-{scenario_id}-{variant}-{run_number}"
 
 
+def run_calibration(
+    pitfalls_path: Path,
+    calibration_path: Path,
+    verbose: bool = False,
+) -> float:
+    """Run LLM judge on calibration set and return agreement rate."""
+    failure_classes = parse_pitfalls(pitfalls_path)
+    fc_lookup = {fc.id: fc for fc in failure_classes}
+
+    with open(calibration_path) as f:
+        cal_data = yaml.safe_load(f)
+
+    samples = cal_data.get("calibration_samples", [])
+    if not samples:
+        console.print("[red]No calibration samples found[/red]")
+        return 0.0
+
+    console.print(f"[bold]Running calibration on {len(samples)} samples...[/bold]")
+
+    client = anthropic.Anthropic(max_retries=3)
+
+    agree = 0
+    disagree = 0
+    errors = 0
+
+    for i, sample in enumerate(samples, 1):
+        fc_id = sample["fc_id"]
+        expected = sample["expected_verdict"]
+        agent_output = sample["agent_output"]
+
+        fc = fc_lookup.get(fc_id)
+        if not fc:
+            console.print(f"  [yellow]Skip {sample['scenario_id']}: FC {fc_id} not found[/yellow]")
+            errors += 1
+            continue
+
+        scenario = Scenario(
+            id=sample["scenario_id"],
+            title=sample["scenario_id"],
+            stack="flask",
+            task_brief="(calibration sample)",
+            expected_check_type="llm_judge",
+            expected_outcome="unknown",
+        )
+
+        result = check_llm_judge(agent_output, scenario, fc.rule_text, client, fc_id=fc_id)
+
+        if result.verdict == "error":
+            errors += 1
+            if verbose:
+                console.print(f"  [{i}/{len(samples)}] {sample['scenario_id']}: ERROR - {result.evidence}")
+            continue
+
+        match = result.verdict == expected
+        if match:
+            agree += 1
+        else:
+            disagree += 1
+
+        if verbose or not match:
+            status = "[green]AGREE[/green]" if match else "[red]DISAGREE[/red]"
+            console.print(
+                f"  [{i}/{len(samples)}] {sample['scenario_id']}: "
+                f"expected={expected}, judge={result.verdict} {status}"
+            )
+
+    total = agree + disagree
+    if total == 0:
+        console.print("[red]No valid comparisons made[/red]")
+        return 0.0
+
+    rate = agree / total
+    console.print(f"\n[bold]Calibration results:[/bold]")
+    console.print(f"  Agreement: {agree}/{total} ({rate:.0%})")
+    console.print(f"  Errors: {errors}")
+    console.print(f"  Threshold: {CALIBRATION_THRESHOLD:.0%}")
+
+    if rate >= CALIBRATION_THRESHOLD:
+        console.print(f"  [bold green]PASS[/bold green] -- judge is calibrated")
+    else:
+        console.print(f"  [bold red]FAIL[/bold red] -- judge needs tuning")
+
+    return rate
+
+
 @click.command()
 @click.option("--stage", type=click.Choice(["1", "2", "all"]), default="1",
               help="Stage 1 (deterministic only) is the safe default")
@@ -137,6 +215,7 @@ def result_key(fc_id: str, scenario_id: str, variant: str, run_number: int) -> s
 @click.option("--resume", type=str, default=None,
               help="Resume from run-id (JSONL checkpoint)")
 @click.option("--cost-cap", type=float, default=10.0, help="Max USD per run")
+@click.option("--calibrate", is_flag=True, help="Run calibration gate only")
 @click.option("--verbose", is_flag=True)
 def main(
     stage: str,
@@ -148,9 +227,22 @@ def main(
     dry_run: bool,
     resume: str | None,
     cost_cap: float,
+    calibrate: bool,
     verbose: bool,
 ) -> None:
     """Pitfall Rule Eval Harness -- test agent rule clarity."""
+
+    # 0. Calibration gate
+    if calibrate:
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            console.print("[red]ANTHROPIC_API_KEY not set[/red]")
+            sys.exit(1)
+        cal_path = Path(__file__).parent / "calibration" / "calibration-set.yaml"
+        if not cal_path.exists():
+            console.print(f"[red]Calibration set not found: {cal_path}[/red]")
+            sys.exit(1)
+        rate = run_calibration(Path(pitfalls), cal_path, verbose=verbose)
+        sys.exit(0 if rate >= CALIBRATION_THRESHOLD else 1)
 
     # 1. Parse agent-pitfalls.md
     console.print("[bold]Parsing agent-pitfalls.md...[/bold]")
@@ -183,14 +275,13 @@ def main(
         console.print("[red]No scenario files found for target FCs[/red]")
         sys.exit(1)
 
-    # Count total work
     total_scenarios = sum(len(sf.scenarios) for sf in scenario_files.values())
     total_calls = total_scenarios * runs
     console.print(f"  {len(scenario_files)} FCs, {total_scenarios} scenarios, {total_calls} API calls planned")
 
-    # 4. Dry run: report and exit
+    # 4. Dry run
     if dry_run:
-        est_input = total_calls * 500  # rough estimate
+        est_input = total_calls * 500
         est_output = total_calls * 300
         est_cost = estimate_cost(model_agent, est_input, est_output)
         console.print(f"\n[bold]Dry run summary:[/bold]")
@@ -227,7 +318,6 @@ def main(
     total_cost = 0.0
     fixtures_dir = scenarios_dir / "fixtures"
 
-    # Load any existing checkpoint results
     if checkpoint_path.exists():
         with open(checkpoint_path) as f:
             for line in f:
@@ -256,13 +346,11 @@ def main(
                 for run_num in range(1, runs + 1):
                     key = result_key(fc_id, scenario.id, scenario.variant, run_num)
 
-                    # Skip if already completed
                     if key in completed_keys:
                         continue
 
                     progress.update(task, description=f"{fc_id} / {scenario.id} / run {run_num}")
 
-                    # Run the scenario
                     result = run_scenario(
                         scenario=scenario,
                         fc=fc,
@@ -273,26 +361,21 @@ def main(
                         fixtures_dir=fixtures_dir if fixtures_dir.exists() else None,
                     )
 
-                    # Evaluate (deterministic + LLM judge for Stage 2)
                     result = evaluate(result, scenario, rule_text=fc.rule_text, client=client)
 
-                    # Track cost
                     call_cost = estimate_cost(model_agent, result.input_tokens, result.output_tokens)
                     total_input_tokens += result.input_tokens
                     total_output_tokens += result.output_tokens
                     total_cost += call_cost
 
-                    # FC41 self-check: cost must be > 0 after first call
                     if total_cost <= 0 and result.input_tokens > 0:
                         console.print("[yellow]Warning: cost accumulation may be broken (FC41)[/yellow]")
 
-                    # Checkpoint
                     append_checkpoint(checkpoint_path, result)
                     all_results.append(result)
 
                     progress.advance(task)
 
-                    # Cost cap check
                     if total_cost >= cost_cap:
                         console.print(f"\n[red]Cost cap reached: ${total_cost:.4f} >= ${cost_cap:.2f}[/red]")
                         console.print("Producing partial report with completed FCs...")
@@ -317,7 +400,7 @@ def main(
         timestamp=datetime.now(),
         stage=stage,
         model_agent=model_agent,
-        model_judge=None,  # Stage 1 has no judge
+        model_judge=None,
         temperature=0.0,
         max_tokens_agent=2048,
         total_cost_usd=total_cost,

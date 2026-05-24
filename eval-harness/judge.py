@@ -28,7 +28,6 @@ def check_deterministic(output: str, scenario: Scenario) -> CheckResult:
     match = re.search(pattern, output, re.IGNORECASE | re.MULTILINE | re.DOTALL)
 
     if scenario.deterministic_mode == "absence":
-        # Pattern must NOT appear (e.g., /categories/categories/)
         if match:
             return CheckResult(
                 verdict="fail",
@@ -39,7 +38,6 @@ def check_deterministic(output: str, scenario: Scenario) -> CheckResult:
             evidence="No violation pattern found",
         )
     else:
-        # Pattern MUST appear (e.g., escape() call)
         if match:
             return CheckResult(
                 verdict="pass",
@@ -64,12 +62,15 @@ def check_llm_judge(
     scenario: Scenario,
     rule_text: str,
     client: anthropic.Anthropic,
+    fc_id: str | None = None,
 ) -> CheckResult:
-    """Run LLM judge (Sonnet) against agent output using tool_use for structured response.
+    """Run LLM judge (Sonnet) via tool_use for structured response.
 
-    Returns CheckResult with confidence from the judge's self-assessment.
+    fc_id loads per-FC judge prompts. If not provided, extracted from scenario.id.
     """
-    # Load base prompt
+    if fc_id is None:
+        fc_id = scenario.id.split("-")[0]
+
     base_path = JUDGES_DIR / "base-judge.txt"
     if not base_path.exists():
         return CheckResult(
@@ -78,8 +79,7 @@ def check_llm_judge(
         )
     base_prompt = base_path.read_text()
 
-    # Load per-FC judge prompt (optional additional guidance)
-    fc_prompt = load_judge_prompt(scenario.fc_id) or ""
+    fc_prompt = load_judge_prompt(fc_id) or ""
 
     system = base_prompt
     if fc_prompt:
@@ -133,11 +133,9 @@ Evaluate whether this code follows the rule."""
             tool_choice={"type": "tool", "name": "submit_verdict"},
         )
 
-        # Extract tool use result
         for block in response.content:
             if block.type == "tool_use" and block.name == "submit_verdict":
                 verdict_raw = block.input.get("verdict", "error")
-                # Map "unclear" to "fail" for scoring purposes
                 verdict = "fail" if verdict_raw == "unclear" else verdict_raw
                 confidence = block.input.get("confidence", 0.5)
                 evidence = block.input.get("evidence", "No evidence provided")
@@ -165,11 +163,7 @@ def evaluate(
     rule_text: str = "",
     client: anthropic.Anthropic | None = None,
 ) -> EvalResult:
-    """Evaluate an EvalResult's agent_output and return a new EvalResult with verdict filled in.
-
-    For Stage 1, only deterministic checks are used.
-    For Stage 2 (hybrid/llm_judge), also calls the LLM judge.
-    """
+    """Evaluate an EvalResult's agent_output and return with verdict filled in."""
     if result.verdict == "error":
         return result
 
@@ -182,7 +176,6 @@ def evaluate(
         })
 
     if scenario.expected_check_type == "hybrid":
-        # Hybrid: deterministic first, LLM judge on failure
         check = check_deterministic(result.agent_output, scenario)
         if check.verdict == "pass":
             return result.model_copy(update={
@@ -190,7 +183,6 @@ def evaluate(
                 "evidence": check.evidence,
                 "confidence": 1.0,
             })
-        # Deterministic failed -- escalate to LLM judge
         if client and rule_text:
             judge_check = check_llm_judge(
                 result.agent_output, scenario, rule_text, client
@@ -200,7 +192,6 @@ def evaluate(
                 "evidence": f"[det: {check.evidence}] {judge_check.evidence}",
                 "confidence": judge_check.confidence,
             })
-        # No client available -- fall back to deterministic
         return result.model_copy(update={
             "verdict": check.verdict,
             "evidence": f"[deterministic only] {check.evidence}",

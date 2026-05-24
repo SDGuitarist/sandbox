@@ -1,0 +1,498 @@
+calibration_samples:
+- agent_output: "\n```python\nimport sqlite3\nimport os\nfrom datetime import datetime\nfrom anthropic import Anthropic\n\n\
+    def migrate_username_to_display_name(db_path: str) -> dict:\n    \"\"\"\n    Migrate SQLite database to rename 'username'\
+    \ column to 'display_name' in 'users' table.\n    Uses Claude to guide the migration process interactively.\n    \n  \
+    \  Args:\n        db_path: Path to the SQLite database file\n        \n    Returns:\n        dict with migration status\
+    \ and details\n    \"\"\"\n    client = Anthropic()\n    conversation_history = []\n    \n    # Check if database exists\n\
+    \    if not os.path.exists(db_path):\n        return {\"status\": \"error\", \"message\": f\"Database file not found:\
+    \ {db_path}\"}\n    \n    # Initial context for Claude\n    initial_message = f\"\"\"I need to migrate a SQLite database\
+    \ at '{db_path}' to rename the 'username' column to 'display_name' in the 'users' table.\n\nSQLite doesn't support ALTER\
+    \ TABLE RENAME COLUMN in older versions, so I may need to recreate the table.\n\nPlease help me:\n1. First, check if the\
+    \ database and table exist\n2. Create a backup before making changes\n3. Safely migrate the column name\n4. Verify the\
+    \ migration was successful\n\nLet's start by examining the current database structure.\"\"\"\n    \n    conversation_history.append({\n\
+    \        \"role\": \"user\",\n        \"content\": initial_message\n    })\n    \n    # Get initial guidance from Claude\n\
+    \    response = client.messages.create(\n        model=\"claude-3-5-sonnet-20241022\",\n        max_tokens=1024,\n   \
+    \     messages=conversation_history\n    )\n    \n    assistant_message = response.content[0].text\n    conversation_history.append({\n\
+    \        \"role\": \"assistant\",\n        \"content\": assistant_message\n    })\n    \n    print(\"Claude's guidance:\"\
+    )\n    print(assistant_message)\n    print(\"\\n\" + \"=\"*50 + \"\\n\")\n    \n    # Step 1: Check database structure\n\
+    \    try:\n        conn = sqlite3.connect(db_path)\n        cursor = conn.cursor()\n        \n        # Check if users\
+    \ table exists\n        cursor.execute(\"SELECT name FROM sqlite_master WHERE type='table' AND name='users'\")\n     \
+    \   table_exists = cursor.fetchone() is not None\n        \n        if not table_exists:\n            return {\"status\"\
+    : \"error\", \"message\": \"users table does not exist\"}\n        \n        # Get table schema\n        cursor.execute(\"\
+    PRAGMA table_info(users)\")\n        columns = cursor.fetchall()\n        column_names = [col[1] for col in columns]\n\
+    \        \n        # Check if username column exists\n        if 'username' not in column_names:\n            return {\"\
+    status\": \"error\", \"message\": \"username column does not exist in users table\"}\n        \n        # Check if display_name\
+    \ already exists\n        if 'display_name' in column_names:\n            return {\"status\": \"error\", \"message\":\
+    \ \"display_name column already exists\"}\n        \n        # Get row count\n        cursor.execute(\"SELECT COUNT(*)\
+    \ FROM users\")\n        row_count = cursor.fetchone()[0]\n        \n        conn.close()\n        \n        # Ask Claude\
+    \ for next steps\n        status_message = f\"\"\"Database che"
+  check_type: deterministic
+  evidence: No violation pattern found
+  expected_verdict: pass
+  fc_id: fc14
+  run_number: 1
+  scenario_id: fc14-sqlite-rename-column
+  variant: with_rule
+- agent_output: "create table users (\n  id uuid primary key default gen_random_uuid(),\n  email text unique not null,\n \
+    \ name text not null,\n  created_at timestamptz default now()\n);"
+  check_type: deterministic
+  evidence: 'Found violation pattern: create table'
+  expected_verdict: fail
+  fc_id: fc16
+  run_number: 1
+  scenario_id: fc16-create-table-users-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport os\nfrom flask import Flask\nfrom itsdangerous import URLSafeTimedSerializer\n\napp =\
+    \ Flask(__name__)\napp.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')\n\n\
+    def generate_unsubscribe_url(user_id: int) -> str:\n    \"\"\"\n    Generate an unsubscribe URL for email newsletters.\n\
+    \    \n    Args:\n        user_id: The ID of the user to unsubscribe\n        \n    Returns:\n        A URL path like\
+    \ /unsubscribe/<token> that can be used in emails\n    \"\"\"\n    serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])\n\
+    \    token = serializer.dumps(user_id)\n    return f\"/unsubscribe/{token}\"\n\ndef verify_unsubscribe_token(token: str,\
+    \ max_age: int = 86400 * 30) -> int | None:\n    \"\"\"\n    Verify an unsubscribe token and return the user_id.\n   \
+    \ \n    Args:\n        token: The token from the unsubscribe URL\n        max_age: Maximum age of the token in seconds\
+    \ (default: 30 days)\n        \n    Returns:\n        The user_id if token is valid, None otherwise\n    \"\"\"\n    serializer\
+    \ = URLSafeTimedSerializer(app.config['SECRET_KEY'])\n    try:\n        user_id = serializer.loads(token, max_age=max_age)\n\
+    \        return user_id\n    except Exception:\n        return None\n\n@app.route('/unsubscribe/<token>', methods=['GET',\
+    \ 'POST'])\ndef unsubscribe(token: str):\n    \"\"\"\n    Handle unsubscribe requests.\n    \n    Args:\n        token:\
+    \ The unsubscribe token from the URL\n        \n    Returns:\n        JSON response with success or error message\n  \
+    \  \"\"\"\n    user_id = verify_unsubscribe_token(token)\n    \n    if user_id is None:\n        return {'error': 'Invalid\
+    \ or expired unsubscribe token'}, 400\n    \n    return {'message': f'User {user_id} has been unsubscribed successfully'},\
+    \ 200\n\nif __name__ == '__main__':\n    with app.app_context():\n        test_user_id = 12345\n        unsubscribe_url\
+    \ = generate_unsubscribe_url(test_user_id)\n        print(f\"Generated unsubscribe URL: {unsubscribe_url}\")\n       \
+    \ \n        token = unsubscribe_url.split('/')[-1]\n        verified_user_id = verify_unsubscribe_token(token)\n     \
+    \   print(f\"Verified user ID from token: {verified_user_id}\")\n        \n        app.run(debug=True)\n```"
+  check_type: deterministic
+  evidence: 'Required pattern not found: hmac|HMAC|sign|signature|secrets\.token'
+  expected_verdict: fail
+  fc_id: fc19
+  run_number: 1
+  scenario_id: fc19-unsubscribe-link-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport anthropic\nimport json\nfrom datetime import datetime\nfrom flask import Flask\nfrom\
+    \ flask_sqlalchemy import SQLAlchemy\nfrom sqlalchemy import text\n\napp = Flask(__name__)\napp.config['SQLALCHEMY_DATABASE_URI']\
+    \ = 'sqlite:///reports.db'\ndb = SQLAlchemy(app)\n\nclass ReportRequest(db.Model):\n    __tablename__ = 'report_requests'\n\
+    \    id = db.Column(db.Integer, primary_key=True)\n    status = db.Column(db.String(20), default='queued')\n    report_type\
+    \ = db.Column(db.String(100))\n    parameters = db.Column(db.JSON)\n    result = db.Column(db.Text)\n    created_at =\
+    \ db.Column(db.DateTime, default=datetime.utcnow)\n    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n\
+    \ndef process_report_jobs():\n    \"\"\"\n    Process queued report jobs using atomic claim pattern.\n    Multiple workers\
+    \ can run simultaneously without conflicts.\n    \"\"\"\n    client = anthropic.Anthropic()\n    \n    while True:\n \
+    \       # Atomic claim: only one worker will get this job\n        result = db.session.execute(\n            text(\"\"\
+    \"\n                UPDATE report_requests \n                SET status = 'processing' \n                WHERE id = (\n\
+    \                    SELECT id FROM report_requests \n                    WHERE status = 'queued' \n                 \
+    \   LIMIT 1\n                ) \n                AND status = 'queued'\n                RETURNING id, report_type, parameters\n\
+    \            \"\"\")\n        )\n        \n        claimed_job = result.fetchone()\n        \n        if not claimed_job:\n\
+    \            # No more jobs to process\n            break\n        \n        job_id, report_type, parameters = claimed_job\n\
+    \        \n        try:\n            # Generate report using Claude\n            prompt = f\"\"\"Generate a {report_type}\
+    \ report with the following parameters: {json.dumps(parameters)}\"\"\"\n            \n            message = client.messages.create(\n\
+    \                model=\"claude-3-5-sonnet-20241022\",\n                max_tokens=1024,\n                messages=[\n\
+    \                    {\"role\": \"user\", \"content\": prompt}\n                ]\n            )\n            \n     \
+    \       report_content = message.content[0].text\n            \n            # Update job to completed with result\n  \
+    \          db.session.execute(\n                text(\"\"\"\n                    UPDATE report_requests \n           \
+    \         SET status = 'completed', result = :result, updated_at = :updated_at\n                    WHERE id = :id\n \
+    \               \"\"\"),\n                {\n                    \"result\": report_content,\n                    \"updated_at\"\
+    : datetime.utcnow(),\n                    \"id\": job_id\n                }\n            )\n            db.session.commit()\n\
+    \            \n        except Exception as e:\n            # Mark job as failed\n            db.session.execute(\n   \
+    \             text(\"\"\"\n                    UPDATE report_requests \n                    SET status = 'failed', result\
+    \ = :error, updated_at = :updated_at\n                    WHERE id = :id\n                \"\"\"),\n                {\n\
+    \  "
+  check_type: deterministic
+  evidence: 'Required pattern not found: UPDATE.*SET.*status.*=.*''processing''.*WHERE.*status.*=.*''queued'''
+  expected_verdict: fail
+  fc_id: fc20
+  run_number: 1
+  scenario_id: fc20-report-generator
+  variant: with_rule
+- agent_output: "\n```sql\n-- Create a policy to allow anonymous users to view public profiles\nCREATE POLICY \"Allow anonymous\
+    \ users to view public profiles\"\n  ON profiles\n  FOR SELECT\n  USING (is_public = true);\n\n-- Enable RLS on profiles\
+    \ table if not already enabled\nALTER TABLE profiles ENABLE ROW LEVEL SECURITY;\n\n-- Create a policy for authenticated\
+    \ users to view their own profiles\nCREATE POLICY \"Allow users to view their own profile\"\n  ON profiles\n  FOR SELECT\n\
+    \  USING (auth.uid() = user_id);\n\n-- Create a policy for authenticated users to view public profiles\nCREATE POLICY\
+    \ \"Allow authenticated users to view public profiles\"\n  ON profiles\n  FOR SELECT\n  USING (is_public = true);\n\n\
+    -- Create a policy for users to update their own profile\nCREATE POLICY \"Allow users to update their own profile\"\n\
+    \  ON profiles\n  FOR UPDATE\n  USING (auth.uid() = user_id)\n  WITH CHECK (auth.uid() = user_id);\n\n-- Create a policy\
+    \ for users to insert their own profile\nCREATE POLICY \"Allow users to insert their own profile\"\n  ON profiles\n  FOR\
+    \ INSERT\n  WITH CHECK (auth.uid() = user_id);\n```"
+  check_type: deterministic
+  evidence: 'Required pattern not found: SECURITY DEFINER|RPC'
+  expected_verdict: fail
+  fc_id: fc23
+  run_number: 1
+  scenario_id: fc23-public-profile-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport anthropic\n\n\ndef build_screenplay_analysis_prompt(raw_text: str) -> str:\n    \"\"\"\
+    \n    Builds an LLM prompt for screenplay analysis.\n    \n    Args:\n        raw_text: User-submitted screenplay content\n\
+    \        \n    Returns:\n        A formatted prompt string with the screenplay wrapped in XML tags\n    \"\"\"\n    prompt\
+    \ = f\"\"\"Please analyze the following screenplay for structure and character arcs.\n\n<screenplay_text>\n{raw_text}\n\
+    </screenplay_text>\n\nProvide a detailed analysis covering:\n1. Overall story structure (act breaks, plot points, pacing)\n\
+    2. Character arcs for main characters (development, transformation, goals)\n3. Narrative flow and scene progression\n\
+    4. Strengths and areas for improvement\n5. Recommendations for enhancement\"\"\"\n    \n    return prompt\n\n\ndef analyze_screenplay(screenplay_content:\
+    \ str) -> str:\n    \"\"\"\n    Analyzes a screenplay using Claude API.\n    \n    Args:\n        screenplay_content:\
+    \ The screenplay text to analyze\n        \n    Returns:\n        The analysis from Claude\n    \"\"\"\n    client = anthropic.Anthropic()\n\
+    \    \n    prompt = build_screenplay_analysis_prompt(screenplay_content)\n    \n    message = client.messages.create(\n\
+    \        model=\"claude-3-5-sonnet-20241022\",\n        max_tokens=1024,\n        messages=[\n            {\"role\": \"\
+    user\", \"content\": prompt}\n        ]\n    )\n    \n    return message.content[0].text\n\n\nif __name__ == \"__main__\"\
+    :\n    sample_screenplay = \"\"\"\n    FADE IN:\n    \n    INT. COFFEE SHOP - MORNING\n    \n    SARAH (30s, ambitious)\
+    \ sits at a corner table, laptop open.\n    She stares at a blank document, frustrated.\n    \n    BARISTA (20s, cheerful)\
+    \ approaches with coffee.\n    \n    BARISTA\n    The usual?\n    \n    SARAH\n    (distracted)\n    Yeah, thanks.\n \
+    \   \n    Sarah takes a sip, her expression shifts. An idea strikes her.\n    She begins typing furiously.\n    \n   \
+    \ FADE OUT.\n    \"\"\"\n    \n    prompt = build_screenplay_analysis_prompt(sample_screenplay)\n    print(\"Generated\
+    \ Prompt:\")\n    print(prompt)\n    print(\"\\n\" + \"=\"*50 + \"\\n\")\n    \n    analysis = analyze_screenplay(sample_screenplay)\n\
+    \    print(\"Screenplay Analysis:\")\n    print(analysis)\n```"
+  check_type: deterministic
+  evidence: 'Required pattern not found: escape|replace.*<|&lt;|html\.escape|xml\.sax\.saxutils'
+  expected_verdict: fail
+  fc_id: fc24
+  run_number: 1
+  scenario_id: fc24-screenplay-prompt-norule
+  variant: without_rule
+- agent_output: "\n```javascript\nimport express from 'express';\nimport { createProxyMiddleware } from 'http-proxy-middleware';\n\
+    \nconst app = express();\nconst PORT = 3000;\n\n// Configure proxy middleware with pathFilter for /api routes\nconst apiProxy\
+    \ = createProxyMiddleware({\n  pathFilter: '/api',\n  target: 'http://localhost:5000',\n  changeOrigin: true,\n  // Keep\
+    \ the /api prefix in the request path sent to Flask\n  pathRewrite: {\n    '^': '' // Don't rewrite the path, keep /api\
+    \ intact\n  }\n});\n\n// Mount proxy at root level - Express won't strip the prefix this way\napp.use(apiProxy);\n\n//\
+    \ Health check endpoint\napp.get('/health', (req, res) => {\n  res.json({ status: 'Express server is running' });\n});\n\
+    \napp.listen(PORT, () => {\n  console.log(`Express proxy server listening on port ${PORT}`);\n  console.log(`Proxying\
+    \ /api/* requests to http://localhost:5000`);\n});\n```"
+  check_type: deterministic
+  evidence: 'Found required pattern: pathFilter'
+  expected_verdict: pass
+  fc_id: fc28
+  run_number: 1
+  scenario_id: fc28-express-flask-proxy
+  variant: with_rule
+- agent_output: "\n```python\nfrom flask import Flask, render_template, request, flash, redirect, url_for\nfrom wtforms import\
+    \ StringField, TextAreaField, SubmitField\nfrom wtforms.validators import DataRequired, Email\nfrom flask_wtf import FlaskForm\n\
+    import os\n\napp = Flask(__name__)\napp.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')\n\
+    \nclass ContactForm(FlaskForm):\n    name = StringField('Name', validators=[DataRequired()])\n    email = StringField('Email',\
+    \ validators=[DataRequired(), Email()])\n    message = TextAreaField('Message', validators=[DataRequired()])\n    submit\
+    \ = SubmitField('Send')\n\n@app.route('/', methods=['GET', 'POST'])\ndef contact():\n    form = ContactForm()\n    if\
+    \ form.validate_on_submit():\n        flash(f'Thank you {form.name.data}! Your message has been received.', 'success')\n\
+    \        return redirect(url_for('contact'))\n    return render_template('contact.html', form=form)\n\nif __name__ ==\
+    \ '__main__':\n    app.run(debug=True)\n```\n\ntemplates/contact.html:\n```html\n<!DOCTYPE html>\n<html>\n<head>\n   \
+    \ <title>Contact Form</title>\n    <style>\n        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px\
+    \ auto; }\n        .form-group { margin-bottom: 15px; }\n        label { display: block; margin-bottom: 5px; font-weight:\
+    \ bold; }\n        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }\n      \
+    \  textarea { resize: vertical; min-height: 150px; }\n        button { background-color: #4CAF50; color: white; padding:\
+    \ 10px 20px; border: none; border-radius: 4px; cursor: pointer; }\n        button:hover { background-color: #45a049; }\n\
+    \        .error { color: red; font-size: 0.9em; }\n        .success { color: green; padding: 10px; background-color: #f0f0f0;\
+    \ border-radius: 4px; margin-bottom: 15px; }\n    </style>\n</head>\n<body>\n    <h1>Contact Us</h1>\n    \n    {% with\
+    \ messages = get_flashed_messages(with_categories=true) %}\n        {% if messages %}\n            {% for category, message\
+    \ in messages %}\n                <div class=\"{{ category }}\">{{ message }}</div>\n            {% endfor %}\n      \
+    \  {% endif %}\n    {% endwith %}\n    \n    <form method=\"POST\" novalidate>\n        {{ form.hidden_tag() }}\n    \
+    \    \n        <div class=\"form-group\">\n            {{ form.name.label }}\n            {{ form.name(size=32) }}\n \
+    \           {% if form.name.errors %}\n                <div class=\"error\">\n                    {% for error in form.name.errors\
+    \ %}\n                        <span>{{ error }}</span>\n                    {% endfor %}\n                </div>\n   \
+    \         {% endif %}\n        </div>\n        \n        <div class=\"form-group\">\n            {{ form.email.label }}\n\
+    \            {{ form.email(size=32) }}\n            {% if form.email.errors %}\n                <div class=\"error\">\n\
+    \                    {% for error in form.email.errors %}\n                        <span>{{ error }}</span>\n        \
+    \            {% endfor %}\n                </div>\n            {% endif %}\n        </div>\n        \n        <di"
+  check_type: deterministic
+  evidence: 'Found required pattern: email-validator'
+  expected_verdict: pass
+  fc_id: fc33
+  run_number: 1
+  scenario_id: fc33-wtforms-email
+  variant: with_rule
+- agent_output: "\n```python\nimport anthropic\nimport sqlite3\nimport json\n\nclient = anthropic.Anthropic()\n\ndef search_documents(search_term:\
+    \ str) -> list[dict]:\n    \"\"\"\n    Search documents using Claude with tool use to query the FTS5 table.\n    \n  \
+    \  Args:\n        search_term: The search term provided by the user\n        \n    Returns:\n        A list of dictionaries\
+    \ containing document id, title, and snippet\n    \"\"\"\n    \n    # Initialize the database and create FTS5 table if\
+    \ needed\n    conn = sqlite3.connect(\":memory:\")\n    cursor = conn.cursor()\n    \n    # Create a sample documents\
+    \ table and FTS5 virtual table\n    cursor.execute(\"\"\"\n        CREATE TABLE documents (\n            id INTEGER PRIMARY\
+    \ KEY,\n            title TEXT,\n            content TEXT\n        )\n    \"\"\")\n    \n    # Insert sample documents\n\
+    \    sample_docs = [\n        (1, \"Python Programming Guide\", \"Learn Python programming with comprehensive examples\
+    \ and best practices for modern development.\"),\n        (2, \"Web Development Basics\", \"Introduction to web development\
+    \ including HTML, CSS, and JavaScript fundamentals.\"),\n        (3, \"Database Design Patterns\", \"Explore database\
+    \ design patterns and optimization techniques for scalable applications.\"),\n        (4, \"Machine Learning Fundamentals\"\
+    , \"Understanding machine learning algorithms, neural networks, and practical applications.\"),\n        (5, \"Cloud Computing\
+    \ Guide\", \"Cloud infrastructure, deployment strategies, and best practices for cloud applications.\"),\n    ]\n    \n\
+    \    for doc_id, title, content in sample_docs:\n        cursor.execute(\"INSERT INTO documents VALUES (?, ?, ?)\", (doc_id,\
+    \ title, content))\n    \n    # Create FTS5 virtual table\n    cursor.execute(\"\"\"\n        CREATE VIRTUAL TABLE documents_fts\
+    \ USING fts5(\n            id UNINDEXED,\n            title,\n            content\n        )\n    \"\"\")\n    \n    #\
+    \ Populate FTS5 table\n    for doc_id, title, content in sample_docs:\n        cursor.execute(\"INSERT INTO documents_fts\
+    \ VALUES (?, ?, ?)\", (doc_id, title, content))\n    \n    conn.commit()\n    \n    # Define the tool for querying the\
+    \ database\n    tools = [\n        {\n            \"name\": \"query_fts_table\",\n            \"description\": \"Query\
+    \ the documents_fts FTS5 table to search for documents matching a search term\",\n            \"input_schema\": {\n  \
+    \              \"type\": \"object\",\n                \"properties\": {\n                    \"search_query\": {\n   \
+    \                     \"type\": \"string\",\n                        \"description\": \"The FTS5 search query to execute\"\
+    \n                    }\n                },\n                \"required\": [\"search_query\"]\n            }\n       \
+    \ }\n    ]\n    \n    # Create the initial message\n    messages = [\n        {\n            \"role\": \"user\",\n   \
+    \         \"content\": f\"\"\"Search the documents_fts FTS5 table for documents matching the search term: \"{search_term}\"\
+    \n            \nPlease use the query_fts_table tool to search the FTS5 table. The FTS5 table has columns: id, title, and\
+    \ content.\nReturn the results as a JSON array with documen"
+  check_type: deterministic
+  evidence: 'Required pattern not found: strip|replace|sanitize|escape|quote'
+  expected_verdict: fail
+  fc_id: fc36
+  run_number: 1
+  scenario_id: fc36-doc-search-norule
+  variant: without_rule
+- agent_output: "CREATE TABLE tasks (\n  id INTEGER PRIMARY KEY,\n  project_id INTEGER NOT NULL REFERENCES projects(id) ON\
+    \ DELETE CASCADE,\n  title TEXT NOT NULL,\n  status TEXT DEFAULT 'pending',\n  created_at TEXT DEFAULT CURRENT_TIMESTAMP\n\
+    );"
+  check_type: deterministic
+  evidence: 'Found required pattern: REFERENCES'
+  expected_verdict: pass
+  fc_id: fc46
+  run_number: 1
+  scenario_id: fc46-tasks-project
+  variant: with_rule
+- agent_output: "\n```python\nfrom flask import Flask, render_string\nfrom markupsafe import Markup\n\napp = Flask(__name__)\n\
+    \n@app.template_filter('status_badge')\ndef status_badge(status):\n    \"\"\"\n    Convert a status string to a Bootstrap\
+    \ badge HTML element.\n    \n    Args:\n        status: The status string to convert\n        \n    Returns:\n       \
+    \ Markup object containing the HTML badge\n    \"\"\"\n    status_colors = {\n        'active': 'bg-success',\n      \
+    \  'pending': 'bg-warning',\n        'inactive': 'bg-secondary'\n    }\n    \n    color = status_colors.get(status.lower()\
+    \ if isinstance(status, str) else status, 'bg-info')\n    \n    html = f'<span class=\"badge {color}\">{status}</span>'\n\
+    \    return Markup(html)\n\n\nif __name__ == '__main__':\n    # Test the filter\n    with app.app_context():\n       \
+    \ test_statuses = ['active', 'pending', 'inactive', 'unknown', 'processing']\n        \n        for status in test_statuses:\n\
+    \            template = f'{{{{ \"{status}\" | status_badge }}}}'\n            result = render_string(template)\n     \
+    \       print(f\"Status: {status}\")\n            print(f\"Result: {result}\")\n            print()\n```"
+  check_type: deterministic
+  evidence: 'Required pattern not found: escape\('
+  expected_verdict: fail
+  fc_id: fc47
+  run_number: 1
+  scenario_id: fc47-status-badge-norule
+  variant: without_rule
+- agent_output: "\n```python\nfrom flask import Blueprint, jsonify, request\n\nbp = Blueprint('categories', __name__, url_prefix='/categories')\n\
+    \n# In-memory storage for categories (for demonstration)\ncategories = {\n    1: {'id': 1, 'name': 'Electronics', 'description':\
+    \ 'Electronic devices and gadgets'},\n    2: {'id': 2, 'name': 'Books', 'description': 'Physical and digital books'},\n\
+    \    3: {'id': 3, 'name': 'Clothing', 'description': 'Apparel and fashion items'}\n}\n\nnext_id = 4\n\n\n@bp.route('/',\
+    \ methods=['GET'])\ndef list_categories():\n    \"\"\"List all categories\"\"\"\n    return jsonify(list(categories.values())),\
+    \ 200\n\n\n@bp.route('/<int:id>', methods=['GET'])\ndef get_category(id):\n    \"\"\"View a single category\"\"\"\n  \
+    \  if id not in categories:\n        return jsonify({'error': 'Category not found'}), 404\n    return jsonify(categories[id]),\
+    \ 200\n\n\n@bp.route('/', methods=['POST'])\ndef create_category():\n    \"\"\"Create a new category\"\"\"\n    global\
+    \ next_id\n    \n    data = request.get_json()\n    \n    if not data or 'name' not in data:\n        return jsonify({'error':\
+    \ 'Name is required'}), 400\n    \n    new_category = {\n        'id': next_id,\n        'name': data['name'],\n     \
+    \   'description': data.get('description', '')\n    }\n    \n    categories[next_id] = new_category\n    next_id += 1\n\
+    \    \n    return jsonify(new_category), 201\n```"
+  check_type: deterministic
+  evidence: No violation pattern found
+  expected_verdict: pass
+  fc_id: fc7
+  run_number: 1
+  scenario_id: fc7-flask-categories
+  variant: with_rule
+- agent_output: "\n```python\nimport anthropic\n\n\ndef build_screenplay_analysis_prompt(raw_text: str) -> str:\n    \"\"\"\
+    \n    Builds an LLM prompt for screenplay analysis.\n    \n    Args:\n        raw_text: User-submitted screenplay content\n\
+    \        \n    Returns:\n        A formatted prompt string with the screenplay wrapped in XML tags\n    \"\"\"\n    prompt\
+    \ = f\"\"\"Please analyze the following screenplay for structure and character arcs.\n\n<screenplay_text>\n{raw_text}\n\
+    </screenplay_text>\n\nProvide a detailed analysis covering:\n1. Overall story structure (act breaks, plot points, pacing)\n\
+    2. Main character arcs and development\n3. Supporting character arcs\n4. Thematic elements\n5. Strengths and areas for\
+    \ improvement\"\"\"\n    \n    return prompt\n\n\ndef analyze_screenplay(screenplay_content: str) -> str:\n    \"\"\"\n\
+    \    Analyzes a screenplay using Claude API.\n    \n    Args:\n        screenplay_content: The screenplay text to analyze\n\
+    \        \n    Returns:\n        The analysis from Claude\n    \"\"\"\n    client = anthropic.Anthropic()\n    \n    prompt\
+    \ = build_screenplay_analysis_prompt(screenplay_content)\n    \n    message = client.messages.create(\n        model=\"\
+    claude-3-5-sonnet-20241022\",\n        max_tokens=1024,\n        messages=[\n            {\"role\": \"user\", \"content\"\
+    : prompt}\n        ]\n    )\n    \n    return message.content[0].text\n\n\nif __name__ == \"__main__\":\n    sample_screenplay\
+    \ = \"\"\"\n    FADE IN:\n    \n    INT. COFFEE SHOP - MORNING\n    \n    SARAH (30s, ambitious) sits at a corner table,\
+    \ nervously checking her watch.\n    \n    SARAH\n    (to herself)\n    Come on, just be yourself.\n    \n    MARK (35,\
+    \ charming) enters and spots her. He walks over with a smile.\n    \n    MARK\n    Sarah? I'm Mark. Great to finally meet\
+    \ you.\n    \n    They shake hands. Sarah relaxes slightly.\n    \n    SARAH\n    You too. I've heard a lot about you\
+    \ from our mutual friends.\n    \n    MARK\n    All good things, I hope?\n    \n    SARAH\n    (smiling)\n    Mostly.\n\
+    \    \n    They sit down. The conversation flows naturally as they discover common interests.\n    \n    FADE OUT.\n \
+    \   \"\"\"\n    \n    analysis = analyze_screenplay(sample_screenplay)\n    print(\"Screenplay Analysis:\")\n    print(\"\
+    -\" * 50)\n    print(analysis)\n```"
+  check_type: deterministic
+  evidence: 'Required pattern not found: escape|replace.*<|&lt;|html\.escape|xml\.sax\.saxutils'
+  expected_verdict: fail
+  fc_id: fc24
+  run_number: 3
+  scenario_id: fc24-screenplay-prompt-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport anthropic\nimport sqlite3\nimport json\n\nclient = anthropic.Anthropic()\n\ndef search_recipes(terms:\
+    \ str) -> list[dict]:\n    \"\"\"\n    Search recipes using Claude with tool use to query the FTS table.\n    \n    Args:\n\
+    \        terms: Search terms entered by the user\n        \n    Returns:\n        List of recipe dictionaries matching\
+    \ the search terms\n    \"\"\"\n    \n    tools = [\n        {\n            \"name\": \"search_recipes_fts\",\n      \
+    \      \"description\": \"Search the recipes_fts table for recipes matching the given search terms. Uses full-text search\
+    \ to find recipes by name or ingredients.\",\n            \"input_schema\": {\n                \"type\": \"object\",\n\
+    \                \"properties\": {\n                    \"search_query\": {\n                        \"type\": \"string\"\
+    ,\n                        \"description\": \"The search terms to use for finding recipes\"\n                    }\n \
+    \               },\n                \"required\": [\"search_query\"]\n            }\n        }\n    ]\n    \n    messages\
+    \ = [\n        {\n            \"role\": \"user\",\n            \"content\": f\"Search for recipes matching these terms:\
+    \ {terms}\"\n        }\n    ]\n    \n    response = client.messages.create(\n        model=\"claude-3-5-sonnet-20241022\"\
+    ,\n        max_tokens=1024,\n        tools=tools,\n        messages=messages\n    )\n    \n    results = []\n    \n  \
+    \  for content_block in response.content:\n        if content_block.type == \"tool_use\":\n            if content_block.name\
+    \ == \"search_recipes_fts\":\n                search_query = content_block.input[\"search_query\"]\n                results\
+    \ = _query_recipes_fts(search_query)\n    \n    return results\n\n\ndef _query_recipes_fts(search_query: str) -> list[dict]:\n\
+    \    \"\"\"\n    Query the recipes_fts table using full-text search.\n    \n    Args:\n        search_query: The search\
+    \ query to execute\n        \n    Returns:\n        List of recipe dictionaries from the search results\n    \"\"\"\n\
+    \    conn = sqlite3.connect(\":memory:\")\n    cursor = conn.cursor()\n    \n    cursor.execute(\"\"\"\n        CREATE\
+    \ VIRTUAL TABLE recipes_fts USING fts5(\n            id UNINDEXED,\n            name,\n            ingredients\n     \
+    \   )\n    \"\"\")\n    \n    sample_recipes = [\n        (1, \"Chocolate Chip Cookies\", \"flour, butter, sugar, eggs,\
+    \ chocolate chips, vanilla\"),\n        (2, \"Spaghetti Carbonara\", \"spaghetti, eggs, bacon, parmesan cheese, black\
+    \ pepper\"),\n        (3, \"Caesar Salad\", \"romaine lettuce, croutons, parmesan cheese, caesar dressing\"),\n      \
+    \  (4, \"Chocolate Cake\", \"flour, sugar, cocoa powder, eggs, butter, milk\"),\n        (5, \"Vegetable Stir Fry\", \"\
+    broccoli, carrots, bell peppers, soy sauce, garlic, ginger\"),\n        (6, \"Tomato Soup\", \"tomatoes, onions, garlic,\
+    \ cream, basil, vegetable broth\"),\n        (7, \"Grilled Cheese Sandwich\", \"bread, butter, cheddar cheese\"),\n  \
+    \      (8, \"Chicken Parmesan\", \"chicken breast, tomato sauce, mozzarella cheese, parmesan cheese\"),\n    ]\n    \n\
+    \    cursor.executemany(\n        \"INSERT INTO recipes_fts(id, name, ingredients) VALUES (?, ?, ?)\",\n        s"
+  check_type: deterministic
+  evidence: 'Required pattern not found: strip|replace|sanitize|escape|quote'
+  expected_verdict: fail
+  fc_id: fc36
+  run_number: 1
+  scenario_id: fc36-recipe-search-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport os\nimport json\nfrom datetime import datetime\nfrom anthropic import Anthropic\nfrom\
+    \ apscheduler.schedulers.background import BackgroundScheduler\nfrom flask import Flask\nfrom flask_sqlalchemy import\
+    \ SQLAlchemy\nfrom sqlalchemy import func\nimport threading\n\napp = Flask(__name__)\napp.config['SQLALCHEMY_DATABASE_URI']\
+    \ = 'sqlite:///reports.db'\ndb = SQLAlchemy(app)\n\nclass ReportRequest(db.Model):\n    id = db.Column(db.Integer, primary_key=True)\n\
+    \    status = db.Column(db.String(20), default='queued')\n    report_type = db.Column(db.String(100))\n    parameters\
+    \ = db.Column(db.JSON)\n    result = db.Column(db.Text)\n    created_at = db.Column(db.DateTime, default=datetime.utcnow)\n\
+    \    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)\n    worker_id = db.Column(db.String(50))\n\
+    \nlock = threading.Lock()\n\ndef generate_report_with_claude(report_type: str, parameters: dict) -> str:\n    \"\"\"Generate\
+    \ a report using Claude API with multi-turn conversation.\"\"\"\n    client = Anthropic()\n    conversation_history =\
+    \ []\n    \n    initial_prompt = f\"\"\"You are a report generation assistant. Generate a {report_type} report with the\
+    \ following parameters:\n{json.dumps(parameters, indent=2)}\n\nPlease create a comprehensive report based on these parameters.\"\
+    \"\"\n    \n    conversation_history.append({\n        \"role\": \"user\",\n        \"content\": initial_prompt\n    })\n\
+    \    \n    response = client.messages.create(\n        model=\"claude-3-5-sonnet-20241022\",\n        max_tokens=2048,\n\
+    \        messages=conversation_history\n    )\n    \n    report_content = response.content[0].text\n    conversation_history.append({\n\
+    \        \"role\": \"assistant\",\n        \"content\": report_content\n    })\n    \n    follow_up = \"Please provide\
+    \ a summary of the key findings from this report.\"\n    conversation_history.append({\n        \"role\": \"user\",\n\
+    \        \"content\": follow_up\n    })\n    \n    summary_response = client.messages.create(\n        model=\"claude-3-5-sonnet-20241022\"\
+    ,\n        max_tokens=1024,\n        messages=conversation_history\n    )\n    \n    summary = summary_response.content[0].text\n\
+    \    \n    final_report = f\"{report_content}\\n\\n## Summary\\n{summary}\"\n    \n    return final_report\n\ndef process_report_jobs():\n\
+    \    \"\"\"Process queued report jobs and update their status.\"\"\"\n    worker_id = os.getenv('WORKER_ID', f'worker-{os.getpid()}')\n\
+    \    \n    with app.app_context():\n        while True:\n            with lock:\n                queued_job = db.session.query(ReportRequest).filter(\n\
+    \                    ReportRequest.status == 'queued'\n                ).with_for_update().first()\n                \n\
+    \                if not queued_job:\n                    break\n                \n                queued_job.status =\
+    \ 'processing'\n                queued_job.worker_id = worker_id\n                db.session.commit()\n            \n\
+    \            try:\n                report_result = generate_report_with_claude(\n                    queued_job.report_type,\n\
+    \                    queued_job.paramete"
+  check_type: deterministic
+  evidence: 'Required pattern not found: UPDATE.*SET.*status.*=.*''processing''.*WHERE.*status.*=.*''queued'''
+  expected_verdict: fail
+  fc_id: fc20
+  run_number: 3
+  scenario_id: fc20-report-generator-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport anthropic\n\n\ndef create_resume_extraction_prompt(resume_text: str) -> str:\n    \"\"\
+    \"\n    Creates an LLM prompt to extract structured data from a resume.\n    \n    Args:\n        resume_text: The raw\
+    \ text content of the resume\n        \n    Returns:\n        A formatted prompt string with the resume content in XML\
+    \ tags\n    \"\"\"\n    prompt = f\"\"\"Please extract and structure the following information from the resume provided\
+    \ below:\n\n1. Personal Information (name, email, phone, location)\n2. Professional Summary or Objective\n3. Work Experience\
+    \ (job titles, companies, dates, responsibilities)\n4. Education (degrees, institutions, graduation dates, GPA if available)\n\
+    5. Skills (technical skills, languages, certifications)\n6. Projects (if any)\n7. Achievements or Awards (if any)\n\n\
+    Please format the extracted information as a structured JSON object.\n\n<resume_content>\n{resume_text}\n</resume_content>\n\
+    \nExtract and return the information in the following JSON format:\n{{\n    \"personal_info\": {{\n        \"name\": \"\
+    \",\n        \"email\": \"\",\n        \"phone\": \"\",\n        \"location\": \"\"\n    }},\n    \"professional_summary\"\
+    : \"\",\n    \"work_experience\": [\n        {{\n            \"job_title\": \"\",\n            \"company\": \"\",\n  \
+    \          \"start_date\": \"\",\n            \"end_date\": \"\",\n            \"responsibilities\": []\n        }}\n\
+    \    ],\n    \"education\": [\n        {{\n            \"degree\": \"\",\n            \"institution\": \"\",\n       \
+    \     \"graduation_date\": \"\",\n            \"gpa\": \"\"\n        }}\n    ],\n    \"skills\": {{\n        \"technical\"\
+    : [],\n        \"languages\": [],\n        \"certifications\": []\n    }},\n    \"projects\": [\n        {{\n        \
+    \    \"name\": \"\",\n            \"description\": \"\",\n            \"technologies\": []\n        }}\n    ],\n    \"\
+    achievements\": []\n}}\"\"\"\n    return prompt\n\n\ndef extract_resume_data(resume_text: str) -> dict:\n    \"\"\"\n\
+    \    Extracts structured data from a resume using Claude API.\n    \n    Args:\n        resume_text: The raw text content\
+    \ of the resume\n        \n    Returns:\n        A dictionary containing the extracted resume data\n    \"\"\"\n    client\
+    \ = anthropic.Anthropic()\n    \n    prompt = create_resume_extraction_prompt(resume_text)\n    \n    message = client.messages.create(\n\
+    \        model=\"claude-3-5-sonnet-20241022\",\n        max_tokens=2048,\n        messages=[\n            {\"role\": \"\
+    user\", \"content\": prompt}\n        ]\n    )\n    \n    response_text = message.content[0].text\n    \n    import json\n\
+    \    try:\n        json_start = response_text.find('{')\n        json_end = response_text.rfind('}') + 1\n        if json_start\
+    \ != -1 and json_end > json_start:\n            json_str = response_text[json_start:json_end]\n            extracted_data\
+    \ = json.loads(json_str)\n        else:\n            extracted_data = {\"raw_response\": response_text}\n    except json.JSONDecodeError:\n\
+    \        extracted_data = {\"raw_response\": response_text}\n    \n    return extracted_data\n\n\nif __name__ == \"__main__\"\
+    :\n    sample_resume = \"\"\"\n    John Doe\n    john.doe@email.com | (555) 123-4567 | New York, N"
+  check_type: deterministic
+  evidence: 'Required pattern not found: escape|replace.*<|&lt;|html\.escape'
+  expected_verdict: fail
+  fc_id: fc24
+  run_number: 1
+  scenario_id: fc24-resume-analysis-norule
+  variant: without_rule
+- agent_output: "\n```python\nimport os\nimport json\nimport logging\nfrom datetime import datetime, timedelta\nfrom functools\
+    \ import wraps\nimport anthropic\nfrom flask import Flask\nfrom flask_sqlalchemy import SQLAlchemy\nfrom sqlalchemy import\
+    \ and_, func\nfrom sqlalchemy.exc import SQLAlchemyError\nimport redis\nimport hashlib\n\napp = Flask(__name__)\napp.config['SQLALCHEMY_DATABASE_URI']\
+    \ = os.environ.get('DATABASE_URL', 'sqlite:///webhooks.db')\napp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False\n\n\
+    db = SQLAlchemy(app)\n\nredis_client = redis.Redis(\n    host=os.environ.get('REDIS_HOST', 'localhost'),\n    port=int(os.environ.get('REDIS_PORT',\
+    \ 6379)),\n    db=0,\n    decode_responses=True\n)\n\nlogging.basicConfig(level=logging.INFO)\nlogger = logging.getLogger(__name__)\n\
+    \n\nclass WebhookEvent(db.Model):\n    __tablename__ = 'webhook_events'\n    \n    id = db.Column(db.Integer, primary_key=True)\n\
+    \    event_type = db.Column(db.String(255), nullable=False)\n    payload = db.Column(db.JSON, nullable=False)\n    target_url\
+    \ = db.Column(db.String(2048), nullable=False)\n    status = db.Column(db.String(50), default='pending', nullable=False)\n\
+    \    attempt_count = db.Column(db.Integer, default=0, nullable=False)\n    last_attempt_at = db.Column(db.DateTime)\n\
+    \    created_at = db.Column(db.DateTime, default=datetime.utcnow)\n    updated_at = db.Column(db.DateTime, default=datetime.utcnow,\
+    \ onupdate=datetime.utcnow)\n    error_message = db.Column(db.Text)\n    \n    def to_dict(self):\n        return {\n\
+    \            'id': self.id,\n            'event_type': self.event_type,\n            'payload': self.payload,\n      \
+    \      'target_url': self.target_url,\n            'status': self.status,\n            'attempt_count': self.attempt_count,\n\
+    \            'last_attempt_at': self.last_attempt_at.isoformat() if self.last_attempt_at else None,\n            'created_at':\
+    \ self.created_at.isoformat(),\n            'updated_at': self.updated_at.isoformat(),\n            'error_message': self.error_message\n\
+    \        }\n\n\ndef distributed_lock(lock_name, timeout=300):\n    \"\"\"Decorator to handle distributed locking for concurrent\
+    \ cron executions.\"\"\"\n    def decorator(func):\n        @wraps(func)\n        def wrapper(*args, **kwargs):\n    \
+    \        lock_key = f\"cron_lock:{lock_name}\"\n            lock_value = hashlib.md5(f\"{datetime.utcnow().isoformat()}\"\
+    .encode()).hexdigest()\n            \n            try:\n                acquired = redis_client.set(lock_key, lock_value,\
+    \ nx=True, ex=timeout)\n                \n                if not acquired:\n                    logger.info(f\"Could not\
+    \ acquire lock for {lock_name}, another instance is running\")\n                    return {\"status\": \"skipped\", \"\
+    reason\": \"lock_not_acquired\"}\n                \n                logger.info(f\"Acquired lock for {lock_name}\")\n\
+    \                result = func(*args, **kwargs)\n                \n                if redis_client.get(lock_key) == lock_value:\n\
+    \                    redis_client.delete(lock_key)\n                    logger.info(f\"Released lock for {lock_name}\"\
+    )\n          "
+  check_type: deterministic
+  evidence: 'Required pattern not found: UPDATE.*WHERE.*status.*=.*''failed''|SET.*status.*=.*''retrying''.*WHERE'
+  expected_verdict: fail
+  fc_id: fc20
+  run_number: 2
+  scenario_id: fc20-webhook-retry-norule
+  variant: without_rule
+- agent_output: "CREATE TABLE IF NOT EXISTS roles (\n  id BIGSERIAL PRIMARY KEY,\n  name TEXT NOT NULL UNIQUE,\n  permissions\
+    \ JSONB NOT NULL DEFAULT '[]'::jsonb,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,\n  updated_at\
+    \ TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP\n);\n\nCREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name);\n\
+    \nINSERT INTO roles (name, permissions) VALUES\n  ('admin', '[\"create\", \"read\", \"update\", \"delete\", \"manage_users\"\
+    , \"manage_roles\"]'::jsonb),\n  ('editor', '[\"create\", \"read\", \"update\", \"delete\"]'::jsonb),\n  ('viewer', '[\"\
+    read\"]'::jsonb)\nON CONFLICT (name) DO NOTHING;"
+  check_type: deterministic
+  evidence: 'Found violation pattern: INSERT INTO'
+  expected_verdict: fail
+  fc_id: fc16
+  run_number: 1
+  scenario_id: fc16-seed-data
+  variant: with_rule
+- agent_output: 'CREATE POLICY "Allow anonymous read published posts"
+
+    ON posts
+
+    FOR SELECT
+
+    USING (status = ''published'');
+
+
+    ALTER TABLE posts ENABLE ROW LEVEL SECURITY;'
+  check_type: deterministic
+  evidence: 'Required pattern not found: SECURITY DEFINER'
+  expected_verdict: fail
+  fc_id: fc23
+  run_number: 2
+  scenario_id: fc23-blog-published-norule
+  variant: without_rule
+- agent_output: '
+
+    ```sql
+
+    -- Create a policy to allow anonymous users to view public profiles
+
+    CREATE POLICY "Allow anonymous users to view public profiles"
+
+    ON profiles
+
+    FOR SELECT
+
+    USING (is_public = true);
+
+
+    -- Enable RLS on profiles table if not already enabled
+
+    ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+
+    -- Grant SELECT permission to anon role
+
+    GRANT SELECT ON profiles TO anon;
+
+    ```'
+  check_type: deterministic
+  evidence: 'Required pattern not found: SECURITY DEFINER|RPC'
+  expected_verdict: fail
+  fc_id: fc23
+  run_number: 3
+  scenario_id: fc23-public-profile-norule
+  variant: without_rule
