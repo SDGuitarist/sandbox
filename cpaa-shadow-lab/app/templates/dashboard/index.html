@@ -1,11 +1,105 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>CPAA Shadow Lab</title>
-</head>
-<body>
-    <h1>CPAA Shadow Lab — Phase C placeholder</h1>
-    <p>Dashboard UI will be built in Phase D. Use the API endpoints directly.</p>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid p-3">
+    <!-- Replay Controls -->
+    <div class="card bg-dark border-secondary mb-3">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <span class="text-secondary me-2">Replay:</span>
+                    <span id="current-time" class="fw-bold">--:--:--</span>
+                    <span class="text-secondary"> / 22:00:00</span>
+                </div>
+                <div class="col-auto">
+                    <span id="replay-status" class="badge bg-secondary">stopped</span>
+                </div>
+                <div class="col-auto">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-success" id="btn-play">Play</button>
+                        <button class="btn btn-outline-warning" id="btn-pause">Pause</button>
+                        <button class="btn btn-outline-danger" id="btn-reset">Reset</button>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <span class="text-secondary me-1">Speed:</span>
+                    <div class="btn-group btn-group-sm" id="speed-group">
+                        <button class="btn btn-outline-light speed-btn active" data-speed="1">1x</button>
+                        <button class="btn btn-outline-light speed-btn" data-speed="2">2x</button>
+                        <button class="btn btn-outline-light speed-btn" data-speed="5">5x</button>
+                        <button class="btn btn-outline-light speed-btn" data-speed="10">10x</button>
+                    </div>
+                </div>
+                <div class="col">
+                    <input type="range" class="form-range" id="progress-slider"
+                           min="0" max="14400" value="0" step="1">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column: State Panels -->
+        <div class="col-md-4">
+            <!-- Stations -->
+            <div class="card bg-dark border-secondary mb-3">
+                <div class="card-header border-secondary">Stations</div>
+                <div class="card-body p-2" id="stations-panel">
+                    <p class="text-secondary mb-0">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Environment -->
+            <div class="card bg-dark border-secondary mb-3">
+                <div class="card-header border-secondary">Environment</div>
+                <div class="card-body" id="environment-panel">
+                    <p class="text-secondary mb-0">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Financials -->
+            <div class="card bg-dark border-secondary mb-3">
+                <div class="card-header border-secondary">Financials</div>
+                <div class="card-body" id="financials-panel">
+                    <p class="text-secondary mb-0">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Active Alerts -->
+            <div class="card bg-dark border-secondary mb-3">
+                <div class="card-header border-secondary">
+                    Active Alerts <span id="alert-count" class="badge bg-secondary">0</span>
+                </div>
+                <div class="card-body p-2" id="alerts-panel">
+                    <p class="text-muted mb-0">No alerts</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Event Timeline -->
+        <div class="col-md-8">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                    <span>Event Timeline</span>
+                    <div class="btn-group btn-group-sm" id="filter-group">
+                        <button class="btn btn-outline-light filter-btn active" data-filter="all">All</button>
+                        <button class="btn btn-outline-danger filter-btn" data-filter="alert">Alerts</button>
+                        <button class="btn btn-outline-success filter-btn" data-filter="financial">Financial</button>
+                        <button class="btn btn-outline-info filter-btn" data-filter="telemetry">Telemetry</button>
+                        <button class="btn btn-outline-secondary filter-btn" data-filter="system">System</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="timeline" class="timeline-container">
+                        <p class="text-secondary p-3 mb-0">Press Play to start replay</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/replay.js') }}"></script>
+{% endblock %}

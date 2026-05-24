@@ -4,11 +4,13 @@ from flask import Flask
 
 
 def create_app():
-    app = Flask(__name__)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    app = Flask(
+        __name__,
+        static_folder=os.path.join(project_root, 'static'),
+    )
 
     # DB lives at project root: cpaa-shadow-lab/instance/shadow_lab.db
-    # (matches where generate_scenario.py writes)
-    project_root = os.path.dirname(app.root_path)
     instance_dir = os.path.join(project_root, 'instance')
     os.makedirs(instance_dir, exist_ok=True)
     app.config['DATABASE'] = os.path.join(instance_dir, 'shadow_lab.db')
@@ -23,7 +25,11 @@ def create_app():
 
     @app.after_request
     def set_security_headers(response):
-        response.headers['Content-Security-Policy'] = "default-src 'self'"
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
+            "style-src 'self' https://cdn.jsdelivr.net"
+        )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         return response
