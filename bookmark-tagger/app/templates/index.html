@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<form action="/add" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <input type="url" name="url" placeholder="https://example.com" required style="flex:2;min-width:200px;">
+        <input type="text" name="tags" placeholder="tags (comma-separated)" style="flex:1;min-width:150px;">
+        <button type="submit">Add</button>
+    </div>
+</form>
+
+<form action="/" method="get" class="search-bar">
+    <input type="text" name="q" placeholder="Search bookmarks..." value="{{ q }}">
+    <button type="submit">Search</button>
+</form>
+
+{% if tag %}
+<div class="active-filter">
+    Filtering by tag: <strong>{{ tag }}</strong> &mdash; <a href="/?q={{ q }}">clear filter</a>
+</div>
+{% endif %}
+
+{% if bookmarks %}
+    <p style="color:#666;margin-bottom:0.5rem;">{{ total }} bookmark{{ 's' if total != 1 }}</p>
+    {% for bookmark in bookmarks %}
+    <div class="bookmark">
+        <div>
+            <strong>{{ bookmark.title or bookmark.url }}</strong>
+        </div>
+        <div class="bookmark-url">{{ bookmark.url }}</div>
+        {% if bookmark.description %}
+        <div style="color:#555;font-size:0.85rem;margin-top:0.25rem;">{{ bookmark.description }}</div>
+        {% endif %}
+        <div class="bookmark-meta">
+            <div>
+                {% for t in tags_map.get(bookmark.id, []) %}
+                <a href="/?tag={{ t.name | urlencode }}&q={{ q | urlencode }}" class="tag">{{ t.name }}</a>
+                {% endfor %}
+            </div>
+            <form action="/delete/{{ bookmark.id }}" method="post" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="delete-btn">Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="empty">No bookmarks found.</div>
+{% endif %}
+
+{% endblock %}
