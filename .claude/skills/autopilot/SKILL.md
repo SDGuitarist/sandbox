@@ -145,21 +145,30 @@ focused interpretation of the app description. If a solution doc lesson
 applies, include it in core features or roadmap constraints -- don't just
 list it, act on it.
 
-### Step 3: Brainstorm
+### Step 2.5: Persist Brief + Clean Stale Manifests
 
-Run `/workflows:brainstorm` with the expanded brief from Step 2 appended to
-`$ARGUMENTS`. If the brainstorm workflow asks clarifying questions, pick the
-simplest option and continue. Do not wait for user input.
+1. Write the expanded brief to `docs/reports/expanded-brief.md` so all
+   phase agents can read it from disk.
+2. Delete `docs/reports/phase-brainstorm.manifest.yaml` if it exists.
+3. Delete `docs/reports/phase-plan.manifest.yaml` if it exists.
+   (Prevents stale manifest collision from prior runs.)
 
-**Feed-Forward check:** After the brainstorm doc is written, verify it ends
-with a `## Feed-Forward` section containing all three questions (hardest
-decision, rejected alternatives, least confident). If missing, append the
-section before proceeding.
+### Step 3: Brainstorm (Delegated)
 
-### Step 4: Brainstorm Refinement
-
-Use the **brainstorm-refinement** agent. Pass the path to the brainstorm doc
-just created in `docs/brainstorms/`. Read its output and check for STATUS: PASS.
+1. Read agent-pitfalls from Step 1.6.
+2. Spawn the **phase-brainstorm** agent:
+   - `mode: "bypassPermissions"`
+   - `run_in_background: false` (sequential -- need result before plan)
+   - Prompt includes: expanded brief path (`docs/reports/expanded-brief.md`),
+     applied lessons from Step 1, agent-pitfalls.
+     (No prior manifest -- brainstorm is the first phase.)
+3. After agent completes, read `docs/reports/phase-brainstorm.manifest.yaml`.
+4. Verify:
+   - `phase_status` is `PASS`
+   - `brainstorm_path` exists on disk
+   - `feed_forward_*` fields are present
+5. If `FAIL` or `IN_PROGRESS`: retry once. If still fails, abort pipeline.
+6. Extract `feed_forward_*` fields from manifest for injection into plan phase.
 
 ### Step 5: Plan
 
