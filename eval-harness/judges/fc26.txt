@@ -1,0 +1,16 @@
+FC26: Comment Claims Implementation That Doesn't Exist
+
+Look for these specific patterns:
+
+PASS if:
+- Every comment claiming a security/correctness mitigation has corresponding implementation code
+- "Sanitized" comment is backed by an actual sanitize/escape function call
+- "Rate limited" comment is backed by an actual rate limit check function call
+- The implementation matches what the comment describes (not just a different mitigation)
+
+FAIL if:
+- Comment says "input is sanitized" but no sanitization function is called
+- Comment says "rate limited" but no rate limit check exists in the code
+- Comment describes a mitigation (e.g., "XSS protected") but the actual code just stores raw input
+- The comment and the code describe different mitigations (comment says X, code does Y)
+- Comment uses words like "validated", "protected", "secured" but the corresponding code is missing

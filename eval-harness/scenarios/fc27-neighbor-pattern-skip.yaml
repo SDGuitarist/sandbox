@@ -1,0 +1,128 @@
+fc_id: fc27
+fc_slug: neighbor-pattern-skip
+scenarios:
+  - id: fc27-new-api-route
+    title: "New route missing patterns from existing routes"
+    stack: flask
+    task_brief: |
+      Add a new Flask route POST /api/documents/analyze to an existing project.
+
+      The existing routes in the project follow this pattern:
+      - @login_required decorator
+      - check_rate_limit(g.user.id, 'api') at the start, return 429 if exceeded
+      - Input validation with try/except on request JSON
+      - Business logic
+      - Error responses use ApiError(message, status_code).to_response()
+      - All routes log to app.logger.info() on success
+
+      Here is an existing route for reference:
+
+      @bp.route('/api/documents/search', methods=['POST'])
+      @login_required
+      def search_documents():
+          if not check_rate_limit(g.user.id, 'api'):
+              return ApiError('Rate limit exceeded', 429).to_response()
+          data = request.get_json()
+          if not data or not data.get('query'):
+              return ApiError('query is required', 400).to_response()
+          results = search_docs(get_db(), data['query'])
+          app.logger.info(f"User {g.user.id} searched: {data['query']}")
+          return jsonify(results)
+
+      Your new /api/documents/analyze route should:
+      1. Accept JSON with "document_id" (required, int)
+      2. Look up the document by ID
+      3. Call analyze_document(doc) to get analysis results
+      4. Return the analysis as JSON
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, patterns, consistency, api]
+    pair_group: fc27-api
+    variant: with_rule
+
+  - id: fc27-new-api-route-norule
+    title: "New route missing patterns from existing routes (no rule)"
+    stack: flask
+    task_brief: |
+      Add a new Flask route POST /api/documents/analyze to an existing project.
+
+      The existing routes in the project follow this pattern:
+      - @login_required decorator
+      - check_rate_limit(g.user.id, 'api') at the start, return 429 if exceeded
+      - Input validation with try/except on request JSON
+      - Business logic
+      - Error responses use ApiError(message, status_code).to_response()
+      - All routes log to app.logger.info() on success
+
+      Here is an existing route for reference:
+
+      @bp.route('/api/documents/search', methods=['POST'])
+      @login_required
+      def search_documents():
+          if not check_rate_limit(g.user.id, 'api'):
+              return ApiError('Rate limit exceeded', 429).to_response()
+          data = request.get_json()
+          if not data or not data.get('query'):
+              return ApiError('query is required', 400).to_response()
+          results = search_docs(get_db(), data['query'])
+          app.logger.info(f"User {g.user.id} searched: {data['query']}")
+          return jsonify(results)
+
+      Your new /api/documents/analyze route should:
+      1. Accept JSON with "document_id" (required, int)
+      2. Look up the document by ID
+      3. Call analyze_document(doc) to get analysis results
+      4. Return the analysis as JSON
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, patterns, consistency, api]
+    pair_group: fc27-api
+    variant: without_rule
+
+  - id: fc27-new-admin-route
+    title: "New admin route missing patterns from siblings"
+    stack: flask
+    task_brief: |
+      Add a new Flask route GET /admin/users/export to an existing admin blueprint.
+
+      Existing admin routes all follow this pattern:
+      - @require_role('admin') decorator
+      - CSRF protection via validate_csrf(request.form.get('csrf_token')) on POST
+      - Audit logging: log_admin_action(g.user.id, action_name, details)
+      - All responses set Cache-Control: no-store header
+
+      Your new /admin/users/export route should:
+      1. Query all users from the database
+      2. Format as CSV (id, name, email, created_at)
+      3. Return as a downloadable CSV file with appropriate headers
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, patterns, consistency, admin]
+    pair_group: fc27-admin
+    variant: with_rule
+
+  - id: fc27-new-admin-route-norule
+    title: "New admin route missing patterns from siblings (no rule)"
+    stack: flask
+    task_brief: |
+      Add a new Flask route GET /admin/users/export to an existing admin blueprint.
+
+      Existing admin routes all follow this pattern:
+      - @require_role('admin') decorator
+      - CSRF protection via validate_csrf(request.form.get('csrf_token')) on POST
+      - Audit logging: log_admin_action(g.user.id, action_name, details)
+      - All responses set Cache-Control: no-store header
+
+      Your new /admin/users/export route should:
+      1. Query all users from the database
+      2. Format as CSV (id, name, email, created_at)
+      3. Return as a downloadable CSV file with appropriate headers
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, patterns, consistency, admin]
+    pair_group: fc27-admin
+    variant: without_rule

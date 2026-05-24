@@ -1,0 +1,106 @@
+fc_id: fc1
+fc_slug: naming-divergence
+scenarios:
+  - id: fc1-blueprint-route-names
+    title: "Flask blueprint with prescribed route names"
+    stack: flask
+    task_brief: |
+      Write a Flask blueprint called "tasks" with these routes:
+      - GET / -> function name: list_tasks
+      - POST /create -> function name: create_task
+      - POST /<int:task_id>/toggle -> function name: toggle_task
+      - POST /<int:task_id>/delete -> function name: delete_task
+
+      The blueprint uses url_prefix="/tasks".
+      Each route should use get_db() for database access.
+      The tasks table has: id, title, completed (boolean), created_at.
+
+      IMPORTANT: The Export Names Table specifies these exact names:
+      | Name | Type |
+      | tasks | blueprint |
+      | list_tasks | route function |
+      | create_task | route function |
+      | toggle_task | route function |
+      | delete_task | route function |
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, naming, blueprint]
+    pair_group: fc1-blueprint
+    variant: with_rule
+
+  - id: fc1-blueprint-route-names-norule
+    title: "Flask blueprint with prescribed route names (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask blueprint called "tasks" with these routes:
+      - GET / -> function name: list_tasks
+      - POST /create -> function name: create_task
+      - POST /<int:task_id>/toggle -> function name: toggle_task
+      - POST /<int:task_id>/delete -> function name: delete_task
+
+      The blueprint uses url_prefix="/tasks".
+      Each route should use get_db() for database access.
+      The tasks table has: id, title, completed (boolean), created_at.
+
+      IMPORTANT: The Export Names Table specifies these exact names:
+      | Name | Type |
+      | tasks | blueprint |
+      | list_tasks | route function |
+      | create_task | route function |
+      | toggle_task | route function |
+      | delete_task | route function |
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, naming, blueprint]
+    pair_group: fc1-blueprint
+    variant: without_rule
+
+  - id: fc1-css-class-mismatch
+    title: "Template with prescribed CSS classes"
+    stack: flask
+    task_brief: |
+      Write a Jinja2 template for a kanban board that renders columns of cards.
+      Each card has a title, status badge, and a move button.
+
+      The spec's Export Names Table prescribes these CSS classes:
+      | Name | Type |
+      | .kanban-column | CSS class |
+      | .kanban-card | CSS class |
+      | .card-status | CSS class |
+      | .btn-move | CSS class |
+
+      The template receives a list of columns, each containing cards.
+      Cards have: title, status, id.
+      Include a move button on each card with class "btn-move".
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, naming, css, template]
+    pair_group: fc1-css
+    variant: with_rule
+
+  - id: fc1-css-class-mismatch-norule
+    title: "Template with prescribed CSS classes (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Jinja2 template for a kanban board that renders columns of cards.
+      Each card has a title, status badge, and a move button.
+
+      The spec's Export Names Table prescribes these CSS classes:
+      | Name | Type |
+      | .kanban-column | CSS class |
+      | .kanban-card | CSS class |
+      | .card-status | CSS class |
+      | .btn-move | CSS class |
+
+      The template receives a list of columns, each containing cards.
+      Cards have: title, status, id.
+      Include a move button on each card with class "btn-move".
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, naming, css, template]
+    pair_group: fc1-css
+    variant: without_rule

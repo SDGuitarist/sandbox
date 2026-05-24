@@ -1,0 +1,84 @@
+fc_id: fc15
+fc_slug: window-location-ssr
+scenarios:
+  - id: fc15-share-button
+    title: "Share button component with URL from origin"
+    stack: nextjs
+    task_brief: |
+      Write a React "use client" component called ShareButton that:
+      1. Receives a prop: token (string)
+      2. Builds a share URL using the current page origin: `${origin}/share/${token}`
+      3. Has a "Copy Link" button that copies the URL to clipboard
+      4. Shows "Copied!" feedback for 2 seconds after copying
+
+      The component needs window.location.origin to build the full URL.
+      Export it as the default export.
+    inputs: {}
+    expected_check_type: hybrid
+    expected_outcome: pass
+    deterministic_pattern: 'useEffect|useState.*origin|typeof\s+window'
+    deterministic_mode: presence
+    tags: [nextjs, ssr, window, react]
+    pair_group: fc15-share
+    variant: with_rule
+
+  - id: fc15-share-button-norule
+    title: "Share button component with URL from origin (no rule)"
+    stack: nextjs
+    task_brief: |
+      Write a React "use client" component called ShareButton that:
+      1. Receives a prop: token (string)
+      2. Builds a share URL using the current page origin: `${origin}/share/${token}`
+      3. Has a "Copy Link" button that copies the URL to clipboard
+      4. Shows "Copied!" feedback for 2 seconds after copying
+
+      The component needs window.location.origin to build the full URL.
+      Export it as the default export.
+    inputs: {}
+    expected_check_type: hybrid
+    expected_outcome: unknown
+    deterministic_pattern: 'useEffect|useState.*origin|typeof\s+window'
+    deterministic_mode: presence
+    tags: [nextjs, ssr, window, react]
+    pair_group: fc15-share
+    variant: without_rule
+
+  - id: fc15-redirect-url
+    title: "Auth callback building redirect URL"
+    stack: nextjs
+    task_brief: |
+      Write a React "use client" component called AuthCallback that:
+      1. On mount, reads the "code" query parameter from window.location.search
+      2. Sends POST /api/auth/callback with { code, redirect_uri: `${window.location.origin}/auth/callback` }
+      3. On success, redirects to /dashboard
+      4. On error, shows error message
+
+      This is a "use client" component in Next.js.
+    inputs: {}
+    expected_check_type: hybrid
+    expected_outcome: pass
+    deterministic_pattern: 'useEffect|typeof\s+window'
+    deterministic_mode: presence
+    tags: [nextjs, ssr, window, auth]
+    pair_group: fc15-auth
+    variant: with_rule
+
+  - id: fc15-redirect-url-norule
+    title: "Auth callback building redirect URL (no rule)"
+    stack: nextjs
+    task_brief: |
+      Write a React "use client" component called AuthCallback that:
+      1. On mount, reads the "code" query parameter from window.location.search
+      2. Sends POST /api/auth/callback with { code, redirect_uri: `${window.location.origin}/auth/callback` }
+      3. On success, redirects to /dashboard
+      4. On error, shows error message
+
+      This is a "use client" component in Next.js.
+    inputs: {}
+    expected_check_type: hybrid
+    expected_outcome: unknown
+    deterministic_pattern: 'useEffect|typeof\s+window'
+    deterministic_mode: presence
+    tags: [nextjs, ssr, window, auth]
+    pair_group: fc15-auth
+    variant: without_rule

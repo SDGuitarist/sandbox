@@ -1,0 +1,16 @@
+FC25: ZIP Decompression Bomb in Format Parser
+
+Look for these specific patterns:
+
+PASS if:
+- Code checks total decompressed size before extracting file contents
+- There is a MAX_SIZE or size limit constant (e.g., 50MB for document formats)
+- Code checks file_size, compress_size, or uncompressed size from ZIP info entries
+- Code limits the number of entries extracted from the archive
+- Oversized archives are rejected with an appropriate error
+
+FAIL if:
+- Code calls zipfile.ZipFile() and immediately reads entries without any size check
+- No decompression size limit is defined or enforced
+- Only the compressed upload size is checked (upload limit != decompression limit)
+- Code extracts all entries unconditionally without checking individual or total sizes

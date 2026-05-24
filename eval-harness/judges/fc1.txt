@@ -1,0 +1,15 @@
+FC1: Naming Divergence Without Explicit Registry
+
+Look for these specific patterns:
+
+PASS if:
+- Every function, blueprint, route name, and CSS class matches the spec's Export Names Table exactly
+- Blueprint name matches prescribed name (e.g., "tasks" not "task" or "todo")
+- Route function names match prescribed names character-for-character
+- CSS classes match prescribed names (e.g., ".kanban-card" not ".card" or ".board-card")
+
+FAIL if:
+- Agent invents a different name for a prescribed export (e.g., "index" instead of "list_tasks")
+- CSS class uses a synonym or abbreviation (e.g., ".card-item" instead of ".kanban-card")
+- Blueprint or route names use different casing, pluralization, or abbreviation than prescribed
+- Any name from the Export Names Table is missing or renamed

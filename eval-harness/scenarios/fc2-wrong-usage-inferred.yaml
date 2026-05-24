@@ -1,0 +1,80 @@
+fc_id: fc2
+fc_slug: wrong-usage-inferred
+scenarios:
+  - id: fc2-int-return-type
+    title: "Function returning int used correctly"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /projects/create that:
+      1. Accepts form fields: name (required), description (optional)
+      2. Calls create_project(conn, name, description) to insert a new project
+      3. Redirects to the project detail page after creation
+
+      IMPORTANT: The spec says create_project() returns an int (the new project ID).
+      Signature: create_project(conn: sqlite3.Connection, name: str, description: str) -> int
+
+      Use get_db() for database access.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, typing, return-value]
+    pair_group: fc2-int-return
+    variant: with_rule
+
+  - id: fc2-int-return-type-norule
+    title: "Function returning int used correctly (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /projects/create that:
+      1. Accepts form fields: name (required), description (optional)
+      2. Calls create_project(conn, name, description) to insert a new project
+      3. Redirects to the project detail page after creation
+
+      IMPORTANT: The spec says create_project() returns an int (the new project ID).
+      Signature: create_project(conn: sqlite3.Connection, name: str, description: str) -> int
+
+      Use get_db() for database access.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, typing, return-value]
+    pair_group: fc2-int-return
+    variant: without_rule
+
+  - id: fc2-context-manager-usage
+    title: "Context manager get_db used with 'with' syntax"
+    stack: flask
+    task_brief: |
+      Write a Flask route GET /reports/summary that queries the database
+      for total users, total orders, and total revenue, returning JSON.
+
+      IMPORTANT: The spec says get_db() is decorated with @contextmanager.
+      Signature: get_db() -> Generator[sqlite3.Connection, None, None]
+      It yields a connection and handles cleanup on exit.
+
+      Use get_db() for all database access in this route.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, typing, context-manager]
+    pair_group: fc2-ctxmgr
+    variant: with_rule
+
+  - id: fc2-context-manager-usage-norule
+    title: "Context manager get_db used with 'with' syntax (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route GET /reports/summary that queries the database
+      for total users, total orders, and total revenue, returning JSON.
+
+      IMPORTANT: The spec says get_db() is decorated with @contextmanager.
+      Signature: get_db() -> Generator[sqlite3.Connection, None, None]
+      It yields a connection and handles cleanup on exit.
+
+      Use get_db() for all database access in this route.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, typing, context-manager]
+    pair_group: fc2-ctxmgr
+    variant: without_rule

@@ -1,0 +1,104 @@
+fc_id: fc39
+fc_slug: app-per-job-worker
+scenarios:
+  - id: fc39-email-worker
+    title: "Email worker creating app per job"
+    stack: flask
+    task_brief: |
+      Write a standalone worker script (worker.py) for a Flask app that
+      processes email jobs from an SQLite queue.
+
+      The worker should:
+      1. Poll the jobs table for rows with status='pending'
+      2. For each job: load the email template, render it, send via SMTP
+      3. Update the job status to 'sent' or 'failed'
+      4. Sleep 5 seconds between polls
+
+      The worker needs Flask app context for:
+      - app.config['SMTP_HOST'] and app.config['SMTP_PORT']
+      - get_db() for database access
+
+      Use create_app() from the main app module to get the Flask app.
+      The app has 15+ blueprints registered in create_app().
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, worker, performance, app-factory]
+    pair_group: fc39-email
+    variant: with_rule
+
+  - id: fc39-email-worker-norule
+    title: "Email worker creating app per job (no rule)"
+    stack: flask
+    task_brief: |
+      Write a standalone worker script (worker.py) for a Flask app that
+      processes email jobs from an SQLite queue.
+
+      The worker should:
+      1. Poll the jobs table for rows with status='pending'
+      2. For each job: load the email template, render it, send via SMTP
+      3. Update the job status to 'sent' or 'failed'
+      4. Sleep 5 seconds between polls
+
+      The worker needs Flask app context for:
+      - app.config['SMTP_HOST'] and app.config['SMTP_PORT']
+      - get_db() for database access
+
+      Use create_app() from the main app module to get the Flask app.
+      The app has 15+ blueprints registered in create_app().
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, worker, performance, app-factory]
+    pair_group: fc39-email
+    variant: without_rule
+
+  - id: fc39-report-worker
+    title: "Report generation worker"
+    stack: flask
+    task_brief: |
+      Write a worker script (report_worker.py) that generates PDF reports
+      from a job queue.
+
+      The worker should:
+      1. Query the reports table for rows with status='queued'
+      2. For each report: fetch data, generate PDF, save to disk
+      3. Update report row with file_path and status='complete'
+      4. Loop continuously with a 10-second sleep
+
+      The worker needs Flask app context for:
+      - Database access via get_db()
+      - app.config for report templates path and output directory
+
+      Use create_app() to get the Flask application instance.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, worker, performance, app-factory]
+    pair_group: fc39-report
+    variant: with_rule
+
+  - id: fc39-report-worker-norule
+    title: "Report generation worker (no rule)"
+    stack: flask
+    task_brief: |
+      Write a worker script (report_worker.py) that generates PDF reports
+      from a job queue.
+
+      The worker should:
+      1. Query the reports table for rows with status='queued'
+      2. For each report: fetch data, generate PDF, save to disk
+      3. Update report row with file_path and status='complete'
+      4. Loop continuously with a 10-second sleep
+
+      The worker needs Flask app context for:
+      - Database access via get_db()
+      - app.config for report templates path and output directory
+
+      Use create_app() to get the Flask application instance.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, worker, performance, app-factory]
+    pair_group: fc39-report
+    variant: without_rule

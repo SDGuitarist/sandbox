@@ -1,0 +1,17 @@
+FC41: Cost Cap Without Token Accumulation
+
+Look for these specific patterns:
+
+PASS if:
+- After each API call, response.usage.input_tokens and response.usage.output_tokens are read
+- Token counts are accumulated into running totals (total_input_tokens += ...)
+- Cost is computed from accumulated tokens using the pricing formula
+- The cost cap check uses the accumulated cost, not a static or estimated value
+- After one API call, the accumulated cost would be > 0
+
+FAIL if:
+- Token counters are declared but never updated from API responses
+- Cost is estimated upfront but never updated with actual usage
+- max_cost check compares against a value that is always 0 (uninitialized counters)
+- response.usage is never accessed after the API call
+- The cost cap check exists but the cost variable is never incremented

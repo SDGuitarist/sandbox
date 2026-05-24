@@ -1,0 +1,14 @@
+FC17: Duplicate Boilerplate Across Similar Routes
+
+Look for these specific patterns:
+
+PASS if:
+- Shared boilerplate (rate limiting, validation, error handling, logging) is extracted into a factory function, decorator, or shared helper
+- Each route is reduced to a config object or thin wrapper that specifies only what differs (prompt, schema, action name)
+- A fix to the shared pipeline (e.g., adding timeout) would need to change only one place
+
+FAIL if:
+- Each route contains the full copy-pasted pipeline (rate limit check, validation, try/except, error response)
+- The same guard chain appears 3+ times with only minor string differences
+- Adding a new cross-cutting concern (e.g., audit logging) would require editing every route individually
+- Agent flags the duplication in a comment but doesn't extract the shared code

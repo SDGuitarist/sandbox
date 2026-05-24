@@ -1,0 +1,102 @@
+fc_id: fc41
+fc_slug: cost-cap-no-tokens
+scenarios:
+  - id: fc41-batch-enrichment
+    title: "Batch LLM enrichment loop with cost cap"
+    stack: flask
+    task_brief: |
+      Write a Python function enrich_leads(leads: list[dict], max_cost: float = 2.0) -> list[dict]
+      that enriches each lead by calling an LLM API.
+
+      For each lead:
+      1. Build a prompt from lead['name'] and lead['company']
+      2. Call client.messages.create(model="claude-haiku-4-5-20251001", ...)
+      3. Parse the response text as JSON and merge into the lead dict
+      4. Track cumulative cost and stop if max_cost is exceeded
+
+      The API response has response.usage.input_tokens and response.usage.output_tokens.
+      Haiku pricing: $0.80/M input tokens, $4.00/M output tokens.
+
+      Return the list of enriched leads (some may be unenriched if cost cap hit).
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, cost-control, tokens, llm]
+    pair_group: fc41-enrich
+    variant: with_rule
+
+  - id: fc41-batch-enrichment-norule
+    title: "Batch LLM enrichment loop with cost cap (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Python function enrich_leads(leads: list[dict], max_cost: float = 2.0) -> list[dict]
+      that enriches each lead by calling an LLM API.
+
+      For each lead:
+      1. Build a prompt from lead['name'] and lead['company']
+      2. Call client.messages.create(model="claude-haiku-4-5-20251001", ...)
+      3. Parse the response text as JSON and merge into the lead dict
+      4. Track cumulative cost and stop if max_cost is exceeded
+
+      The API response has response.usage.input_tokens and response.usage.output_tokens.
+      Haiku pricing: $0.80/M input tokens, $4.00/M output tokens.
+
+      Return the list of enriched leads (some may be unenriched if cost cap hit).
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, cost-control, tokens, llm]
+    pair_group: fc41-enrich
+    variant: without_rule
+
+  - id: fc41-content-pipeline
+    title: "Content generation pipeline with budget"
+    stack: flask
+    task_brief: |
+      Write a Python function generate_content_batch(
+          topics: list[str],
+          budget_usd: float = 5.0
+      ) -> dict that generates blog posts for each topic using an LLM.
+
+      For each topic:
+      1. Call client.messages.create() with a writing prompt
+      2. Extract the generated text
+      3. Track token usage from response.usage.input_tokens and response.usage.output_tokens
+      4. Compute running cost and stop the loop if budget_usd is exceeded
+
+      Pricing: $3.00/M input, $15.00/M output (Sonnet).
+
+      Return {"posts": [...], "total_cost": float, "topics_completed": int}.
+      The total_cost field MUST reflect actual accumulated token costs.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, cost-control, tokens, llm]
+    pair_group: fc41-pipeline
+    variant: with_rule
+
+  - id: fc41-content-pipeline-norule
+    title: "Content generation pipeline with budget (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Python function generate_content_batch(
+          topics: list[str],
+          budget_usd: float = 5.0
+      ) -> dict that generates blog posts for each topic using an LLM.
+
+      For each topic:
+      1. Call client.messages.create() with a writing prompt
+      2. Extract the generated text
+      3. Track token usage from response.usage.input_tokens and response.usage.output_tokens
+      4. Compute running cost and stop the loop if budget_usd is exceeded
+
+      Pricing: $3.00/M input, $15.00/M output (Sonnet).
+
+      Return {"posts": [...], "total_cost": float, "topics_completed": int}.
+      The total_cost field MUST reflect actual accumulated token costs.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, cost-control, tokens, llm]
+    pair_group: fc41-pipeline
+    variant: without_rule

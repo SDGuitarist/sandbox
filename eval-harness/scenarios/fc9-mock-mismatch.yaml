@@ -1,0 +1,112 @@
+fc_id: fc9
+fc_slug: mock-mismatch
+scenarios:
+  - id: fc9-mock-llm-response
+    title: "Mock function matching real LLM response schema"
+    stack: flask
+    task_brief: |
+      Write a mock function mock_analyze_text(text: str) that returns
+      the same shape as the real analyze_text() function.
+
+      The real function calls an LLM and returns a dict matching this schema:
+      {
+        "summary": str (1-3 sentences),
+        "sentiment": "positive" | "negative" | "neutral",
+        "confidence": float (0.0-1.0),
+        "key_phrases": list[str] (up to 5),
+        "language": str (ISO 639-1 code)
+      }
+
+      The mock should return realistic but deterministic data.
+      All fields are required -- consumers destructure every field.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, mock, schema]
+    pair_group: fc9-llm-mock
+    variant: with_rule
+
+  - id: fc9-mock-llm-response-norule
+    title: "Mock function matching real LLM response schema (no rule)"
+    stack: flask
+    task_brief: |
+      Write a mock function mock_analyze_text(text: str) that returns
+      the same shape as the real analyze_text() function.
+
+      The real function calls an LLM and returns a dict matching this schema:
+      {
+        "summary": str (1-3 sentences),
+        "sentiment": "positive" | "negative" | "neutral",
+        "confidence": float (0.0-1.0),
+        "key_phrases": list[str] (up to 5),
+        "language": str (ISO 639-1 code)
+      }
+
+      The mock should return realistic but deterministic data.
+      All fields are required -- consumers destructure every field.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, mock, schema]
+    pair_group: fc9-llm-mock
+    variant: without_rule
+
+  - id: fc9-mock-beat-assignment
+    title: "Mock with correct step assignments"
+    stack: flask
+    task_brief: |
+      Write a mock function mock_generate_story_beats(outline: str) that
+      returns the same structure as the real generate_story_beats().
+
+      The real function returns a list of 4 beat dicts, each with:
+      {
+        "beat_number": int (1-4),
+        "title": str,
+        "description": str,
+        "character_focus": str,
+        "tension_level": "low" | "medium" | "high"
+      }
+
+      Beat assignments per the spec:
+      - Beat 1: Setup (tension: low)
+      - Beat 2: Rising conflict (tension: medium)
+      - Beat 3: Climax (tension: high)
+      - Beat 4: Resolution (tension: low)
+
+      The mock MUST match these exact beat-to-tension assignments.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, mock, behavioral-contract]
+    pair_group: fc9-beats
+    variant: with_rule
+
+  - id: fc9-mock-beat-assignment-norule
+    title: "Mock with correct step assignments (no rule)"
+    stack: flask
+    task_brief: |
+      Write a mock function mock_generate_story_beats(outline: str) that
+      returns the same structure as the real generate_story_beats().
+
+      The real function returns a list of 4 beat dicts, each with:
+      {
+        "beat_number": int (1-4),
+        "title": str,
+        "description": str,
+        "character_focus": str,
+        "tension_level": "low" | "medium" | "high"
+      }
+
+      Beat assignments per the spec:
+      - Beat 1: Setup (tension: low)
+      - Beat 2: Rising conflict (tension: medium)
+      - Beat 3: Climax (tension: high)
+      - Beat 4: Resolution (tension: low)
+
+      The mock MUST match these exact beat-to-tension assignments.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, mock, behavioral-contract]
+    pair_group: fc9-beats
+    variant: without_rule
