@@ -207,10 +207,13 @@ Overwrite `docs/reports/phase-plan.manifest.yaml` with the complete manifest. Th
 
 Final manifest at `docs/reports/phase-plan.manifest.yaml`.
 
-**STRICT SCHEMA RULE:** Write EXACTLY these fields and NO others. Do not
-add `started_at`, `completed_at`, `branch_before`, `branch_after`,
-`commits`, `next_step`, or any field not listed below. Do not use nested
-YAML (no indented sub-keys). Every value must be a single-line string or number.
+**STRICT SCHEMA RULE:** Copy the YAML block below VERBATIM and only
+replace the placeholder values in angle brackets. Do not rename fields.
+Do not add fields. Do not use `---` fences. Do not use nested YAML.
+The field names are: `manifest_version`, `phase_name`, `phase_status`,
+`failure_reason`, `recovery_point`, `plan_path`,
+`feed_forward_hardest_decision`, `feed_forward_rejected_alternatives`,
+`feed_forward_least_confident`. Any other field name is a schema violation.
 
 **On success (PASS):**
 
