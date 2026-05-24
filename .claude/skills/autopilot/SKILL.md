@@ -170,16 +170,21 @@ list it, act on it.
 5. If `FAIL` or `IN_PROGRESS`: retry once. If still fails, abort pipeline.
 6. Extract `feed_forward_*` fields from manifest for injection into plan phase.
 
-### Step 5: Plan
+### Step 5: Plan (Delegated)
 
-Run `/workflows:plan $ARGUMENTS`
-
-**Feed-Forward check:** After the plan doc is written, verify:
-1. YAML frontmatter contains `feed_forward:` with `risk:` and `verify_first:`
-2. Doc ends with `## Feed-Forward` section (three questions)
-3. The plan addresses the brainstorm's "least confident" item
-
-If any are missing, add them before proceeding.
+1. Spawn the **phase-plan** agent:
+   - `mode: "bypassPermissions"`
+   - `run_in_background: false` (sequential -- need result before deepen)
+   - Prompt includes: `brainstorm_path` (from brainstorm manifest),
+     expanded brief path (`docs/reports/expanded-brief.md`), agent-pitfalls,
+     Feed-Forward from brainstorm manifest (`phase-brainstorm.manifest.yaml`).
+2. After agent completes, read `docs/reports/phase-plan.manifest.yaml`.
+3. Verify:
+   - `phase_status` is `PASS`
+   - `plan_path` exists on disk
+   - `feed_forward_*` fields are present
+4. If `FAIL` or `IN_PROGRESS`: retry once. Abort on second failure.
+5. Extract `plan_path` and `feed_forward_*` fields for injection into deepen phase.
 
 ### Step 6: Deepen Plan
 
