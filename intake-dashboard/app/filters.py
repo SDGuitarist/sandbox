@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from markupsafe import Markup, escape
 
 
@@ -20,7 +22,6 @@ def register_filters(app):
     def datetime_format(value):
         if not value:
             return ''
-        from datetime import datetime
         try:
             dt = datetime.fromisoformat(value)
             return dt.strftime('%b %d, %Y %I:%M %p')
