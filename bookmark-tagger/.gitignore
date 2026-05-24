@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+bookmark_tagger.db
+.venv/
