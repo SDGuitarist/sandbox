@@ -319,7 +319,7 @@ Run the same brief through:
 validation. The inline path normally runs at session model (often Opus).
 Lock it to Sonnet for the comparison so any quality difference is
 attributable to delegation, not model capability. This applies to all
-per-bundle side-by-side validations (1d, 2c, 3b, 4b, 5b).
+per-bundle side-by-side validations (1d, 2c, 3c, 4b, 5b).
 
 Compare for semantic equivalence per acceptance criteria:
 - Brainstorm doc exists in docs/brainstorms/ with Feed-Forward section
@@ -332,10 +332,107 @@ Compare for semantic equivalence per acceptance criteria:
 - Modified `.claude/skills/autopilot/SKILL.md` (Steps 3-4 replaced)
 - Side-by-side validation results documented
 
-#### Phase 2: Bundle 3 (Deepen + Merge + Audit)
+#### Phase 2: Bundle 2 (Plan + Document Review x2)
+
+**Goal:** Second harness validation, produces plan manifest that Bundle 3
+depends on. Must land before Bundle 3 because the deepen agent consumes
+Feed-Forward from `phase-plan.manifest.yaml`.
+
+**2a. Create phase-plan.md agent**
+
+File: `.claude/agents/phase-plan.md`
+
+Frontmatter:
+```yaml
+---
+name: phase-plan
+description: Non-interactive plan + document-review phase for autopilot. Use when autopilot dispatches the plan phase.
+tools: Read, Write, Edit, Glob, Grep, Bash
+model: sonnet
+source_workflow: compound-engineering/2.35.2/plan,document-review
+---
+```
+
+### What phase-plan.md preserves from /workflows:plan
+
+The current `/workflows:plan` has conditional research steps. In the
+delegated V1 agent:
+
+- **Preserved:** Local repo research (Glob + Grep for patterns, Read for
+  CLAUDE.md guidance, Read for docs/solutions/ learnings). Uses the
+  agent's own Read/Glob/Grep tools -- no child agents needed.
+- **Preserved:** Plan generation with frontmatter, Feed-Forward, EARS
+  acceptance criteria, Plan Quality Gate (4 questions).
+- **Preserved:** Two document-review passes (encoded inline).
+- **Scoped down:** External research (web search, framework docs, best
+  practices agents) is intentionally skipped in V1 autopilot. The
+  brainstorm and deepen phases already incorporate external research.
+  The plan agent focuses on structuring what's already known.
+- **Scoped down:** No interactive research decision ("Should I research
+  externally?"). The agent always runs local-only research.
+
+This is why `Agent` is removed from phase-plan's tools -- it does not
+spawn research subagents. All research is local file reads.
+
+Agent body encodes:
+1. Read brainstorm doc from disk (brainstorm_path from prior manifest)
+2. Write manifest sentinel to `docs/reports/phase-plan.manifest.yaml`
+3. Run local research (Glob for patterns, Read for CLAUDE.md + solutions)
+4. Generate plan (non-interactive, all decisions auto-resolved):
+   - Frontmatter with Feed-Forward and swarm flag
+   - EARS acceptance criteria
+   - Plan Quality Gate: 4 questions answered
+5. Run document-review logic pass 1 (non-interactive, auto-accept,
+   choose "refine again")
+6. Run document-review logic pass 2 (non-interactive, auto-accept,
+   choose "complete")
+7. Commit plan
+8. Update manifest: `phase_status: PASS`, plan_path, feed_forward fields
+
+**2b. Modify autopilot SKILL.md -- Bundle 2 delegation**
+
+Replace Step 5 with delegated spawn:
+
+```
+### Step 5: Plan (Delegated)
+
+1. Spawn the phase-plan agent:
+   - mode: "bypassPermissions"
+   - run_in_background: false
+   - Prompt includes: brainstorm_path (from brainstorm manifest),
+     expanded brief path, agent-pitfalls,
+     Feed-Forward from brainstorm manifest (phase-brainstorm.manifest.yaml).
+2. After agent completes, read `docs/reports/phase-plan.manifest.yaml`.
+3. Verify:
+   - phase_status is PASS
+   - plan_path exists on disk
+   - feed_forward fields are present
+4. If FAIL or IN_PROGRESS: retry once. Abort on second failure.
+5. Extract plan_path and feed_forward for injection into deepen phase.
+```
+
+**2c. First-rollout side-by-side validation**
+
+**Model isolation rule:** Both paths MUST run at `model: sonnet` during
+validation (see Phase 1, Step 1d for rationale).
+
+Compare delegated plan agent output against inline plan+doc-review:
+- Plan doc exists in docs/plans/ with frontmatter + Feed-Forward
+- Carries forward brainstorm decisions
+- Implementation-ready quality (EARS, Quality Gate)
+- Doc-review improvements applied
+- Manifest complete and parseable
+
+**Deliverables:**
+- `.claude/agents/phase-plan.md`
+- Modified `.claude/skills/autopilot/SKILL.md` (Step 5 replaced)
+- Side-by-side validation results
+
+---
+
+#### Phase 3: Bundle 3 (Deepen + Merge + Audit)
 
 **Goal:** Validate atomic delegation with child agents and self-merge audit.
-
 This is the hardest migration because the deepen agent must:
 - Spawn its own parallel research children
 - Collect all outputs
@@ -343,7 +440,7 @@ This is the hardest migration because the deepen agent must:
 - Persist full audit trail (raw outputs + merge ledger)
 - Commit everything atomically
 
-**2a. Create phase-deepen.md agent**
+**3a. Create phase-deepen.md agent**
 
 File: `.claude/agents/phase-deepen.md`
 
@@ -405,7 +502,7 @@ Note: Steps 6.05 and 6.07 (document-review x2) are absorbed into this
 bundle. The deepen agent runs doc-review internally after the merge,
 keeping the polished plan in the same context as the deepening work.
 
-**2b. Modify autopilot SKILL.md -- Bundle 3 delegation**
+**3b. Modify autopilot SKILL.md -- Bundle 3 delegation**
 
 Replace Steps 6, 6.05, 6.07, and 6.5 with:
 
@@ -431,7 +528,7 @@ Replace Steps 6, 6.05, 6.07, and 6.5 with:
 
 Remove Steps 6.05, 6.07, and 6.5 (all absorbed into phase-deepen agent).
 
-**2b.1. Heuristic adjustment (inline with Bundle 3 delivery)**
+**3b.1. Heuristic adjustment (inline with Bundle 3 delivery)**
 
 After Bundle 3 is validated and merged, update the context-budget
 checkpoint formula in SKILL.md to zero out the deepening contribution:
@@ -443,7 +540,10 @@ load = swarm_agents + (review_agents * 1.5) + (fix_retries * 3)
 (Previously: `deepening_agents * 2` was included. Delegated deepen agents
 no longer contribute to orchestrator context, so this term becomes 0.)
 
-**2c. First-rollout side-by-side validation**
+**3c. First-rollout side-by-side validation**
+
+**Model isolation rule:** Both paths MUST run at `model: sonnet` during
+validation (see Phase 1, Step 1d for rationale).
 
 Compare delegated deepen agent output against inline deepen+merge+doc-review:
 - Canonical plan produced (single source of truth)
@@ -455,88 +555,6 @@ Compare delegated deepen agent output against inline deepen+merge+doc-review:
 **Deliverables:**
 - `.claude/agents/phase-deepen.md`
 - Modified `.claude/skills/autopilot/SKILL.md` (Steps 6, 6.05, 6.07, 6.5 replaced)
-- Side-by-side validation results
-
-#### Phase 3: Bundle 2 (Plan + Document Review x2)
-
-**Goal:** Medium complexity migration, similar harness to Bundle 1.
-
-**3a. Create phase-plan.md agent**
-
-File: `.claude/agents/phase-plan.md`
-
-Frontmatter:
-```yaml
----
-name: phase-plan
-description: Non-interactive plan + document-review phase for autopilot. Use when autopilot dispatches the plan phase.
-tools: Read, Write, Edit, Glob, Grep, Bash
-model: sonnet
-source_workflow: compound-engineering/2.35.2/plan,document-review
----
-```
-
-### What phase-plan.md preserves from /workflows:plan
-
-The current `/workflows:plan` has conditional research steps. In the
-delegated V1 agent:
-
-- **Preserved:** Local repo research (Glob + Grep for patterns, Read for
-  CLAUDE.md guidance, Read for docs/solutions/ learnings). Uses the
-  agent's own Read/Glob/Grep tools -- no child agents needed.
-- **Preserved:** Plan generation with frontmatter, Feed-Forward, EARS
-  acceptance criteria, Plan Quality Gate (4 questions).
-- **Preserved:** Two document-review passes (encoded inline).
-- **Scoped down:** External research (web search, framework docs, best
-  practices agents) is intentionally skipped in V1 autopilot. The
-  brainstorm and deepen phases already incorporate external research.
-  The plan agent focuses on structuring what's already known.
-- **Scoped down:** No interactive research decision ("Should I research
-  externally?"). The agent always runs local-only research.
-
-This is why `Agent` is removed from phase-plan's tools -- it does not
-spawn research subagents. All research is local file reads.
-
-Agent body encodes:
-1. Read brainstorm doc from disk (brainstorm_path from prior manifest)
-2. Write manifest sentinel to `docs/reports/phase-plan.manifest.yaml`
-3. Run local research (Glob for patterns, Read for CLAUDE.md + solutions)
-4. Generate plan (non-interactive, all decisions auto-resolved):
-   - Frontmatter with Feed-Forward and swarm flag
-   - EARS acceptance criteria
-   - Plan Quality Gate: 4 questions answered
-5. Run document-review logic pass 1 (non-interactive, auto-accept,
-   choose "refine again")
-6. Run document-review logic pass 2 (non-interactive, auto-accept,
-   choose "complete")
-7. Commit plan
-8. Update manifest: `phase_status: PASS`, plan_path, feed_forward fields
-
-**3b. Modify autopilot SKILL.md -- Bundle 2 delegation**
-
-Replace Step 5 with delegated spawn:
-
-```
-### Step 5: Plan (Delegated)
-
-1. Spawn the phase-plan agent:
-   - mode: "bypassPermissions"
-   - run_in_background: false
-   - Prompt includes: brainstorm_path (from brainstorm manifest),
-     expanded brief path, agent-pitfalls,
-     Feed-Forward from brainstorm manifest (phase-brainstorm.manifest.yaml).
-2. After agent completes, read `docs/reports/phase-plan.manifest.yaml`.
-3. Verify:
-   - phase_status is PASS
-   - plan_path exists on disk
-   - feed_forward fields are present
-4. If FAIL or IN_PROGRESS: retry once. Abort on second failure.
-5. Extract plan_path and feed_forward for injection into deepen phase.
-```
-
-**Deliverables:**
-- `.claude/agents/phase-plan.md`
-- Modified `.claude/skills/autopilot/SKILL.md` (Step 5 replaced)
 - Side-by-side validation results
 
 #### Phase 4: Bundle 4 (Review + Resolve TODOs + Compound)
@@ -947,7 +965,7 @@ contributions to orchestrator context drop to near-zero.
 
 Mitigation (architecture-strategist): Heuristic is updated incrementally
 at the point of each bundle's delivery (not deferred to Phase 6):
-- Phase 2 (Bundle 3): zero out `deepening_agents * 2` (Step 2b.1)
+- Phase 3 (Bundle 3): zero out `deepening_agents * 2` (Step 3b.1)
 - Phase 4 (Bundle 4): zero out `review_agents * 1.5` (Step 4b.1)
 - Phase 6: verify final formula `load = swarm_agents + (fix_retries * 3)`
 
