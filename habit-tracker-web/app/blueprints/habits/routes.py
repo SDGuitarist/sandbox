@@ -121,18 +121,31 @@ def toggle_date(habit_id, target_date):
     if parsed > today:
         abort(400)
 
-    # Must be within 7 days of today
-    if (today - parsed).days > 7:
+    # Determine the displayed week from ?week= param (default: current week)
+    week_param = request.args.get("week")
+    if week_param:
+        try:
+            week_start = date.fromisoformat(week_param)
+        except ValueError:
+            week_start = today - timedelta(days=today.weekday())
+    else:
+        week_start = today - timedelta(days=today.weekday())
+    week_end = week_start + timedelta(days=6)
+
+    # Must be within the displayed week (plan: "only toggle dates from the displayed week")
+    if parsed < week_start or parsed > week_end:
         abort(400)
 
     try:
         with get_db(immediate=True) as conn:
+            habit = get_habit_by_id(conn, habit_id)
+            if habit is None or habit["archived"]:
+                abort(404)
             toggle_completion(conn, habit_id, target_date)
     except sqlite3.IntegrityError:
         abort(404)
 
-    week_start = request.args.get("week", (today - timedelta(days=today.weekday())).isoformat())
-    return redirect(url_for("habits.calendar", week=week_start) + f"#habit-{habit_id}")
+    return redirect(url_for("habits.calendar", week=week_start.isoformat()) + f"#habit-{habit_id}")
 
 
 @habits_bp.route("/calendar")
