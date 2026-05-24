@@ -1,7 +1,7 @@
 ---
 title: "feat: Bookmark Tagger"
 type: feat
-status: active
+status: completed
 date: 2026-05-23
 feed_forward:
   risk: "SSRF via URL fetching -- user-provided URLs could target internal services or cloud metadata endpoints"
