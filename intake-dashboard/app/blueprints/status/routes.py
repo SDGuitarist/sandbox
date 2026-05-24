@@ -1,7 +1,10 @@
 from flask import Blueprint, abort, flash, redirect, request, url_for
 from app.db import get_db
 from app.auth import login_required
-from app.models.submissions import get_submission, update_status, toggle_audit_fit, VALID_STATUSES
+from app.models.submissions import (
+    get_submission, update_status, toggle_audit_fit,
+    VALID_STATUSES, TERMINAL_STATUSES
+)
 
 status_bp = Blueprint('status', __name__)
 
@@ -35,6 +38,9 @@ def toggle_fit(submission_id):
     submission = get_submission(conn, submission_id)
     if submission is None:
         abort(404)
+    if submission['status'] in TERMINAL_STATUSES:
+        flash('Cannot modify a terminal submission', 'error')
+        return redirect(url_for('detail.view_submission', submission_id=submission_id))
     toggle_audit_fit(conn, submission_id)
     flash('Audit fit updated', 'success')
     return redirect(url_for('detail.view_submission', submission_id=submission_id))
