@@ -179,6 +179,25 @@ Run `/compound-engineering:deepen-plan`
 After deepening completes, read the plan document in `docs/plans/`. Extract the
 `swarm:` field from its YAML frontmatter.
 
+### Step 6.05: Plan Review and Refine (Pass 1)
+
+Run `/compound-engineering:document-review` on the plan document in `docs/plans/`.
+
+This is the first review pass -- it assesses clarity, completeness, specificity,
+and YAGNI compliance, then fixes issues inline. The skill will identify the
+single most impactful improvement and apply it.
+
+If the skill asks whether to refine again or mark as complete, choose
+**refine again** (this feeds into Step 6.07).
+
+### Step 6.07: Plan Review and Refine (Pass 2)
+
+Run `/compound-engineering:document-review` on the same plan document again.
+
+This second pass catches issues introduced or exposed by the first refinement.
+After this pass, the skill will recommend completion (diminishing returns after
+2 passes). Accept completion and proceed.
+
 ### Step 6.1: Generate Run ID and Reports Directory (MANDATORY)
 
 Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
