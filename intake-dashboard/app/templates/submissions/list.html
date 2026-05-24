@@ -48,7 +48,7 @@
                 <td>{{ s['business_name'] }}</td>
                 <td>{{ s['contact_name'] }}</td>
                 <td>{{ s['email'] }}</td>
-                <td>{{ s['status']|status_badge|safe }}</td>
+                <td>{{ s['status']|status_badge }}</td>
                 <td>{{ s['created_at']|datetime_format }}</td>
                 <td>
                     <a href="{{ url_for('detail.view_submission', submission_id=s['id']) }}"

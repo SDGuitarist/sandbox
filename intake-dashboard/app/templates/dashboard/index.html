@@ -14,7 +14,7 @@
         <div class="card h-100 text-center">
             <div class="card-body d-flex flex-column justify-content-center">
                 <h2 class="card-title display-6 mb-3">{{ count }}</h2>
-                <p class="card-text mb-3">{{ status|status_badge|safe }}</p>
+                <p class="card-text mb-3">{{ status|status_badge }}</p>
                 <a href="{{ url_for('submissions.list_view', status=status) }}"
                    class="btn btn-sm btn-outline-primary mt-auto">
                     View {{ status }}
