@@ -61,7 +61,7 @@ def intake_form():
         if errors:
             for e in errors:
                 flash(e, 'error')
-            return render_template('intake/form.html')
+            return render_template('intake/form.html', fields=fields)
 
         conn = get_db()
         create_submission(conn, fields)

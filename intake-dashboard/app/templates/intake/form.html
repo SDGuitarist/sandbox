@@ -25,35 +25,40 @@
       <div class="mb-3">
         <label for="contact_name" class="form-label">Contact Name</label>
         <input type="text" class="form-control" id="contact_name"
-               name="contact_name" maxlength="100" required>
+               name="contact_name" maxlength="100" required
+               value="{{ (fields or {}).get('contact_name', '') }}">
       </div>
 
       <!-- Email -->
       <div class="mb-3">
         <label for="email" class="form-label">Email Address</label>
         <input type="email" class="form-control" id="email"
-               name="email" maxlength="254" required>
+               name="email" maxlength="254" required
+               value="{{ (fields or {}).get('email', '') }}">
       </div>
 
       <!-- Business Name -->
       <div class="mb-3">
         <label for="business_name" class="form-label">Business Name</label>
         <input type="text" class="form-control" id="business_name"
-               name="business_name" maxlength="200" required>
+               name="business_name" maxlength="200" required
+               value="{{ (fields or {}).get('business_name', '') }}">
       </div>
 
       <!-- Business Type -->
       <div class="mb-3">
         <label for="business_type" class="form-label">Business Type / Industry</label>
         <input type="text" class="form-control" id="business_type"
-               name="business_type" maxlength="200" required>
+               name="business_type" maxlength="200" required
+               value="{{ (fields or {}).get('business_type', '') }}">
       </div>
 
       <!-- Team Size -->
       <div class="mb-3">
         <label for="team_size" class="form-label">Team Size</label>
         <input type="text" class="form-control" id="team_size"
-               name="team_size" maxlength="100" required>
+               name="team_size" maxlength="100" required
+               value="{{ (fields or {}).get('team_size', '') }}">
       </div>
 
       <!-- Current Workflows -->
@@ -63,7 +68,7 @@
         </label>
         <textarea class="form-control" id="current_workflows"
                   name="current_workflows" rows="4" maxlength="2000"
-                  required></textarea>
+                  required>{{ (fields or {}).get('current_workflows', '') }}</textarea>
       </div>
 
       <!-- Pain Points -->
@@ -73,7 +78,7 @@
         </label>
         <textarea class="form-control" id="pain_points"
                   name="pain_points" rows="4" maxlength="2000"
-                  required></textarea>
+                  required>{{ (fields or {}).get('pain_points', '') }}</textarea>
       </div>
 
       <!-- Tools Used -->
@@ -83,7 +88,7 @@
         </label>
         <textarea class="form-control" id="tools_used"
                   name="tools_used" rows="4" maxlength="2000"
-                  required></textarea>
+                  required>{{ (fields or {}).get('tools_used', '') }}</textarea>
       </div>
 
       <!-- Goals -->
@@ -93,14 +98,15 @@
         </label>
         <textarea class="form-control" id="goals"
                   name="goals" rows="4" maxlength="2000"
-                  required></textarea>
+                  required>{{ (fields or {}).get('goals', '') }}</textarea>
       </div>
 
       <!-- Urgency -->
       <div class="mb-3">
         <label for="urgency" class="form-label">Urgency / Timeline</label>
         <input type="text" class="form-control" id="urgency"
-               name="urgency" maxlength="200" required>
+               name="urgency" maxlength="200" required
+               value="{{ (fields or {}).get('urgency', '') }}">
       </div>
 
       <!-- Submitter Notes (optional) -->
@@ -110,7 +116,7 @@
         </label>
         <textarea class="form-control" id="submitter_notes"
                   name="submitter_notes" rows="3"
-                  maxlength="2000"></textarea>
+                  maxlength="2000">{{ (fields or {}).get('submitter_notes', '') }}</textarea>
       </div>
 
       <button type="submit" class="btn btn-primary btn-lg w-100">
