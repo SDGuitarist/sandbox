@@ -156,6 +156,31 @@ Manifest paths (deterministic, known before agent spawns):
 Bundles 1-2 write to `docs/reports/` (no run-id yet). Bundles 3-4 and
 solo work write under `docs/reports/<run-id>/`.
 
+### Feed-Forward Consumer Chain
+
+Each phase consumes Feed-Forward from its immediately prior phase's
+manifest. The orchestrator extracts `feed_forward_*` fields from the
+completed manifest and injects them into the next phase agent's prompt.
+
+```
+Bundle 1 (brainstorm) -- produces brainstorm Feed-Forward
+  ↓ consumed by
+Bundle 2 (plan) -- produces plan Feed-Forward
+  ↓ consumed by
+Bundle 3 (deepen) -- produces deepen Feed-Forward
+  ↓ consumed by
+  ├─ Solo path: phase-work agent -- produces work Feed-Forward
+  │     ↓ consumed by
+  │   Bundle 4 (review)
+  └─ Swarm path: Steps 7w-16w inline (no manifest produced)
+        ↓ deepen Feed-Forward passes through
+      Bundle 4 (review)
+```
+
+Rule: a phase NEVER reaches back past its immediate predecessor. Bundle 3
+reads plan manifest, not brainstorm manifest. Bundle 4 reads work manifest
+(solo) or deepen manifest (swarm), never plan manifest.
+
 ### Research Insights: Stale Manifest Protection
 
 **(architecture-strategist, orchestrating-swarms, pattern-recognition):**
@@ -271,14 +296,14 @@ brainstorm-refinement agent) with:
    - mode: "bypassPermissions"
    - run_in_background: false (sequential -- need result before plan)
    - Prompt includes: expanded brief path, applied lessons from Step 1,
-     agent-pitfalls, and any Feed-Forward from prior context.
+     agent-pitfalls. (No prior manifest -- brainstorm is the first phase.)
 3. After agent completes, read `docs/reports/phase-brainstorm.manifest.yaml`.
 4. Verify:
    - phase_status is PASS
    - brainstorm_path exists on disk
    - feed_forward fields are present
 5. If FAIL or IN_PROGRESS: retry once. If still fails, abort pipeline.
-6. Extract feed_forward from manifest for injection into next phase.
+6. Extract feed_forward from manifest for injection into plan phase.
 ```
 
 Remove Step 4 (brainstorm-refinement) since it's now internal to the
@@ -489,8 +514,25 @@ Agent body encodes:
 
 **3b. Modify autopilot SKILL.md -- Bundle 2 delegation**
 
-Replace Step 5 with delegated spawn. Read manifest at
-`docs/reports/phase-plan.manifest.yaml`. Same verification pattern.
+Replace Step 5 with delegated spawn:
+
+```
+### Step 5: Plan (Delegated)
+
+1. Spawn the phase-plan agent:
+   - mode: "bypassPermissions"
+   - run_in_background: false
+   - Prompt includes: brainstorm_path (from brainstorm manifest),
+     expanded brief path, agent-pitfalls,
+     Feed-Forward from brainstorm manifest (phase-brainstorm.manifest.yaml).
+2. After agent completes, read `docs/reports/phase-plan.manifest.yaml`.
+3. Verify:
+   - phase_status is PASS
+   - plan_path exists on disk
+   - feed_forward fields are present
+4. If FAIL or IN_PROGRESS: retry once. Abort on second failure.
+5. Extract plan_path and feed_forward for injection into deepen phase.
+```
 
 **Deliverables:**
 - `.claude/agents/phase-plan.md`
@@ -528,7 +570,8 @@ source_workflow: compound-engineering/2.35.2/review,resolve_todo_parallel,compou
 ```
 
 Agent body encodes:
-1. Read plan, built code, and reports dir from prior manifests
+1. Read plan, built code, and reports dir. Consumes Feed-Forward from
+   deepen manifest (or work manifest for solo path, provided by orchestrator).
 2. Write manifest to `docs/reports/<run-id>/phase-review.manifest.yaml`
    with `phase_status: IN_PROGRESS`
 3. Run review workflow logic (spawn multi-agent review, synthesize findings,
@@ -547,8 +590,43 @@ V1 constraint: compound stays bundled with review+resolve. Do not split.
 
 **4b. Modify autopilot SKILL.md -- Bundle 4 delegation**
 
-Replace Review, Resolve TODOs, and Compound sections in Shared Tail with
-delegated spawn. Read manifest. Same verification pattern.
+Replace Review, Resolve TODOs, and Compound sections in Shared Tail with:
+
+```
+### Review + Resolve + Compound (Delegated)
+
+1. Spawn the phase-review agent:
+   - mode: "bypassPermissions"
+   - run_in_background: false
+   - Prompt includes: plan_path, run-id, reports_dir, agent-pitfalls,
+     Feed-Forward from the immediately prior delegated phase:
+       - Solo path: from work manifest (phase-work.manifest.yaml)
+       - Swarm path: from deepen manifest (phase-deepen.manifest.yaml)
+         (swarm steps 7w-16w are inline and don't produce a manifest)
+2. After agent completes, read manifest at
+   docs/reports/<run-id>/phase-review.manifest.yaml.
+3. Verify:
+   - phase_status is PASS
+   - solution_doc_path exists on disk
+   - review_summary_path exists on disk
+   - feed_forward fields present
+4. If FAIL or IN_PROGRESS: retry once. Abort on second failure.
+5. Extract solution_doc_path and review data for tail steps.
+```
+
+**4b.1. Heuristic adjustment (inline with Bundle 4 delivery)**
+
+After Bundle 4 is validated and merged, update the context-budget
+checkpoint formula in SKILL.md to zero out the review contribution:
+
+```
+load = swarm_agents + (fix_retries * 3)
+```
+
+(Previously: `review_agents * 1.5` was included. Delegated review agent
+no longer contributes to orchestrator context, so this term becomes 0.
+Combined with the Bundle 3 adjustment, only swarm agents and fix retries
+remain in the formula.)
 
 **Deliverables:**
 - `.claude/agents/phase-review.md`
@@ -588,7 +666,25 @@ Agent body encodes:
 
 **5b. Modify autopilot SKILL.md -- Solo work delegation**
 
-Replace Step 7s with delegated spawn. Read manifest. Same verification.
+Replace Step 7s with delegated spawn:
+
+```
+### Step 7s: Work (Delegated)
+
+1. Spawn the phase-work agent:
+   - mode: "bypassPermissions"
+   - run_in_background: false
+   - Prompt includes: plan_path (from deepen manifest), run-id,
+     reports_dir, agent-pitfalls,
+     Feed-Forward from deepen manifest (phase-deepen.manifest.yaml).
+2. After agent completes, read manifest at
+   docs/reports/<run-id>/phase-work.manifest.yaml.
+3. Verify:
+   - phase_status is PASS
+   - feed_forward fields present
+4. If FAIL or IN_PROGRESS: retry once. Abort on second failure.
+5. Extract feed_forward for injection into review phase.
+```
 
 **Deliverables:**
 - `.claude/agents/phase-work.md`
@@ -601,8 +697,9 @@ Replace Step 7s with delegated spawn. Read manifest. Same verification.
 
 Tasks:
 1. Remove all inline phase logic that's been replaced by agents
-2. Update the context-budget checkpoint heuristic -- with delegated phases,
-   the load formula changes (phase agents don't add to orchestrator load)
+2. Verify context-budget heuristic is correct (should already be
+   `load = swarm_agents + (fix_retries * 3)` from Phase 2 and Phase 4
+   incremental adjustments -- confirm no stale terms remain)
 3. Update the CHECKPOINT.md schema to include manifest paths
 4. Verify tail-resume can read phase manifests from deterministic paths
 5. Update the flow diagram comments in SKILL.md
@@ -848,11 +945,11 @@ The current checkpoint heuristic
 was calibrated against inline phases. As bundles are delegated, their
 contributions to orchestrator context drop to near-zero.
 
-Mitigation (architecture-strategist): Update the heuristic incrementally
-as bundles are migrated. After delegating Bundle 3 (deepen), set
-`deepening_agents * 2` to 0. After Bundle 4 (review), set
-`review_agents * 1.5` to 0. This prevents false-positive checkpoints
-during the phased rollout.
+Mitigation (architecture-strategist): Heuristic is updated incrementally
+at the point of each bundle's delivery (not deferred to Phase 6):
+- Phase 2 (Bundle 3): zero out `deepening_agents * 2` (Step 2b.1)
+- Phase 4 (Bundle 4): zero out `review_agents * 1.5` (Step 4b.1)
+- Phase 6: verify final formula `load = swarm_agents + (fix_retries * 3)`
 
 ### Tail step growth
 
