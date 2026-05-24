@@ -60,24 +60,33 @@ def get_submission(conn: sqlite3.Connection, submission_id: int) -> sqlite3.Row 
     ).fetchone()
 
 
+LIST_COLUMNS = "id, business_name, contact_name, email, status, created_at"
+PER_PAGE = 50
+
+
 def list_submissions(conn: sqlite3.Connection,
-                     status_filter: str | None = None) -> list[sqlite3.Row]:
-    """List all submissions, optionally filtered by status.
+                     status_filter: str | None = None,
+                     page: int = 1) -> list[sqlite3.Row]:
+    """List submissions with column projection and pagination.
 
     Usage:
         submissions = list_submissions(conn)
-        submissions = list_submissions(conn, status_filter='new')
+        submissions = list_submissions(conn, status_filter='new', page=2)
 
-    Returns: list of sqlite3.Row, ordered by created_at DESC
+    Returns: list of sqlite3.Row (6 columns only), ordered by created_at DESC
     Transaction: does NOT commit (read-only)
     """
+    offset = (page - 1) * PER_PAGE
     if status_filter and status_filter in VALID_STATUSES:
         return conn.execute(
-            "SELECT * FROM submissions WHERE status = ? ORDER BY created_at DESC",
-            (status_filter,)
+            f"SELECT {LIST_COLUMNS} FROM submissions"
+            " WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (status_filter, PER_PAGE + 1, offset)
         ).fetchall()
     return conn.execute(
-        "SELECT * FROM submissions ORDER BY created_at DESC"
+        f"SELECT {LIST_COLUMNS} FROM submissions"
+        " ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        (PER_PAGE + 1, offset)
     ).fetchall()
 
 

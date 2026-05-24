@@ -66,4 +66,20 @@
     No submissions found{% if status_filter %} with status "{{ status_filter }}"{% endif %}.
 </div>
 {% endif %}
+
+{% if page > 1 or has_next %}
+<nav>
+    <ul class="pagination justify-content-center">
+        <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('submissions.list_view', status=status_filter, page=page-1) }}">Previous</a>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page }}</span>
+        </li>
+        <li class="page-item {% if not has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('submissions.list_view', status=status_filter, page=page+1) }}">Next</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}
