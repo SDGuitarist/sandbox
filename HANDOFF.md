@@ -1,79 +1,64 @@
 # HANDOFF -- Sandbox
 
-**Date:** 2026-05-23
-**Branch:** master
-**Phase:** Run 058 -- COMPLETE + P2 polish pass
+**Date:** 2026-05-24
+**Branch:** refactor/autopilot-agent-delegation
+**Phase:** Run 059 -- COMPLETE
 
 ## Current State
 
-Run 058 (Client Intake Dashboard) is COMPLETE. Full compound cycle plus a
-P2 polish pass (10 fixes across security, performance, and code quality).
+Run 059 (Habit Tracker Web) is COMPLETE. Solo build with deepen phase
+(5 research agents), Codex external review (2 P1s found and fixed),
+compound phase done.
 
-15 agents, 29 files, 36/36 smoke tests pass, 9 P1s resolved, 10 P2s resolved.
+8 work commits + 1 bugfix + 1 P1 fix + 1 solution doc = 11 commits, 14 files, ~700 lines.
 
 ## What's Done
 
 | Step | Status |
 |------|--------|
-| Compound Start + Lessons | DONE |
-| BUILD_TRACKING.md | DONE (all sections filled) |
-| Brainstorm | DONE (docs/brainstorms/2026-05-22-client-intake-dashboard-brainstorm.md) |
-| Plan | DONE (docs/plans/client-intake-dashboard-plan.md) |
-| Pre-Swarm Gates | CLEARED (consistency + completeness) |
-| Swarm (15 agents) | 15/15 committed, 0 conflicts |
-| Ownership Gate | PASS (1 minor violation) |
-| Assembly Merge | 11 worktree + 4 master-direct, 0 conflicts |
-| Smoke Tests | 36/36 PASS |
-| Review (5 agents) | DONE -- 10 P1, 11 P2, 15 P3 |
-| P1 Fixes | 9/10 fixed (0af322a), 1 deferred (TOCTOU, no delete endpoint) |
-| Compound | DONE (docs/solutions/2026-05-23-client-intake-dashboard-15-agent-swarm-build.md) |
-| Learnings | DONE |
-| Self-Audit | DONE |
-| P2 Polish | 10/13 fixed (8 commits: d201374..694d06d). 3 skipped (TOCTOU-entangled, type annotations). |
+| Brainstorm | DONE (docs/brainstorms/2026-05-23-habit-tracker-web-brainstorm.md) |
+| Plan | DONE (docs/plans/2026-05-23-feat-habit-tracker-web-plan.md) |
+| Deepen (5 agents) | DONE (docs/reports/059/deepen-raw/, deepening-applied.md) |
+| Work (8 commits) | DONE (foundation, db, models, factory, routes, templates, css, bugfix) |
+| Codex Review #1 | 2 P1, 0 P0 (docs/reports/059/codex-review-handoff.md) |
+| P1 Fixes | 2/2 fixed (f6086e0) |
+| Codex Review #2 | CLEAN -- 0 findings |
+| Compound | DONE (docs/solutions/2026-05-24-habit-tracker-web-solo-build.md) |
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| intake-dashboard/ | Application source (15 agents' output) |
-| docs/plans/client-intake-dashboard-plan.md | Shared interface spec |
-| docs/brainstorms/2026-05-22-client-intake-dashboard-brainstorm.md | Brainstorm |
-| BUILD_TRACKING.md | Agent status, failures, metrics |
-| docs/reports/058/ | Gate reports + flow trace |
-| docs/solutions/2026-05-23-client-intake-dashboard-15-agent-swarm-build.md | Solution doc |
-| CHECKPOINT.md | Tail resume state |
+| habit-tracker-web/ | Application source (14 files) |
+| docs/plans/2026-05-23-feat-habit-tracker-web-plan.md | Deepened plan |
+| docs/reports/059/ | Deepen raw outputs, merge ledger, manifests, review handoff |
+| docs/solutions/2026-05-24-habit-tracker-web-solo-build.md | Solution doc |
 
 ## Deferred Items
 
-### Client Intake Dashboard (Run 058)
-- [058-W3] P1: TOCTOU gap in status change outer 404 guard + redundant get_submission query. Entangled -- fix requires changing update_status return type. DEFERRED, LOW.
-- [058-W4] 3 remaining P2 (type annotations on model params/returns). DEFERRED, LOW.
-- [058-W5] 12 P3 findings (pathlib, flash mapping, seed __main__ guard, debug=True, Cache-Control, etc). DEFERRED, LOW.
+### Habit Tracker Web (Run 059)
+- [059-D1] ARIA grid roles promise arrow-key navigation that requires JS. Tab navigation works, but screen readers may expect more. LOW. Future: add lightweight JS arrow-key handler or downgrade to role="table".
 
 ### Prior Runs
+- [058-W3] Client Intake Dashboard TOCTOU gap. DEFERRED, LOW.
+- [058-W4] 3 P2 type annotations. DEFERRED, LOW.
+- [058-W5] 12 P3 cosmetic findings. DEFERRED, LOW.
 - [057-W1..W4] BrewOps P2/P3 findings. DEFERRED.
 - [056-D1..D8] CoWorkFlow deferred fixes. DEFERRED.
 - GymFlow 054 P2s, GigSheet 050 P2s
 
-## Key Artifacts
+## Key Lessons (from solution doc)
 
-| Phase | Location |
-|-------|----------|
-| Brainstorm | docs/brainstorms/2026-05-22-client-intake-dashboard-brainstorm.md |
-| Plan | docs/plans/client-intake-dashboard-plan.md |
-| Review | docs/reports/058/flow-trace.md |
-| Solution | docs/solutions/2026-05-23-client-intake-dashboard-15-agent-swarm-build.md |
-
-## Three Questions
-
-1. **Hardest decision?** Whether to fix the TOCTOU gap in status routes. Deferred because no delete endpoint exists.
-2. **What was rejected?** Eliminating the outer 404 guard entirely (would change error messages for legitimate 404s).
-3. **Least confident about?** The remaining 3 P2 and 12 P3 deferred findings. All LOW priority -- type annotations and cosmetic improvements.
+1. **ON CONFLICT DO NOTHING > INSERT OR IGNORE** -- targets specific UNIQUE constraint, lets FK errors propagate. Default pattern going forward.
+2. **Fragment anchor redirect** -- POST redirect to `/path#anchor` with scroll-margin-top. Eliminates scroll-jump in server-rendered toggle grids.
+3. **WTF_CSRF_TIME_LIMIT = None** -- prevents stale-page 400s for single-user apps.
+4. **Toggle path parity** -- when multiple routes call the same model function, verify they all enforce the same preconditions (Codex caught this).
+5. **"Within displayed range" != "within N days"** -- implement what the plan says, not a shortcut.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. Run 058 (Client Intake Dashboard) is complete
-with P2 polish pass done (10 fixes). Only 3 P2 (type annotations)
-and 12 P3 (cosmetic) remain. Start a new project.
+Read HANDOFF.md. Run 059 (Habit Tracker Web) is complete.
+All findings resolved, solution doc written. Start a new project
+or pick up deferred items.
 ```
