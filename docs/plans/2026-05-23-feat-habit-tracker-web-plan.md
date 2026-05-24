@@ -149,7 +149,8 @@ def toggle_completion(conn, habit_id: int, target_date: str) -> bool:
     """Toggle completion for a habit on a specific date.
     Returns True if completion was ADDED, False if REMOVED.
     MUST be called inside get_db(immediate=True) context.
-    Uses INSERT OR IGNORE + rowcount check for atomic idempotent toggle.
+    Uses ON CONFLICT(habit_id, completed_date) DO NOTHING + rowcount for atomic toggle.
+    Raises sqlite3.IntegrityError if habit_id FK is invalid (caller should catch and return 404).
     Usage: was_added = toggle_completion(conn, habit_id, '2026-05-23')
     """
 
@@ -186,7 +187,8 @@ def compute_longest_streak(completions: list[str]) -> int:
 def toggle_completion(conn, habit_id: int, target_date: str) -> bool:
     """Atomic toggle: INSERT if not exists, DELETE if exists."""
     cursor = conn.execute(
-        "INSERT OR IGNORE INTO completions (habit_id, completed_date) VALUES (?, ?)",
+        "INSERT INTO completions (habit_id, completed_date) VALUES (?, ?) "
+        "ON CONFLICT(habit_id, completed_date) DO NOTHING",
         (habit_id, target_date)
     )
     if cursor.rowcount > 0:
@@ -201,8 +203,15 @@ def toggle_completion(conn, habit_id: int, target_date: str) -> bool:
 
 **Critical:** This is atomic because:
 1. `BEGIN IMMEDIATE` (from `get_db(immediate=True)`) serializes writes
-2. `INSERT OR IGNORE` + `rowcount` determines state without a separate SELECT (no TOCTOU)
+2. `ON CONFLICT(...) DO NOTHING` + `rowcount` determines state without a separate SELECT (no TOCTOU)
 3. The UNIQUE constraint prevents duplicate completions even under rapid clicks
+
+**Why ON CONFLICT DO NOTHING instead of INSERT OR IGNORE:**
+- `INSERT OR IGNORE` suppresses ALL constraint violations (UNIQUE, NOT NULL, CHECK). If the schema evolves to add a CHECK constraint, violations would be silently swallowed.
+- `ON CONFLICT(habit_id, completed_date) DO NOTHING` targets only the specific UNIQUE constraint. FK violations (invalid `habit_id`) still raise `sqlite3.IntegrityError`, which is desirable.
+- Requires SQLite 3.24.0+ (Python 3.8+ ships 3.24+).
+
+**FK error handling:** The toggle route MUST catch `sqlite3.IntegrityError` for FK violations and return HTTP 404 (habit not found) rather than letting it bubble up as 500.
 
 ### Prescribed Streak Functions
 
@@ -289,10 +298,12 @@ def init_db(app):
 ```
 
 **Notes:**
-- `PRAGMA foreign_keys=ON` in `get_db` -- without this, SQLite silently ignores FK constraints on `completions.habit_id`.
-- `PRAGMA journal_mode=WAL` in `init_db` only -- WAL is persistent once set.
-- `executescript()` is safe here because `schema.sql` only contains `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` -- no destructive DDL.
+- `PRAGMA foreign_keys=ON` in `get_db` -- without this, SQLite silently ignores FK constraints on `completions.habit_id`. Must be set per-connection (not persistent like WAL). Must be set before any transaction begins.
+- `PRAGMA journal_mode=WAL` in `init_db` only -- WAL is persistent once set (stored in the database file header). Do not re-set per-connection.
+- `timeout=10` -- maps to SQLite's `busy_timeout` (10,000ms). Second writers wait up to 10s for the lock instead of failing immediately. This is why BEGIN IMMEDIATE + timeout work together: IMMEDIATE acquires the lock upfront, timeout gives other connections time to release.
+- `executescript()` is safe here because `schema.sql` only contains `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` -- no destructive DDL. Issues an implicit COMMIT before running, but this doesn't affect WAL (pragma is not transactional).
 - `try/finally` on init_db prevents FD leak if schema execution fails (lesson from feedback-board P1 finding).
+- `conn.commit()` on read-only operations is a harmless no-op (no pending transaction to commit).
 
 ### App Factory
 
@@ -323,6 +334,11 @@ def create_app(db_path: str | None = None) -> Flask:
 
     app.config['DB_PATH'] = db_path or os.environ.get('DB_PATH',
         str(Path(__file__).resolve().parent.parent / 'habits.db'))
+
+    # Disable CSRF token expiry. Default is 3600s (1 hour), which causes
+    # 400 errors if a dashboard/calendar page is left open and toggled later.
+    # Session cookie expiry provides sufficient time-bounding for single-user app.
+    app.config['WTF_CSRF_TIME_LIMIT'] = None
 
     csrf.init_app(app)
 
@@ -375,7 +391,7 @@ def create_app(db_path: str | None = None) -> Flask:
 | POST | /habits/\<int:habit_id\>/edit | habits.update_habit | Update habit name | redirect / |
 | POST | /habits/\<int:habit_id\>/archive | habits.archive_habit | Soft-delete habit | redirect / |
 | POST | /habits/\<int:habit_id\>/toggle | habits.toggle_today | Toggle today's completion | redirect / |
-| POST | /habits/\<int:habit_id\>/toggle/\<target_date\> | habits.toggle_date | Toggle specific date (target_date is ISO string, validated in handler) | redirect to calendar |
+| POST | /habits/\<int:habit_id\>/toggle/\<target_date\> | habits.toggle_date | Toggle specific date (target_date is ISO string, validated in handler) | redirect to calendar with `#habit-{habit_id}` fragment anchor |
 | GET | /calendar | habits.calendar | Weekly calendar view | render calendar.html |
 | GET | /health | health | Health check | JSON |
 
@@ -410,17 +426,62 @@ The calendar view (GET /calendar) shows a 7-column CSS Grid (Monday-Sunday):
        Mon   Tue   Wed   Thu   Fri   Sat   Sun
        19    20    21    22    23    24    25
 
-Habit1  *     *     *     *     o     -     -
-Habit2  *     o     *     o     o     -     -
+Habit1  *     *     *     *     o     .     .
+Habit2  *     o     *     o     o     .     .
 ```
 
 Visual states per cell:
-- **Filled circle (green):** Completed on that date. Clicking toggles to incomplete.
-- **Empty circle (gray):** Not completed. Clicking toggles to complete.
-- **Dash (light gray):** Future date -- not clickable.
+- **Filled circle (green):** Completed on that date. Clicking toggles to incomplete. Uses `<button>` with `cursor: pointer`.
+- **Empty circle (gray):** Not completed. Clicking toggles to complete. Uses `<button>` with `cursor: pointer`.
+- **Dimmed circle (40% opacity):** Future date -- not clickable. Uses `<span>` with `cursor: not-allowed` and `aria-disabled="true"`. Keeps consistent circle shape across all states (better than a dash, which breaks the visual pattern).
 - **Today's cell:** Highlighted border to show "you are here."
 
 Each cell that is clickable is wrapped in a mini-form POST to `/habits/<id>/toggle/<date>`.
+
+**Clickable affordances:** Hover states (border + shadow) on clickable buttons only. Use `:focus-visible` (not `:focus`) for keyboard focus rings to avoid showing rings on mouse clicks. Minimum button size 44x44px per WCAG 2.5.5 touch target guidelines.
+
+#### ARIA Grid Structure
+
+The calendar uses semantic ARIA roles for screen reader and keyboard accessibility:
+
+```html
+<div role="grid" aria-label="Habit completions for week of May 19">
+  <div role="row">
+    <div role="columnheader">Habit</div>
+    <div role="columnheader">Mon 19</div>
+    <!-- ... 7 day columns -->
+  </div>
+  <div role="row" id="habit-3" aria-label="Meditation">
+    <div role="rowheader">Meditation</div>
+    <div role="gridcell">
+      <form method="POST" action="/habits/3/toggle/2026-05-19">
+        <input type="hidden" name="csrf_token" value="...">
+        <button type="submit"
+                aria-label="Toggle Meditation for Monday May 19, currently completed"
+                class="cell-completed">
+        </button>
+      </form>
+    </div>
+    <!-- future date cell -->
+    <div role="gridcell">
+      <span aria-disabled="true" class="cell-future"
+            aria-label="Saturday May 24, future date"></span>
+    </div>
+  </div>
+</div>
+```
+
+Each toggle button's `aria-label` includes: habit name, date, and current state. Each habit row has `id="habit-{habit_id}"` for fragment anchor scrolling (see below).
+
+#### Anchor Redirect for Scroll Preservation
+
+To address the Feed-Forward concern about toggling feeling "clunky" with full page reloads, the toggle_date route redirects with a fragment anchor:
+
+```python
+return redirect(url_for('habits.calendar', week=week_start) + f'#habit-{habit_id}')
+```
+
+After POST, the browser loads the calendar and scrolls directly to the toggled habit's row. Combined with `scroll-margin-top` in CSS, this prevents the "jump to top" problem during rapid multi-day toggling.
 
 Navigation: `<< Prev Week` and `Next Week >>` links pass `?week=YYYY-MM-DD` query param. Default is the Monday of the current week.
 
@@ -432,9 +493,9 @@ Navigation: `<< Prev Week` and `Next Week >>` links pass `?week=YYYY-MM-DD` quer
 |-------|-------|------------|----------------|
 | POST /habits | `name` (form) | Strip whitespace, 1-100 chars, required | Flash "Habit name is required" / "Habit name too long", redirect back |
 | POST /habits/\<id\>/edit | `name` (form) | Strip whitespace, 1-100 chars, required | Flash error, redirect back |
-| POST /habits/\<id\>/toggle/\<target_date\> | `target_date` (URL string) | Parse with `date.fromisoformat()`; must be valid ISO date, must not be in the future (`> date.today()`), must be within 7 days of today | abort(400) on parse error or constraint violation |
+| POST /habits/\<id\>/toggle/\<target_date\> | `target_date` (URL string) | Parse with `date.fromisoformat()`; must be valid ISO date, must not be in the future (`> date.today()`), must be within 7 days of today. Catch `sqlite3.IntegrityError` from FK violation -> 404. | abort(400) on parse error; abort(404) on invalid habit_id |
 | POST /habits/\<id\>/archive | `habit_id` (URL) | Must exist in DB | abort(404) |
-| POST /habits/\<id\>/toggle | `habit_id` (URL) | Must exist in DB, must not be archived | abort(404) |
+| POST /habits/\<id\>/toggle | `habit_id` (URL) | Must exist in DB, must not be archived. Catch `sqlite3.IntegrityError` from FK violation -> 404. | abort(404) |
 
 ### Date Handling
 
@@ -449,18 +510,65 @@ Navigation: `<< Prev Week` and `Next Week >>` links pass `?week=YYYY-MM-DD` quer
 Single `style.css` file. Clean, minimal custom CSS. Key structures:
 
 ```css
+/* Calendar wrapper -- enables horizontal scroll on narrow screens */
+.calendar-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* Calendar grid -- 7 columns for days */
 .calendar-grid {
     display: grid;
-    grid-template-columns: 120px repeat(7, 1fr);
+    grid-template-columns: 120px repeat(7, minmax(48px, 1fr));
     gap: 4px;
+    min-width: max-content;
 }
 
-/* Streak indicators */
-.completed { background: #22c55e; border-radius: 50%; }
-.not-completed { background: #e5e7eb; border-radius: 50%; }
-.future { background: #f9fafb; opacity: 0.5; }
+/* Sticky habit name column (first column stays visible during scroll) */
+.calendar-grid [role="rowheader"],
+.calendar-grid [role="columnheader"]:first-child {
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 1;
+}
+
+/* Toggle buttons -- 44x44px minimum for WCAG 2.5.5 touch targets */
+.cell-completed, .cell-incomplete {
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+.cell-completed { background: #22c55e; }
+.cell-incomplete { background: #e5e7eb; }
+
+/* Hover/focus affordances -- clickable cells only */
+.cell-completed:hover { border-color: #16a34a; box-shadow: 0 0 0 2px rgba(34,197,94,0.3); }
+.cell-incomplete:hover { background: #d1d5db; border-color: #9ca3af; }
+.cell-completed:focus-visible,
+.cell-incomplete:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }
+
+/* Future dates -- dimmed circle, not clickable */
+.cell-future {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Today highlight */
 .today { border: 2px solid #3b82f6; }
+
+/* Anchor scroll offset for fragment redirects */
+[id^="habit-"] {
+    scroll-margin-top: 80px;
+}
 ```
 
 No CSS framework needed at this scale.
@@ -486,6 +594,8 @@ DB_PATH=habits.db
 ```
 
 ### Requirements
+
+**Python >= 3.8 required** (ON CONFLICT DO NOTHING needs SQLite 3.24.0+, bundled from Python 3.8).
 
 ```
 flask>=3.0
