@@ -233,7 +233,7 @@ rejected wrapping interactive workflows.
 
 ### Agent Body Structure (ALL PHASE AGENTS)
 
-Follow the 4-section pattern established by all 10 existing agents:
+Follow the 5-section pattern (extending the existing agents with Injected Context):
 
 ```
 ## Role
@@ -716,7 +716,7 @@ Replace Step 7s with delegated spawn:
 Tasks:
 1. Remove all inline phase logic that's been replaced by agents
 2. Verify context-budget heuristic is correct (should already be
-   `load = swarm_agents + (fix_retries * 3)` from Phase 2 and Phase 4
+   `load = swarm_agents + (fix_retries * 3)` from Phase 3 and Phase 4
    incremental adjustments -- confirm no stale terms remain)
 3. Update the CHECKPOINT.md schema to include manifest paths
 4. Verify tail-resume can read phase manifests from deterministic paths
