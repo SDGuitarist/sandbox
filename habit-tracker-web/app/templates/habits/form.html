@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if habit else 'New' }} Habit - Habit Tracker{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if habit else 'New' }} Habit</h1>
+
+<form method="POST" action="{{ action_url }}" class="habit-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-group">
+        <label for="name">Habit Name</label>
+        <input type="text" id="name" name="name"
+               value="{{ habit.name if habit else '' }}"
+               maxlength="100" required autofocus>
+    </div>
+    <button type="submit" class="btn-primary">{{ 'Update' if habit else 'Create' }}</button>
+    <a href="{{ url_for('habits.dashboard') }}" class="btn-small">Cancel</a>
+</form>
+{% endblock %}

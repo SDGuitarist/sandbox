@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Habit Tracker{% endblock %}
+{% block content %}
+<h1>Today's Habits</h1>
+
+{% if not habits %}
+    <p>No habits yet. <a href="{{ url_for('habits.new_habit') }}">Create one</a>.</p>
+{% else %}
+    <div class="habit-list">
+        {% for habit in habits %}
+        <div class="habit-card">
+            <div class="habit-info">
+                <span class="habit-name">{{ habit.name }}</span>
+                {% if habit.streak > 0 %}
+                    <span class="streak-badge">{{ habit.streak }}d streak</span>
+                {% else %}
+                    <span class="streak-badge muted">no streak</span>
+                {% endif %}
+            </div>
+            <div class="habit-actions">
+                <form method="POST" action="{{ url_for('habits.toggle_today', habit_id=habit.id) }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if habit.done_today %}
+                        <button type="submit" class="toggle-btn done" aria-label="Unmark {{ habit.name }} for today">Done</button>
+                    {% else %}
+                        <button type="submit" class="toggle-btn" aria-label="Mark {{ habit.name }} done for today">Mark Done</button>
+                    {% endif %}
+                </form>
+                <a href="{{ url_for('habits.edit_habit', habit_id=habit.id) }}" class="btn-small">Edit</a>
+                <form method="POST" action="{{ url_for('habits.archive_habit_route', habit_id=habit.id) }}" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-small btn-danger" aria-label="Archive {{ habit.name }}">Archive</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Calendar - Habit Tracker{% endblock %}
+{% block content %}
+<h1>Weekly Calendar</h1>
+
+<div class="calendar-nav">
+    <a href="{{ url_for('habits.calendar', week=prev_week) }}">&laquo; Prev Week</a>
+    <span class="calendar-label">
+        Week of {{ current_week_start.strftime('%b %d, %Y') }}
+    </span>
+    <a href="{{ url_for('habits.calendar', week=next_week) }}">Next Week &raquo;</a>
+</div>
+
+{% if not habits %}
+    <p>No habits yet. <a href="{{ url_for('habits.new_habit') }}">Create one</a>.</p>
+{% else %}
+<div class="calendar-wrapper">
+    <div role="grid" aria-label="Habit completions for week of {{ current_week_start.strftime('%b %d') }}" class="calendar-grid">
+        <div role="row" class="calendar-header">
+            <div role="columnheader">Habit</div>
+            {% for d in week_dates %}
+                <div role="columnheader">{{ d.strftime('%a') }}<br>{{ d.day }}</div>
+            {% endfor %}
+        </div>
+
+        {% for habit in habits %}
+        <div role="row" id="habit-{{ habit.id }}" aria-label="{{ habit.name }}" class="calendar-row">
+            <div role="rowheader" class="habit-label">{{ habit.name }}</div>
+            {% for d in week_dates %}
+                {% set date_str = d.isoformat() %}
+                {% set is_completed = date_str in completions[habit.id] %}
+                {% set is_future = d > today %}
+                {% set is_today = d == today %}
+                <div role="gridcell" class="calendar-cell{% if is_today %} today{% endif %}">
+                    {% if is_future %}
+                        <span class="cell-future"
+                              aria-disabled="true"
+                              aria-label="{{ habit.name }}, {{ d.strftime('%A %b %d') }}, future date"></span>
+                    {% elif is_completed %}
+                        <form method="POST" action="{{ url_for('habits.toggle_date', habit_id=habit.id, target_date=date_str, week=current_week_start.isoformat()) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    class="cell-completed"
+                                    aria-label="Toggle {{ habit.name }} for {{ d.strftime('%A %b %d') }}, currently completed"></button>
+                        </form>
+                    {% else %}
+                        <form method="POST" action="{{ url_for('habits.toggle_date', habit_id=habit.id, target_date=date_str, week=current_week_start.isoformat()) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit"
+                                    class="cell-incomplete"
+                                    aria-label="Toggle {{ habit.name }} for {{ d.strftime('%A %b %d') }}, not completed"></button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
