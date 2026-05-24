@@ -47,6 +47,7 @@
     border-bottom: 1px solid #2d3238;
     font-size: 0.85rem;
     font-family: monospace;
+    color: #dee2e6;
 }
 .timeline-event:hover { background: rgba(255, 255, 255, 0.03); }
 .timeline-event .event-time { color: #6c757d; margin-right: 8px; }
@@ -80,4 +81,4 @@
     padding: 2px 0;
 }
 .financial-label { color: #adb5bd; }
-.financial-value { font-weight: 600; }
+.financial-value { font-weight: 600; color: #f8f9fa; }

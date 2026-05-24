@@ -27,13 +27,21 @@ def parse_time(time_str: str) -> datetime:
 # Projection handlers — each is (db, event_id, event_time, source, payload)
 # ---------------------------------------------------------------------------
 
+_STATION_NAMES = {
+    'station_1': 'Ceviche Bar',
+    'station_2': 'Taco Station',
+    'station_3': 'Dessert Table',
+}
+
+
 def _ensure_station(db: sqlite3.Connection, station_id: str, event_time: str):
     """Insert station with defaults if it doesn't exist yet."""
+    name = _STATION_NAMES.get(station_id, station_id)
     db.execute(
         "INSERT OR IGNORE INTO station_state "
         "(station_id, name, status, temp_status, updated_at) "
         "VALUES (?, ?, 'unknown', 'normal', ?)",
-        (station_id, station_id, event_time),
+        (station_id, name, event_time),
     )
 
 
