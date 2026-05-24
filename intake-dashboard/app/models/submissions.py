@@ -1,10 +1,10 @@
 import sqlite3
 
-VALID_STATUSES = [
+VALID_STATUSES = (
     'new', 'reviewed', 'assessment-ready', 'audit-scheduled',
-    'completed', 'declined', 'archived'
-]
-TERMINAL_STATUSES = ['completed', 'declined', 'archived']
+    'completed', 'declined', 'archived',
+)
+TERMINAL_STATUSES = frozenset({'completed', 'declined', 'archived'})
 
 
 def create_submission(conn: sqlite3.Connection, data: dict) -> int:
