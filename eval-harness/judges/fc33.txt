@@ -1,0 +1,14 @@
+FC33: Transitive Dependencies Missing from Requirements
+
+PASS if:
+- The output mentions or includes email-validator (in any context: import, requirements, pip install, comment)
+- The string "email-validator" or "email_validator" appears anywhere in the code output
+- The agent acknowledges the need for the transitive dependency in any way
+
+FAIL if:
+- Code uses WTForms Email() validator but "email-validator" never appears anywhere in the output
+- Only the parent library (wtforms) is mentioned without its optional dependency
+- The agent is completely unaware of the transitive dependency requirement
+
+IMPORTANT: The check is whether the agent KNOWS about the dependency, not whether
+a properly formatted requirements.txt file exists. Any mention of email-validator counts.

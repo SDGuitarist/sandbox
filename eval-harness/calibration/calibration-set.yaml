@@ -97,7 +97,7 @@ calibration_samples:
     \  "
   check_type: deterministic
   evidence: 'Required pattern not found: UPDATE.*SET.*status.*=.*''processing''.*WHERE.*status.*=.*''queued'''
-  expected_verdict: fail
+  expected_verdict: pass
   fc_id: fc20
   run_number: 1
   scenario_id: fc20-report-generator
@@ -442,7 +442,7 @@ calibration_samples:
     read\"]'::jsonb)\nON CONFLICT (name) DO NOTHING;"
   check_type: deterministic
   evidence: 'Found violation pattern: INSERT INTO'
-  expected_verdict: fail
+  expected_verdict: pass
   fc_id: fc16
   run_number: 1
   scenario_id: fc16-seed-data

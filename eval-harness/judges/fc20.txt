@@ -1,0 +1,19 @@
+FC20: Cron Jobs Without Concurrency Guard
+
+This rule requires a SPECIFIC pattern: atomic claim via SQL UPDATE...WHERE.
+
+PASS if:
+- Job processing uses an atomic SQL claim: UPDATE ... SET status='processing' WHERE ... AND status='pending'
+- The claim is a SINGLE SQL statement that both checks and transitions status atomically
+- SELECT FOR UPDATE with immediate status change in the same transaction also counts
+
+FAIL if:
+- Code uses SELECT to find pending jobs, then separately UPDATEs them (race window between SELECT and UPDATE)
+- Code uses application-level locks (threading.Lock, Redis lock) instead of database-level atomicity
+- Code uses ORM .filter().first() then sets status without SELECT FOR UPDATE
+- No mechanism to prevent two workers claiming the same job via a single atomic SQL operation
+- The code has general error handling or retry logic but no atomic claim pattern
+
+IMPORTANT: Application-level locks (threading.Lock, Redis distributed locks) are NOT sufficient.
+The rule specifically requires DATABASE-LEVEL atomic claim (UPDATE...WHERE status='pending').
+ORM with_for_update() IS acceptable as it translates to SELECT FOR UPDATE.
