@@ -1,0 +1,174 @@
+fc_id: fc16
+fc_slug: non-idempotent-ddl
+scenarios:
+  - id: fc16-create-table-users
+    title: "Create users table migration"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that creates a users table with columns:
+      - id (UUID, primary key, default gen_random_uuid())
+      - email (TEXT, unique, not null)
+      - name (TEXT, not null)
+      - created_at (TIMESTAMPTZ, default now())
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl]
+    pair_group: fc16-users
+    variant: with_rule
+
+  - id: fc16-create-table-users-norule
+    title: "Create users table migration (no rule)"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that creates a users table with columns:
+      - id (UUID, primary key, default gen_random_uuid())
+      - email (TEXT, unique, not null)
+      - name (TEXT, not null)
+      - created_at (TIMESTAMPTZ, default now())
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl]
+    pair_group: fc16-users
+    variant: without_rule
+
+  - id: fc16-create-index-email
+    title: "Create index on email column"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that creates:
+      1. A table called 'subscriptions' with columns: id, user_id, plan, status, created_at
+      2. An index on the user_id column
+      3. An index on the status column
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'CREATE (TABLE|INDEX)(?!.*IF NOT EXISTS)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl, index]
+    pair_group: fc16-index
+    variant: with_rule
+
+  - id: fc16-create-index-email-norule
+    title: "Create index on email column (no rule)"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that creates:
+      1. A table called 'subscriptions' with columns: id, user_id, plan, status, created_at
+      2. An index on the user_id column
+      3. An index on the status column
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'CREATE (TABLE|INDEX)(?!.*IF NOT EXISTS)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl, index]
+    pair_group: fc16-index
+    variant: without_rule
+
+  - id: fc16-create-type-enum
+    title: "Create enum type and table"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that:
+      1. Creates an enum type called 'ticket_status' with values: open, in_progress, resolved, closed
+      2. Creates a 'tickets' table using that enum type for the status column
+      3. Creates a function called 'get_open_tickets' that returns all open tickets
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'CREATE (TABLE|TYPE|INDEX)(?!.*IF NOT EXISTS)|CREATE FUNCTION(?!.*OR REPLACE)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl, enum, function]
+    pair_group: fc16-enum
+    variant: with_rule
+
+  - id: fc16-create-type-enum-norule
+    title: "Create enum type and table (no rule)"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that:
+      1. Creates an enum type called 'ticket_status' with values: open, in_progress, resolved, closed
+      2. Creates a 'tickets' table using that enum type for the status column
+      3. Creates a function called 'get_open_tickets' that returns all open tickets
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'CREATE (TABLE|TYPE|INDEX)(?!.*IF NOT EXISTS)|CREATE FUNCTION(?!.*OR REPLACE)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl, enum, function]
+    pair_group: fc16-enum
+    variant: without_rule
+
+  - id: fc16-sqlite-create-multi
+    title: "SQLite migration with multiple tables"
+    stack: sqlite
+    task_brief: |
+      Write a SQLite migration that creates:
+      1. A 'projects' table with: id, name, description, created_at
+      2. A 'tasks' table with: id, project_id (FK), title, status, due_date
+      3. An index on tasks.project_id
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_mode: absence
+    tags: [sqlite, migration, ddl]
+    pair_group: fc16-sqlite
+    variant: with_rule
+
+  - id: fc16-sqlite-create-multi-norule
+    title: "SQLite migration with multiple tables (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a SQLite migration that creates:
+      1. A 'projects' table with: id, name, description, created_at
+      2. A 'tasks' table with: id, project_id (FK), title, status, due_date
+      3. An index on tasks.project_id
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_mode: absence
+    tags: [sqlite, migration, ddl]
+    pair_group: fc16-sqlite
+    variant: without_rule
+
+  - id: fc16-seed-data
+    title: "Migration with seed data insert"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that:
+      1. Creates a 'roles' table with: id, name, permissions (JSONB)
+      2. Seeds it with three default roles: admin, editor, viewer
+      Each role should have appropriate permissions.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)|INSERT INTO(?!.*ON CONFLICT)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl, seed]
+    pair_group: fc16-seed
+    variant: with_rule
+
+  - id: fc16-seed-data-norule
+    title: "Migration with seed data insert (no rule)"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL migration that:
+      1. Creates a 'roles' table with: id, name, permissions (JSONB)
+      2. Seeds it with three default roles: admin, editor, viewer
+      Each role should have appropriate permissions.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)|INSERT INTO(?!.*ON CONFLICT)'
+    deterministic_mode: absence
+    tags: [postgresql, migration, ddl, seed]
+    pair_group: fc16-seed
+    variant: without_rule
