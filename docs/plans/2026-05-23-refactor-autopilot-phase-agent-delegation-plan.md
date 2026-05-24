@@ -1020,8 +1020,8 @@ needs enrichment beyond what's in the brief and pitfalls.
 
 - **Hardest decision:** How much workflow logic to encode in each phase
   agent vs. how much to leave implicit. Too little and the agent misses
-  steps. Too much and the prompt degrades. Bundle 1 is the calibration
-  point.
+  steps. Too much and the prompt degrades. Bundle 2 or 3 (largest prompts)
+  is the calibration point.
 
 - **Rejected alternatives:** Wrapping interactive workflows (P1 blocker),
   returned manifests (conflicts with disk-state principle), individual
