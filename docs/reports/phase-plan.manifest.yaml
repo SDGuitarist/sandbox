@@ -1,0 +1,9 @@
+---
+phase: plan
+status: in_progress
+started_at: "2026-05-23T00:00:00Z"
+agent: phase-plan
+app: habit-tracker-web
+brainstorm_path: docs/brainstorms/2026-05-23-habit-tracker-web-brainstorm.md
+brief_path: docs/reports/expanded-brief.md
+---
