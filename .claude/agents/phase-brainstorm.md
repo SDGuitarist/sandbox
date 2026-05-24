@@ -128,7 +128,13 @@ Overwrite `docs/reports/phase-brainstorm.manifest.yaml` with the complete manife
 
 ## Output Contract
 
-Final manifest at `docs/reports/phase-brainstorm.manifest.yaml`:
+Final manifest at `docs/reports/phase-brainstorm.manifest.yaml`.
+
+**STRICT SCHEMA RULE:** Write EXACTLY these fields and NO others. Do not
+add `started_at`, `completed_at`, `branch_before`, `branch_after`,
+`commits`, `next_step`, `refinement_status`, or any field not listed
+below. Do not use nested YAML (no indented sub-keys). Every value must
+be a single-line string or number.
 
 **On success (PASS):**
 
@@ -139,9 +145,9 @@ phase_status: "PASS"
 failure_reason: ""
 recovery_point: "<commit hash from Step 1>"
 brainstorm_path: "docs/brainstorms/YYYY-MM-DD-<topic>-brainstorm.md"
-feed_forward_hardest_decision: "<one line>"
-feed_forward_rejected_alternatives: "<one line>"
-feed_forward_least_confident: "<one line>"
+feed_forward_hardest_decision: "<one line summary>"
+feed_forward_rejected_alternatives: "<one line summary>"
+feed_forward_least_confident: "<one line summary>"
 ```
 
 **On failure (FAIL):**
@@ -157,5 +163,3 @@ recovery_point: "<commit hash from Step 1>"
 Status rules:
 - `PASS` -- brainstorm document written, committed, refinement ran, Feed-Forward present
 - `FAIL` -- could not produce a valid brainstorm document (e.g., brief unreadable, commit failed)
-
-All values MUST be single-line strings. No nested YAML. No multi-line values.
