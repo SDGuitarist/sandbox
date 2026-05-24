@@ -1,0 +1,9 @@
+manifest_version: 1
+phase_name: "deepen"
+phase_status: "PASS"
+failure_reason: ""
+recovery_point: "bfe0308d6f28c0ef7080855cd641e361a09dd382"
+plan_path: "docs/plans/2026-05-23-feat-habit-tracker-web-plan.md"
+feed_forward_hardest_decision: "Merging calendar UX research without restructuring -- added ARIA roles, anchor redirect, and mobile scroll as depth within the existing Calendar UI Design section rather than splitting it into multiple sections."
+feed_forward_rejected_alternatives: "g-object DB pattern (context manager works for single-call-per-route), SQL window function streaks (unnecessary at personal scale), meta-tag CSRF (only useful for AJAX/SPA), vertical mobile stacking (loses column alignment)."
+feed_forward_least_confident: "Whether the ARIA grid roles will interact correctly with the mini-form buttons inside gridcells -- WAI-ARIA grid pattern assumes arrow-key navigation which requires JS, but the plan is no-JS. Tab navigation still works, but the ARIA semantics may set screen reader expectations that the keyboard UX cannot fully deliver."
