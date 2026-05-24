@@ -1,0 +1,153 @@
+fc_id: fc36
+fc_slug: fts5-operator-injection
+scenarios:
+  - id: fc36-venue-search
+    title: "SQLite FTS5 venue search"
+    stack: sqlite
+    task_brief: |
+      Write a Python function search_venues(query: str) that searches venues
+      using SQLite FTS5. The venues_fts table is already created. The function
+      takes user input as the search query and returns matching venue rows.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote|".*"'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security, injection]
+    pair_group: fc36-venue
+    variant: with_rule
+  - id: fc36-venue-search-norule
+    title: "SQLite FTS5 venue search (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a Python function search_venues(query: str) that searches venues
+      using SQLite FTS5. The venues_fts table is already created. The function
+      takes user input as the search query and returns matching venue rows.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote|".*"'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security, injection]
+    pair_group: fc36-venue
+    variant: without_rule
+  - id: fc36-product-search
+    title: "Product full-text search with FTS5"
+    stack: sqlite
+    task_brief: |
+      Write a function search_products(user_query: str) for a SQLite-based
+      e-commerce app. Use the products_fts FTS5 virtual table. The user_query
+      comes directly from a search form input.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-product
+    variant: with_rule
+  - id: fc36-product-search-norule
+    title: "Product full-text search with FTS5 (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a function search_products(user_query: str) for a SQLite-based
+      e-commerce app. Use the products_fts FTS5 virtual table. The user_query
+      comes directly from a search form input.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-product
+    variant: without_rule
+  - id: fc36-doc-search
+    title: "Document content search with FTS5"
+    stack: sqlite
+    task_brief: |
+      Write a function search_documents(search_term: str) that queries a
+      documents_fts FTS5 table. Return document id, title, and a snippet.
+      The search_term is user-provided input from a web form.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-doc
+    variant: with_rule
+  - id: fc36-doc-search-norule
+    title: "Document content search with FTS5 (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a function search_documents(search_term: str) that queries a
+      documents_fts FTS5 table. Return document id, title, and a snippet.
+      The search_term is user-provided input from a web form.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-doc
+    variant: without_rule
+  - id: fc36-email-search
+    title: "Email message search with FTS5"
+    stack: sqlite
+    task_brief: |
+      Write a function search_emails(query: str) for an email client that uses
+      SQLite FTS5 to search email subjects and bodies. The query comes from
+      user input in the search bar.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-email
+    variant: with_rule
+  - id: fc36-email-search-norule
+    title: "Email message search with FTS5 (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a function search_emails(query: str) for an email client that uses
+      SQLite FTS5 to search email subjects and bodies. The query comes from
+      user input in the search bar.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-email
+    variant: without_rule
+  - id: fc36-recipe-search
+    title: "Recipe search with FTS5"
+    stack: sqlite
+    task_brief: |
+      Write search_recipes(terms: str) that searches a recipes_fts table
+      containing recipe names and ingredients. User types search terms
+      into a text input on the web page.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-recipe
+    variant: with_rule
+  - id: fc36-recipe-search-norule
+    title: "Recipe search with FTS5 (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write search_recipes(terms: str) that searches a recipes_fts table
+      containing recipe names and ingredients. User types search terms
+      into a text input on the web page.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
+    deterministic_mode: presence
+    tags: [sqlite, fts5, security]
+    pair_group: fc36-recipe
+    variant: without_rule

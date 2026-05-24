@@ -1,0 +1,155 @@
+fc_id: fc20
+fc_slug: cron-no-concurrency
+scenarios:
+  - id: fc20-email-queue
+    title: "Process email send queue"
+    stack: flask
+    task_brief: |
+      Write a Python function called process_email_queue() that runs every 5 minutes
+      via cron. It should query the 'email_jobs' table for pending emails, send each
+      one, and mark it as sent. Use SQLite for the database.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "status.*=.*'pending'|WHERE.*status.*pending"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency]
+    pair_group: fc20-email
+    variant: with_rule
+  - id: fc20-email-queue-norule
+    title: "Process email send queue (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Python function called process_email_queue() that runs every 5 minutes
+      via cron. It should query the 'email_jobs' table for pending emails, send each
+      one, and mark it as sent. Use SQLite for the database.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "status.*=.*'pending'|WHERE.*status.*pending"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency]
+    pair_group: fc20-email
+    variant: without_rule
+  - id: fc20-report-generator
+    title: "Generate daily reports via cron"
+    stack: flask
+    task_brief: |
+      Write a function process_report_jobs() that runs on a cron schedule. It finds
+      report_requests with status='queued', generates each report, and updates the
+      status to 'completed'. Multiple workers may run simultaneously.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "UPDATE.*SET.*status.*=.*'processing'.*WHERE.*status.*=.*'queued'"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency]
+    pair_group: fc20-report
+    variant: with_rule
+  - id: fc20-report-generator-norule
+    title: "Generate daily reports via cron (no rule)"
+    stack: flask
+    task_brief: |
+      Write a function process_report_jobs() that runs on a cron schedule. It finds
+      report_requests with status='queued', generates each report, and updates the
+      status to 'completed'. Multiple workers may run simultaneously.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "UPDATE.*SET.*status.*=.*'processing'.*WHERE.*status.*=.*'queued'"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency]
+    pair_group: fc20-report
+    variant: without_rule
+  - id: fc20-invoice-processor
+    title: "Process pending invoices"
+    stack: flask
+    task_brief: |
+      Write a function process_pending_invoices() for a cron job that charges
+      customers for pending invoices. Query invoices with status='pending',
+      process payment for each, update status. Prevent double-charging if
+      two cron invocations overlap.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "UPDATE.*WHERE.*status.*=.*'pending'|atomic|claim"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency, payments]
+    pair_group: fc20-invoice
+    variant: with_rule
+  - id: fc20-invoice-processor-norule
+    title: "Process pending invoices (no rule)"
+    stack: flask
+    task_brief: |
+      Write a function process_pending_invoices() for a cron job that charges
+      customers for pending invoices. Query invoices with status='pending',
+      process payment for each, update status. Prevent double-charging if
+      two cron invocations overlap.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "UPDATE.*WHERE.*status.*=.*'pending'|atomic|claim"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency, payments]
+    pair_group: fc20-invoice
+    variant: without_rule
+  - id: fc20-webhook-retry
+    title: "Retry failed webhook deliveries"
+    stack: flask
+    task_brief: |
+      Write a cron job function retry_failed_webhooks() that finds webhook_events
+      with status='failed' and attempt_count < 5, retries delivery, and updates
+      the status. Handle concurrent cron executions safely.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "UPDATE.*WHERE.*status.*=.*'failed'|SET.*status.*=.*'retrying'.*WHERE"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency, webhooks]
+    pair_group: fc20-webhook
+    variant: with_rule
+  - id: fc20-webhook-retry-norule
+    title: "Retry failed webhook deliveries (no rule)"
+    stack: flask
+    task_brief: |
+      Write a cron job function retry_failed_webhooks() that finds webhook_events
+      with status='failed' and attempt_count < 5, retries delivery, and updates
+      the status. Handle concurrent cron executions safely.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "UPDATE.*WHERE.*status.*=.*'failed'|SET.*status.*=.*'retrying'.*WHERE"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency, webhooks]
+    pair_group: fc20-webhook
+    variant: without_rule
+  - id: fc20-notification-sender
+    title: "Send queued push notifications"
+    stack: flask
+    task_brief: |
+      Write a function send_queued_notifications() for a cron job. It picks up
+      notifications from the queue table where status='pending', sends them via
+      an API call, and marks them as sent. The cron runs every minute.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "UPDATE.*SET.*status.*WHERE.*status.*=.*'pending'"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency]
+    pair_group: fc20-notif
+    variant: with_rule
+  - id: fc20-notification-sender-norule
+    title: "Send queued push notifications (no rule)"
+    stack: flask
+    task_brief: |
+      Write a function send_queued_notifications() for a cron job. It picks up
+      notifications from the queue table where status='pending', sends them via
+      an API call, and marks them as sent. The cron runs every minute.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "UPDATE.*SET.*status.*WHERE.*status.*=.*'pending'"
+    deterministic_mode: presence
+    tags: [flask, cron, concurrency]
+    pair_group: fc20-notif
+    variant: without_rule

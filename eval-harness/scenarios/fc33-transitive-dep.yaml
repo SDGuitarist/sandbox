@@ -1,0 +1,157 @@
+fc_id: fc33
+fc_slug: transitive-dep
+scenarios:
+  - id: fc33-wtforms-email
+    title: "Flask form with Email validator"
+    stack: flask
+    task_brief: |
+      Create a Flask contact form using WTForms with fields:
+      - name (StringField, required)
+      - email (StringField with Email() validator, required)
+      - message (TextAreaField, required)
+      Include the requirements.txt with all needed packages.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'email.validator|email-validator'
+    deterministic_mode: presence
+    tags: [flask, wtforms, dependencies]
+    pair_group: fc33-email
+    variant: with_rule
+  - id: fc33-wtforms-email-norule
+    title: "Flask form with Email validator (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask contact form using WTForms with fields:
+      - name (StringField, required)
+      - email (StringField with Email() validator, required)
+      - message (TextAreaField, required)
+      Include the requirements.txt with all needed packages.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'email.validator|email-validator'
+    deterministic_mode: presence
+    tags: [flask, wtforms, dependencies]
+    pair_group: fc33-email
+    variant: without_rule
+  - id: fc33-wtforms-url
+    title: "Flask form with URL validator"
+    stack: flask
+    task_brief: |
+      Create a Flask bookmark form using WTForms with:
+      - title (StringField, required)
+      - url (StringField with URL() validator, required)
+      - tags (StringField, optional)
+      Include requirements.txt.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'email.validator|email-validator|validators'
+    deterministic_mode: presence
+    tags: [flask, wtforms, dependencies]
+    pair_group: fc33-url
+    variant: with_rule
+  - id: fc33-wtforms-url-norule
+    title: "Flask form with URL validator (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask bookmark form using WTForms with:
+      - title (StringField, required)
+      - url (StringField with URL() validator, required)
+      - tags (StringField, optional)
+      Include requirements.txt.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'email.validator|email-validator|validators'
+    deterministic_mode: presence
+    tags: [flask, wtforms, dependencies]
+    pair_group: fc33-url
+    variant: without_rule
+  - id: fc33-pillow-webp
+    title: "Image processor using Pillow with WebP support"
+    stack: generic
+    task_brief: |
+      Write a Python script that converts uploaded images to WebP format using
+      Pillow. Include a requirements.txt. Handle JPEG, PNG, and GIF inputs.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'Pillow|pillow'
+    deterministic_mode: presence
+    tags: [python, pillow, dependencies]
+    pair_group: fc33-pillow
+    variant: with_rule
+  - id: fc33-pillow-webp-norule
+    title: "Image processor using Pillow with WebP support (no rule)"
+    stack: generic
+    task_brief: |
+      Write a Python script that converts uploaded images to WebP format using
+      Pillow. Include a requirements.txt. Handle JPEG, PNG, and GIF inputs.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'Pillow|pillow'
+    deterministic_mode: presence
+    tags: [python, pillow, dependencies]
+    pair_group: fc33-pillow
+    variant: without_rule
+  - id: fc33-flask-mail
+    title: "Flask app with email sending"
+    stack: flask
+    task_brief: |
+      Create a Flask app that sends welcome emails to new users using
+      Flask-Mail. Include a requirements.txt with all needed packages.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'Flask-Mail|flask.mail|flask_mail'
+    deterministic_mode: presence
+    tags: [flask, email, dependencies]
+    pair_group: fc33-mail
+    variant: with_rule
+  - id: fc33-flask-mail-norule
+    title: "Flask app with email sending (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask app that sends welcome emails to new users using
+      Flask-Mail. Include a requirements.txt with all needed packages.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'Flask-Mail|flask.mail|flask_mail'
+    deterministic_mode: presence
+    tags: [flask, email, dependencies]
+    pair_group: fc33-mail
+    variant: without_rule
+  - id: fc33-celery-redis
+    title: "Flask app with Celery background tasks"
+    stack: flask
+    task_brief: |
+      Create a Flask app with Celery for background task processing.
+      Use Redis as the broker. Include a requirements.txt listing every
+      package needed to run the app.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'celery|redis'
+    deterministic_mode: presence
+    tags: [flask, celery, dependencies]
+    pair_group: fc33-celery
+    variant: with_rule
+  - id: fc33-celery-redis-norule
+    title: "Flask app with Celery background tasks (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask app with Celery for background task processing.
+      Use Redis as the broker. Include a requirements.txt listing every
+      package needed to run the app.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'celery|redis'
+    deterministic_mode: presence
+    tags: [flask, celery, dependencies]
+    pair_group: fc33-celery
+    variant: without_rule

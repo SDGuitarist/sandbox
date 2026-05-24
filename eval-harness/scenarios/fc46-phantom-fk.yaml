@@ -1,0 +1,157 @@
+fc_id: fc46
+fc_slug: phantom-fk
+scenarios:
+  - id: fc46-tasks-project
+    title: "Tasks table with project_id column"
+    stack: sqlite
+    task_brief: |
+      Write a SQLite CREATE TABLE statement for a 'tasks' table with columns:
+      id (INTEGER PRIMARY KEY), project_id (INTEGER), title (TEXT NOT NULL),
+      status (TEXT DEFAULT 'pending'), created_at (TEXT DEFAULT CURRENT_TIMESTAMP).
+      The project_id references the projects table.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [sqlite, schema, foreign-key]
+    pair_group: fc46-tasks
+    variant: with_rule
+  - id: fc46-tasks-project-norule
+    title: "Tasks table with project_id column (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a SQLite CREATE TABLE statement for a 'tasks' table with columns:
+      id (INTEGER PRIMARY KEY), project_id (INTEGER), title (TEXT NOT NULL),
+      status (TEXT DEFAULT 'pending'), created_at (TEXT DEFAULT CURRENT_TIMESTAMP).
+      The project_id references the projects table.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [sqlite, schema, foreign-key]
+    pair_group: fc46-tasks
+    variant: without_rule
+  - id: fc46-orders-customer
+    title: "Orders table with customer_id"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL CREATE TABLE statement for an 'orders' table:
+      id (SERIAL PRIMARY KEY), customer_id (INTEGER), total (NUMERIC(10,2)),
+      status (TEXT), created_at (TIMESTAMPTZ DEFAULT now()).
+      The customer_id should reference the customers table.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [postgresql, schema, foreign-key]
+    pair_group: fc46-orders
+    variant: with_rule
+  - id: fc46-orders-customer-norule
+    title: "Orders table with customer_id (no rule)"
+    stack: supabase
+    task_brief: |
+      Write a PostgreSQL CREATE TABLE statement for an 'orders' table:
+      id (SERIAL PRIMARY KEY), customer_id (INTEGER), total (NUMERIC(10,2)),
+      status (TEXT), created_at (TIMESTAMPTZ DEFAULT now()).
+      The customer_id should reference the customers table.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [postgresql, schema, foreign-key]
+    pair_group: fc46-orders
+    variant: without_rule
+  - id: fc46-comments-user-post
+    title: "Comments table with user_id and post_id"
+    stack: sqlite
+    task_brief: |
+      Write a CREATE TABLE for 'comments' with:
+      id, user_id (references users), post_id (references posts),
+      body (TEXT), created_at. Both user_id and post_id are foreign keys.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [sqlite, schema, foreign-key]
+    pair_group: fc46-comments
+    variant: with_rule
+  - id: fc46-comments-user-post-norule
+    title: "Comments table with user_id and post_id (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a CREATE TABLE for 'comments' with:
+      id, user_id (references users), post_id (references posts),
+      body (TEXT), created_at. Both user_id and post_id are foreign keys.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [sqlite, schema, foreign-key]
+    pair_group: fc46-comments
+    variant: without_rule
+  - id: fc46-inventory-warehouse
+    title: "Inventory table with warehouse_id and product_id"
+    stack: supabase
+    task_brief: |
+      Write CREATE TABLE for 'inventory' with: id, warehouse_id (references
+      warehouses), product_id (references products), quantity (INTEGER),
+      last_counted (TIMESTAMPTZ). Both IDs are foreign keys.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [postgresql, schema, foreign-key]
+    pair_group: fc46-inventory
+    variant: with_rule
+  - id: fc46-inventory-warehouse-norule
+    title: "Inventory table with warehouse_id and product_id (no rule)"
+    stack: supabase
+    task_brief: |
+      Write CREATE TABLE for 'inventory' with: id, warehouse_id (references
+      warehouses), product_id (references products), quantity (INTEGER),
+      last_counted (TIMESTAMPTZ). Both IDs are foreign keys.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [postgresql, schema, foreign-key]
+    pair_group: fc46-inventory
+    variant: without_rule
+  - id: fc46-enrollments-student-course
+    title: "Enrollments join table"
+    stack: sqlite
+    task_brief: |
+      Write CREATE TABLE for 'enrollments' (a join table):
+      id, student_id (references students), course_id (references courses),
+      enrolled_at, grade (TEXT, nullable). Both IDs are foreign keys.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [sqlite, schema, foreign-key, join-table]
+    pair_group: fc46-enrollments
+    variant: with_rule
+  - id: fc46-enrollments-student-course-norule
+    title: "Enrollments join table (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write CREATE TABLE for 'enrollments' (a join table):
+      id, student_id (references students), course_id (references courses),
+      enrolled_at, grade (TEXT, nullable). Both IDs are foreign keys.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'REFERENCES'
+    deterministic_mode: presence
+    tags: [sqlite, schema, foreign-key, join-table]
+    pair_group: fc46-enrollments
+    variant: without_rule
