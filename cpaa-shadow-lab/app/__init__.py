@@ -4,13 +4,11 @@ from flask import Flask
 
 
 def create_app():
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    app = Flask(
-        __name__,
-        static_folder=os.path.join(project_root, 'static'),
-    )
+    app = Flask(__name__, static_folder='../static')
 
-    # DB lives at project root: cpaa-shadow-lab/instance/shadow_lab.db
+    # DB at project root: cpaa-shadow-lab/instance/shadow_lab.db
+    # app.root_path is always the app/ package dir, CWD-independent
+    project_root = os.path.dirname(app.root_path)
     instance_dir = os.path.join(project_root, 'instance')
     os.makedirs(instance_dir, exist_ok=True)
     app.config['DATABASE'] = os.path.join(instance_dir, 'shadow_lab.db')
