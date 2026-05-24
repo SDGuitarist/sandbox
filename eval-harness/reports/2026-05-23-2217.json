@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-05-23T22:18:10.405417",
+  "stage": "1",
+  "model_agent": "claude-haiku-4-5-20251001",
+  "model_judge": null,
+  "temperature": 0.0,
+  "max_tokens_agent": 2048,
+  "total_cost_usd": 0.024251199999999997,
+  "total_input_tokens": 1329,
+  "total_output_tokens": 5797,
+  "fc_scores": [
+    {
+      "fc_id": "fc7",
+      "tier": "1a",
+      "pass_rate_with_rule": 1.0,
+      "pass_rate_without_rule": 1.0,
+      "delta": 0.0,
+      "bucket": "CLEAR",
+      "ci_lower": 0.5655,
+      "ci_upper": 1.0,
+      "scenario_count": 5,
+      "run_count": 5,
+      "promotable_cases": []
+    }
+  ],
+  "calibration_accuracy": null,
+  "report_caveat": "These results estimate rule clarity/comprehension under controlled prompting. They do not estimate adherence under realistic swarm cognitive load."
+}
