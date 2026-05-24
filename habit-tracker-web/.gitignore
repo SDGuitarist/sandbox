@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+habits.db
+habits.db-wal
+habits.db-shm
+.venv/
