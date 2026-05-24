@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found{% endblock %}
+{% block content %}
+<div class="text-center mt-5">
+    <h1>404</h1>
+    <p class="lead">Page not found.</p>
+    <a href="{{ url_for('intake.intake_form') }}" class="btn btn-primary">Go to Intake Form</a>
+</div>
+{% endblock %}

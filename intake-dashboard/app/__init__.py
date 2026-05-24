@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta
-from flask import Flask
+from flask import Flask, render_template
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -61,6 +61,18 @@ def create_app():
     @app.route('/health')
     def health():
         return {'status': 'ok'}
+
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        return render_template('errors/500.html'), 500
+
+    @app.errorhandler(429)
+    def rate_limited(e):
+        return render_template('errors/429.html'), 429
 
     @app.after_request
     def add_security_headers(response):
