@@ -86,7 +86,11 @@ def create_app(db_path=None):
             return redirect(url_for('index'))
 
         # Parse and validate tags
-        tag_names = [t.strip()[:MAX_TAG_LENGTH] for t in raw_tags.split(',') if t.strip()]
+        raw_tag_list = [t.strip() for t in raw_tags.split(',') if t.strip()]
+        truncated = any(len(t) > MAX_TAG_LENGTH for t in raw_tag_list)
+        tag_names = [t[:MAX_TAG_LENGTH] for t in raw_tag_list]
+        if truncated:
+            flash(f'One or more tags were truncated to {MAX_TAG_LENGTH} characters.', 'warning')
         if len(tag_names) > MAX_TAGS_PER_BOOKMARK:
             flash(f'Only the first {MAX_TAGS_PER_BOOKMARK} tags were kept.', 'warning')
             tag_names = tag_names[:MAX_TAGS_PER_BOOKMARK]

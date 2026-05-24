@@ -29,6 +29,9 @@
             <strong>{{ bookmark.title or bookmark.url }}</strong>
         </div>
         <div class="bookmark-url">{{ bookmark.url }}</div>
+        {% if bookmark.description %}
+        <div style="color:#555;font-size:0.85rem;margin-top:0.25rem;">{{ bookmark.description }}</div>
+        {% endif %}
         <div class="bookmark-meta">
             <div>
                 {% for t in tags_map.get(bookmark.id, []) %}

@@ -46,11 +46,16 @@ def fetch_page_meta(url: str) -> dict:
         if t:
             result['title'] = t.group(1).strip()
 
-        # Extract meta description
+        # Extract meta description (handle both attribute orderings)
         d = re.search(
             r'<meta\s+name=["\']?description["\']?\s+content=["\']([^"\']*)["\']',
             content, re.IGNORECASE,
         )
+        if not d:
+            d = re.search(
+                r'<meta\s+content=["\']([^"\']*)["\']?\s+name=["\']?description["\']?',
+                content, re.IGNORECASE,
+            )
         if d:
             result['description'] = d.group(1).strip()
 

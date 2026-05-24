@@ -17,6 +17,18 @@ def test_file_scheme_rejected(client):
     assert b'Invalid URL scheme' in resp.data
 
 
+def test_ftp_scheme_rejected(client):
+    """WHEN a user submits ftp://... THE SYSTEM SHALL reject."""
+    resp = add_bookmark(client, url='ftp://files.example.com/data.csv')
+    assert b'Invalid URL scheme' in resp.data
+
+
+def test_no_hostname_rejected(client):
+    """WHEN a user submits a URL with no hostname THE SYSTEM SHALL reject."""
+    resp = add_bookmark(client, url='http://')
+    assert b'Invalid URL scheme' in resp.data
+
+
 def test_fetch_failure_saves_empty_meta(client, monkeypatch):
     """WHEN fetch returns empty (timeout/error) THE SYSTEM SHALL save the
     bookmark with title='' and description=''."""
@@ -56,17 +68,15 @@ def test_tag_limit_enforced(client):
     assert b'tag24' not in resp.data
 
 
-def test_non_html_returns_empty_meta(client, monkeypatch):
-    """WHEN fetch_page_meta receives a non-HTML Content-Type THE SYSTEM
-    SHALL return empty title/description."""
-    # Restore real fetch_page_meta but with a mock urlopen
-    from app.fetch_meta import fetch_page_meta
-    monkeypatch.setattr(
-        'app.fetch_page_meta',
-        lambda url: {'title': '', 'description': ''},
-    )
-    resp = add_bookmark(client, url='https://example.com/doc.pdf')
-    assert b'Bookmark added.' in resp.data
+def test_overlong_tag_truncated_with_warning(client):
+    """WHEN a submitted tag exceeds 50 characters THE SYSTEM SHALL truncate
+    it and flash a warning."""
+    long_tag = 'a' * 60
+    resp = add_bookmark(client, url='https://example.com', tags=long_tag)
+    assert b'truncated to 50 characters' in resp.data
+    # The tag should be stored as 50 chars, not 60
+    assert ('a' * 50).encode() in resp.data
+    assert ('a' * 60).encode() not in resp.data
 
 
 def test_delete_nonexistent_redirects(client):

@@ -7,6 +7,7 @@ def test_add_bookmark_with_metadata(client):
     resp = add_bookmark(client, url='https://example.com')
     assert resp.status_code == 200
     assert b'Title for https://example.com' in resp.data
+    assert b'Desc for https://example.com' in resp.data
     assert b'Bookmark added.' in resp.data
 
 
