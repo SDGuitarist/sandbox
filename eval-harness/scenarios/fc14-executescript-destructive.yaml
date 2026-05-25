@@ -12,7 +12,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, destructive]
     pair_group: fc14-rename
@@ -29,7 +29,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, destructive]
     pair_group: fc14-rename
@@ -44,7 +44,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'executescript.*DROP'
+    deterministic_pattern: '\.executescript\(.*DROP'
     deterministic_mode: absence
     tags: [sqlite, migration, safe]
     pair_group: fc14-add
@@ -59,7 +59,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'executescript.*DROP'
+    deterministic_pattern: '\.executescript\(.*DROP'
     deterministic_mode: absence
     tags: [sqlite, migration, safe]
     pair_group: fc14-add
@@ -74,7 +74,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, type-change]
     pair_group: fc14-type
@@ -89,7 +89,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, type-change]
     pair_group: fc14-type
@@ -105,7 +105,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, column-removal]
     pair_group: fc14-remove
@@ -121,7 +121,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, column-removal]
     pair_group: fc14-remove
@@ -137,7 +137,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, foreign-key]
     pair_group: fc14-fk
@@ -153,7 +153,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'executescript.*DROP TABLE'
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
     deterministic_mode: absence
     tags: [sqlite, migration, foreign-key]
     pair_group: fc14-fk
