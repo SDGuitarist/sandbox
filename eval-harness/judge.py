@@ -9,7 +9,7 @@ import anthropic
 
 from models import CheckResult, EvalResult, Scenario
 
-JUDGE_MODEL = "claude-sonnet-4-6"
+JUDGE_MODEL = "claude-sonnet-4-6-20250514"
 JUDGES_DIR = Path(__file__).parent / "judges"
 
 
@@ -133,6 +133,9 @@ Evaluate whether this code follows the rule."""
             tool_choice={"type": "tool", "name": "submit_verdict"},
         )
 
+        judge_input = getattr(response.usage, "input_tokens", 0)
+        judge_output = getattr(response.usage, "output_tokens", 0)
+
         for block in response.content:
             if block.type == "tool_use" and block.name == "submit_verdict":
                 verdict_raw = block.input.get("verdict", "error")
@@ -143,6 +146,8 @@ Evaluate whether this code follows the rule."""
                     verdict=verdict,
                     evidence=f"[LLM judge, {verdict_raw}] {evidence}",
                     confidence=confidence,
+                    judge_input_tokens=judge_input,
+                    judge_output_tokens=judge_output,
                 )
 
         return CheckResult(
@@ -191,6 +196,8 @@ def evaluate(
                 "verdict": judge_check.verdict,
                 "evidence": f"[det: {check.evidence}] {judge_check.evidence}",
                 "confidence": judge_check.confidence,
+                "judge_input_tokens": judge_check.judge_input_tokens,
+                "judge_output_tokens": judge_check.judge_output_tokens,
             })
         return result.model_copy(update={
             "verdict": check.verdict,
@@ -207,6 +214,8 @@ def evaluate(
                 "verdict": check.verdict,
                 "evidence": check.evidence,
                 "confidence": check.confidence,
+                "judge_input_tokens": check.judge_input_tokens,
+                "judge_output_tokens": check.judge_output_tokens,
             })
         return result.model_copy(update={
             "verdict": "skip",

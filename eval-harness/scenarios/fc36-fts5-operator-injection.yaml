@@ -11,7 +11,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'strip|replace|sanitize|escape|quote|".*"'
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
     deterministic_mode: presence
     tags: [sqlite, fts5, security, injection]
     pair_group: fc36-venue
@@ -26,7 +26,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'strip|replace|sanitize|escape|quote|".*"'
+    deterministic_pattern: 'strip|replace|sanitize|escape|quote'
     deterministic_mode: presence
     tags: [sqlite, fts5, security, injection]
     pair_group: fc36-venue

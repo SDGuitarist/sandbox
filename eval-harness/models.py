@@ -102,6 +102,8 @@ class CheckResult:
     verdict: Literal["pass", "fail", "error"]
     evidence: str
     confidence: float = 1.0
+    judge_input_tokens: int = 0
+    judge_output_tokens: int = 0
 
 
 class EvalResult(BaseModel):
@@ -119,6 +121,8 @@ class EvalResult(BaseModel):
     model_id: str
     input_tokens: int
     output_tokens: int
+    judge_input_tokens: int = 0
+    judge_output_tokens: int = 0
     duration_ms: int
 
 

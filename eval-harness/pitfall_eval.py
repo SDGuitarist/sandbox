@@ -18,7 +18,7 @@ import yaml
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskID
 
-from judge import check_llm_judge, evaluate
+from judge import JUDGE_MODEL, check_llm_judge, evaluate
 from models import EvalResult, RunReport, Scenario, ScenarioFile
 from parser import parse_pitfalls
 from reporter import write_report
@@ -42,7 +42,7 @@ STAGE_2_FCS = {
     "fc17", "fc25", "fc26", "fc27", "fc35", "fc39", "fc41",
 }
 
-CALIBRATION_THRESHOLD = 0.85
+CALIBRATION_THRESHOLD = 0.90
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
@@ -300,6 +300,18 @@ def main(
 
     client = anthropic.Anthropic(max_retries=3)
 
+    # 5b. Auto-run calibration gate when stage includes LLM judge (Stage 2)
+    if stage in ("2", "all") and target_fcs & STAGE_2_FCS:
+        cal_path = Path(__file__).parent / "calibration" / "calibration-set.yaml"
+        if cal_path.exists():
+            console.print("\n[bold]Auto-running calibration gate (Stage 2 requires judge)...[/bold]")
+            rate = run_calibration(Path(pitfalls), cal_path, verbose=verbose)
+            if rate < CALIBRATION_THRESHOLD:
+                console.print("[red]Calibration failed -- aborting Stage 2 run[/red]")
+                sys.exit(1)
+        else:
+            console.print("[yellow]Warning: calibration set not found, skipping calibration gate[/yellow]")
+
     # 6. Set up checkpoint
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -325,7 +337,12 @@ def main(
                 if not line:
                     continue
                 try:
-                    all_results.append(EvalResult.model_validate_json(line))
+                    r = EvalResult.model_validate_json(line)
+                    all_results.append(r)
+                    total_input_tokens += r.input_tokens
+                    total_output_tokens += r.output_tokens
+                    total_cost += estimate_cost(model_agent, r.input_tokens, r.output_tokens)
+                    total_cost += estimate_cost(JUDGE_MODEL, r.judge_input_tokens, r.judge_output_tokens)
                 except Exception:
                     pass
 
@@ -363,13 +380,12 @@ def main(
 
                     result = evaluate(result, scenario, rule_text=fc.rule_text, client=client)
 
-                    call_cost = estimate_cost(model_agent, result.input_tokens, result.output_tokens)
+                    agent_cost = estimate_cost(model_agent, result.input_tokens, result.output_tokens)
+                    judge_cost = estimate_cost(JUDGE_MODEL, result.judge_input_tokens, result.judge_output_tokens)
+                    call_cost = agent_cost + judge_cost
                     total_input_tokens += result.input_tokens
                     total_output_tokens += result.output_tokens
                     total_cost += call_cost
-
-                    if total_cost <= 0 and result.input_tokens > 0:
-                        console.print("[yellow]Warning: cost accumulation may be broken (FC41)[/yellow]")
 
                     append_checkpoint(checkpoint_path, result)
                     all_results.append(result)

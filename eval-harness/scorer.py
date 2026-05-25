@@ -36,7 +36,7 @@ def find_promotable_cases(results: list[EvalResult], min_fails: int = 2) -> list
         total = len(runs)
         if total > 0 and fail_count >= min_fails:
             # For LLM-judge checks, also require high confidence
-            if any(r.check_type == "llm_judge" for r in runs):
+            if any(r.check_type in ("llm_judge", "hybrid") for r in runs):
                 high_conf_fails = sum(
                     1 for r in runs
                     if r.verdict == "fail" and r.confidence >= 0.8

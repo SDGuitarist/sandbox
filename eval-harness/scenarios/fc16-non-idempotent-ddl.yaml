@@ -13,7 +13,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_pattern: 'CREATE TABLE(?![^;]*IF NOT EXISTS)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl]
     pair_group: fc16-users
@@ -31,7 +31,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_pattern: 'CREATE TABLE(?![^;]*IF NOT EXISTS)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl]
     pair_group: fc16-users
@@ -48,7 +48,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'CREATE (TABLE|INDEX)(?!.*IF NOT EXISTS)'
+    deterministic_pattern: 'CREATE (TABLE|INDEX)(?![^;]*IF NOT EXISTS)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl, index]
     pair_group: fc16-index
@@ -65,7 +65,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'CREATE (TABLE|INDEX)(?!.*IF NOT EXISTS)'
+    deterministic_pattern: 'CREATE (TABLE|INDEX)(?![^;]*IF NOT EXISTS)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl, index]
     pair_group: fc16-index
@@ -82,7 +82,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'CREATE (TABLE|TYPE|INDEX)(?!.*IF NOT EXISTS)|CREATE FUNCTION(?!.*OR REPLACE)'
+    deterministic_pattern: 'CREATE (TABLE|TYPE|INDEX)(?![^;]*IF NOT EXISTS)|CREATE FUNCTION(?![^;]*OR REPLACE)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl, enum, function]
     pair_group: fc16-enum
@@ -99,7 +99,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'CREATE (TABLE|TYPE|INDEX)(?!.*IF NOT EXISTS)|CREATE FUNCTION(?!.*OR REPLACE)'
+    deterministic_pattern: 'CREATE (TABLE|TYPE|INDEX)(?![^;]*IF NOT EXISTS)|CREATE FUNCTION(?![^;]*OR REPLACE)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl, enum, function]
     pair_group: fc16-enum
@@ -116,7 +116,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_pattern: 'CREATE TABLE(?![^;]*IF NOT EXISTS)'
     deterministic_mode: absence
     tags: [sqlite, migration, ddl]
     pair_group: fc16-sqlite
@@ -133,7 +133,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)'
+    deterministic_pattern: 'CREATE TABLE(?![^;]*IF NOT EXISTS)'
     deterministic_mode: absence
     tags: [sqlite, migration, ddl]
     pair_group: fc16-sqlite
@@ -150,7 +150,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: pass
-    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)|INSERT INTO(?!.*ON CONFLICT)'
+    deterministic_pattern: 'CREATE TABLE(?![^;]*IF NOT EXISTS)|INSERT INTO(?![^;]*ON CONFLICT)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl, seed]
     pair_group: fc16-seed
@@ -167,7 +167,7 @@ scenarios:
     inputs: {}
     expected_check_type: deterministic
     expected_outcome: unknown
-    deterministic_pattern: 'CREATE TABLE(?!.*IF NOT EXISTS)|INSERT INTO(?!.*ON CONFLICT)'
+    deterministic_pattern: 'CREATE TABLE(?![^;]*IF NOT EXISTS)|INSERT INTO(?![^;]*ON CONFLICT)'
     deterministic_mode: absence
     tags: [postgresql, migration, ddl, seed]
     pair_group: fc16-seed

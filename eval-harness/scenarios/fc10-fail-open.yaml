@@ -13,7 +13,7 @@ scenarios:
     inputs: {}
     expected_check_type: hybrid
     expected_outcome: pass
-    deterministic_pattern: 'raise|RuntimeError|sys\.exit|fatal'
+    deterministic_pattern: 'raise\s+\w+.{0,80}(?:SECRET|secret|KEY|config)|(?:SECRET|secret|KEY|config).{0,80}(?:raise|RuntimeError|sys\.exit|abort)'
     deterministic_mode: presence
     tags: [flask, security, config]
     pair_group: fc10-secret
@@ -31,7 +31,7 @@ scenarios:
     inputs: {}
     expected_check_type: hybrid
     expected_outcome: unknown
-    deterministic_pattern: 'raise|RuntimeError|sys\.exit|fatal'
+    deterministic_pattern: 'raise\s+\w+.{0,80}(?:SECRET|secret|KEY|config)|(?:SECRET|secret|KEY|config).{0,80}(?:raise|RuntimeError|sys\.exit|abort)'
     deterministic_mode: presence
     tags: [flask, security, config]
     pair_group: fc10-secret
