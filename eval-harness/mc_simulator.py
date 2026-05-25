@@ -31,32 +31,35 @@ def load_fc_rates(report_json: Path) -> dict[str, dict]:
 # Relevance = probability that a given agent in this build type encounters this FC.
 # Estimated from 18 build histories. 0.0 = never relevant, 1.0 = every agent hits it.
 
+# Calibrated from 20 swarm builds, 255 total agent-runs
+# Source: calibrate_relevance.py -> calibration/relevance-weights.json
 FLASK_SWARM_RELEVANCE = {
-    "fc1": 0.6,   # naming divergence -- common in multi-agent
-    "fc2": 0.3,   # wrong usage inferred -- moderate
-    "fc4": 0.8,   # validation gap -- very common
-    "fc7": 0.4,   # route prefix doubling -- blueprint agents only
-    "fc9": 0.2,   # mock mismatch -- test agents only
-    "fc10": 0.3,  # fail-open -- auth/rate-limit agents
-    "fc14": 0.1,  # executescript -- migration agents only
-    "fc15": 0.0,  # window.location -- Next.js only, skip for Flask
-    "fc16": 0.2,  # non-idempotent DDL -- database agents
-    "fc17": 0.4,  # duplicate boilerplate -- API route agents
-    "fc19": 0.2,  # unsigned tokens -- agents with user-facing URLs
-    "fc20": 0.15, # cron concurrency -- cron/worker agents
-    "fc23": 0.1,  # anon RLS -- Supabase only
-    "fc24": 0.3,  # XML sandbox escape -- LLM prompt agents
-    "fc25": 0.1,  # zip bomb -- file upload agents
-    "fc26": 0.5,  # comment not code -- all agents can do this
-    "fc27": 0.6,  # neighbor pattern skip -- common for new routes
-    "fc28": 0.05, # proxy path stripping -- cross-stack only
-    "fc33": 0.2,  # transitive deps -- scaffold agents
-    "fc35": 0.5,  # IDOR -- any auth route agent
-    "fc36": 0.1,  # FTS5 injection -- search agents
-    "fc39": 0.1,  # app per job -- worker agents
-    "fc41": 0.15, # cost cap -- LLM-calling agents
-    "fc46": 0.3,  # phantom FK -- database agents
-    "fc47": 0.2,  # Markup XSS -- template filter agents
+    "fc1": 0.28,   # naming divergence -- 7/20 builds
+    "fc2": 0.16,   # wrong usage inferred -- 4/20 builds
+    "fc4": 0.36,   # validation gap -- 9/20 builds (most common)
+    "fc5": 0.16,   # swarm consistency -- 4/20 builds
+    "fc7": 0.08,   # route prefix doubling -- 2/20 builds
+    "fc9": 0.08,   # mock mismatch -- 2/20 builds
+    "fc10": 0.12,  # fail-open -- 3/20 builds
+    "fc15": 0.04,  # window.location -- 1/20 builds
+    "fc16": 0.04,  # non-idempotent DDL -- 1/20 builds
+    "fc17": 0.04,  # duplicate boilerplate -- 1/20 builds
+    "fc19": 0.04,  # unsigned tokens -- 1/20 builds
+    "fc20": 0.04,  # cron concurrency -- 1/20 builds
+    "fc23": 0.04,  # anon RLS -- 1/20 builds
+    "fc24": 0.0,   # XML sandbox escape -- 0 swarm builds (solo only)
+    "fc25": 0.0,   # zip bomb -- 0 swarm builds (solo only)
+    "fc26": 0.04,  # comment not code -- 1/20 builds
+    "fc27": 0.04,  # neighbor pattern skip -- 1/20 builds
+    "fc28": 0.04,  # proxy path stripping -- 1/20 builds
+    "fc29": 0.12,  # no transaction boundary -- 3/20 builds
+    "fc33": 0.04,  # transitive deps -- 1/20 builds
+    "fc35": 0.12,  # IDOR -- 3/20 builds
+    "fc36": 0.04,  # FTS5 injection -- 1/20 builds
+    "fc39": 0.04,  # app per job -- 1/20 builds
+    "fc41": 0.0,   # cost cap -- 0 swarm builds (solo only)
+    "fc46": 0.04,  # phantom FK -- 1/20 builds
+    "fc47": 0.04,  # Markup XSS -- 1/20 builds
 }
 
 
