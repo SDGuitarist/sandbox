@@ -370,7 +370,8 @@ def main(
 
                     result = run_scenario(
                         scenario=scenario,
-                        fc=fc,
+                        rule_text=fc.rule_text,
+                        fc_id=fc.id,
                         variant=scenario.variant,
                         run_number=run_num,
                         client=client,

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import datetime
+from enum import StrEnum
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 # --- Shared type aliases ---
@@ -161,3 +162,64 @@ class RunReport(BaseModel):
         "prompting. They do not estimate adherence under realistic swarm "
         "cognitive load."
     )
+
+
+# --- Spec Eval Gate models (step 9w.8) ---
+
+CONFIDENCE_THRESHOLD = 0.90
+
+
+class DeterministicCheck(BaseModel):
+    """Grouped deterministic check fields -- both-or-neither is structural."""
+    pattern: str
+    mode: Literal["presence", "absence"]
+
+
+class Claim(BaseModel):
+    """An atomic, testable instruction extracted from a spec."""
+    id: str
+    text: str
+    task_brief: str
+    source: Literal["table", "prose"]
+    source_location: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    deterministic_check: DeterministicCheck | None = None
+    confidence_reasoning: str = ""
+
+
+class ClaimResult(BaseModel):
+    """Result of evaluating a single claim."""
+    claim_id: str
+    claim_text: str
+    passed: bool
+    evidence: str
+    failure_type: str = ""
+    fix_hint: str = ""
+
+
+class TierSummary(BaseModel):
+    """Aggregated results for a confidence tier."""
+    total: int
+    passed: int
+    failed: int
+    errors: int = 0
+
+
+class GateStatus(StrEnum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    WARN_UNSCORABLE = "WARN_UNSCORABLE"
+    RETRY = "RETRY"
+
+
+class GateResult(BaseModel):
+    """Spec Eval Gate output."""
+    status: GateStatus
+    high_confidence: TierSummary
+    low_confidence: TierSummary
+    failed_details: list[ClaimResult]
+    low_warnings: list[ClaimResult]
+    cost_usd: float
+    runtime_ms: int
+    spec_path: str
+    run_id: str

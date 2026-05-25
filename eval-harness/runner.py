@@ -8,7 +8,7 @@ from typing import Literal
 
 import anthropic
 
-from models import CheckResult, EvalResult, FailureClass, Scenario
+from models import CheckResult, EvalResult, Scenario
 
 
 DEFAULT_AGENT_MODEL = "claude-haiku-4-5-20251001"
@@ -16,7 +16,7 @@ DEFAULT_AGENT_MODEL = "claude-haiku-4-5-20251001"
 
 def build_prompt(
     scenario: Scenario,
-    fc: FailureClass,
+    rule_text: str,
     variant: Literal["with_rule", "without_rule"],
     fixtures_dir: Path | None = None,
 ) -> tuple[str, str]:
@@ -33,7 +33,7 @@ def build_prompt(
     user_parts = []
 
     if variant == "with_rule":
-        user_parts.append(f"Rules:\n{fc.rule_text}")
+        user_parts.append(f"Rules:\n{rule_text}")
 
     user_parts.append(f"Task:\n{scenario.task_brief.strip()}")
 
@@ -52,7 +52,8 @@ def build_prompt(
 
 def run_scenario(
     scenario: Scenario,
-    fc: FailureClass,
+    rule_text: str,
+    fc_id: str,
     variant: Literal["with_rule", "without_rule"],
     run_number: int,
     client: anthropic.Anthropic,
@@ -66,7 +67,7 @@ def run_scenario(
     The verdict field is set to "skip" -- the caller (CLI) runs the judge
     separately and assembles the final verdict.
     """
-    system_msg, user_msg = build_prompt(scenario, fc, variant, fixtures_dir)
+    system_msg, user_msg = build_prompt(scenario, rule_text, variant, fixtures_dir)
 
     start_ms = time.monotonic_ns() // 1_000_000
 
@@ -84,7 +85,7 @@ def run_scenario(
         duration = (time.monotonic_ns() // 1_000_000) - start_ms
         return EvalResult(
             scenario_id=scenario.id,
-            fc_id=fc.id,
+            fc_id=fc_id,
             variant=variant,
             run_number=run_number,
             verdict="error",
@@ -101,13 +102,14 @@ def run_scenario(
         anthropic.RateLimitError,
         anthropic.APITimeoutError,
         anthropic.InternalServerError,
+        anthropic.OverloadedError,
     ) as e:
         # Retry is handled by the SDK's built-in retry (max_retries on client).
         # If we still get here, all retries were exhausted.
         duration = (time.monotonic_ns() // 1_000_000) - start_ms
         return EvalResult(
             scenario_id=scenario.id,
-            fc_id=fc.id,
+            fc_id=fc_id,
             variant=variant,
             run_number=run_number,
             verdict="error",
@@ -132,7 +134,7 @@ def run_scenario(
     if not agent_output.strip():
         return EvalResult(
             scenario_id=scenario.id,
-            fc_id=fc.id,
+            fc_id=fc_id,
             variant=variant,
             run_number=run_number,
             verdict="error",
