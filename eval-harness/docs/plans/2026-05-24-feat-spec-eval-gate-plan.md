@@ -4,7 +4,7 @@ type: feat
 status: active
 date: 2026-05-24
 deepened: 2026-05-24
-origin: docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md
+origin: eval-harness/docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md
 feed_forward:
   risk: "Quality of LLM-extracted prose claims is untested. Harness reuse requires careful model adaptation."
   verify_first: true
@@ -50,7 +50,7 @@ This is distinct from existing gates:
 - **Spec Eval Gate (9w.8): Can an agent execute this spec's concrete claims?**
 - Pitfall Eval + MC: Given generic FC risk, what is the projected build cleanliness?
 
-(See brainstorm: `docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md`)
+(See brainstorm: `eval-harness/docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md`)
 
 ## Problem Statement / Motivation
 
@@ -66,7 +66,7 @@ A new Python module (`spec_eval_gate.py`) that:
 
 1. **Extracts** testable claims from a spec document using a hybrid strategy (deterministic table parsing + targeted Sonnet prose extraction)
 2. **Generates** single-variant scenarios from those claims
-3. **Runs** them through the existing `runner.py` + `judge.py`
+3. **Runs** them through `runner.py` (modified to accept `rule_text: str`) + `spec_judge.py` (new module, reuses `check_deterministic` from `judge.py`)
 4. **Scores** results using a confidence-filtered 100% threshold (new scorer, not existing `scorer.py`)
 5. **Reports** PASS / FAIL / WARN-UNSCORABLE / RETRY with structured failure details
 
@@ -86,8 +86,9 @@ spec_scenario_gen.py (NEW)
   - claims_to_scenarios() -- maps Claims to Scenarios
        |
        v
-runner.py (MODIFIED: build_prompt accepts rule_text: str)
-  + judge.py (EXISTING, no modifications)
+runner.py (MODIFIED: build_prompt + run_scenario accept rule_text: str)
+  + spec_judge.py (NEW: reuses check_deterministic from judge.py,
+  |   own LLM judge with spec-adherence tool schema)
        |
        v
 spec_scorer.py (NEW)
@@ -110,24 +111,56 @@ spec_scorer.py (NEW)
 | `models.py` (extend) | Add `Claim`, `DeterministicCheck`, `ClaimResult`, `TierSummary`, `GateResult`, `GateStatus`; add `exceptions.py` | ~70 |
 | `extractor.py` | Claim extraction from spec (tables + prose) via `messages.parse()` | ~180 |
 | `spec_scenario_gen.py` | Claim-to-Scenario mapping | ~80 |
+| `spec_judge.py` | Spec-adherence judge: imports `check_deterministic` from `judge.py`, own LLM judge with richer tool schema | ~80 |
 | `spec_scorer.py` | Gate scoring logic + JSON report generation | ~120 |
 | `spec_eval_gate.py` | CLI entry point (Click, async) | ~100 |
-| `judges/spec-eval-base.txt` | Judge prompt for spec-adherence (chain-of-thought before verdict) | ~30 |
+| `judges/spec-eval-base.txt` | Spec-adherence judge prompt (used by `spec_judge.py`, not `judge.py`) | ~30 |
 | `exceptions.py` | `SpecEvalError` hierarchy | ~20 |
 
 ### Existing Files (Minor Modifications)
 
 | File | Change |
 |------|--------|
-| `runner.py` | `build_prompt()` accepts `rule_text: str` instead of `fc: FailureClass` (~4 lines) |
-| `pitfall_eval.py` | Caller updated to pass `fc.rule_text` (~2 lines) |
+| `runner.py` | `build_prompt()` accepts `rule_text: str` instead of `fc: FailureClass` (~4 lines). `run_scenario()` accepts `rule_text: str` + `fc_id: str` instead of `fc: FailureClass` (~6 lines). See "Runner Refactor Detail" below. |
+| `pitfall_eval.py` | Callers updated to pass `fc.rule_text` and `fc.id` (~4 lines across `build_prompt` and `run_scenario` call sites) |
 
 ### Existing Files (No Modifications)
 
 | File | Reuse |
 |------|-------|
-| `judge.py` | `evaluate()` with `rule_text` = claim text |
+| `judge.py` | `check_deterministic()` imported by `spec_judge.py`. `evaluate()` and `check_llm_judge()` are NOT used by spec-eval (spec-eval has its own judge with a richer tool schema). |
 | `models.py` | `Scenario`, `EvalResult`, `CheckResult` models (read-only except additions) |
+
+### Runner Refactor Detail
+
+The refactor touches two functions in `runner.py` and their call sites in `pitfall_eval.py`. Codex verified `pitfall_eval.py` is the only live caller.
+
+```python
+# runner.py -- build_prompt (~4 lines)
+# BEFORE: def build_prompt(scenario, fc, variant, fixtures_dir=None)
+# AFTER:  def build_prompt(scenario, rule_text, variant, fixtures_dir=None)
+# Change: fc.rule_text -> rule_text in the one place it's used
+
+# runner.py -- run_scenario (~6 lines)
+# BEFORE: def run_scenario(scenario, fc, variant, run_number, client, ...)
+# AFTER:  def run_scenario(scenario, rule_text, fc_id, variant, run_number, client, ...)
+# Changes: pass rule_text to build_prompt, use fc_id for EvalResult.fc_id
+
+# pitfall_eval.py -- call sites (~4 lines)
+# BEFORE: result = run_scenario(scenario, fc, variant, ...)
+# AFTER:  result = run_scenario(scenario, fc.rule_text, fc.id, variant, ...)
+```
+
+**Async runner for spec-eval:** The spec-eval gate uses `asyncio.to_thread()` to wrap the synchronous `run_scenario()` for concurrent execution. No async version is added to `runner.py` itself -- the async wrapper lives in `spec_eval_gate.py`:
+
+```python
+async def _async_run_scenario(scenario, rule_text, fc_id, variant, run_number, client, **kwargs):
+    return await asyncio.to_thread(
+        run_scenario, scenario, rule_text, fc_id, variant, run_number, client, **kwargs
+    )
+```
+
+Total blast radius: ~14 lines across `runner.py` + `pitfall_eval.py`. New async wrapper is ~5 lines in `spec_eval_gate.py`.
 
 ### Implementation Phases
 
@@ -244,7 +277,23 @@ Update `pitfall_eval.py` caller (~2 lines): pass `fc.rule_text` instead of `fc`.
 
 New file `extractor.py` with two extraction paths.
 
-**BLOCKING PREREQUISITE:** Phase 2 is not complete until the extraction prompt has been tested against 2 real specs (e.g., WRC, Ethics Toolkit) with `--dry-run` and produces reasonable claims. Phase 3 does not start until this is verified.
+**BLOCKING PREREQUISITE:** Phase 2 is not complete until the extraction prompt has been tested against 2 real specs (WRC, Ethics Toolkit) with `--dry-run` and produces reasonable claims. Phase 3 does not start until the following artifacts exist:
+
+1. `eval-harness/calibration/spec-eval/wrc-extraction.json` -- saved extraction output from WRC spec
+2. `eval-harness/calibration/spec-eval/ethics-extraction.json` -- saved extraction output from Ethics Toolkit spec
+3. Both files checked in to the branch
+
+These files serve dual purpose: (a) verifiable proof that Phase 2 extraction works, and (b) regression fixtures for future prompt changes.
+
+**How to produce them:** `--dry-run` always writes extraction output to `{output_dir}/spec-eval-{run_id}/extraction.json` (using the existing `--output-dir` option) in addition to printing a summary to console. The developer then copies the output to `eval-harness/calibration/spec-eval/` and checks it in. No separate `--output` flag is needed.
+
+```bash
+# Produce the calibration artifact
+python spec_eval_gate.py path/to/wrc-spec.md --dry-run --output-dir calibration/spec-eval
+# Review, then check in
+cp calibration/spec-eval/spec-eval-*/extraction.json calibration/spec-eval/wrc-extraction.json
+git add calibration/spec-eval/wrc-extraction.json
+```
 
 **Phase 2a: Table Parser (deterministic)**
 
@@ -493,7 +542,7 @@ New file `spec_eval_gate.py` (separate from `pitfall_eval.py`):
 
 ```python
 import asyncio
-from anthropic import AsyncAnthropic
+import anthropic
 
 CONCURRENCY_LIMIT = 5
 
@@ -520,10 +569,10 @@ Pipeline flow:
 6. Run `extract_prose_claims()` -- Sonnet LLM extraction via `messages.parse()`
 7. Run `deduplicate_claims()` -- merge and deduplicate
 8. Check minimum extraction threshold (>= min_high_claims HIGH claims)
-9. If `--dry-run`: print claims and exit
+9. If `--dry-run`: write claims JSON to `{output_dir}/spec-eval-{run_id}/extraction.json` and print summary to console, then exit
 10. Run `claims_to_scenarios()` -- generate scenarios + rule_text pairs
 11. **Run scenarios concurrently** with `asyncio.gather` + semaphore (5 concurrent):
-    - For each (scenario, rule_text): `run_scenario()` then `evaluate()` (with cost cap check)
+    - For each (scenario, rule_text): `run_scenario()` then `spec_judge.evaluate_spec()` (with cost cap check)
     - Track costs per model (Haiku runner vs Sonnet judge separately)
 12. Run `score_gate()` -- apply threshold
 13. Write JSON report
@@ -531,17 +580,29 @@ Pipeline flow:
 15. Exit with code 0 (PASS), 1 (FAIL/WARN/RETRY)
 
 ```python
+# Client is synchronous anthropic.Anthropic -- same type used by existing runner.py.
+# Async is only at the orchestration layer (gather + semaphore).
+# Each to_thread call gets its own thread; the sync client is thread-safe.
+
 async def _run_scenarios_concurrent(scenarios_and_rules, client, cost_tracker):
     sem = asyncio.Semaphore(CONCURRENCY_LIMIT)
     async def run_one(scenario, rule_text):
         async with sem:
             if cost_tracker.total >= cost_tracker.cap:
                 return None
-            result = await async_run_scenario(scenario, rule_text, ...)
-            result = evaluate(result, scenario, rule_text, ...)
+            # Wrap sync run_scenario + sync spec_judge in asyncio.to_thread
+            result = await asyncio.to_thread(
+                _run_and_judge, scenario, rule_text, client
+            )
             cost_tracker.add(result)
             return result
     return await asyncio.gather(*[run_one(s, r) for s, r in scenarios_and_rules])
+
+def _run_and_judge(scenario, rule_text, client):
+    """Sync function called inside a thread. Uses sync anthropic.Anthropic client."""
+    result = run_scenario(scenario, rule_text, scenario.id, "with_rule", 1, client)
+    result = spec_judge.evaluate_spec(result, scenario, rule_text, client)
+    return result
 ```
 
 **Invocation from autopilot pipeline:**
@@ -563,7 +624,9 @@ except (
 
 **Client configuration:**
 ```python
-client = AsyncAnthropic(
+# Synchronous client -- same type as existing runner.py uses.
+# Thread-safe for concurrent use via asyncio.to_thread().
+client = anthropic.Anthropic(
     max_retries=3,                              # 4 total attempts
     timeout=httpx.Timeout(120.0, connect=5.0),  # 2 min per request
 )
@@ -575,7 +638,7 @@ The gate is self-gating -- its exit code blocks the swarm directly. No dependenc
 ### Research Insights: CLI + Performance
 
 - **Concurrent execution is required for scaling.** Sequential hits the 5-min wall at ~35 scenarios. With semaphore of 5, 15 scenarios drop from ~2 min to ~25 sec; 50 scenarios from ~6.5 min to ~85 sec.
-- **Use `AsyncAnthropic`** for the spec-eval gate. The existing harness uses synchronous `Anthropic`, but the spec-eval gate is a new entry point with no shared state.
+- **Sync client + `asyncio.to_thread()`** for concurrency. The spec-eval gate uses the same synchronous `anthropic.Anthropic` client as the existing harness. Concurrency is achieved by wrapping sync calls in `asyncio.to_thread()` at the gather/semaphore layer. The sync client is thread-safe. This avoids introducing `AsyncAnthropic` and keeps the runner contract unchanged.
 - **Reduce `max_tokens` to 1024** for scenario runner calls (default is 2048). Spec-eval scenarios produce 200-500 token responses. Saves latency and marginal cost.
 - **Track judge costs separately.** The cost cap must distinguish Haiku runner calls from Sonnet judge calls. Without this, the cap check under-reports by $0.02-0.05.
 - **Per-request timeout override.** Use 180s for Sonnet extraction (large input), 60s for Haiku scenarios (small input).
@@ -587,6 +650,16 @@ The gate is self-gating -- its exit code blocks the swarm directly. No dependenc
 - **API key hygiene.** Load from `ANTHROPIC_API_KEY` environment variable only. Apply `scrub_secrets()` regex to all report content before writing to disk (strip `sk-ant-*` patterns).
 - **Filename sanitization.** Report filenames use run_id (generated internally), never derived from spec content.
 
+## Plan Quality Gate
+
+1. **What exactly is changing?** Adding 7 new files (`extractor.py`, `spec_scenario_gen.py`, `spec_judge.py`, `spec_scorer.py`, `spec_eval_gate.py`, `exceptions.py`, `judges/spec-eval-base.txt`) and extending `models.py` with 6 new types. Modifying `runner.py` (build_prompt + run_scenario signatures, ~14 lines) and `pitfall_eval.py` (caller updates, ~4 lines).
+
+2. **What must not change?** Existing pitfall eval behavior. Existing `Variant` literal. Existing `ScenarioFile` validation. Existing judge prompts and `judge.py` internals. Existing scorer, reporter, MC simulator. No code execution of LLM output, ever.
+
+3. **How will we know it worked?** Phase 2 produces checked-in extraction fixtures (`eval-harness/calibration/spec-eval/wrc-extraction.json`, `eval-harness/calibration/spec-eval/ethics-extraction.json`) matching the ground truth table. All EARS acceptance tests pass. `python spec_eval_gate.py path/to/spec.md` exits 0 on a well-structured spec and exits 1 on a spec with ambiguous claims. Existing `python pitfall_eval.py` behavior is unchanged (verified by existing test suite).
+
+4. **What is the most likely way this plan is wrong?** The extraction prompt produces low-quality claims from prose -- either too many vague claims (false FAILs) or too few concrete claims (false PASSes). This is why extraction validation is a blocking prerequisite with checked-in artifacts, not advisory guidance.
+
 ## System-Wide Impact
 
 - **Interaction with existing harness:** Minimal. One 4-line change to `runner.py` (accept `rule_text: str` instead of `FailureClass`) and one 2-line change to `pitfall_eval.py` (pass `fc.rule_text`). All other reuse is via existing public interfaces.
@@ -597,7 +670,7 @@ The gate is self-gating -- its exit code blocks the swarm directly. No dependenc
 
 ## Alternative Approaches Considered
 
-(See brainstorm: `docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md`, Resolved Questions + Feed-Forward)
+(See brainstorm: `eval-harness/docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md`, Resolved Questions + Feed-Forward)
 
 1. **Tables-only extraction:** Simpler but misses behavioral/validation claims that cause the most spec-adherence failures.
 2. **Auto-rewrite on fail:** Collapses evaluation and authoring, makes debugging impossible.
@@ -625,9 +698,9 @@ The gate is self-gating -- its exit code blocks the swarm directly. No dependenc
 
 ### Extraction Quality
 
-- WHEN a table row contains `list_tasks | route function | agent-2` THE SYSTEM SHALL produce a claim with `instruction_type="naming"`, `deterministic_pattern="list_tasks"`, `confidence=1.0`
-- WHEN prose says "validate email before save" THE SYSTEM SHALL produce a claim with `instruction_type="validation"`, `evidence_to_check` containing a regex or judge criterion
-- WHEN prose says "the UX should feel clean" THE SYSTEM SHALL NOT produce a claim (no concrete evidence to check)
+- WHEN a table row contains `list_tasks | route function | agent-2` THE SYSTEM SHALL produce a claim with `source="table"`, `deterministic_check=DeterministicCheck(pattern="list_tasks", mode="presence")`, `confidence=1.0`
+- WHEN prose says "validate email before save" THE SYSTEM SHALL produce a claim with `source="prose"`, `task_brief` containing a validation prompt, and either a `deterministic_check` with regex or `deterministic_check=None` (LLM judge)
+- WHEN prose says "the UX should feel clean" THE SYSTEM SHALL NOT produce a claim (no concrete evidence to check) and SHALL include it in `rejected_statements`
 - WHEN the same instruction appears in both table and prose THE SYSTEM SHALL deduplicate and keep the table version
 
 ### Gate Scoring
@@ -664,7 +737,7 @@ python spec_eval_gate.py path/to/spec.md --dry-run --verbose
 python spec_eval_gate.py path/to/spec.md --output-dir reports
 
 # Check gate result
-cat reports/spec-eval-*/spec-eval-gate.json | python -c "import sys,json; d=json.load(sys.stdin); print(d['gate_result'])"
+cat reports/spec-eval-*/spec-eval-gate.json | python -c "import sys,json; d=json.load(sys.stdin); print(d['status'])"
 
 # Verify exit code
 python spec_eval_gate.py path/to/spec.md; echo "Exit: $?"
@@ -706,7 +779,7 @@ python spec_eval_gate.py path/to/spec.md; echo "Exit: $?"
 
 ### Origin
 
-- **Brainstorm document:** [docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md](docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md)
+- **Brainstorm document:** [eval-harness/docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md](eval-harness/docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md)
   - Key decisions carried forward: hybrid extraction (tables + targeted prose), Sonnet extracts / Haiku tests, confidence-filtered 100% threshold, hard FAIL with human fixes, step 9w.8 placement
 
 ### Internal References
@@ -986,9 +1059,11 @@ extractor.py         (imports Claim, DeterministicCheck from models)
        ^
 spec_scenario_gen.py (imports Claim, Scenario from models)
        ^
+spec_judge.py        (imports check_deterministic from judge, models from models)
+       ^
 spec_scorer.py       (imports Claim, ClaimResult, TierSummary, GateResult from models)
        |
-spec_eval_gate.py    (imports from all: extractor, scenario_gen, scorer, models)
+spec_eval_gate.py    (imports from all: extractor, scenario_gen, spec_judge, scorer, models)
 ```
 
 No file imports from a file that imports from it. The CLI is the only module that imports from all others.
