@@ -1,0 +1,1662 @@
+{
+  "run_id": "spec-eval-1780241662",
+  "spec_path": "/Users/alejandroguillen/Projects/sandbox/docs/plans/2026-05-03-feat-writers-room-council-app-spec.md",
+  "total_claims": 156,
+  "high_confidence": 156,
+  "low_confidence": 0,
+  "claims": [
+    {
+      "id": "tbl-001",
+      "text": "Name 'Don't stack statistics': ID: 1, Name: Don't stack statistics, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Don't stack statistics as specified: ID: 1, Name: Don't stack statistics, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-002",
+      "text": "Name 'Mechanism leads, studies illustrate': ID: 2, Name: Mechanism leads, studies illustrate, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Mechanism leads, studies illustrate as specified: ID: 2, Name: Mechanism leads, studies illustrate, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-003",
+      "text": "Name 'Compress via hinge': ID: 3, Name: Compress via hinge, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Compress via hinge as specified: ID: 3, Name: Compress via hinge, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-004",
+      "text": "Name 'Concessions advance argument': ID: 4, Name: Concessions advance argument, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Concessions advance argument as specified: ID: 4, Name: Concessions advance argument, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-005",
+      "text": "Name 'Headers name what you show': ID: 5, Name: Headers name what you show, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Headers name what you show as specified: ID: 5, Name: Headers name what you show, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-006",
+      "text": "Name 'Trust the reader': ID: 6, Name: Trust the reader, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Trust the reader as specified: ID: 6, Name: Trust the reader, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-007",
+      "text": "Name 'No em-dashes': ID: 7, Name: No em-dashes, Category: Voice, Pass: Pre-LLM grep",
+      "task_brief": "Implement name No em-dashes as specified: ID: 7, Name: No em-dashes, Category: Voice, Pass: Pre-LLM grep",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-008",
+      "text": "Name 'Five-tier banned vocabulary': ID: 8, Name: Five-tier banned vocabulary, Category: Voice, Pass: Pre-LLM grep",
+      "task_brief": "Implement name Five-tier banned vocabulary as specified: ID: 8, Name: Five-tier banned vocabulary, Category: Voice, Pass: Pre-LLM grep",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-009",
+      "text": "Name 'Peer-to-peer register': ID: 9, Name: Peer-to-peer register, Category: Voice, Pass: LLM (voice_protection)",
+      "task_brief": "Implement name Peer-to-peer register as specified: ID: 9, Name: Peer-to-peer register, Category: Voice, Pass: LLM (voice_protection)",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-010",
+      "text": "Name 'Crystal Principle (meta-filter)': ID: 10, Name: Crystal Principle (meta-filter), Category: Discipline, Pass: Filter logic",
+      "task_brief": "Implement name Crystal Principle (meta-filter) as specified: ID: 10, Name: Crystal Principle (meta-filter), Category: Discipline, Pass: Filter logic",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-011",
+      "text": "Name 'Don't tell after showing': ID: 11, Name: Don't tell after showing, Category: Discipline, Pass: LLM",
+      "task_brief": "Implement name Don't tell after showing as specified: ID: 11, Name: Don't tell after showing, Category: Discipline, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-012",
+      "text": "Name 'Fold minor citations': ID: 12, Name: Fold minor citations, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Fold minor citations as specified: ID: 12, Name: Fold minor citations, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 12)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-013",
+      "text": "Name 'Cut due diligence paragraphs': ID: 13, Name: Cut due diligence paragraphs, Category: Discipline, Pass: LLM",
+      "task_brief": "Implement name Cut due diligence paragraphs as specified: ID: 13, Name: Cut due diligence paragraphs, Category: Discipline, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 13)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-014",
+      "text": "Name 'Function determines form': ID: 14, Name: Function determines form, Category: Argument, Pass: LLM",
+      "task_brief": "Implement name Function determines form as specified: ID: 14, Name: Function determines form, Category: Argument, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 14)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-015",
+      "text": "Name 'Delete narration of demonstration': ID: 15, Name: Delete narration of demonstration, Category: Discipline, Pass: LLM",
+      "task_brief": "Implement name Delete narration of demonstration as specified: ID: 15, Name: Delete narration of demonstration, Category: Discipline, Pass: LLM",
+      "source": "table",
+      "source_location": "4.5 Editor Mode (table row 15)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-016",
+      "text": "#: 1, Decision: Stack, Choice: Next.js 15 + Supabase + Vercel, Rationale: Proven in Run 033",
+      "task_brief": "Implement the following as specified: #: 1, Decision: Stack, Choice: Next.js 15 + Supabase + Vercel, Rationale: Proven in Run 033",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-017",
+      "text": "#: 2, Decision: Auth, Choice: Supabase Magic Link, Rationale: Lowest friction for writers",
+      "task_brief": "Implement the following as specified: #: 2, Decision: Auth, Choice: Supabase Magic Link, Rationale: Lowest friction for writers",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-018",
+      "text": "#: 3, Decision: LLM, Choice: Opus 4.6 for all modes, Rationale: Verb catch requires Opus-level judgment",
+      "task_brief": "Implement the following as specified: #: 3, Decision: LLM, Choice: Opus 4.6 for all modes, Rationale: Verb catch requires Opus-level judgment",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-019",
+      "text": "#: 4, Decision: Editor UI, Choice: Inline annotations, editable on accept, Rationale: Thesis felt in the writing",
+      "task_brief": "Implement the following as specified: #: 4, Decision: Editor UI, Choice: Inline annotations, editable on accept, Rationale: Thesis felt in the writing",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-020",
+      "text": "#: 5, Decision: Document input, Choice: Paste text, Rationale: No file parsing complexity",
+      "task_brief": "Implement the following as specified: #: 5, Decision: Document input, Choice: Paste text, Rationale: No file parsing complexity",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-021",
+      "text": "#: 6, Decision: Phase 0, Choice: 3-layer (user + project + micro-interview), Rationale: Serves both Council and Editor",
+      "task_brief": "Implement the following as specified: #: 6, Decision: Phase 0, Choice: 3-layer (user + project + micro-interview), Rationale: Serves both Council and Editor",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-022",
+      "text": "#: 7, Decision: Project model, Choice: Project-based containers, Rationale: RWP needs first-class fields",
+      "task_brief": "Implement the following as specified: #: 7, Decision: Project model, Choice: Project-based containers, Rationale: RWP needs first-class fields",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-023",
+      "text": "#: 8, Decision: Signature, Choice: Dedicated dashboard view, Rationale: Must be readable after 2 sessions",
+      "task_brief": "Implement the following as specified: #: 8, Decision: Signature, Choice: Dedicated dashboard view, Rationale: Must be readable after 2 sessions",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-024",
+      "text": "#: 9, Decision: Genre profile, Choice: Essay/Long-form only, Rationale: One tight profile > two loose ones",
+      "task_brief": "Implement the following as specified: #: 9, Decision: Genre profile, Choice: Essay/Long-form only, Rationale: One tight profile > two loose ones",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-025",
+      "text": "#: 10, Decision: Access, Choice: Beta cohort, 14-day free, Rationale: Not free trial",
+      "task_brief": "Implement the following as specified: #: 10, Decision: Access, Choice: Beta cohort, 14-day free, Rationale: Not free trial",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-026",
+      "text": "#: 11, Decision: Build order, Choice: Editor first, 4 sequential phases, Rationale: Hardest problem first",
+      "task_brief": "Implement the following as specified: #: 11, Decision: Build order, Choice: Editor first, 4 sequential phases, Rationale: Hardest problem first",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-027",
+      "text": "#: 12, Decision: Navigation, Choice: Read-only scroll back, Rationale: Forward-only progression, full transcript visible",
+      "task_brief": "Implement the following as specified: #: 12, Decision: Navigation, Choice: Read-only scroll back, Rationale: Forward-only progression, full transcript visible",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 12)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-028",
+      "text": "#: 13, Decision: Verdicts, Choice: Contextual next step, Rationale: Arc only works with guided handoff",
+      "task_brief": "Implement the following as specified: #: 13, Decision: Verdicts, Choice: Contextual next step, Rationale: Arc only works with guided handoff",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 13)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-029",
+      "text": "#: 14, Decision: Crystal filter, Choice: Generate then filter (LLM tags, code suppresses), Rationale: Auditable, deterministic enforcement",
+      "task_brief": "Implement the following as specified: #: 14, Decision: Crystal filter, Choice: Generate then filter (LLM tags, code suppresses), Rationale: Auditable, deterministic enforcement",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 14)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-030",
+      "text": "#: 15, Decision: P7-P8 bypass, Choice: Pre-LLM grep, always surface, Rationale: Voice protection, not formalization",
+      "task_brief": "Implement the following as specified: #: 15, Decision: P7-P8 bypass, Choice: Pre-LLM grep, always surface, Rationale: Voice protection, not formalization",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 15)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-031",
+      "text": "#: 16, Decision: P9 register, Choice: LLM-classified as voice_protection, Rationale: Contextual check, not deterministic",
+      "task_brief": "Implement the following as specified: #: 16, Decision: P9 register, Choice: LLM-classified as voice_protection, Rationale: Contextual check, not deterministic",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 16)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-032",
+      "text": "Route Pattern: `/api/ai/*`, Limit: 10 req/hour, 50 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+      "task_brief": "Implement the following as specified: Route Pattern: `/api/ai/*`, Limit: 10 req/hour, 50 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-033",
+      "text": "Route Pattern: `/api/editor/*`, Limit: 5 req/hour, 25 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+      "task_brief": "Implement the following as specified: Route Pattern: `/api/editor/*`, Limit: 5 req/hour, 25 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-034",
+      "text": "Route Pattern: All other `/api/*`, Limit: 60 req/min, Scope: IP, Storage: In-memory Map (best-effort)",
+      "task_brief": "Implement the following as specified: Route Pattern: All other `/api/*`, Limit: 60 req/min, Scope: IP, Storage: In-memory Map (best-effort)",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-035",
+      "text": "Export '`createBrowserClient`': File: `lib/supabase/client.ts`, Export: `createBrowserClient`, Consumers: All client components, hooks",
+      "task_brief": "Implement export `createBrowserClient` as specified: File: `lib/supabase/client.ts`, Export: `createBrowserClient`, Consumers: All client components, hooks",
+      "source": "table",
+      "source_location": "Export Names Table (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "createBrowserClient",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-036",
+      "text": "Export '`createServerClient`': File: `lib/supabase/server.ts`, Export: `createServerClient`, Consumers: All API routes, middleware",
+      "task_brief": "Implement export `createServerClient` as specified: File: `lib/supabase/server.ts`, Export: `createServerClient`, Consumers: All API routes, middleware",
+      "source": "table",
+      "source_location": "Export Names Table (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "createServerClient",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-037",
+      "text": "Export '`getClient`': File: `lib/ai/client.ts`, Export: `getClient`, Consumers: Non-streaming AI routes (`phase0-ui`, `editor-core`)",
+      "task_brief": "Implement export `getClient` as specified: File: `lib/ai/client.ts`, Export: `getClient`, Consumers: Non-streaming AI routes (`phase0-ui`, `editor-core`)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getClient",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-038",
+      "text": "Export '`hasApiKey`': File: `lib/ai/client.ts`, Export: `hasApiKey`, Consumers: All AI API routes (mock check)",
+      "task_brief": "Implement export `hasApiKey` as specified: File: `lib/ai/client.ts`, Export: `hasApiKey`, Consumers: All AI API routes (mock check)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "hasApiKey",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-039",
+      "text": "Export '`MODELS`': File: `lib/ai/client.ts`, Export: `MODELS`, Consumers: All AI API routes",
+      "task_brief": "Implement export `MODELS` as specified: File: `lib/ai/client.ts`, Export: `MODELS`, Consumers: All AI API routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "MODELS",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-040",
+      "text": "Export '`TranscriptEntry`': File: `lib/schemas/index.ts`, Export: `TranscriptEntry`, Consumers: All Council routes, project-flow components",
+      "task_brief": "Implement export `TranscriptEntry` as specified: File: `lib/schemas/index.ts`, Export: `TranscriptEntry`, Consumers: All Council routes, project-flow components",
+      "source": "table",
+      "source_location": "Export Names Table (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "TranscriptEntry",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-041",
+      "text": "Export '`FingerprintInput`': File: `lib/schemas/index.ts`, Export: `FingerprintInput`, Consumers: Phase 0 routes, fingerprint components",
+      "task_brief": "Implement export `FingerprintInput` as specified: File: `lib/schemas/index.ts`, Export: `FingerprintInput`, Consumers: Phase 0 routes, fingerprint components",
+      "source": "table",
+      "source_location": "Export Names Table (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "FingerprintInput",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-042",
+      "text": "Export '`ScoringFloorResult`': File: `lib/schemas/index.ts`, Export: `ScoringFloorResult`, Consumers: Phase 0 routes",
+      "task_brief": "Implement export `ScoringFloorResult` as specified: File: `lib/schemas/index.ts`, Export: `ScoringFloorResult`, Consumers: Phase 0 routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "ScoringFloorResult",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-043",
+      "text": "Export '`ProjectCalibration`': File: `lib/schemas/index.ts`, Export: `ProjectCalibration`, Consumers: Project routes",
+      "task_brief": "Implement export `ProjectCalibration` as specified: File: `lib/schemas/index.ts`, Export: `ProjectCalibration`, Consumers: Project routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "ProjectCalibration",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-044",
+      "text": "Export '`SeedBeatResponse`': File: `lib/schemas/index.ts`, Export: `SeedBeatResponse`, Consumers: Seed Council routes",
+      "task_brief": "Implement export `SeedBeatResponse` as specified: File: `lib/schemas/index.ts`, Export: `SeedBeatResponse`, Consumers: Seed Council routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "SeedBeatResponse",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-045",
+      "text": "Export '`SeedClosingHandoff`': File: `lib/schemas/index.ts`, Export: `SeedClosingHandoff`, Consumers: Seed Council routes",
+      "task_brief": "Implement export `SeedClosingHandoff` as specified: File: `lib/schemas/index.ts`, Export: `SeedClosingHandoff`, Consumers: Seed Council routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "SeedClosingHandoff",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-046",
+      "text": "Export '`CouncilVoiceResponse`': File: `lib/schemas/index.ts`, Export: `CouncilVoiceResponse`, Consumers: Standard Council routes, RWP routes",
+      "task_brief": "Implement export `CouncilVoiceResponse` as specified: File: `lib/schemas/index.ts`, Export: `CouncilVoiceResponse`, Consumers: Standard Council routes, RWP routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 12)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "CouncilVoiceResponse",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-047",
+      "text": "Export '`CouncilVerdict`': File: `lib/schemas/index.ts`, Export: `CouncilVerdict`, Consumers: Standard Council routes, RWP routes",
+      "task_brief": "Implement export `CouncilVerdict` as specified: File: `lib/schemas/index.ts`, Export: `CouncilVerdict`, Consumers: Standard Council routes, RWP routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 13)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "CouncilVerdict",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-048",
+      "text": "Export '`RWPContext`': File: `lib/schemas/index.ts`, Export: `RWPContext`, Consumers: RWP routes",
+      "task_brief": "Implement export `RWPContext` as specified: File: `lib/schemas/index.ts`, Export: `RWPContext`, Consumers: RWP routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 14)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "RWPContext",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-049",
+      "text": "Export '`EditorSuggestion`': File: `lib/schemas/index.ts`, Export: `EditorSuggestion`, Consumers: Editor routes, annotation components",
+      "task_brief": "Implement export `EditorSuggestion` as specified: File: `lib/schemas/index.ts`, Export: `EditorSuggestion`, Consumers: Editor routes, annotation components",
+      "source": "table",
+      "source_location": "Export Names Table (table row 15)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "EditorSuggestion",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-050",
+      "text": "Export '`EditorAnalysisResponse`': File: `lib/schemas/index.ts`, Export: `EditorAnalysisResponse`, Consumers: Editor routes",
+      "task_brief": "Implement export `EditorAnalysisResponse` as specified: File: `lib/schemas/index.ts`, Export: `EditorAnalysisResponse`, Consumers: Editor routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 16)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "EditorAnalysisResponse",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-051",
+      "text": "Export '`getMockScoringFloor`': File: `lib/ai/phase0-mock.ts`, Export: `getMockScoringFloor`, Consumers: Phase 0 routes (mock mode)",
+      "task_brief": "Implement export `getMockScoringFloor` as specified: File: `lib/ai/phase0-mock.ts`, Export: `getMockScoringFloor`, Consumers: Phase 0 routes (mock mode)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 17)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getMockScoringFloor",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-052",
+      "text": "Export '`getMockSeedBeat`': File: `lib/ai/mock.ts`, Export: `getMockSeedBeat`, Consumers: Seed Council routes (mock mode)",
+      "task_brief": "Implement export `getMockSeedBeat` as specified: File: `lib/ai/mock.ts`, Export: `getMockSeedBeat`, Consumers: Seed Council routes (mock mode)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 18)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getMockSeedBeat",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-053",
+      "text": "Export '`getMockVoiceResponse`': File: `lib/ai/mock.ts`, Export: `getMockVoiceResponse`, Consumers: Standard Council routes (mock mode)",
+      "task_brief": "Implement export `getMockVoiceResponse` as specified: File: `lib/ai/mock.ts`, Export: `getMockVoiceResponse`, Consumers: Standard Council routes (mock mode)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 19)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getMockVoiceResponse",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-054",
+      "text": "Export '`getMockVerdict`': File: `lib/ai/mock.ts`, Export: `getMockVerdict`, Consumers: Standard Council routes (mock mode)",
+      "task_brief": "Implement export `getMockVerdict` as specified: File: `lib/ai/mock.ts`, Export: `getMockVerdict`, Consumers: Standard Council routes (mock mode)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 20)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getMockVerdict",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-055",
+      "text": "Export '`getMockEditorAnalysis`': File: `lib/ai/mock.ts`, Export: `getMockEditorAnalysis`, Consumers: Editor routes (mock mode)",
+      "task_brief": "Implement export `getMockEditorAnalysis` as specified: File: `lib/ai/mock.ts`, Export: `getMockEditorAnalysis`, Consumers: Editor routes (mock mode)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 21)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getMockEditorAnalysis",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-056",
+      "text": "Export '`getStreamingModel`': File: `lib/ai/client.ts`, Export: `getStreamingModel`, Consumers: All streaming Council routes",
+      "task_brief": "Implement export `getStreamingModel` as specified: File: `lib/ai/client.ts`, Export: `getStreamingModel`, Consumers: All streaming Council routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 22)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "getStreamingModel",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-057",
+      "text": "Export '`runDeterministicPass`': File: `lib/editor/deterministic.ts`, Export: `runDeterministicPass`, Consumers: Editor routes (P7/P8 grep)",
+      "task_brief": "Implement export `runDeterministicPass` as specified: File: `lib/editor/deterministic.ts`, Export: `runDeterministicPass`, Consumers: Editor routes (P7/P8 grep)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 23)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "runDeterministicPass",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-058",
+      "text": "Export '`BANNED_VOCABULARY`': File: `lib/editor/vocabulary.ts`, Export: `BANNED_VOCABULARY`, Consumers: deterministic.ts",
+      "task_brief": "Implement export `BANNED_VOCABULARY` as specified: File: `lib/editor/vocabulary.ts`, Export: `BANNED_VOCABULARY`, Consumers: deterministic.ts",
+      "source": "table",
+      "source_location": "Export Names Table (table row 24)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "BANNED_VOCABULARY",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-059",
+      "text": "Export '`buildSeedBeatPrompt`': File: `lib/prompts/seed.ts`, Export: `buildSeedBeatPrompt`, Consumers: Seed Council routes",
+      "task_brief": "Implement export `buildSeedBeatPrompt` as specified: File: `lib/prompts/seed.ts`, Export: `buildSeedBeatPrompt`, Consumers: Seed Council routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 25)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "buildSeedBeatPrompt",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-060",
+      "text": "Export '`buildVoicePrompt`': File: `lib/prompts/council.ts`, Export: `buildVoicePrompt`, Consumers: Standard Council routes, RWP routes",
+      "task_brief": "Implement export `buildVoicePrompt` as specified: File: `lib/prompts/council.ts`, Export: `buildVoicePrompt`, Consumers: Standard Council routes, RWP routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 26)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "buildVoicePrompt",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-061",
+      "text": "Export '`buildEditorPrompt`': File: `lib/prompts/editor.ts`, Export: `buildEditorPrompt`, Consumers: Editor routes",
+      "task_brief": "Implement export `buildEditorPrompt` as specified: File: `lib/prompts/editor.ts`, Export: `buildEditorPrompt`, Consumers: Editor routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 27)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "buildEditorPrompt",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-062",
+      "text": "Export '`buildScoringFloorPrompt`': File: `lib/prompts/phase0.ts`, Export: `buildScoringFloorPrompt`, Consumers: Phase 0 routes",
+      "task_brief": "Implement export `buildScoringFloorPrompt` as specified: File: `lib/prompts/phase0.ts`, Export: `buildScoringFloorPrompt`, Consumers: Phase 0 routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 28)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "buildScoringFloorPrompt",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-063",
+      "text": "Export '`withRateLimit`': File: `lib/rate-limit.ts`, Export: `withRateLimit`, Consumers: All API routes",
+      "task_brief": "Implement export `withRateLimit` as specified: File: `lib/rate-limit.ts`, Export: `withRateLimit`, Consumers: All API routes",
+      "source": "table",
+      "source_location": "Export Names Table (table row 29)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "withRateLimit",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-064",
+      "text": "Export '`authMiddleware`': File: `lib/auth/middleware.ts`, Export: `authMiddleware`, Consumers: middleware.ts",
+      "task_brief": "Implement export `authMiddleware` as specified: File: `lib/auth/middleware.ts`, Export: `authMiddleware`, Consumers: middleware.ts",
+      "source": "table",
+      "source_location": "Export Names Table (table row 30)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "authMiddleware",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-065",
+      "text": "Export 'All API route request/response schemas': File: `lib/schemas/api-contracts.ts`, Export: All API route request/response schemas, Consumers: All API routes (validation)",
+      "task_brief": "Implement export All API route request/response schemas as specified: File: `lib/schemas/api-contracts.ts`, Export: All API route request/response schemas, Consumers: All API routes (validation)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 31)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-066",
+      "text": "Export '`ApiError`': File: `lib/schemas/api-contracts.ts`, Export: `ApiError`, Consumers: All API routes (error responses)",
+      "task_brief": "Implement export `ApiError` as specified: File: `lib/schemas/api-contracts.ts`, Export: `ApiError`, Consumers: All API routes (error responses)",
+      "source": "table",
+      "source_location": "Export Names Table (table row 32)",
+      "confidence": 1.0,
+      "deterministic_check": {
+        "pattern": "ApiError",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-067",
+      "text": "Function '`createBrowserClient()`': Function: `createBrowserClient()`, File: `src/lib/supabase/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All client components (editors, councils, signature), When In Flow: On component mount",
+      "task_brief": "Implement function `createBrowserClient()` as specified: Function: `createBrowserClient()`, File: `src/lib/supabase/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All client components (editors, councils, signature), When In Flow: On component mount",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-068",
+      "text": "Function '`createServerClient()`': Function: `createServerClient()`, File: `src/lib/supabase/server.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All API route agents (`phase0-ui`, `editor-core`, `seed-council`, `standard-council-rwp`, `signature-dashboard`, `demo-prep`), When In Flow: Start of every route handler",
+      "task_brief": "Implement function `createServerClient()` as specified: Function: `createServerClient()`, File: `src/lib/supabase/server.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All API route agents (`phase0-ui`, `editor-core`, `seed-council`, `standard-council-rwp`, `signature-dashboard`, `demo-prep`), When In Flow: Start of every route handler",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-069",
+      "text": "Function '`getClient()`': Function: `getClient()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3) (Scoring Floor), `editor-core` (2.1) (Editor analysis), When In Flow: Non-streaming Anthropic SDK calls only",
+      "task_brief": "Implement function `getClient()` as specified: Function: `getClient()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3) (Scoring Floor), `editor-core` (2.1) (Editor analysis), When In Flow: Non-streaming Anthropic SDK calls only",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-070",
+      "text": "Function '`hasApiKey()`': Function: `hasApiKey()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3), `editor-core` (2.1), `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Mock mode check (all AI routes)",
+      "task_brief": "Implement function `hasApiKey()` as specified: Function: `hasApiKey()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3), `editor-core` (2.1), `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Mock mode check (all AI routes)",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-071",
+      "text": "Function '`runDeterministicPass()`': Function: `runDeterministicPass()`, File: `src/lib/editor/deterministic.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: Before LLM analysis in Editor",
+      "task_brief": "Implement function `runDeterministicPass()` as specified: Function: `runDeterministicPass()`, File: `src/lib/editor/deterministic.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: Before LLM analysis in Editor",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-072",
+      "text": "Function '`buildSeedBeatPrompt()`': Function: `buildSeedBeatPrompt()`, File: `src/lib/prompts/seed.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `seed-council` (3.2) via `/api/council/seed` route, When In Flow: Per beat in Seed Council",
+      "task_brief": "Implement function `buildSeedBeatPrompt()` as specified: Function: `buildSeedBeatPrompt()`, File: `src/lib/prompts/seed.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `seed-council` (3.2) via `/api/council/seed` route, When In Flow: Per beat in Seed Council",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-073",
+      "text": "Function '`buildVoicePrompt()`': Function: `buildVoicePrompt()`, File: `src/lib/prompts/council.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `standard-council-rwp` (3.3) via `/api/council/standard` and `/api/council/rwp` routes, When In Flow: Per voice in Standard/RWP Council",
+      "task_brief": "Implement function `buildVoicePrompt()` as specified: Function: `buildVoicePrompt()`, File: `src/lib/prompts/council.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `standard-council-rwp` (3.3) via `/api/council/standard` and `/api/council/rwp` routes, When In Flow: Per voice in Standard/RWP Council",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-074",
+      "text": "Function '`buildEditorPrompt()`': Function: `buildEditorPrompt()`, File: `src/lib/prompts/editor.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: LLM analysis call",
+      "task_brief": "Implement function `buildEditorPrompt()` as specified: Function: `buildEditorPrompt()`, File: `src/lib/prompts/editor.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: LLM analysis call",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-075",
+      "text": "Function '`buildScoringFloorPrompt()`': Function: `buildScoringFloorPrompt()`, File: `src/lib/prompts/phase0.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor` route, When In Flow: Phase 0 scoring check",
+      "task_brief": "Implement function `buildScoringFloorPrompt()` as specified: Function: `buildScoringFloorPrompt()`, File: `src/lib/prompts/phase0.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor` route, When In Flow: Phase 0 scoring check",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-076",
+      "text": "Function '`update_signature_after_decision()`': Function: `update_signature_after_decision()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `/api/editor/decide` route, When In Flow: After accept/reject",
+      "task_brief": "Implement function `update_signature_after_decision()` as specified: Function: `update_signature_after_decision()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `/api/editor/decide` route, When In Flow: After accept/reject",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-077",
+      "text": "Function '`upsert_rate_limit()`': Function: `upsert_rate_limit()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `withRateLimit()`, When In Flow: Rate limit check",
+      "task_brief": "Implement function `upsert_rate_limit()` as specified: Function: `upsert_rate_limit()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `withRateLimit()`, When In Flow: Rate limit check",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-078",
+      "text": "Function '`auth.is_admin()`': Function: `auth.is_admin()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/*` routes, `add_allowed_email()` RPC, When In Flow: Admin route auth",
+      "task_brief": "Implement function `auth.is_admin()` as specified: Function: `auth.is_admin()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/*` routes, `add_allowed_email()` RPC, When In Flow: Admin route auth",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 12)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-079",
+      "text": "Function '`add_allowed_email()`': Function: `add_allowed_email()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/whitelist` route, When In Flow: Admin adds beta tester",
+      "task_brief": "Implement function `add_allowed_email()` as specified: Function: `add_allowed_email()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/whitelist` route, When In Flow: Admin adds beta tester",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 13)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-080",
+      "text": "Function '`withRateLimit()`': Function: `withRateLimit()`, File: `src/lib/rate-limit.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): All API route agents, When In Flow: Top of every AI/editor route handler",
+      "task_brief": "Implement function `withRateLimit()` as specified: Function: `withRateLimit()`, File: `src/lib/rate-limit.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): All API route agents, When In Flow: Top of every AI/editor route handler",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 14)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-081",
+      "text": "Function '`getMockSeedBeat()`': Function: `getMockSeedBeat()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `seed-council` (3.2), When In Flow: When `hasApiKey()` = false",
+      "task_brief": "Implement function `getMockSeedBeat()` as specified: Function: `getMockSeedBeat()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `seed-council` (3.2), When In Flow: When `hasApiKey()` = false",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 15)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-082",
+      "text": "Function '`getMockVoiceResponse()`': Function: `getMockVoiceResponse()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+      "task_brief": "Implement function `getMockVoiceResponse()` as specified: Function: `getMockVoiceResponse()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 16)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-083",
+      "text": "Function '`getMockVerdict()`': Function: `getMockVerdict()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+      "task_brief": "Implement function `getMockVerdict()` as specified: Function: `getMockVerdict()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 17)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-084",
+      "text": "Function '`getMockScoringFloor()`': Function: `getMockScoringFloor()`, File: `src/lib/ai/phase0-mock.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor`, When In Flow: When `hasApiKey()` = false",
+      "task_brief": "Implement function `getMockScoringFloor()` as specified: Function: `getMockScoringFloor()`, File: `src/lib/ai/phase0-mock.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor`, When In Flow: When `hasApiKey()` = false",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 18)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-085",
+      "text": "Function '`getMockEditorAnalysis()`': Function: `getMockEditorAnalysis()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1), When In Flow: When `hasApiKey()` = false",
+      "task_brief": "Implement function `getMockEditorAnalysis()` as specified: Function: `getMockEditorAnalysis()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1), When In Flow: When `hasApiKey()` = false",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 19)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-086",
+      "text": "Function '`getStreamingModel()`': Function: `getStreamingModel()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Streaming Council calls via Vercel AI SDK",
+      "task_brief": "Implement function `getStreamingModel()` as specified: Function: `getStreamingModel()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Streaming Council calls via Vercel AI SDK",
+      "source": "table",
+      "source_location": "Cross-Boundary Wiring Section (table row 20)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-087",
+      "text": "Table: `profiles`, Writer: `scaffold-auth` (1), Reader(s): All modules",
+      "task_brief": "Implement the following as specified: Table: `profiles`, Writer: `scaffold-auth` (1), Reader(s): All modules",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-088",
+      "text": "Table: `fingerprints`, Writer: `phase0-ui` (3), Reader(s): council, editor, signature dashboard",
+      "task_brief": "Implement the following as specified: Table: `fingerprints`, Writer: `phase0-ui` (3), Reader(s): council, editor, signature dashboard",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-089",
+      "text": "Table: `projects`, Writer: `phase0-ui` (3), Reader(s): All modules",
+      "task_brief": "Implement the following as specified: Table: `projects`, Writer: `phase0-ui` (3), Reader(s): All modules",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-090",
+      "text": "Table: `draft_versions`, Writer: `editor-core` (2.1), `standard-council-rwp` (3.3), Reader(s): council, editor, RWP",
+      "task_brief": "Implement the following as specified: Table: `draft_versions`, Writer: `editor-core` (2.1), `standard-council-rwp` (3.3), Reader(s): council, editor, RWP",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-091",
+      "text": "Table: `council_sessions`, Writer: `seed-council` (3.2), `standard-council-rwp` (3.3), Reader(s): RWP module, project view, session history",
+      "task_brief": "Implement the following as specified: Table: `council_sessions`, Writer: `seed-council` (3.2), `standard-council-rwp` (3.3), Reader(s): RWP module, project view, session history",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-092",
+      "text": "Table: `editor_sessions`, Writer: `editor-core` (2.1), Reader(s): signature dashboard",
+      "task_brief": "Implement the following as specified: Table: `editor_sessions`, Writer: `editor-core` (2.1), Reader(s): signature dashboard",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-093",
+      "text": "Table: `editor_suggestions`, Writer: `editor-core` (2.1), Reader(s): signature dashboard, annotation UI",
+      "task_brief": "Implement the following as specified: Table: `editor_suggestions`, Writer: `editor-core` (2.1), Reader(s): signature dashboard, annotation UI",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-094",
+      "text": "Table: `editorial_signatures`, Writer: `editor-core` (2.1) via RPC, Reader(s): signature dashboard",
+      "task_brief": "Implement the following as specified: Table: `editorial_signatures`, Writer: `editor-core` (2.1) via RPC, Reader(s): signature dashboard",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-095",
+      "text": "Table: `rate_limits`, Writer: `editor-core` (2.1) via `upsert_rate_limit()` RPC, Reader(s): `withRateLimit()` reads",
+      "task_brief": "Implement the following as specified: Table: `rate_limits`, Writer: `editor-core` (2.1) via `upsert_rate_limit()` RPC, Reader(s): `withRateLimit()` reads",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-096",
+      "text": "Table: `allowed_emails`, Writer: `demo-prep` (4.1) via `add_allowed_email()` RPC + Migration 004 seed, Reader(s): auth hook (SECURITY DEFINER)",
+      "task_brief": "Implement the following as specified: Table: `allowed_emails`, Writer: `demo-prep` (4.1) via `add_allowed_email()` RPC + Migration 004 seed, Reader(s): auth hook (SECURITY DEFINER)",
+      "source": "table",
+      "source_location": "Data Ownership Table (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-097",
+      "text": ": 1, 2, 6, 7 (client pattern), 12",
+      "task_brief": "Implement the following as specified: : 1, 2, 6, 7 (client pattern), 12",
+      "source": "table",
+      "source_location": "Agent 1: `scaffold-auth` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-098",
+      "text": ": `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/app/auth/callback/route.ts`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/middleware.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/middleware.ts`, `src/lib/auth/middleware.ts`, `src/lib/ai/client.ts`, `next.config.ts`, `tailwind.config.ts`, `tsconfig.json`, `package.json`, `.env.example`",
+      "task_brief": "Implement the following as specified: : `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/app/auth/callback/route.ts`, `src/app/(app)/layout.tsx`, `src/app/(app)/dashboard/page.tsx`, `src/middleware.ts`, `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/supabase/middleware.ts`, `src/lib/auth/middleware.ts`, `src/lib/ai/client.ts`, `next.config.ts`, `tailwind.config.ts`, `tsconfig.json`, `package.json`, `.env.example`",
+      "source": "table",
+      "source_location": "Agent 1: `scaffold-auth` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-099",
+      "text": ": None (first agent)",
+      "task_brief": "Implement the following as specified: : None (first agent)",
+      "source": "table",
+      "source_location": "Agent 1: `scaffold-auth` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-100",
+      "text": ": 3",
+      "task_brief": "Implement the following as specified: : 3",
+      "source": "table",
+      "source_location": "Agent 2: `database` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-101",
+      "text": ": `supabase/migrations/001_core_schema.sql`, `supabase/migrations/002_rls_policies.sql`, `supabase/migrations/003_rpc_functions.sql`, `supabase/migrations/004_seed_data.sql`, `src/types/database.ts`",
+      "task_brief": "Implement the following as specified: : `supabase/migrations/001_core_schema.sql`, `supabase/migrations/002_rls_policies.sql`, `supabase/migrations/003_rpc_functions.sql`, `supabase/migrations/004_seed_data.sql`, `src/types/database.ts`",
+      "source": "table",
+      "source_location": "Agent 2: `database` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-102",
+      "text": ": None",
+      "task_brief": "Implement the following as specified: : None",
+      "source": "table",
+      "source_location": "Agent 2: `database` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-103",
+      "text": ": 4.1-4.7 (all Zod schemas + API contracts)",
+      "task_brief": "Implement the following as specified: : 4.1-4.7 (all Zod schemas + API contracts)",
+      "source": "table",
+      "source_location": "Agent 1.5: `schemas` (GATE \u2014 runs after database, before phase0-ui) (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-104",
+      "text": ": `src/lib/schemas/fingerprint.ts`, `src/lib/schemas/transcript.ts`, `src/lib/schemas/seed-council.ts`, `src/lib/schemas/standard-council.ts`, `src/lib/schemas/rwp.ts`, `src/lib/schemas/editor.ts`, `src/lib/schemas/api-contracts.ts`, `src/lib/schemas/index.ts`, `src/lib/schemas/__tests__/schemas.test.ts`",
+      "task_brief": "Implement the following as specified: : `src/lib/schemas/fingerprint.ts`, `src/lib/schemas/transcript.ts`, `src/lib/schemas/seed-council.ts`, `src/lib/schemas/standard-council.ts`, `src/lib/schemas/rwp.ts`, `src/lib/schemas/editor.ts`, `src/lib/schemas/api-contracts.ts`, `src/lib/schemas/index.ts`, `src/lib/schemas/__tests__/schemas.test.ts`",
+      "source": "table",
+      "source_location": "Agent 1.5: `schemas` (GATE \u2014 runs after database, before phase0-ui) (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-105",
+      "text": ": `types/database.ts` (created by `database` agent)",
+      "task_brief": "Implement the following as specified: : `types/database.ts` (created by `database` agent)",
+      "source": "table",
+      "source_location": "Agent 1.5: `schemas` (GATE \u2014 runs after database, before phase0-ui) (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-106",
+      "text": ": 4.1",
+      "task_brief": "Implement the following as specified: : 4.1",
+      "source": "table",
+      "source_location": "Agent 3: `phase0-ui` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-107",
+      "text": ": `src/app/(app)/onboarding/page.tsx`, `src/app/(app)/onboarding/components/FingerprintForm.tsx`, `src/app/(app)/onboarding/components/ScoringFloorCheck.tsx`, `src/app/(app)/projects/new/page.tsx`, `src/app/(app)/projects/new/components/ProjectForm.tsx`, `src/app/api/phase0/fingerprint/route.ts`, `src/app/api/phase0/scoring-floor/route.ts`, `src/app/api/projects/route.ts`, `src/lib/prompts/phase0.ts`, `src/lib/ai/phase0-mock.ts`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/onboarding/page.tsx`, `src/app/(app)/onboarding/components/FingerprintForm.tsx`, `src/app/(app)/onboarding/components/ScoringFloorCheck.tsx`, `src/app/(app)/projects/new/page.tsx`, `src/app/(app)/projects/new/components/ProjectForm.tsx`, `src/app/api/phase0/fingerprint/route.ts`, `src/app/api/phase0/scoring-floor/route.ts`, `src/app/api/projects/route.ts`, `src/lib/prompts/phase0.ts`, `src/lib/ai/phase0-mock.ts`",
+      "source": "table",
+      "source_location": "Agent 3: `phase0-ui` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-108",
+      "text": ": `lib/supabase/server.ts`, `lib/schemas/index.ts` (created by `schemas` agent), `types/database.ts`, `lib/ai/client.ts` (created by `scaffold-auth`)",
+      "task_brief": "Implement the following as specified: : `lib/supabase/server.ts`, `lib/schemas/index.ts` (created by `schemas` agent), `types/database.ts`, `lib/ai/client.ts` (created by `scaffold-auth`)",
+      "source": "table",
+      "source_location": "Agent 3: `phase0-ui` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-109",
+      "text": ": 4.5, 7",
+      "task_brief": "Implement the following as specified: : 4.5, 7",
+      "source": "table",
+      "source_location": "Agent 2.1: `editor-core` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-110",
+      "text": ": `src/lib/editor/deterministic.ts`, `src/lib/editor/vocabulary.ts`, `src/lib/ai/mock.ts`, `src/lib/prompts/editor.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/analyze/route.ts`, `src/app/api/editor/decide/route.ts`, `src/lib/editor/__fixtures__/classification-fixtures.ts`, `src/lib/editor/__tests__/classification.test.ts`",
+      "task_brief": "Implement the following as specified: : `src/lib/editor/deterministic.ts`, `src/lib/editor/vocabulary.ts`, `src/lib/ai/mock.ts`, `src/lib/prompts/editor.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/analyze/route.ts`, `src/app/api/editor/decide/route.ts`, `src/lib/editor/__fixtures__/classification-fixtures.ts`, `src/lib/editor/__tests__/classification.test.ts`",
+      "source": "table",
+      "source_location": "Agent 2.1: `editor-core` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-111",
+      "text": ": `lib/schemas/index.ts`, `lib/supabase/server.ts`, `lib/ai/client.ts` (created by `scaffold-auth`), `types/database.ts`",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/supabase/server.ts`, `lib/ai/client.ts` (created by `scaffold-auth`), `types/database.ts`",
+      "source": "table",
+      "source_location": "Agent 2.1: `editor-core` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-112",
+      "text": ": 4.5",
+      "task_brief": "Implement the following as specified: : 4.5",
+      "source": "table",
+      "source_location": "Agent 2.2: `editor-ui` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-113",
+      "text": ": `src/app/(app)/projects/[id]/editor/page.tsx`, `src/app/(app)/projects/[id]/editor/components/DocumentView.tsx`, `src/app/(app)/projects/[id]/editor/components/InlineAnnotation.tsx`, `src/app/(app)/projects/[id]/editor/components/SuggestionPopover.tsx`, `src/app/(app)/projects/[id]/editor/components/PasteInput.tsx`, `src/components/ui/Button.tsx`, `src/components/ui/TextArea.tsx`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/projects/[id]/editor/page.tsx`, `src/app/(app)/projects/[id]/editor/components/DocumentView.tsx`, `src/app/(app)/projects/[id]/editor/components/InlineAnnotation.tsx`, `src/app/(app)/projects/[id]/editor/components/SuggestionPopover.tsx`, `src/app/(app)/projects/[id]/editor/components/PasteInput.tsx`, `src/components/ui/Button.tsx`, `src/components/ui/TextArea.tsx`",
+      "source": "table",
+      "source_location": "Agent 2.2: `editor-ui` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-114",
+      "text": ": `lib/schemas/index.ts`, `lib/supabase/client.ts`",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/supabase/client.ts`",
+      "source": "table",
+      "source_location": "Agent 2.2: `editor-ui` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-115",
+      "text": ": 4.6",
+      "task_brief": "Implement the following as specified: : 4.6",
+      "source": "table",
+      "source_location": "Agent 2.3: `signature-dashboard` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-116",
+      "text": ": `src/app/(app)/signature/page.tsx`, `src/app/(app)/signature/components/SignatureOverview.tsx`, `src/app/(app)/signature/components/PrincipleChart.tsx`, `src/app/(app)/signature/components/DecisionHistory.tsx`, `src/app/(app)/signature/components/EmptyState.tsx`, `src/app/api/signature/route.ts`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/signature/page.tsx`, `src/app/(app)/signature/components/SignatureOverview.tsx`, `src/app/(app)/signature/components/PrincipleChart.tsx`, `src/app/(app)/signature/components/DecisionHistory.tsx`, `src/app/(app)/signature/components/EmptyState.tsx`, `src/app/api/signature/route.ts`",
+      "source": "table",
+      "source_location": "Agent 2.3: `signature-dashboard` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-117",
+      "text": ": `lib/schemas/index.ts`, `lib/supabase/server.ts`, `lib/supabase/client.ts`, `types/database.ts`",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/supabase/server.ts`, `lib/supabase/client.ts`, `types/database.ts`",
+      "source": "table",
+      "source_location": "Agent 2.3: `signature-dashboard` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-118",
+      "text": ": 8",
+      "task_brief": "Implement the following as specified: : 8",
+      "source": "table",
+      "source_location": "Agent 3.1: `council-prompts` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-119",
+      "text": ": `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/seed-fixtures.ts`, `src/lib/prompts/__fixtures__/council-fixtures.ts`, `src/lib/prompts/__tests__/regression.test.ts`",
+      "task_brief": "Implement the following as specified: : `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/seed-fixtures.ts`, `src/lib/prompts/__fixtures__/council-fixtures.ts`, `src/lib/prompts/__tests__/regression.test.ts`",
+      "source": "table",
+      "source_location": "Agent 3.1: `council-prompts` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-120",
+      "text": ": `lib/schemas/index.ts`, `lib/prompts/phase0.ts` (created by `phase0-ui`)",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/prompts/phase0.ts` (created by `phase0-ui`)",
+      "source": "table",
+      "source_location": "Agent 3.1: `council-prompts` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-121",
+      "text": ": 4.2",
+      "task_brief": "Implement the following as specified: : 4.2",
+      "source": "table",
+      "source_location": "Agent 3.2: `seed-council` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-122",
+      "text": ": `src/app/(app)/projects/[id]/seed/page.tsx`, `src/app/(app)/projects/[id]/seed/components/CoaxingPrompt.tsx`, `src/app/(app)/projects/[id]/seed/components/MicroInterview.tsx`, `src/app/(app)/projects/[id]/seed/components/BeatView.tsx`, `src/app/(app)/projects/[id]/seed/components/ClosingHandoff.tsx`, `src/app/api/council/seed/route.ts`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/projects/[id]/seed/page.tsx`, `src/app/(app)/projects/[id]/seed/components/CoaxingPrompt.tsx`, `src/app/(app)/projects/[id]/seed/components/MicroInterview.tsx`, `src/app/(app)/projects/[id]/seed/components/BeatView.tsx`, `src/app/(app)/projects/[id]/seed/components/ClosingHandoff.tsx`, `src/app/api/council/seed/route.ts`",
+      "source": "table",
+      "source_location": "Agent 3.2: `seed-council` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-123",
+      "text": ": `lib/schemas/index.ts`, `lib/prompts/seed.ts`, `lib/ai/client.ts`, `lib/ai/mock.ts`, `lib/supabase/server.ts`, `lib/supabase/client.ts`",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/prompts/seed.ts`, `lib/ai/client.ts`, `lib/ai/mock.ts`, `lib/supabase/server.ts`, `lib/supabase/client.ts`",
+      "source": "table",
+      "source_location": "Agent 3.2: `seed-council` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-124",
+      "text": ": 4.3, 4.4",
+      "task_brief": "Implement the following as specified: : 4.3, 4.4",
+      "source": "table",
+      "source_location": "Agent 3.3: `standard-council-rwp` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-125",
+      "text": ": `src/app/(app)/projects/[id]/council/page.tsx`, `src/app/(app)/projects/[id]/council/components/VoiceView.tsx`, `src/app/(app)/projects/[id]/council/components/VerdictDisplay.tsx`, `src/app/(app)/projects/[id]/council/components/HandoffActions.tsx`, `src/app/(app)/projects/[id]/council/components/SessionTranscript.tsx`, `src/app/(app)/projects/[id]/rwp/page.tsx`, `src/app/api/council/standard/route.ts`, `src/app/api/council/rwp/route.ts`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/projects/[id]/council/page.tsx`, `src/app/(app)/projects/[id]/council/components/VoiceView.tsx`, `src/app/(app)/projects/[id]/council/components/VerdictDisplay.tsx`, `src/app/(app)/projects/[id]/council/components/HandoffActions.tsx`, `src/app/(app)/projects/[id]/council/components/SessionTranscript.tsx`, `src/app/(app)/projects/[id]/rwp/page.tsx`, `src/app/api/council/standard/route.ts`, `src/app/api/council/rwp/route.ts`",
+      "source": "table",
+      "source_location": "Agent 3.3: `standard-council-rwp` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-126",
+      "text": ": `lib/schemas/index.ts`, `lib/prompts/council.ts`, `lib/ai/client.ts`, `lib/ai/mock.ts`, `lib/supabase/server.ts`, `lib/supabase/client.ts`",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/prompts/council.ts`, `lib/ai/client.ts`, `lib/ai/mock.ts`, `lib/supabase/server.ts`, `lib/supabase/client.ts`",
+      "source": "table",
+      "source_location": "Agent 3.3: `standard-council-rwp` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-127",
+      "text": ": 4.3 (verdict handoff), 6 (locked decision 12: read-only scroll back)",
+      "task_brief": "Implement the following as specified: : 4.3 (verdict handoff), 6 (locked decision 12: read-only scroll back)",
+      "source": "table",
+      "source_location": "Agent 3.4: `project-flow` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-128",
+      "text": ": `src/app/(app)/projects/[id]/page.tsx`, `src/app/(app)/projects/[id]/components/ProjectDashboard.tsx`, `src/app/(app)/projects/[id]/components/SessionHistory.tsx`, `src/app/(app)/projects/[id]/components/HandoffState.tsx`, `src/app/(app)/projects/[id]/components/ModeSelector.tsx`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/projects/[id]/page.tsx`, `src/app/(app)/projects/[id]/components/ProjectDashboard.tsx`, `src/app/(app)/projects/[id]/components/SessionHistory.tsx`, `src/app/(app)/projects/[id]/components/HandoffState.tsx`, `src/app/(app)/projects/[id]/components/ModeSelector.tsx`",
+      "source": "table",
+      "source_location": "Agent 3.4: `project-flow` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-129",
+      "text": ": `lib/schemas/index.ts`, `lib/supabase/client.ts`, `types/database.ts`",
+      "task_brief": "Implement the following as specified: : `lib/schemas/index.ts`, `lib/supabase/client.ts`, `types/database.ts`",
+      "source": "table",
+      "source_location": "Agent 3.4: `project-flow` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-130",
+      "text": ": 10 (Phase 4 scope)",
+      "task_brief": "Implement the following as specified: : 10 (Phase 4 scope)",
+      "source": "table",
+      "source_location": "Agent 4.1: `demo-prep` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-131",
+      "text": ": `src/app/api/admin/whitelist/route.ts`, `src/app/api/admin/seed-demo/route.ts`, `src/lib/demo/seed-data.ts`, `src/app/(app)/projects/[id]/editor/components/ExportButton.tsx`",
+      "task_brief": "Implement the following as specified: : `src/app/api/admin/whitelist/route.ts`, `src/app/api/admin/seed-demo/route.ts`, `src/lib/demo/seed-data.ts`, `src/app/(app)/projects/[id]/editor/components/ExportButton.tsx`",
+      "source": "table",
+      "source_location": "Agent 4.1: `demo-prep` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-132",
+      "text": ": `lib/supabase/server.ts`, `types/database.ts`",
+      "task_brief": "Implement the following as specified: : `lib/supabase/server.ts`, `types/database.ts`",
+      "source": "table",
+      "source_location": "Agent 4.1: `demo-prep` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-133",
+      "text": ": 1 (guardrails), 10 (Phase 4 scope)",
+      "task_brief": "Implement the following as specified: : 1 (guardrails), 10 (Phase 4 scope)",
+      "source": "table",
+      "source_location": "Agent 4.2: `polish` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-134",
+      "text": ": `src/app/(app)/components/LoadingStates.tsx`, `src/app/(app)/components/ErrorBoundary.tsx`, `src/app/(app)/components/Navigation.tsx`",
+      "task_brief": "Implement the following as specified: : `src/app/(app)/components/LoadingStates.tsx`, `src/app/(app)/components/ErrorBoundary.tsx`, `src/app/(app)/components/Navigation.tsx`",
+      "source": "table",
+      "source_location": "Agent 4.2: `polish` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-135",
+      "text": ": `src/app/globals.css` (add annotation highlight colors, voice persona colors, custom Tailwind utilities)",
+      "task_brief": "Implement the following as specified: : `src/app/globals.css` (add annotation highlight colors, voice persona colors, custom Tailwind utilities)",
+      "source": "table",
+      "source_location": "Agent 4.2: `polish` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-136",
+      "text": ": `lib/supabase/client.ts`",
+      "task_brief": "Implement the following as specified: : `lib/supabase/client.ts`",
+      "source": "table",
+      "source_location": "Agent 4.2: `polish` (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-137",
+      "text": "File/Directory: `src/app/layout.tsx`, `src/middleware.ts`, `next.config.ts`, `package.json`, Owning Agent: scaffold-auth, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/layout.tsx`, `src/middleware.ts`, `next.config.ts`, `package.json`, Owning Agent: scaffold-auth, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-138",
+      "text": "File/Directory: `src/lib/supabase/*`, Owning Agent: scaffold-auth, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/supabase/*`, Owning Agent: scaffold-auth, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-139",
+      "text": "File/Directory: `src/lib/auth/*`, Owning Agent: scaffold-auth, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/auth/*`, Owning Agent: scaffold-auth, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-140",
+      "text": "File/Directory: `src/lib/ai/client.ts`, Owning Agent: scaffold-auth, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/ai/client.ts`, Owning Agent: scaffold-auth, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-141",
+      "text": "File/Directory: `src/app/globals.css`, Owning Agent: scaffold-auth (creates) / polish (appends annotation + voice styles only), Phase: 1 / 4",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/globals.css`, Owning Agent: scaffold-auth (creates) / polish (appends annotation + voice styles only), Phase: 1 / 4",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-142",
+      "text": "File/Directory: `supabase/migrations/*`, Owning Agent: database, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `supabase/migrations/*`, Owning Agent: database, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-143",
+      "text": "File/Directory: `src/types/database.ts`, Owning Agent: database, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/types/database.ts`, Owning Agent: database, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-144",
+      "text": "File/Directory: `src/app/(app)/onboarding/*`, `src/app/api/phase0/*`, `src/app/api/projects/*`, Owning Agent: phase0-ui, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/onboarding/*`, `src/app/api/phase0/*`, `src/app/api/projects/*`, Owning Agent: phase0-ui, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-145",
+      "text": "File/Directory: `src/lib/prompts/phase0.ts`, `src/lib/ai/phase0-mock.ts`, Owning Agent: phase0-ui, Phase: 1",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/prompts/phase0.ts`, `src/lib/ai/phase0-mock.ts`, Owning Agent: phase0-ui, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-146",
+      "text": "File/Directory: `src/lib/schemas/*`, Owning Agent: schemas, Phase: 1.5",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/schemas/*`, Owning Agent: schemas, Phase: 1.5",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-147",
+      "text": "File/Directory: `src/lib/editor/*`, `src/lib/ai/mock.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/*`, Owning Agent: editor-core, Phase: 2",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/editor/*`, `src/lib/ai/mock.ts`, `src/lib/rate-limit.ts`, `src/app/api/editor/*`, Owning Agent: editor-core, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-148",
+      "text": "File/Directory: `src/lib/prompts/editor.ts`, Owning Agent: editor-core, Phase: 2",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/prompts/editor.ts`, Owning Agent: editor-core, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 12)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-149",
+      "text": "File/Directory: `src/app/(app)/projects/[id]/editor/*`, `src/components/ui/*`, Owning Agent: editor-ui, Phase: 2",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/projects/[id]/editor/*`, `src/components/ui/*`, Owning Agent: editor-ui, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 13)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-150",
+      "text": "File/Directory: `src/app/(app)/signature/*`, `src/app/api/signature/*`, Owning Agent: signature-dashboard, Phase: 2",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/signature/*`, `src/app/api/signature/*`, Owning Agent: signature-dashboard, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 14)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-151",
+      "text": "File/Directory: `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/*`, `src/lib/prompts/__tests__/*`, Owning Agent: council-prompts, Phase: 3",
+      "task_brief": "Implement the following as specified: File/Directory: `src/lib/prompts/seed.ts`, `src/lib/prompts/council.ts`, `src/lib/prompts/shared-rules.ts`, `src/lib/prompts/__fixtures__/*`, `src/lib/prompts/__tests__/*`, Owning Agent: council-prompts, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 15)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-152",
+      "text": "File/Directory: `src/app/(app)/projects/[id]/seed/*`, `src/app/api/council/seed/*`, Owning Agent: seed-council, Phase: 3",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/projects/[id]/seed/*`, `src/app/api/council/seed/*`, Owning Agent: seed-council, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 16)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-153",
+      "text": "File/Directory: `src/app/(app)/projects/[id]/council/*`, `src/app/(app)/projects/[id]/rwp/*`, `src/app/api/council/standard/*`, `src/app/api/council/rwp/*`, Owning Agent: standard-council-rwp, Phase: 3",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/projects/[id]/council/*`, `src/app/(app)/projects/[id]/rwp/*`, `src/app/api/council/standard/*`, `src/app/api/council/rwp/*`, Owning Agent: standard-council-rwp, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 17)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-154",
+      "text": "File/Directory: `src/app/(app)/projects/[id]/page.tsx`, `src/app/(app)/projects/[id]/components/*`, Owning Agent: project-flow, Phase: 3",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/projects/[id]/page.tsx`, `src/app/(app)/projects/[id]/components/*`, Owning Agent: project-flow, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 18)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-155",
+      "text": "File/Directory: `src/app/api/admin/*`, `src/lib/demo/*`, Owning Agent: demo-prep, Phase: 4",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/api/admin/*`, `src/lib/demo/*`, Owning Agent: demo-prep, Phase: 4",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 19)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-156",
+      "text": "File/Directory: `src/app/(app)/components/*`, Owning Agent: polish, Phase: 4",
+      "task_brief": "Implement the following as specified: File/Directory: `src/app/(app)/components/*`, Owning Agent: polish, Phase: 4",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 20)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    }
+  ]
+}

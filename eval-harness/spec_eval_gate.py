@@ -189,16 +189,31 @@ async def _run_gate(
     # Phase 2b: Extract prose claims (LLM)
     spec_without_tables = strip_tables(spec_text)
 
-    client = anthropic.Anthropic(
-        max_retries=3,
-        timeout=httpx.Timeout(180.0, connect=5.0),
-    )
-
-    try:
-        prose_claims = extract_prose_claims(spec_without_tables, client)
-    except ExtractionError as e:
-        click.echo(f"Extraction error: {e}", err=True)
-        return 1
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        if dry_run:
+            click.echo(
+                "Warning: ANTHROPIC_API_KEY not set. Skipping prose extraction.",
+                err=True,
+            )
+            prose_claims = []
+        else:
+            click.echo(
+                "Error: ANTHROPIC_API_KEY not set. Required for prose extraction "
+                "and scenario execution.",
+                err=True,
+            )
+            return 1
+    else:
+        client = anthropic.Anthropic(
+            max_retries=3,
+            timeout=httpx.Timeout(180.0, connect=5.0),
+        )
+        try:
+            prose_claims = extract_prose_claims(spec_without_tables, client)
+        except ExtractionError as e:
+            click.echo(f"Extraction error: {e}", err=True)
+            return 1
 
     if verbose:
         click.echo(f"Prose claims extracted: {len(prose_claims)}")
