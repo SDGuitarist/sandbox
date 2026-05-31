@@ -1,8 +1,8 @@
 # HANDOFF -- Pitfall Eval Harness + Spec Eval Gate
 
 **Branch:** `feat/pitfall-eval-harness`
-**Date:** 2026-05-25
-**Last commit:** `44f4d94`
+**Date:** 2026-05-31
+**Last commit:** `210c958`
 
 ## What Exists
 
@@ -20,7 +20,7 @@ A three-layer pipeline for testing and optimizing agent-pitfalls.md rules:
 - **MC projection at 25 agents:** 100% clean with all rules injected
 - **Total eval cost:** ~$4 across all runs
 
-### Spec Eval Gate (IN PROGRESS -- Phase 1 complete)
+### Spec Eval Gate (Phases 1-5 complete, calibration pending)
 
 A pre-swarm gate (step 9w.8) that tests whether agents can follow a spec's concrete instructions before launching a swarm build.
 
@@ -30,61 +30,78 @@ A pre-swarm gate (step 9w.8) that tests whether agents can follow a spec's concr
 - `eval-harness/runner.py` -- Refactored `build_prompt()` and `run_scenario()` to accept `rule_text: str` + `fc_id: str` instead of `fc: FailureClass`. Added `OverloadedError` to except clause.
 - `eval-harness/pitfall_eval.py` -- Caller updated. Existing behavior verified via `--dry-run`.
 
+**Phase 2 DONE (commit a6410c1):**
+- `eval-harness/extractor.py` -- Table parser (deterministic, confidence=1.0) + Sonnet prose extraction via `messages.parse()` + hash-based deduplication. 156 table claims extracted from WRC spec in dry-run validation.
+
+**Phases 3-5 DONE (commit e45d3d3):**
+- `eval-harness/spec_scenario_gen.py` -- Claims to Scenarios mapping (variant="with_rule")
+- `eval-harness/spec_scorer.py` -- Confidence-filtered 100% threshold scoring (4 status paths)
+- `eval-harness/spec_judge.py` -- Spec-adherence LLM judge with anti-leniency rubric
+- `eval-harness/spec_eval_gate.py` -- Async CLI with semaphore concurrency, cost tracking, dry-run
+- `eval-harness/judges/spec-eval-base.txt` -- Judge prompt (chain-of-thought before verdict)
+
+**Calibration (commit 210c958):**
+- `eval-harness/calibration/spec-eval/wrc-extraction-tables-only.json` -- 156 table claims from WRC spec (31 deterministic, 125 LLM-judge)
+
 ### Key Files
 
-- `eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md` -- **THE PLAN (read this first)**
-- `eval-harness/docs/brainstorms/2026-05-24-spec-eval-gate-brainstorm.md` -- Brainstorm with 6 key decisions
-- `eval-harness/pitfall_eval.py` -- CLI entry point (refactored in Phase 1)
+- `eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md` -- **THE PLAN**
+- `eval-harness/spec_eval_gate.py` -- CLI entry point (async, Click)
+- `eval-harness/extractor.py` -- Claim extraction (tables + prose)
+- `eval-harness/spec_scenario_gen.py` -- Claim to Scenario mapping
+- `eval-harness/spec_scorer.py` -- Gate scoring logic
+- `eval-harness/spec_judge.py` -- Spec-adherence judge
+- `eval-harness/judges/spec-eval-base.txt` -- Judge prompt
 - `eval-harness/runner.py` -- Runner (refactored in Phase 1)
-- `eval-harness/judge.py` -- Existing judge (`check_deterministic` will be reused by `spec_judge.py`)
-- `eval-harness/models.py` -- All models (Phase 1 additions at bottom)
-- `eval-harness/exceptions.py` -- New spec-eval exceptions
-- `docs/handoffs/2026-05-25-cross-plan-dependency-autopilot.md` -- Cross-plan note (delegation branch doesn't conflict)
+- `eval-harness/models.py` -- All models
+- `eval-harness/exceptions.py` -- Spec-eval exceptions
+- `docs/handoffs/2026-05-25-cross-plan-dependency-autopilot.md` -- Cross-plan note
 
 ## What To Do Next
 
-### Continue: Phase 2 -- Extractor (BLOCKING PREREQUISITE)
+### Blocking: Full calibration with ANTHROPIC_API_KEY
 
-Read `eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md`, Phase 2.
+The code is complete but the blocking prerequisite requires running with a real API key:
 
-Build `eval-harness/extractor.py` (~180 lines) with three parts:
+1. Set `ANTHROPIC_API_KEY` in environment
+2. Run against WRC spec:
+   ```bash
+   cd ~/Projects/sandbox/eval-harness
+   python3 spec_eval_gate.py ../docs/plans/2026-05-03-feat-writers-room-council-app-spec.md --dry-run --verbose --output-dir calibration/spec-eval
+   ```
+3. Run against Ethics Toolkit spec:
+   ```bash
+   python3 spec_eval_gate.py ../docs/plans/2026-04-30-ethics-toolkit-platform-spec.md --dry-run --verbose --output-dir calibration/spec-eval
+   ```
+4. Save calibration artifacts:
+   ```bash
+   cp calibration/spec-eval/spec-eval-*/extraction.json calibration/spec-eval/wrc-extraction.json
+   cp calibration/spec-eval/spec-eval-*/extraction.json calibration/spec-eval/ethics-extraction.json
+   ```
+5. Review extraction quality against plan's ground truth table
+6. Commit calibration artifacts
 
-1. **`parse_tables(spec_text)`** -- Deterministic markdown table parser. Targets Export Names, Input Validation, Authorization Matrix tables. Returns `list[Claim]` with `confidence=1.0`.
+### After calibration: Full gate run
 
-2. **`extract_prose_claims(spec_text_without_tables, client)`** -- Sonnet LLM extraction via `messages.parse()` with Pydantic. Uses the extraction prompt in the plan's "Prompt Design" section. Strip parsed tables before sending to Sonnet (20-40% cost reduction). Wrap spec in `<SPEC_DOCUMENT>` delimiters for prompt injection defense.
-
-3. **`deduplicate_claims(claims)`** -- Source location + normalized text hash. Keep table version over prose version.
-
-**BLOCKING PREREQUISITE:** Phase 2 is NOT complete until:
-- Extraction tested against WRC spec (`docs/plans/2026-05-03-feat-writers-room-council-app-spec.md`) with `--dry-run`
-- Extraction tested against Ethics Toolkit spec
-- Calibration artifacts checked in to `eval-harness/calibration/spec-eval/wrc-extraction.json` and `ethics-extraction.json`
-- Phase 3 does NOT start until these artifacts exist
-
-**Critical implementation details:**
-- Co-locate extraction prompt with `Claim` model in `extractor.py`
-- Use `messages.parse()` with Pydantic `ExtractionResult` model for guaranteed schema
-- Include `rejected_statements` field in extraction output
-- Include `confidence_reasoning` per prose claim
-- Confidence calibration: 0.95+ for direct quotes, 0.85-0.94 for clear requirements, reject below 0.70
-
-### Remaining Phases (after Phase 2 prerequisite clears)
-
-| Phase | What | Key File |
-|-------|------|----------|
-| 3 | Scenario generator | `spec_scenario_gen.py` -- maps Claims to Scenarios. Use `variant="with_rule"`. Scenarios stay in memory. |
-| 4 | Gate scorer | `spec_scorer.py` -- confidence-filtered 100% threshold. JSON report only (no MD for v1). |
-| 5 | CLI + integration | `spec_eval_gate.py` -- Click CLI, async via `asyncio.to_thread()`. `spec_judge.py` -- new judge reusing `check_deterministic`. `judges/spec-eval-base.txt`. |
-
-### Start Command
-
+Run the gate end-to-end on a real spec with scenarios + judging:
+```bash
+python3 spec_eval_gate.py ../docs/plans/2026-05-03-feat-writers-room-council-app-spec.md --verbose --cost-cap 1.0
 ```
-cd ~/Projects/sandbox/eval-harness
-Read eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md.
-Implement Phase 2 (Extractor). Relevant files: eval-harness/models.py
-(Claim, DeterministicCheck models), eval-harness/judge.py (check_deterministic
-for reference pattern). Ground truth table for extraction validation is in
-the plan's "Prompt Design" section.
+
+Verify: exit code 0 for a well-structured spec, exit code 1 for a vague spec.
+
+### After validation: Add step 9w.8 to autopilot SKILL.md
+
+Add between Steps 9w.7 and 10w in the swarm path:
+```
+### Step 9w.8: Spec Eval Gate (MANDATORY -- SWARM ONLY)
+
+Run the spec eval gate against the plan:
+  `python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id>`
+
+Check exit code:
+- Exit 0 (PASS): proceed to Step 10w.
+- Exit 1 (FAIL/WARN/RETRY): abort with gate report details.
 ```
 
 ## Concurrent Work Awareness
