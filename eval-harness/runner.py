@@ -150,7 +150,7 @@ def run_scenario(
 
     return EvalResult(
         scenario_id=scenario.id,
-        fc_id=fc.id,
+        fc_id=fc_id,
         variant=variant,
         run_number=run_number,
         verdict="skip",  # placeholder -- judge fills in the real verdict
