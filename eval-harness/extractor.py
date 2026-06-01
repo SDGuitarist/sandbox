@@ -134,6 +134,51 @@ def _parse_markdown_table(text: str) -> list[dict[str, str]]:
     return rows
 
 
+def _is_code_testable_table(headers: list[str]) -> bool:
+    """Determine if a table contains code-testable claims.
+
+    Allowlists table types by column headers. Tables that describe
+    project management (agent assignments, decisions, file ownership,
+    data ownership) are skipped -- they aren't testable as isolated code.
+
+    Code-testable tables have headers like:
+    - Export Names: Export, File, Consumers
+    - Input Validation: Route, Input, Validation, Error Response
+    - Authorization Matrix: Route, Mode, Field
+    - Function tables: Function, File, Returns
+    - Rate Limiting: Route Pattern, Limit, Scope
+    - Schema tables: Field, Type, Constraint
+    """
+    lower = {h.lower().strip() for h in headers}
+
+    # Skip tables with empty headers (agent assignment tables)
+    if lower == {""} or not any(h.strip() for h in headers):
+        return False
+
+    # Allowlist: at least one header must match a code-testable pattern
+    code_headers = {
+        "export", "function", "route", "endpoint", "route pattern",
+        "field", "input", "validation", "error response",
+        "mode", "constraint", "type", "returns",
+        "limit", "scope",
+    }
+    if lower & code_headers:
+        return True
+
+    # Blocklist: skip known non-code table types
+    non_code_headers = {
+        "decision", "choice", "rationale",       # decision tables
+        "owning agent", "phase",                  # file ownership
+        "writer", "reader(s)",                    # data ownership
+        "category", "pass",                       # principle/voice tables
+    }
+    if lower & non_code_headers:
+        return False
+
+    # Default: skip unknown table types (conservative)
+    return False
+
+
 def _find_name_column(headers: list[str]) -> str | None:
     """Find the best column to use as the claim's identifiable name.
 
@@ -175,6 +220,11 @@ def parse_tables(spec_text: str) -> list[Claim]:
             continue
 
         headers = list(rows[0].keys())
+
+        # Skip non-code tables (decisions, agent assignments, ownership, etc.)
+        if not _is_code_testable_table(headers):
+            continue
+
         name_col = _find_name_column(headers)
 
         for row_idx, row in enumerate(rows):
