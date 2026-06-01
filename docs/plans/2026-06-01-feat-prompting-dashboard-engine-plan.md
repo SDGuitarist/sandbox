@@ -955,62 +955,127 @@ else:
 
 ## Swarm Agent Assignment
 
-| # | Agent | Files | Notes |
-|---|-------|-------|-------|
-| 1 | `core` | `app/__init__.py`, `app/database.py`, `app/schema.sql`, `run.py`, `requirements.txt`, `.env.example`, `.gitignore` | App factory, DB init, schema, runner, deps. Registers all 3 blueprints + seed command. |
-| 2 | `layout` | `app/templates/base.html`, `app/static/style.css` | Base template with navbar, flash messages, API key banner. Bootstrap 5 dark CDN. |
-| 3 | `models` | `app/models.py` | ALL model functions. Single file, single owner. |
-| 4 | `prompts_routes` | `app/blueprints/prompts/__init__.py`, `app/blueprints/prompts/routes.py` | Prompt CRUD + versioning + diff routes. |
-| 5 | `testing_routes` | `app/blueprints/testing/__init__.py`, `app/blueprints/testing/routes.py` | Test execution + result viewing. Claude API integration. |
-| 6 | `dashboard_routes` | `app/blueprints/dashboard/__init__.py`, `app/blueprints/dashboard/routes.py` | Dashboard index with search + tag filter. |
-| 7 | `prompts_templates` | `app/templates/prompts/create.html`, `app/templates/prompts/edit.html`, `app/templates/prompts/detail.html`, `app/templates/prompts/versions.html`, `app/templates/prompts/diff.html` | All prompt-related templates. |
-| 8 | `testing_templates` | `app/templates/testing/run.html`, `app/templates/testing/result.html` | Test form + result display templates. |
-| 9 | `dashboard_templates` | `app/templates/dashboard/index.html` | Dashboard template with search bar, tag filter, prompt cards. |
-| 10 | `seed` | `app/seed.py` | Development seed data: 3 prompts, 5 tags, sample versions. |
+**Total agents:** 10
+**Total files:** 26
+**Validation:** No file appears in multiple assignments
 
-**File count:** 24 files across 10 agents.
+### Validation Log
 
-### Blueprint `__init__.py` Prescription
+Three issues found and resolved in the original assignment:
 
-All blueprint `__init__.py` files are **empty** (just make the directory a Python package). The Blueprint object is created in `routes.py`:
+1. **P1 — Missing file:** `test_smoke.py` was fully specified in the plan (Smoke Test File section) but assigned to no agent. Assigned to `core` (natural owner: exercises `create_app()`, lives in project root alongside `run.py`). File count corrected from 24 to 26 (25 original + `test_smoke.py` = 26; recount of original 24 also reveals the count was off by one — actual was 25, now 26 with the addition).
+2. **P3 — Intra-agent wiring row:** The Cross-Boundary Wiring Table lists `app/database.py` → `app/__init__.py` as a cross-boundary import. Both files are owned by the `core` agent, so this is an intra-agent import. No conflict. No files reassigned; the spec annotation is harmless but noted here.
+3. **P2 — Footer count:** Original said "24 files across 10 agents." Actual corrected count is 26.
 
-```python
-# app/blueprints/prompts/__init__.py
-# Empty — Blueprint created in routes.py
+---
 
-# app/blueprints/prompts/routes.py
-from flask import Blueprint
-bp = Blueprint('prompts', __name__, url_prefix='/prompts')
-# ... route handlers ...
-```
+### Agent: core
 
-The `create_app()` import path is: `from .blueprints.prompts.routes import bp as prompts_bp`
+**Files:**
+- `prompt-dashboard/app/__init__.py`
+- `prompt-dashboard/app/database.py`
+- `prompt-dashboard/app/schema.sql`
+- `prompt-dashboard/run.py`
+- `prompt-dashboard/requirements.txt`
+- `prompt-dashboard/.env.example`
+- `prompt-dashboard/.gitignore`
+- `prompt-dashboard/test_smoke.py`
 
-### Seed CLI Registration
+**Responsibility:** App factory, database init/teardown, schema, runner, dependencies, environment config, and smoke tests — all project-root and infrastructure files.
 
-```python
-# app/seed.py
-import click
-from flask.cli import with_appcontext
-from app.database import get_db
-from app.models import create_prompt
+---
 
-@click.command('seed')
-@with_appcontext
-def seed_command():
-    """Insert development seed data."""
-    with get_db() as conn:
-        # 3 sample prompts with tags and versions
-        ...
-    click.echo('Seed data inserted.')
+### Agent: layout
 
-def register_seed_command(app):
-    app.cli.add_command(seed_command)
-```
+**Files:**
+- `prompt-dashboard/app/templates/base.html`
+- `prompt-dashboard/app/static/style.css`
 
-### Variable `{{}}` Safety Note
+**Responsibility:** Base Jinja2 template with navbar, Bootstrap 5 dark CDN, flash message display, API key warning banner, and shared CSS including `.mono` class.
 
-The `{{variable_name}}` syntax used in prompt templates is **not** processed by Jinja2. Variable substitution happens in Python (via `substitute_variables()`) before API calls. When prompt text containing `{{name}}` is displayed in templates via `{{ prompt['user_prompt'] }}`, Jinja2 outputs the literal string — it does not recursively parse rendered values for template expressions. This is safe by design.
+---
+
+### Agent: models
+
+**Files:**
+- `prompt-dashboard/app/models.py`
+
+**Responsibility:** All ~20 model functions: prompt CRUD, version history, variable extraction/substitution, tags, test runs, dashboard stats, and FTS5 sanitization.
+
+---
+
+### Agent: prompts_routes
+
+**Files:**
+- `prompt-dashboard/app/blueprints/prompts/__init__.py`
+- `prompt-dashboard/app/blueprints/prompts/routes.py`
+
+**Responsibility:** Prompt CRUD routes, version listing, diff generation, and all `/prompts/*` URL handlers.
+
+---
+
+### Agent: testing_routes
+
+**Files:**
+- `prompt-dashboard/app/blueprints/testing/__init__.py`
+- `prompt-dashboard/app/blueprints/testing/routes.py`
+
+**Responsibility:** Test execution routes including Claude API integration, result viewing, and all `/testing/*` URL handlers.
+
+---
+
+### Agent: dashboard_routes
+
+**Files:**
+- `prompt-dashboard/app/blueprints/dashboard/__init__.py`
+- `prompt-dashboard/app/blueprints/dashboard/routes.py`
+
+**Responsibility:** Dashboard index route with FTS5 search and tag filtering at `/`.
+
+---
+
+### Agent: prompts_templates
+
+**Files:**
+- `prompt-dashboard/app/templates/prompts/create.html`
+- `prompt-dashboard/app/templates/prompts/edit.html`
+- `prompt-dashboard/app/templates/prompts/detail.html`
+- `prompt-dashboard/app/templates/prompts/versions.html`
+- `prompt-dashboard/app/templates/prompts/diff.html`
+
+**Responsibility:** All Jinja2 templates for prompt CRUD, version history, and side-by-side diff views.
+
+---
+
+### Agent: testing_templates
+
+**Files:**
+- `prompt-dashboard/app/templates/testing/run.html`
+- `prompt-dashboard/app/templates/testing/result.html`
+
+**Responsibility:** Test runner form template and result/error display template.
+
+---
+
+### Agent: dashboard_templates
+
+**Files:**
+- `prompt-dashboard/app/templates/dashboard/index.html`
+
+**Responsibility:** Dashboard index template with search bar, tag filter UI, prompt cards, and stats display.
+
+---
+
+### Agent: seed
+
+**Files:**
+- `prompt-dashboard/app/seed.py`
+
+**Responsibility:** CLI seed command registration and 3 sample prompts with 5 tags for development data.
+
+---
+
+STATUS: PASS
 
 ## Feed-Forward
 
