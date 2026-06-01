@@ -207,7 +207,7 @@ async def _run_gate(
     else:
         client = anthropic.Anthropic(
             max_retries=3,
-            timeout=httpx.Timeout(180.0, connect=5.0),
+            timeout=httpx.Timeout(600.0, connect=10.0),
         )
         try:
             prose_claims = extract_prose_claims(spec_without_tables, client)

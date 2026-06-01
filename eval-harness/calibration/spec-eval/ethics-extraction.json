@@ -1,0 +1,1749 @@
+{
+  "run_id": "spec-eval-1780290066",
+  "spec_path": "../docs/plans/2026-04-30-ethics-toolkit-platform-spec.md",
+  "total_claims": 156,
+  "high_confidence": 150,
+  "low_confidence": 6,
+  "claims": [
+    {
+      "id": "tbl-001",
+      "text": "#: 1, Decision: Stack, Choice: Next.js + Vercel, Rationale: Existing patterns from Producer Brief. Solution docs available.",
+      "task_brief": "Implement the following as specified: #: 1, Decision: Stack, Choice: Next.js + Vercel, Rationale: Existing patterns from Producer Brief. Solution docs available.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-002",
+      "text": "#: 2, Decision: Auth, Choice: Supabase Auth + Magic Link, Rationale: Lowest friction for anonymous-to-auth conversion. Unified with realtime.",
+      "task_brief": "Implement the following as specified: #: 2, Decision: Auth, Choice: Supabase Auth + Magic Link, Rationale: Lowest friction for anonymous-to-auth conversion. Unified with realtime.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-003",
+      "text": "#: 3, Decision: Realtime, Choice: Supabase Realtime, Rationale: Keeps stack unified. Broadcast for polls, persisted state for Q&A.",
+      "task_brief": "Implement the following as specified: #: 3, Decision: Realtime, Choice: Supabase Realtime, Rationale: Keeps stack unified. Broadcast for polls, persisted state for Q&A.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-004",
+      "text": "#: 4, Decision: Payments, Choice: Square (sandbox checkout links + manual entitlement for v1), Rationale: Consistency with existing workshop payments. Full webhook automation post-launch.",
+      "task_brief": "Implement the following as specified: #: 4, Decision: Payments, Choice: Square (sandbox checkout links + manual entitlement for v1), Rationale: Consistency with existing workshop payments. Full webhook automation post-launch.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-005",
+      "text": "#: 5, Decision: Email, Choice: Resend, Rationale: Simple API, generous free tier. v1 sends 3 lifecycle emails only.",
+      "task_brief": "Implement the following as specified: #: 5, Decision: Email, Choice: Resend, Rationale: Simple API, generous free tier. v1 sends 3 lifecycle emails only.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-006",
+      "text": "#: 6, Decision: Price, Choice: $15/mo subscription, Rationale: $49 Project Export deferred to post-launch.",
+      "task_brief": "Implement the following as specified: #: 6, Decision: Price, Choice: $15/mo subscription, Rationale: $49 Project Export deferred to post-launch.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-007",
+      "text": "#: 7, Decision: Trial, Choice: 14 days, Rationale: Research-backed (Gartner/Recurly).",
+      "task_brief": "Implement the following as specified: #: 7, Decision: Trial, Choice: 14 days, Rationale: Research-backed (Gartner/Recurly).",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-008",
+      "text": "#: 8, Decision: LLM Routing, Choice: Haiku 4.5 (Tool 1) / Sonnet 4.6 (Tools 3, 5), Rationale: Simple generation vs complex analysis. Tools 2, 4 have no LLM.",
+      "task_brief": "Implement the following as specified: #: 8, Decision: LLM Routing, Choice: Haiku 4.5 (Tool 1) / Sonnet 4.6 (Tools 3, 5), Rationale: Simple generation vs complex analysis. Tools 2, 4 have no LLM.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-009",
+      "text": "#: 9, Decision: Offline, Choice: Service Worker + deterministic-only mode, Rationale: Cache UI shell, Festival JSON, Rate JSON. Network-dependent actions show unavailable state.",
+      "task_brief": "Implement the following as specified: #: 9, Decision: Offline, Choice: Service Worker + deterministic-only mode, Rationale: Cache UI shell, Festival JSON, Rate JSON. Network-dependent actions show unavailable state.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-010",
+      "text": "#: 10, Decision: App Name, Choice: Ethics Toolkit (internal/repo name), Rationale: Final public name TBD. Does not block the build.",
+      "task_brief": "Implement the following as specified: #: 10, Decision: App Name, Choice: Ethics Toolkit (internal/repo name), Rationale: Final public name TBD. Does not block the build.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-011",
+      "text": "#: 11, Decision: Phasing, Choice: 4 sequential phases with integration gates, Rationale: See Section 8.",
+      "task_brief": "Implement the following as specified: #: 11, Decision: Phasing, Choice: 4 sequential phases with integration gates, Rationale: See Section 8.",
+      "source": "table",
+      "source_location": "6. Locked Decisions (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-012",
+      "text": "Email: Welcome, `scheduled_for`: `now()`, Subject Line: \"Your Ethics Toolkit results are saved\"",
+      "task_brief": "Implement the following as specified: Email: Welcome, `scheduled_for`: `now()`, Subject Line: \"Your Ethics Toolkit results are saved\"",
+      "source": "table",
+      "source_location": "Email Schedule (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-013",
+      "text": "Email: Day 12 Warning, `scheduled_for`: `trial_ends_at - interval '2 days'`, Subject Line: \"Your premium trial ends in 2 days\"",
+      "task_brief": "Implement the following as specified: Email: Day 12 Warning, `scheduled_for`: `trial_ends_at - interval '2 days'`, Subject Line: \"Your premium trial ends in 2 days\"",
+      "source": "table",
+      "source_location": "Email Schedule (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-014",
+      "text": "Email: Day 14 Downgrade, `scheduled_for`: `trial_ends_at`, Subject Line: \"Your premium trial has ended\"",
+      "task_brief": "Implement the following as specified: Email: Day 14 Downgrade, `scheduled_for`: `trial_ends_at`, Subject Line: \"Your premium trial has ended\"",
+      "source": "table",
+      "source_location": "Email Schedule (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-015",
+      "text": "Route Pattern: `/api/ai/*`, Limit: 10 requests/hour, 30 requests/day, Scope: Per IP (hourly), per user (daily)",
+      "task_brief": "Implement the following as specified: Route Pattern: `/api/ai/*`, Limit: 10 requests/hour, 30 requests/day, Scope: Per IP (hourly), per user (daily)",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-016",
+      "text": "Route Pattern: `/api/realtime/*`, Limit: 120 requests/minute, Scope: Per IP",
+      "task_brief": "Implement the following as specified: Route Pattern: `/api/realtime/*`, Limit: 120 requests/minute, Scope: Per IP",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-017",
+      "text": "Route Pattern: `/api/auth/save-results`, Limit: 5 requests/hour, Scope: Per IP",
+      "task_brief": "Implement the following as specified: Route Pattern: `/api/auth/save-results`, Limit: 5 requests/hour, Scope: Per IP",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-018",
+      "text": "Route Pattern: All other `/api/*`, Limit: 60 requests/minute, Scope: Per IP",
+      "task_brief": "Implement the following as specified: Route Pattern: All other `/api/*`, Limit: 60 requests/minute, Scope: Per IP",
+      "source": "table",
+      "source_location": "9. Rate Limiting (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-019",
+      "text": ": 1 (Global Constraints), 6 (Locked Decisions), 12 (Environment Variables)",
+      "task_brief": "Implement the following as specified: : 1 (Global Constraints), 6 (Locked Decisions), 12 (Environment Variables)",
+      "source": "table",
+      "source_location": "Agent 1: `scaffold` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-020",
+      "text": ": `package.json`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.js`, `next.config.ts`, `.env.example`, `.env.local` (gitignored), `.gitignore`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/lib/constants.ts`",
+      "task_brief": "Implement the following as specified: : `package.json`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.js`, `next.config.ts`, `.env.example`, `.env.local` (gitignored), `.gitignore`, `src/app/layout.tsx`, `src/app/page.tsx`, `src/app/globals.css`, `src/lib/constants.ts`",
+      "source": "table",
+      "source_location": "Agent 1: `scaffold` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-021",
+      "text": ": None (first to run conceptually, but parallel -- no deps within phase)",
+      "task_brief": "Implement the following as specified: : None (first to run conceptually, but parallel -- no deps within phase)",
+      "source": "table",
+      "source_location": "Agent 1: `scaffold` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-022",
+      "text": ": 3 (Authoritative Database Schema), 3 RLS Rules",
+      "task_brief": "Implement the following as specified: : 3 (Authoritative Database Schema), 3 RLS Rules",
+      "source": "table",
+      "source_location": "Agent 2: `database` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-023",
+      "text": ": `supabase/migrations/001_initial_schema.sql` (all tables, indexes, constraints from Section 3), `supabase/migrations/002_rls_policies.sql` (all RLS rules from Section 3), `supabase/config.toml`, `src/lib/supabase/client.ts` (browser client), `src/lib/supabase/server.ts` (server client with service role), `src/types/database.ts` (TypeScript types matching Section 3 tables)",
+      "task_brief": "Implement the following as specified: : `supabase/migrations/001_initial_schema.sql` (all tables, indexes, constraints from Section 3), `supabase/migrations/002_rls_policies.sql` (all RLS rules from Section 3), `supabase/config.toml`, `src/lib/supabase/client.ts` (browser client), `src/lib/supabase/server.ts` (server client with service role), `src/types/database.ts` (TypeScript types matching Section 3 tables)",
+      "source": "table",
+      "source_location": "Agent 2: `database` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-024",
+      "text": ": `.env.example` (from scaffold, for env var names)",
+      "task_brief": "Implement the following as specified: : `.env.example` (from scaffold, for env var names)",
+      "source": "table",
+      "source_location": "Agent 2: `database` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-025",
+      "text": ": 2 (Identity & Monetization Architecture -- Identity Flow, Facilitator Authentication)",
+      "task_brief": "Implement the following as specified: : 2 (Identity & Monetization Architecture -- Identity Flow, Facilitator Authentication)",
+      "source": "table",
+      "source_location": "Agent 3: `auth` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-026",
+      "text": ": `src/lib/auth/anonymous-session.ts` (generate/store anonymousSessionId in localStorage + anonymous_sessions table), `src/lib/auth/magic-link.ts` (Supabase Auth magic link trigger + session claiming logic), `src/lib/auth/facilitator.ts` (bcrypt compare + httpOnly cookie + JWT/HMAC signing), `src/app/api/auth/magic-link/route.ts`, `src/app/api/auth/facilitator-login/route.ts`, `src/app/api/auth/save-results/route.ts` (claim anonymous data into userId), `src/middleware.ts` (facilitator route protection)",
+      "task_brief": "Implement the following as specified: : `src/lib/auth/anonymous-session.ts` (generate/store anonymousSessionId in localStorage + anonymous_sessions table), `src/lib/auth/magic-link.ts` (Supabase Auth magic link trigger + session claiming logic), `src/lib/auth/facilitator.ts` (bcrypt compare + httpOnly cookie + JWT/HMAC signing), `src/app/api/auth/magic-link/route.ts`, `src/app/api/auth/facilitator-login/route.ts`, `src/app/api/auth/save-results/route.ts` (claim anonymous data into userId), `src/middleware.ts` (facilitator route protection)",
+      "source": "table",
+      "source_location": "Agent 3: `auth` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-027",
+      "text": ": `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/types/database.ts` (from database agent)",
+      "task_brief": "Implement the following as specified: : `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/types/database.ts` (from database agent)",
+      "source": "table",
+      "source_location": "Agent 3: `auth` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-028",
+      "text": ": 1 (Mobile-First Attendee UX), 2 (Identity Flow -- QR join)",
+      "task_brief": "Implement the following as specified: : 1 (Mobile-First Attendee UX), 2 (Identity Flow -- QR join)",
+      "source": "table",
+      "source_location": "Agent 4: `ui-shell` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-029",
+      "text": ": `src/app/(attendee)/layout.tsx`, `src/app/(attendee)/page.tsx` (attendee home), `src/app/(attendee)/join/[code]/page.tsx` (QR join page -- validates session_code against workshop_sessions), `src/app/(attendee)/tools/layout.tsx`, `src/app/(attendee)/results/page.tsx`, `src/app/(attendee)/save/page.tsx` (save results / magic link prompt), `src/app/facilitator/layout.tsx`, `src/app/facilitator/page.tsx` (facilitator home -- behind auth), `src/app/facilitator/login/page.tsx`, `src/components/ui/nav.tsx`, `src/components/ui/mobile-action-bar.tsx` (bottom thumb zone actions)",
+      "task_brief": "Implement the following as specified: : `src/app/(attendee)/layout.tsx`, `src/app/(attendee)/page.tsx` (attendee home), `src/app/(attendee)/join/[code]/page.tsx` (QR join page -- validates session_code against workshop_sessions), `src/app/(attendee)/tools/layout.tsx`, `src/app/(attendee)/results/page.tsx`, `src/app/(attendee)/save/page.tsx` (save results / magic link prompt), `src/app/facilitator/layout.tsx`, `src/app/facilitator/page.tsx` (facilitator home -- behind auth), `src/app/facilitator/login/page.tsx`, `src/components/ui/nav.tsx`, `src/components/ui/mobile-action-bar.tsx` (bottom thumb zone actions)",
+      "source": "table",
+      "source_location": "Agent 4: `ui-shell` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-030",
+      "text": ": `src/app/layout.tsx`, `src/app/globals.css` (from scaffold), `src/middleware.ts` (from auth)",
+      "task_brief": "Implement the following as specified: : `src/app/layout.tsx`, `src/app/globals.css` (from scaffold), `src/middleware.ts` (from auth)",
+      "source": "table",
+      "source_location": "Agent 4: `ui-shell` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-031",
+      "text": ": 4 (all 5 tool Zod schemas + fixtures), 10 (Shared Interface Specification -- ToolEvent)",
+      "task_brief": "Implement the following as specified: : 4 (all 5 tool Zod schemas + fixtures), 10 (Shared Interface Specification -- ToolEvent)",
+      "source": "table",
+      "source_location": "Agent 0 (pre-gate): `schemas` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-032",
+      "text": ": `src/lib/schemas/tool-event.ts` (ToolEvent interface + ToolType), `src/lib/schemas/disclosure.ts` (DisclosureInput, DisclosureOutput, DisclosureAI), `src/lib/schemas/policy-lookup.ts` (PolicyLookupInput), `src/lib/schemas/risk-scanner.ts` (RiskScannerInput, RiskScannerOutput, RiskAI), `src/lib/schemas/provenance.ts` (ProvenanceInput, ProvenanceOutput), `src/lib/schemas/budget.ts` (BudgetInput, BudgetOutput, BudgetAI), `src/lib/schemas/index.ts` (barrel export), `tests/schemas/disclosure.test.ts`, `tests/schemas/risk-scanner.test.ts`, `tests/schemas/provenance.test.ts`, `tests/schemas/budget.test.ts`, `tests/schemas/policy-lookup.test.ts`",
+      "task_brief": "Implement the following as specified: : `src/lib/schemas/tool-event.ts` (ToolEvent interface + ToolType), `src/lib/schemas/disclosure.ts` (DisclosureInput, DisclosureOutput, DisclosureAI), `src/lib/schemas/policy-lookup.ts` (PolicyLookupInput), `src/lib/schemas/risk-scanner.ts` (RiskScannerInput, RiskScannerOutput, RiskAI), `src/lib/schemas/provenance.ts` (ProvenanceInput, ProvenanceOutput), `src/lib/schemas/budget.ts` (BudgetInput, BudgetOutput, BudgetAI), `src/lib/schemas/index.ts` (barrel export), `tests/schemas/disclosure.test.ts`, `tests/schemas/risk-scanner.test.ts`, `tests/schemas/provenance.test.ts`, `tests/schemas/budget.test.ts`, `tests/schemas/policy-lookup.test.ts`",
+      "source": "table",
+      "source_location": "Agent 0 (pre-gate): `schemas` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-033",
+      "text": ": `src/types/database.ts` (from Phase 1 database agent)",
+      "task_brief": "Implement the following as specified: : `src/types/database.ts` (from Phase 1 database agent)",
+      "source": "table",
+      "source_location": "Agent 0 (pre-gate): `schemas` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-034",
+      "text": ": 4 Tool 1 (AI Disclosure Generator -- deterministic checklist logic, satisfied rules, fixture), 4 Tool 2 (Festival Policy Lookup -- search, filters, seed data, pagination)",
+      "task_brief": "Implement the following as specified: : 4 Tool 1 (AI Disclosure Generator -- deterministic checklist logic, satisfied rules, fixture), 4 Tool 2 (Festival Policy Lookup -- search, filters, seed data, pagination)",
+      "source": "table",
+      "source_location": "Agent 1: `tool-disclosure-festival` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-035",
+      "text": ": `src/lib/tools/disclosure.ts` (deterministic checklist + template generation), `src/lib/tools/disclosure-mock.ts` (mock AI response with hardcoded delay), `src/app/(attendee)/tools/disclosure/page.tsx` (Disclosure Generator UI -- form + checklist + template output), `src/app/api/tools/disclosure/route.ts` (POST -- validate, compute, persist ToolEvent, return deterministic + optional AI), `src/lib/tools/festival-lookup.ts` (search + filter logic), `src/app/(attendee)/tools/festival/page.tsx` (Festival Policy Lookup UI -- search bar, filter dropdowns, paginated results), `src/app/api/tools/festival/route.ts` (GET -- query festival_policies), `supabase/migrations/003_seed_festival_policies.sql` (12 seed records from Section 4)",
+      "task_brief": "Implement the following as specified: : `src/lib/tools/disclosure.ts` (deterministic checklist + template generation), `src/lib/tools/disclosure-mock.ts` (mock AI response with hardcoded delay), `src/app/(attendee)/tools/disclosure/page.tsx` (Disclosure Generator UI -- form + checklist + template output), `src/app/api/tools/disclosure/route.ts` (POST -- validate, compute, persist ToolEvent, return deterministic + optional AI), `src/lib/tools/festival-lookup.ts` (search + filter logic), `src/app/(attendee)/tools/festival/page.tsx` (Festival Policy Lookup UI -- search bar, filter dropdowns, paginated results), `src/app/api/tools/festival/route.ts` (GET -- query festival_policies), `supabase/migrations/003_seed_festival_policies.sql` (12 seed records from Section 4)",
+      "source": "table",
+      "source_location": "Agent 1: `tool-disclosure-festival` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-036",
+      "text": ": `src/lib/schemas/disclosure.ts`, `src/lib/schemas/policy-lookup.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1)",
+      "task_brief": "Implement the following as specified: : `src/lib/schemas/disclosure.ts`, `src/lib/schemas/policy-lookup.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1)",
+      "source": "table",
+      "source_location": "Agent 1: `tool-disclosure-festival` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-037",
+      "text": ": 4 Tool 3 (Risk Scanner -- all 7 scoring steps, fixture, department flags), 4 Tool 4 (Provenance Chain -- summary calc, duplicate detection, PDF export)",
+      "task_brief": "Implement the following as specified: : 4 Tool 3 (Risk Scanner -- all 7 scoring steps, fixture, department flags), 4 Tool 4 (Provenance Chain -- summary calc, duplicate detection, PDF export)",
+      "source": "table",
+      "source_location": "Agent 2: `tool-risk-provenance` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-038",
+      "text": ": `src/lib/tools/risk-scanner.ts` (deterministic scoring engine -- Steps 1-7 exactly), `src/lib/tools/risk-scanner-mock.ts` (mock AI recommendations), `src/app/(attendee)/tools/risk/page.tsx` (Risk Scanner UI -- form + tier badge + department flags + dimension breakdown), `src/app/api/tools/risk/route.ts` (POST -- validate, score, persist ToolEvent), `src/lib/tools/provenance.ts` (deterministic summary + duplicate detection), `src/app/(attendee)/tools/provenance/page.tsx` (Provenance Chain UI -- entry form + chain view + summary stats), `src/app/api/tools/provenance/route.ts` (POST -- validate, compute, persist ToolEvent), `src/lib/tools/provenance-pdf.ts` (PDF export with @react-pdf/renderer)",
+      "task_brief": "Implement the following as specified: : `src/lib/tools/risk-scanner.ts` (deterministic scoring engine -- Steps 1-7 exactly), `src/lib/tools/risk-scanner-mock.ts` (mock AI recommendations), `src/app/(attendee)/tools/risk/page.tsx` (Risk Scanner UI -- form + tier badge + department flags + dimension breakdown), `src/app/api/tools/risk/route.ts` (POST -- validate, score, persist ToolEvent), `src/lib/tools/provenance.ts` (deterministic summary + duplicate detection), `src/app/(attendee)/tools/provenance/page.tsx` (Provenance Chain UI -- entry form + chain view + summary stats), `src/app/api/tools/provenance/route.ts` (POST -- validate, compute, persist ToolEvent), `src/lib/tools/provenance-pdf.ts` (PDF export with @react-pdf/renderer)",
+      "source": "table",
+      "source_location": "Agent 2: `tool-risk-provenance` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-039",
+      "text": ": `src/lib/schemas/risk-scanner.ts`, `src/lib/schemas/provenance.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1)",
+      "task_brief": "Implement the following as specified: : `src/lib/schemas/risk-scanner.ts`, `src/lib/schemas/provenance.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1)",
+      "source": "table",
+      "source_location": "Agent 2: `tool-risk-provenance` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-040",
+      "text": ": 4 Tool 5 (Budget Calculator -- RATE_TABLE, delta calc, fixture), 1 (Offline Degradation), 6 decision #9 (Service Worker)",
+      "task_brief": "Implement the following as specified: : 4 Tool 5 (Budget Calculator -- RATE_TABLE, delta calc, fixture), 1 (Offline Degradation), 6 decision #9 (Service Worker)",
+      "source": "table",
+      "source_location": "Agent 3: `tool-budget-sw` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-041",
+      "text": ": `src/lib/tools/budget.ts` (RATE_TABLE constant + deterministic lookup + delta calc), `src/lib/tools/budget-mock.ts` (mock AI ethical analysis), `src/app/(attendee)/tools/budget/page.tsx` (Budget Calculator UI -- role/tier selectors + cost comparison + displacement badge + delta display), `src/app/api/tools/budget/route.ts` (POST -- validate, lookup, persist ToolEvent), `public/sw.js` (Service Worker -- caches app shell, festival seed JSON, rate table JSON), `src/lib/sw-register.ts` (register SW on app load), `public/offline.html` (minimal offline fallback page)",
+      "task_brief": "Implement the following as specified: : `src/lib/tools/budget.ts` (RATE_TABLE constant + deterministic lookup + delta calc), `src/lib/tools/budget-mock.ts` (mock AI ethical analysis), `src/app/(attendee)/tools/budget/page.tsx` (Budget Calculator UI -- role/tier selectors + cost comparison + displacement badge + delta display), `src/app/api/tools/budget/route.ts` (POST -- validate, lookup, persist ToolEvent), `public/sw.js` (Service Worker -- caches app shell, festival seed JSON, rate table JSON), `src/lib/sw-register.ts` (register SW on app load), `public/offline.html` (minimal offline fallback page)",
+      "source": "table",
+      "source_location": "Agent 3: `tool-budget-sw` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-042",
+      "text": ": `src/lib/schemas/budget.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1), `next.config.ts` (from Phase 1 scaffold -- may need SW headers)",
+      "task_brief": "Implement the following as specified: : `src/lib/schemas/budget.ts`, `src/lib/schemas/tool-event.ts` (from schemas agent), `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/lib/auth/anonymous-session.ts` (from Phase 1), `next.config.ts` (from Phase 1 scaffold -- may need SW headers)",
+      "source": "table",
+      "source_location": "Agent 3: `tool-budget-sw` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-043",
+      "text": ": 5 (Realtime Sync -- channel contract, all 6 message types, idempotency rules), 3 (processed_events, workshop_risk_scores, qna_questions, qna_votes tables)",
+      "task_brief": "Implement the following as specified: : 5 (Realtime Sync -- channel contract, all 6 message types, idempotency rules), 3 (processed_events, workshop_risk_scores, qna_questions, qna_votes tables)",
+      "source": "table",
+      "source_location": "Agent 1: `realtime-engine` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-044",
+      "text": ": `src/lib/realtime/channel.ts` (Supabase Realtime channel setup -- `workshop:{workshopSessionId}`), `src/lib/realtime/types.ts` (TypeScript types for all 6 message payloads), `src/lib/realtime/broadcast.ts` (client-side broadcast helpers for poll, word cloud, confidence), `src/lib/realtime/idempotency.ts` (facilitator-side in-memory `Set<string>` for broadcast dedup), `src/app/api/workshop/risk-aggregate/route.ts` (POST -- persist to workshop_risk_scores + processed_events check + broadcast), `src/app/api/workshop/qna/question/route.ts` (POST -- persist to qna_questions + processed_events check + broadcast with assigned ID), `src/app/api/workshop/qna/upvote/route.ts` (POST -- persist to qna_votes + increment upvote_count + processed_events check + broadcast), `src/app/api/workshop/session/route.ts` (POST -- create workshop_sessions, facilitator-only)",
+      "task_brief": "Implement the following as specified: : `src/lib/realtime/channel.ts` (Supabase Realtime channel setup -- `workshop:{workshopSessionId}`), `src/lib/realtime/types.ts` (TypeScript types for all 6 message payloads), `src/lib/realtime/broadcast.ts` (client-side broadcast helpers for poll, word cloud, confidence), `src/lib/realtime/idempotency.ts` (facilitator-side in-memory `Set<string>` for broadcast dedup), `src/app/api/workshop/risk-aggregate/route.ts` (POST -- persist to workshop_risk_scores + processed_events check + broadcast), `src/app/api/workshop/qna/question/route.ts` (POST -- persist to qna_questions + processed_events check + broadcast with assigned ID), `src/app/api/workshop/qna/upvote/route.ts` (POST -- persist to qna_votes + increment upvote_count + processed_events check + broadcast), `src/app/api/workshop/session/route.ts` (POST -- create workshop_sessions, facilitator-only)",
+      "source": "table",
+      "source_location": "Agent 1: `realtime-engine` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-045",
+      "text": ": `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/types/database.ts` (from Phase 1), `src/middleware.ts` (from Phase 1 auth -- facilitator route check)",
+      "task_brief": "Implement the following as specified: : `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts`, `src/types/database.ts` (from Phase 1), `src/middleware.ts` (from Phase 1 auth -- facilitator route check)",
+      "source": "table",
+      "source_location": "Agent 1: `realtime-engine` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-046",
+      "text": ": 5 (Facilitator UI descriptions for all 6 message types), 1 (Data Privacy -- 5-response minimum)",
+      "task_brief": "Implement the following as specified: : 5 (Facilitator UI descriptions for all 6 message types), 1 (Data Privacy -- 5-response minimum)",
+      "source": "table",
+      "source_location": "Agent 2: `facilitator-dashboard` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-047",
+      "text": ": `src/app/facilitator/dashboard/page.tsx` (main facilitator dashboard -- layout with all widgets), `src/components/facilitator/poll-chart.tsx` (bar chart aggregate by optionId count), `src/components/facilitator/word-cloud.tsx` (word cloud sized by frequency), `src/components/facilitator/risk-breakdown.tsx` (percentage breakdown by tier -- low/medium/high/critical), `src/components/facilitator/confidence-delta.tsx` (before/after delta chart), `src/components/facilitator/qna-queue.tsx` (questions sorted by upvote_count, live-updating), `src/components/facilitator/min-response-guard.tsx` (\"Waiting for more responses\" when < 5), `src/app/facilitator/dashboard/layout.tsx`",
+      "task_brief": "Implement the following as specified: : `src/app/facilitator/dashboard/page.tsx` (main facilitator dashboard -- layout with all widgets), `src/components/facilitator/poll-chart.tsx` (bar chart aggregate by optionId count), `src/components/facilitator/word-cloud.tsx` (word cloud sized by frequency), `src/components/facilitator/risk-breakdown.tsx` (percentage breakdown by tier -- low/medium/high/critical), `src/components/facilitator/confidence-delta.tsx` (before/after delta chart), `src/components/facilitator/qna-queue.tsx` (questions sorted by upvote_count, live-updating), `src/components/facilitator/min-response-guard.tsx` (\"Waiting for more responses\" when < 5), `src/app/facilitator/dashboard/layout.tsx`",
+      "source": "table",
+      "source_location": "Agent 2: `facilitator-dashboard` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-048",
+      "text": ": `src/lib/realtime/channel.ts`, `src/lib/realtime/types.ts`, `src/lib/realtime/idempotency.ts` (from realtime-engine agent), `src/lib/supabase/client.ts` (from Phase 1)",
+      "task_brief": "Implement the following as specified: : `src/lib/realtime/channel.ts`, `src/lib/realtime/types.ts`, `src/lib/realtime/idempotency.ts` (from realtime-engine agent), `src/lib/supabase/client.ts` (from Phase 1)",
+      "source": "table",
+      "source_location": "Agent 2: `facilitator-dashboard` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-049",
+      "text": ": 5 (Attendee-side broadcast interactions -- poll, word cloud, confidence; authoritative interactions -- Q&A question, upvote), 1 (Mobile-First UX)",
+      "task_brief": "Implement the following as specified: : 5 (Attendee-side broadcast interactions -- poll, word cloud, confidence; authoritative interactions -- Q&A question, upvote), 1 (Mobile-First UX)",
+      "source": "table",
+      "source_location": "Agent 3: `attendee-realtime` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-050",
+      "text": ": `src/components/attendee/poll-response.tsx` (single-tap option selection, broadcasts poll.response), `src/components/attendee/word-cloud-input.tsx` (text input max 50 chars, broadcasts word_cloud.submit), `src/components/attendee/confidence-slider.tsx` (1-10 slider with before/after phase, broadcasts confidence.submit), `src/components/attendee/qna-submit.tsx` (text input, POSTs to /api/workshop/qna/question), `src/components/attendee/qna-list.tsx` (view questions + upvote button, POSTs to /api/workshop/qna/upvote), `src/app/(attendee)/workshop/[sessionId]/page.tsx` (workshop live view -- renders all attendee realtime components)",
+      "task_brief": "Implement the following as specified: : `src/components/attendee/poll-response.tsx` (single-tap option selection, broadcasts poll.response), `src/components/attendee/word-cloud-input.tsx` (text input max 50 chars, broadcasts word_cloud.submit), `src/components/attendee/confidence-slider.tsx` (1-10 slider with before/after phase, broadcasts confidence.submit), `src/components/attendee/qna-submit.tsx` (text input, POSTs to /api/workshop/qna/question), `src/components/attendee/qna-list.tsx` (view questions + upvote button, POSTs to /api/workshop/qna/upvote), `src/app/(attendee)/workshop/[sessionId]/page.tsx` (workshop live view -- renders all attendee realtime components)",
+      "source": "table",
+      "source_location": "Agent 3: `attendee-realtime` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-051",
+      "text": ": `src/lib/realtime/channel.ts`, `src/lib/realtime/types.ts`, `src/lib/realtime/broadcast.ts` (from realtime-engine agent), `src/lib/auth/anonymous-session.ts` (from Phase 1), `src/lib/supabase/client.ts` (from Phase 1)",
+      "task_brief": "Implement the following as specified: : `src/lib/realtime/channel.ts`, `src/lib/realtime/types.ts`, `src/lib/realtime/broadcast.ts` (from realtime-engine agent), `src/lib/auth/anonymous-session.ts` (from Phase 1), `src/lib/supabase/client.ts` (from Phase 1)",
+      "source": "table",
+      "source_location": "Agent 3: `attendee-realtime` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-052",
+      "text": ": 4 (LLM schemas -- DisclosureAI, RiskAI, BudgetAI), 6 decision #8 (LLM Routing -- Haiku 4.5 for Tool 1, Sonnet 4.6 for Tools 3/5), 1 (Model Access Preflight, mock mode fallback)",
+      "task_brief": "Implement the following as specified: : 4 (LLM schemas -- DisclosureAI, RiskAI, BudgetAI), 6 decision #8 (LLM Routing -- Haiku 4.5 for Tool 1, Sonnet 4.6 for Tools 3/5), 1 (Model Access Preflight, mock mode fallback)",
+      "source": "table",
+      "source_location": "Agent 1: `ai-routes` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-053",
+      "text": ": `src/lib/ai/client.ts` (Anthropic SDK client + model access preflight check), `src/lib/ai/mock.ts` (mock response functions -- same shape as real, used when keys missing or API unreachable), `src/app/api/ai/disclosure/route.ts` (POST -- Haiku 4.5 call, Zod-validated output, fallback to mock), `src/app/api/ai/risk/route.ts` (POST -- Sonnet 4.6 call, Zod-validated output, fallback to mock), `src/app/api/ai/budget/route.ts` (POST -- Sonnet 4.6 call, Zod-validated output, fallback to mock), `src/lib/ai/preflight.ts` (startup check for Haiku 4.5 + Sonnet 4.6 reachability)",
+      "task_brief": "Implement the following as specified: : `src/lib/ai/client.ts` (Anthropic SDK client + model access preflight check), `src/lib/ai/mock.ts` (mock response functions -- same shape as real, used when keys missing or API unreachable), `src/app/api/ai/disclosure/route.ts` (POST -- Haiku 4.5 call, Zod-validated output, fallback to mock), `src/app/api/ai/risk/route.ts` (POST -- Sonnet 4.6 call, Zod-validated output, fallback to mock), `src/app/api/ai/budget/route.ts` (POST -- Sonnet 4.6 call, Zod-validated output, fallback to mock), `src/lib/ai/preflight.ts` (startup check for Haiku 4.5 + Sonnet 4.6 reachability)",
+      "source": "table",
+      "source_location": "Agent 1: `ai-routes` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-054",
+      "text": ": `src/lib/schemas/disclosure.ts`, `src/lib/schemas/risk-scanner.ts`, `src/lib/schemas/budget.ts` (from Phase 2 schemas), `src/lib/tools/disclosure-mock.ts`, `src/lib/tools/risk-scanner-mock.ts`, `src/lib/tools/budget-mock.ts` (from Phase 2 -- for mock mode reference)",
+      "task_brief": "Implement the following as specified: : `src/lib/schemas/disclosure.ts`, `src/lib/schemas/risk-scanner.ts`, `src/lib/schemas/budget.ts` (from Phase 2 schemas), `src/lib/tools/disclosure-mock.ts`, `src/lib/tools/risk-scanner-mock.ts`, `src/lib/tools/budget-mock.ts` (from Phase 2 -- for mock mode reference)",
+      "source": "table",
+      "source_location": "Agent 1: `ai-routes` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-055",
+      "text": ": 7 (Square Integration Contract -- checkout link flow, admin activation route), 8 (Email Lifecycle Contract -- 3 emails, idempotency, cron, unsubscribe), 2 (Monetization -- trial timing)",
+      "task_brief": "Implement the following as specified: : 7 (Square Integration Contract -- checkout link flow, admin activation route), 8 (Email Lifecycle Contract -- 3 emails, idempotency, cron, unsubscribe), 2 (Monetization -- trial timing)",
+      "source": "table",
+      "source_location": "Agent 2: `payments-email` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-056",
+      "text": ": `src/app/api/payments/checkout/route.ts` (GET -- redirect to SQUARE_CHECKOUT_URL), `src/app/(attendee)/payments/pending/page.tsx` (\"Payment processing\" return page), `src/app/api/admin/activate/route.ts` (POST -- facilitator-authenticated, sets entitlement_status + creates square_entitlements row), `src/lib/email/resend-client.ts` (Resend SDK client), `src/lib/email/templates/welcome.tsx` (HTML + plain-text), `src/lib/email/templates/day12-warning.tsx`, `src/lib/email/templates/day14-downgrade.tsx`, `src/lib/email/send.ts` (send function with opt-out check + retry logic), `src/lib/email/schedule-trial-emails.ts` (creates 3 email_jobs rows on conversion), `src/app/api/cron/process-emails/route.ts` (Vercel Cron -- CRON_SECRET protected, processes pending jobs), `src/app/(attendee)/unsubscribe/page.tsx` (token-validated unsubscribe page), `vercel.json` (cron schedule config for daily email processing)",
+      "task_brief": "Implement the following as specified: : `src/app/api/payments/checkout/route.ts` (GET -- redirect to SQUARE_CHECKOUT_URL), `src/app/(attendee)/payments/pending/page.tsx` (\"Payment processing\" return page), `src/app/api/admin/activate/route.ts` (POST -- facilitator-authenticated, sets entitlement_status + creates square_entitlements row), `src/lib/email/resend-client.ts` (Resend SDK client), `src/lib/email/templates/welcome.tsx` (HTML + plain-text), `src/lib/email/templates/day12-warning.tsx`, `src/lib/email/templates/day14-downgrade.tsx`, `src/lib/email/send.ts` (send function with opt-out check + retry logic), `src/lib/email/schedule-trial-emails.ts` (creates 3 email_jobs rows on conversion), `src/app/api/cron/process-emails/route.ts` (Vercel Cron -- CRON_SECRET protected, processes pending jobs), `src/app/(attendee)/unsubscribe/page.tsx` (token-validated unsubscribe page), `vercel.json` (cron schedule config for daily email processing)",
+      "source": "table",
+      "source_location": "Agent 2: `payments-email` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-057",
+      "text": ": `src/lib/supabase/server.ts`, `src/types/database.ts` (from Phase 1), `src/lib/auth/facilitator.ts`, `src/middleware.ts` (from Phase 1 auth -- facilitator validation for admin route)",
+      "task_brief": "Implement the following as specified: : `src/lib/supabase/server.ts`, `src/types/database.ts` (from Phase 1), `src/lib/auth/facilitator.ts`, `src/middleware.ts` (from Phase 1 auth -- facilitator validation for admin route)",
+      "source": "table",
+      "source_location": "Agent 2: `payments-email` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-058",
+      "text": ": 9 (Rate Limiting -- all 4 route patterns, in-memory Map, 429 response shape)",
+      "task_brief": "Implement the following as specified: : 9 (Rate Limiting -- all 4 route patterns, in-memory Map, 429 response shape)",
+      "source": "table",
+      "source_location": "Agent 3: `rate-limiting` (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-059",
+      "text": ": `src/lib/rate-limit/limiter.ts` (in-memory `Map<string, { count: number; resetAt: number }>` with configurable window/limit), `src/lib/rate-limit/middleware.ts` (rate limit middleware function -- extracts IP, checks limits, returns 429 with retryAfter), `src/lib/rate-limit/config.ts` (rate limit configs for all 4 route patterns from Section 9), `src/app/api/ai/middleware.ts` (applies 10/hr + 30/day per Section 9 to all `/api/ai/*` routes), `tests/rate-limit/limiter.test.ts` (unit tests for Map-based limiter)",
+      "task_brief": "Implement the following as specified: : `src/lib/rate-limit/limiter.ts` (in-memory `Map<string, { count: number; resetAt: number }>` with configurable window/limit), `src/lib/rate-limit/middleware.ts` (rate limit middleware function -- extracts IP, checks limits, returns 429 with retryAfter), `src/lib/rate-limit/config.ts` (rate limit configs for all 4 route patterns from Section 9), `src/app/api/ai/middleware.ts` (applies 10/hr + 30/day per Section 9 to all `/api/ai/*` routes), `tests/rate-limit/limiter.test.ts` (unit tests for Map-based limiter)",
+      "source": "table",
+      "source_location": "Agent 3: `rate-limiting` (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-060",
+      "text": ": `src/app/api/ai/disclosure/route.ts`, `src/app/api/ai/risk/route.ts`, `src/app/api/ai/budget/route.ts` (from ai-routes agent -- to wire rate limiting), `src/app/api/workshop/risk-aggregate/route.ts`, `src/app/api/workshop/qna/question/route.ts`, `src/app/api/workshop/qna/upvote/route.ts` (from Phase 3 -- to wire rate limiting), `src/app/api/auth/save-results/route.ts` (from Phase 1 -- to wire rate limiting)",
+      "task_brief": "Implement the following as specified: : `src/app/api/ai/disclosure/route.ts`, `src/app/api/ai/risk/route.ts`, `src/app/api/ai/budget/route.ts` (from ai-routes agent -- to wire rate limiting), `src/app/api/workshop/risk-aggregate/route.ts`, `src/app/api/workshop/qna/question/route.ts`, `src/app/api/workshop/qna/upvote/route.ts` (from Phase 3 -- to wire rate limiting), `src/app/api/auth/save-results/route.ts` (from Phase 1 -- to wire rate limiting)",
+      "source": "table",
+      "source_location": "Agent 3: `rate-limiting` (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-061",
+      "text": "File/directory prefix: `package.json`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.js`, `next.config.ts`, `.env*`, `.gitignore`, Owning agent: scaffold, Phase: 1",
+      "task_brief": "Implement the following as specified: File/directory prefix: `package.json`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.js`, `next.config.ts`, `.env*`, `.gitignore`, Owning agent: scaffold, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 1)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-062",
+      "text": "File/directory prefix: `supabase/migrations/001*`, `supabase/migrations/002*`, `supabase/config.toml`, `src/lib/supabase/*`, `src/types/database.ts`, Owning agent: database, Phase: 1",
+      "task_brief": "Implement the following as specified: File/directory prefix: `supabase/migrations/001*`, `supabase/migrations/002*`, `supabase/config.toml`, `src/lib/supabase/*`, `src/types/database.ts`, Owning agent: database, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 2)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-063",
+      "text": "File/directory prefix: `src/lib/auth/*`, `src/app/api/auth/*`, `src/middleware.ts`, Owning agent: auth, Phase: 1",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/auth/*`, `src/app/api/auth/*`, `src/middleware.ts`, Owning agent: auth, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 3)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-064",
+      "text": "File/directory prefix: `src/app/(attendee)/*` (layout, page, join, save, results), Owning agent: ui-shell, Phase: 1",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/app/(attendee)/*` (layout, page, join, save, results), Owning agent: ui-shell, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 4)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-065",
+      "text": "File/directory prefix: `src/app/facilitator/layout.tsx`, `src/app/facilitator/page.tsx`, `src/app/facilitator/login/*`, Owning agent: ui-shell, Phase: 1",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/app/facilitator/layout.tsx`, `src/app/facilitator/page.tsx`, `src/app/facilitator/login/*`, Owning agent: ui-shell, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 5)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-066",
+      "text": "File/directory prefix: `src/components/ui/*`, Owning agent: ui-shell, Phase: 1",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/components/ui/*`, Owning agent: ui-shell, Phase: 1",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 6)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-067",
+      "text": "File/directory prefix: `src/lib/schemas/*`, `tests/schemas/*`, Owning agent: schemas, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/schemas/*`, `tests/schemas/*`, Owning agent: schemas, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 7)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-068",
+      "text": "File/directory prefix: `src/lib/tools/disclosure*`, `src/app/(attendee)/tools/disclosure/*`, `src/app/api/tools/disclosure/*`, Owning agent: tool-disclosure-festival, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/tools/disclosure*`, `src/app/(attendee)/tools/disclosure/*`, `src/app/api/tools/disclosure/*`, Owning agent: tool-disclosure-festival, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 8)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-069",
+      "text": "File/directory prefix: `src/lib/tools/festival*`, `src/app/(attendee)/tools/festival/*`, `src/app/api/tools/festival/*`, `supabase/migrations/003*`, Owning agent: tool-disclosure-festival, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/tools/festival*`, `src/app/(attendee)/tools/festival/*`, `src/app/api/tools/festival/*`, `supabase/migrations/003*`, Owning agent: tool-disclosure-festival, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 9)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-070",
+      "text": "File/directory prefix: `src/lib/tools/risk*`, `src/app/(attendee)/tools/risk/*`, `src/app/api/tools/risk/*`, Owning agent: tool-risk-provenance, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/tools/risk*`, `src/app/(attendee)/tools/risk/*`, `src/app/api/tools/risk/*`, Owning agent: tool-risk-provenance, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 10)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-071",
+      "text": "File/directory prefix: `src/lib/tools/provenance*`, `src/app/(attendee)/tools/provenance/*`, `src/app/api/tools/provenance/*`, Owning agent: tool-risk-provenance, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/tools/provenance*`, `src/app/(attendee)/tools/provenance/*`, `src/app/api/tools/provenance/*`, Owning agent: tool-risk-provenance, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 11)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-072",
+      "text": "File/directory prefix: `src/lib/tools/budget*`, `src/app/(attendee)/tools/budget/*`, `src/app/api/tools/budget/*`, Owning agent: tool-budget-sw, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/tools/budget*`, `src/app/(attendee)/tools/budget/*`, `src/app/api/tools/budget/*`, Owning agent: tool-budget-sw, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 12)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-073",
+      "text": "File/directory prefix: `public/sw.js`, `public/offline.html`, `src/lib/sw-register.ts`, Owning agent: tool-budget-sw, Phase: 2",
+      "task_brief": "Implement the following as specified: File/directory prefix: `public/sw.js`, `public/offline.html`, `src/lib/sw-register.ts`, Owning agent: tool-budget-sw, Phase: 2",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 13)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-074",
+      "text": "File/directory prefix: `src/lib/realtime/*`, `src/app/api/workshop/*`, Owning agent: realtime-engine, Phase: 3",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/realtime/*`, `src/app/api/workshop/*`, Owning agent: realtime-engine, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 14)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-075",
+      "text": "File/directory prefix: `src/app/facilitator/dashboard/*`, `src/components/facilitator/*`, Owning agent: facilitator-dashboard, Phase: 3",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/app/facilitator/dashboard/*`, `src/components/facilitator/*`, Owning agent: facilitator-dashboard, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 15)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-076",
+      "text": "File/directory prefix: `src/components/attendee/*`, `src/app/(attendee)/workshop/*`, Owning agent: attendee-realtime, Phase: 3",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/components/attendee/*`, `src/app/(attendee)/workshop/*`, Owning agent: attendee-realtime, Phase: 3",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 16)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-077",
+      "text": "File/directory prefix: `src/lib/ai/*`, `src/app/api/ai/*`, Owning agent: ai-routes, Phase: 4",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/ai/*`, `src/app/api/ai/*`, Owning agent: ai-routes, Phase: 4",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 17)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-078",
+      "text": "File/directory prefix: `src/lib/email/*`, `src/app/api/payments/*`, `src/app/api/admin/*`, `src/app/api/cron/*`, `src/app/(attendee)/payments/*`, `src/app/(attendee)/unsubscribe/*`, `vercel.json`, Owning agent: payments-email, Phase: 4",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/email/*`, `src/app/api/payments/*`, `src/app/api/admin/*`, `src/app/api/cron/*`, `src/app/(attendee)/payments/*`, `src/app/(attendee)/unsubscribe/*`, `vercel.json`, Owning agent: payments-email, Phase: 4",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 18)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "tbl-079",
+      "text": "File/directory prefix: `src/lib/rate-limit/*`, `tests/rate-limit/*`, Owning agent: rate-limiting, Phase: 4",
+      "task_brief": "Implement the following as specified: File/directory prefix: `src/lib/rate-limit/*`, `tests/rate-limit/*`, Owning agent: rate-limiting, Phase: 4",
+      "source": "table",
+      "source_location": "Cross-Phase File Ownership Summary (table row 19)",
+      "confidence": 1.0,
+      "deterministic_check": null,
+      "confidence_reasoning": "Table-extracted claim (always 1.0)"
+    },
+    {
+      "id": "prose-001",
+      "text": "ALL AI-generated and deterministic outputs must be explicitly labeled with \"Guidance, not legal advice. Consult an entertainment attorney for legal counsel.\"",
+      "task_brief": "Build a Next.js component or utility that renders AI-generated and deterministic tool outputs. Verify that the string \"Guidance, not legal advice. Consult an entertainment attorney for legal counsel.\" appears in the rendered output.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "Guidance, not legal advice. Consult an entertainment attorney for legal counsel.",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quote with exact required text string. No inference needed."
+    },
+    {
+      "id": "prose-002",
+      "text": "Offline mode must support cached UI shell, Festival JSON, and Rate JSON without network.",
+      "task_brief": "Implement a Service Worker or cache strategy for the app. Verify that the UI shell, festival policy data, and rate table data are cached and accessible without a network connection.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.92,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clearly stated requirement; testing requires verifying cache behavior which needs semantic judgment about what constitutes the UI shell and cached JSON."
+    },
+    {
+      "id": "prose-003",
+      "text": "Auth, LLM, Square, email, and realtime actions require network and must show queued/retry/unavailable states when offline. They must never block the UI.",
+      "task_brief": "Implement offline handling for Auth, LLM, Square, email, and realtime actions. Verify that when network is unavailable, the UI shows a queued/retry/unavailable state and does not block user interaction.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.88,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clearly stated requirement but verifying 'never block the UI' requires runtime/semantic evaluation. Multiple services involved."
+    },
+    {
+      "id": "prose-004",
+      "text": "Offline mode must never block local deterministic tool use.",
+      "task_brief": "Implement offline mode for the ethics toolkit. Verify that deterministic tools (Disclosure Generator, Risk Scanner, Provenance Chain Builder, Budget Calculator) remain functional without network access.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.9,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear constraint but verification requires runtime behavior testing."
+    },
+    {
+      "id": "prose-005",
+      "text": "Mobile-First: minimum 16pt body text.",
+      "task_brief": "Implement the app's global CSS or Tailwind configuration. Verify that body text uses a minimum of 16pt (approximately 21px) font size.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "font-size:\\s*(1[6-9]|[2-9][0-9])(pt|px)|text-base|text-lg|text-xl",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicit numeric value stated directly."
+    },
+    {
+      "id": "prose-006",
+      "text": "Mobile-First: minimum 44pt tap targets.",
+      "task_brief": "Implement interactive UI elements (buttons, links, tap targets). Verify that tap targets have a minimum height/width of 44pt (approximately 59px) in CSS.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "min-h-\\[44|min-w-\\[44|h-\\[44|min-height:\\s*44|min-height:\\s*5[89]px|h-11|h-12",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicit numeric value stated directly."
+    },
+    {
+      "id": "prose-007",
+      "text": "Primary actions must be restricted to the bottom thumb zone.",
+      "task_brief": "Implement the mobile layout. Verify that primary action buttons are positioned at the bottom of the screen (e.g., via CSS fixed/sticky positioning at the bottom).",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.85,
+      "deterministic_check": {
+        "pattern": "fixed bottom|sticky bottom|bottom-0",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Clearly stated but 'primary actions' requires semantic identification of which elements qualify."
+    },
+    {
+      "id": "prose-008",
+      "text": "Render aggregated facilitator views only when at least 5 responses exist. Below 5: display \"Waiting for more responses.\"",
+      "task_brief": "Implement the facilitator dashboard aggregated view. Verify that when fewer than 5 responses exist, the text \"Waiting for more responses.\" is displayed instead of the aggregate data.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "Waiting for more responses",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact quoted string with a clear numeric threshold. High confidence."
+    },
+    {
+      "id": "prose-009",
+      "text": "At startup or deployment, check that Haiku 4.5 and Sonnet 4.6 are reachable. If unavailable, the app falls back to mock mode automatically.",
+      "task_brief": "Implement a model access preflight check at app startup. Verify that the code checks reachability of Haiku 4.5 and Sonnet 4.6 and activates mock mode when they are unavailable.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.92,
+      "deterministic_check": {
+        "pattern": "claude-haiku-4-5|haiku.*4.5|claude-sonnet-4-5|sonnet.*4.6",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Clear requirement; model names are specific. Pattern checks for model name references in the preflight code."
+    },
+    {
+      "id": "prose-010",
+      "text": "When AI models are unavailable, user-facing UI shows deterministic output and \"AI recommendation temporarily unavailable.\"",
+      "task_brief": "Implement the AI fallback UI. Verify that when AI models are unavailable, the string \"AI recommendation temporarily unavailable\" appears in the UI.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "AI recommendation temporarily unavailable",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string requirement."
+    },
+    {
+      "id": "prose-011",
+      "text": "All tests must pass in mock mode without API keys.",
+      "task_brief": "Configure the test suite so that all tests pass when no Anthropic, Square, or Resend API keys are present. Verify that the test runner exits successfully with only Supabase and app URL env vars set.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.93,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear requirement but verification requires running the test suite, which is a runtime check."
+    },
+    {
+      "id": "prose-012",
+      "text": "QR join uses same-origin app URLs only. No cross-origin attendee frontend is supported in v1.",
+      "task_brief": "Implement the QR join flow. Verify that the QR code URL generation uses same-origin URLs and that no cross-origin attendee frontend URL is configured or referenced.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.92,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear requirement; verification of 'same-origin only' requires inspecting URL generation logic semantically."
+    },
+    {
+      "id": "prose-013",
+      "text": "Log API errors to console/Vercel logs with `requestId`, route, `userId`/`anonymousSessionId` when available.",
+      "task_brief": "Implement API error logging. Verify that error log statements include requestId, route, and userId or anonymousSessionId fields.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "requestId",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Specific field names stated; requestId is the most unique token to check."
+    },
+    {
+      "id": "prose-014",
+      "text": "Do not log project descriptions, disclosure text, or provenance notes.",
+      "task_brief": "Implement API error logging. Verify that the logging code does not reference or pass projectTitle, disclosureText, provenance notes, or similar sensitive fields to the logger.",
+      "source": "prose",
+      "source_location": "1. Global Platform Constraints & Guardrails",
+      "confidence": 0.88,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear prohibition but verifying absence of specific data in dynamic log calls requires semantic review."
+    },
+    {
+      "id": "prose-015",
+      "text": "Generate an ephemeral `anonymousSessionId` (UUID, stored in browser `localStorage`) for anonymous users.",
+      "task_brief": "Implement the anonymous session initialization. Verify that on first app load, a UUID is generated and stored in browser localStorage under a key related to anonymousSessionId.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "localStorage",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact storage mechanism (localStorage) and type (UUID) stated explicitly."
+    },
+    {
+      "id": "prose-016",
+      "text": "Anonymous workshop tool outputs are stored server-side in `tool_events` keyed by `anonymousSessionId`, with no PII.",
+      "task_brief": "Implement the tool event persistence route. Verify that tool_events are inserted with anonymous_session_id as a key and that no PII fields (email, name) are stored in the record.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.9,
+      "deterministic_check": {
+        "pattern": "anonymous_session_id",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Clear requirement; the column name is explicitly stated."
+    },
+    {
+      "id": "prose-017",
+      "text": "Anonymous session data (tool_events) is hard-deleted after 30 days if the user never converts.",
+      "task_brief": "Implement the anonymous session cleanup mechanism. Verify that there is a query or cron job that hard-deletes tool_events and anonymous_sessions where user_id IS NULL and created_at is older than 30 days.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.9,
+      "deterministic_check": {
+        "pattern": "30.*day|interval.*30|DELETE.*anonymous|cleanup.*anon",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicitly stated with 30-day interval; implementation can be verified by code pattern."
+    },
+    {
+      "id": "prose-018",
+      "text": "On successful magic link auth, the system claims all data for that `anonymousSessionId` into the authenticated `userId` by updating `anonymous_sessions.user_id` and all related `tool_events.user_id`.",
+      "task_brief": "Implement the anonymous-to-authenticated identity conversion. Verify that the conversion function updates both anonymous_sessions.user_id and tool_events.user_id for all records matching the anonymousSessionId.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "anonymous_sessions.*user_id|UPDATE.*anonymous_sessions",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact table and column names stated; operation is clearly specified."
+    },
+    {
+      "id": "prose-019",
+      "text": "Facilitator route `/facilitator` is protected by one env-configured password using `FACILITATOR_PASSWORD_HASH` (bcrypt hash) with `bcrypt.compare()` server-side.",
+      "task_brief": "Implement the facilitator authentication route. Verify that the /facilitator route uses bcrypt.compare() with the FACILITATOR_PASSWORD_HASH environment variable for authentication.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "bcrypt.compare",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact function name stated; high confidence."
+    },
+    {
+      "id": "prose-020",
+      "text": "On successful facilitator auth, set an `httpOnly`, `secure`, `sameSite=lax` cookie named `facilitator_session` with a signed value and `maxAge: 86400`.",
+      "task_brief": "Implement the facilitator session cookie. Verify that the cookie is set with httpOnly, secure, sameSite=lax, named 'facilitator_session', and maxAge of 86400.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "facilitator_session",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact cookie name, attributes, and maxAge value all stated explicitly."
+    },
+    {
+      "id": "prose-021",
+      "text": "All facilitator API routes validate the `facilitator_session` cookie before processing.",
+      "task_brief": "Implement facilitator API route middleware. Verify that every facilitator API route checks for the facilitator_session cookie before executing its handler logic.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "facilitator_session",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact cookie name stated; requirement is clear."
+    },
+    {
+      "id": "prose-022",
+      "text": "Email capture initiates a 14-day premium trial. `profiles.trial_ends_at` is set to `now() + interval '14 days'`.",
+      "task_brief": "Implement the magic link conversion flow. Verify that on email capture/conversion, trial_ends_at is set to now() + 14 days in the profiles table.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "trial_ends_at|14.*day|interval.*14",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicit 14-day value and field name stated."
+    },
+    {
+      "id": "prose-023",
+      "text": "Graceful downgrade to the free tier is executed strictly via UI when `trial_ends_at` is reached.",
+      "task_brief": "Implement the trial expiry UI downgrade. Verify that when trial_ends_at is in the past, the UI switches to free-tier feature visibility without a server-side forced downgrade call.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.85,
+      "deterministic_check": {
+        "pattern": "trial_ends_at",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "The requirement is clear but 'strictly via UI' involves a behavioral constraint that requires semantic review to confirm no server-side forced redirect/downgrade occurs."
+    },
+    {
+      "id": "prose-024",
+      "text": "Pricing is $15/mo subscription only. $49 one-time Project Export is deferred to post-launch.",
+      "task_brief": "Implement the subscription pricing UI. Verify that the price displayed is $15/mo and that no $49 export option is present in the UI or payment flow.",
+      "source": "prose",
+      "source_location": "2. Identity & Monetization Architecture",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "\\$15",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact price value stated; easily verifiable."
+    },
+    {
+      "id": "prose-025",
+      "text": "The `DisclosureInput` Zod schema must include field `projectTitle` as `z.string().min(1).max(200)`.",
+      "task_brief": "Implement the Disclosure Generator Zod input schema. Verify that projectTitle is defined as z.string().min(1).max(200) in the DisclosureInput schema.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "projectTitle.*z\\.string\\(\\)\\.min\\(1\\)\\.max\\(200\\)",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact Zod schema code provided in spec."
+    },
+    {
+      "id": "prose-026",
+      "text": "The `DisclosureAI` Zod schema for probabilistic output must be `z.object({ disclosureText: z.string().min(50).max(2000) })`.",
+      "task_brief": "Implement the Disclosure AI output Zod schema. Verify that DisclosureAI is defined with disclosureText as z.string().min(50).max(2000).",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "disclosureText.*z\\.string\\(\\)\\.min\\(50\\)\\.max\\(2000\\)",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact Zod schema code provided."
+    },
+    {
+      "id": "prose-027",
+      "text": "The AI Disclosure Generator uses Haiku 4.5 for probabilistic output.",
+      "task_brief": "Implement the AI Disclosure Generator LLM call. Verify that the Anthropic API call for disclosure text generation uses the claude-haiku-4-5 (or equivalent Haiku 4.5) model identifier.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "haiku.*4[._-]?5|claude-haiku-4-5",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Model name explicitly stated in spec."
+    },
+    {
+      "id": "prose-028",
+      "text": "Free Tier for Disclosure Generator shows checklist + template structure. AI wording placeholder: \"Upgrade to generate custom disclosure language.\"",
+      "task_brief": "Implement the free-tier Disclosure Generator UI. Verify that the string \"Upgrade to generate custom disclosure language.\" appears in the free-tier output.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "Upgrade to generate custom disclosure language",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string."
+    },
+    {
+      "id": "prose-029",
+      "text": "Disclosure Generator LLM failure must show deterministic template with \"AI wording unavailable.\"",
+      "task_brief": "Implement LLM error handling for the Disclosure Generator. Verify that when the LLM call fails, the string 'AI wording unavailable' appears in the response/UI.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "AI wording unavailable",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string."
+    },
+    {
+      "id": "prose-030",
+      "text": "Disclosure tool output is stored in ToolEvent: `deterministicPayload` = DisclosureOutput, `probabilisticPayload` = disclosure text string.",
+      "task_brief": "Implement the tool event persistence for the Disclosure Generator. Verify that the ToolEvent record stores deterministicPayload as DisclosureOutput and probabilisticPayload as the disclosure text string.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "deterministicPayload|deterministic_payload",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact field names stated; clear mapping."
+    },
+    {
+      "id": "prose-031",
+      "text": "Festival Policy Lookup uses case-insensitive substring match on `festival_name` and `policy_details`. Filter by `ai_policy` and `categories` (array contains). Results paginated at 20 per page.",
+      "task_brief": "Implement the Festival Policy Lookup search route. Verify that the query performs case-insensitive substring matching on festival_name and policy_details, supports ai_policy and categories filters, and returns 20 results per page.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "ilike|ILIKE|festival_name|policy_details",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Specific fields and behavior stated; pagination value (20) is explicit."
+    },
+    {
+      "id": "prose-032",
+      "text": "Festival Policy Lookup has no LLM, is fully free, has no free/paid boundary, and is not stored in ToolEvent.",
+      "task_brief": "Implement the Festival Policy Lookup. Verify that no LLM API call is made, no entitlement check is performed, and no tool_events record is created for a lookup.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.95,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear explicit statements; verification requires checking absence of LLM call and tool_events insert, which needs semantic review."
+    },
+    {
+      "id": "prose-033",
+      "text": "Festival Policy Lookup: No results must show \"No matching festivals found.\" Empty database must show \"Festival data is loading.\"",
+      "task_brief": "Implement the Festival Policy Lookup error states. Verify that the strings 'No matching festivals found.' and 'Festival data is loading.' appear in the appropriate error conditions.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "No matching festivals found",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted strings."
+    },
+    {
+      "id": "prose-034",
+      "text": "The `RiskAI` Zod schema for probabilistic output must be `z.object({ recommendations: z.array(z.string().min(10).max(500)).min(1).max(10) })`.",
+      "task_brief": "Implement the Risk Scanner AI output Zod schema. Verify that RiskAI is defined with recommendations as an array of strings with min(10)/max(500) per item, and array bounds min(1)/max(10).",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "recommendations.*z\\.array|z\\.array.*z\\.string.*min\\(10\\).*max\\(500\\)",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact Zod schema code provided."
+    },
+    {
+      "id": "prose-035",
+      "text": "The Project Risk Scanner uses Sonnet 4.6 for probabilistic output (mitigation recommendations).",
+      "task_brief": "Implement the Risk Scanner LLM call. Verify that the Anthropic API call for risk recommendations uses the claude-sonnet-4-6 (or equivalent Sonnet 4.6) model identifier.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "sonnet.*4[._-]?6|claude-sonnet-4-6",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Model name explicitly stated."
+    },
+    {
+      "id": "prose-036",
+      "text": "Free Tier for Risk Scanner shows tier (low/medium/high/critical) + department flags only.",
+      "task_brief": "Implement the free-tier Risk Scanner UI. Verify that free-tier users see the tier label and department flags but NOT the full dimension breakdown or AI recommendations.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.88,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clearly stated but verifying absence of premium content for free tier requires semantic UI review."
+    },
+    {
+      "id": "prose-037",
+      "text": "Risk Scanner LLM failure must show deterministic score with \"AI recommendations unavailable.\"",
+      "task_brief": "Implement LLM error handling for the Risk Scanner. Verify that when the LLM call fails, the string 'AI recommendations unavailable' appears in the response/UI.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "AI recommendations unavailable",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string."
+    },
+    {
+      "id": "prose-038",
+      "text": "AI Provenance Chain Builder has no LLM integration.",
+      "task_brief": "Implement the AI Provenance Chain Builder. Verify that no Anthropic or LLM API call is made in the provenance chain builder route or component.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": null,
+      "confidence_reasoning": "Explicitly stated; verification requires checking absence of LLM call."
+    },
+    {
+      "id": "prose-039",
+      "text": "Provenance Chain Builder free tier: 1 project, view only, no export.",
+      "task_brief": "Implement the free-tier Provenance Chain Builder. Verify that free-tier users can only create 1 project and the export button is absent or disabled.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.9,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear requirement; verification of 1-project limit and absent export requires semantic UI/logic review."
+    },
+    {
+      "id": "prose-040",
+      "text": "Provenance Chain Builder Premium PDF export uses `@react-pdf/renderer` with filename format `provenance-chain-{projectTitle}-{date}.pdf`.",
+      "task_brief": "Implement the Provenance Chain Builder PDF export. Verify that @react-pdf/renderer is imported and the filename follows the pattern provenance-chain-{projectTitle}-{date}.pdf.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "@react-pdf/renderer",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact library name and filename pattern stated."
+    },
+    {
+      "id": "prose-041",
+      "text": "PDF Export sections in order: (1) Header with project title + generation date + disclaimer, (2) Summary stats table, (3) Entry-by-entry provenance log table (Department | Task | Attribution | Tool | Human | Notes), (4) Footer with \"Generated by Ethics Toolkit. Guidance, not legal advice.\"",
+      "task_brief": "Implement the Provenance Chain Builder PDF export layout. Verify that the PDF includes a footer containing the text 'Generated by Ethics Toolkit. Guidance, not legal advice.'",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "Generated by Ethics Toolkit",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact quoted footer text stated."
+    },
+    {
+      "id": "prose-042",
+      "text": "Provenance Chain Builder duplicate detection: warn if same `department` + `taskDescription` combination exists. Do not block.",
+      "task_brief": "Implement duplicate detection in the Provenance Chain Builder. Verify that when a duplicate department+taskDescription combination is submitted, a warning is shown but the entry is still accepted.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.9,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear requirement; 'warn but don't block' is behavioral and requires semantic testing."
+    },
+    {
+      "id": "prose-043",
+      "text": "Provenance Chain Builder export failure must show \"PDF generation failed. Your data is saved.\"",
+      "task_brief": "Implement PDF export error handling for the Provenance Chain Builder. Verify that the string 'PDF generation failed. Your data is saved.' appears when export fails.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "PDF generation failed. Your data is saved.",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string."
+    },
+    {
+      "id": "prose-044",
+      "text": "`percentageHuman` in Provenance output is computed as `round((humanMade / totalEntries) * 100)`.",
+      "task_brief": "Implement the Provenance Chain Builder summary calculation. Verify that percentageHuman is computed as Math.round((humanMade / totalEntries) * 100).",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "Math.round.*humanMade.*totalEntries|round.*humanMade.*totalEntries",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact formula provided in spec."
+    },
+    {
+      "id": "prose-045",
+      "text": "Budget Calculator `userBudgetDelta` is computed as `{ low: currentBudgetForRole - humanCostRange.high, high: currentBudgetForRole - humanCostRange.low }`.",
+      "task_brief": "Implement the Budget Calculator delta computation. Verify that userBudgetDelta.low = currentBudgetForRole - humanCostRange.high and userBudgetDelta.high = currentBudgetForRole - humanCostRange.low.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "currentBudgetForRole.*humanCostRange|userBudgetDelta",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact formula provided in spec."
+    },
+    {
+      "id": "prose-046",
+      "text": "Budget Calculator uses Sonnet 4.6 for probabilistic ethical analysis output.",
+      "task_brief": "Implement the Budget Calculator LLM call. Verify that the Anthropic API call for ethical analysis uses the Sonnet 4.6 model identifier.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "sonnet.*4[._-]?6|claude-sonnet-4-6",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Model explicitly stated."
+    },
+    {
+      "id": "prose-047",
+      "text": "Budget Calculator unknown role/tier combination must return \"Rate data unavailable.\"",
+      "task_brief": "Implement the Budget Calculator error handling for unknown role/tier combinations. Verify that 'Rate data unavailable.' is returned when an unsupported role+budgetTier combination is requested.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "Rate data unavailable",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string."
+    },
+    {
+      "id": "prose-048",
+      "text": "Budget Calculator LLM failure must show deterministic comparison with \"Ethical analysis unavailable.\"",
+      "task_brief": "Implement LLM error handling for the Budget Calculator. Verify that when the LLM call fails, the string 'Ethical analysis unavailable.' appears in the response/UI.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "Ethical analysis unavailable",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Direct quoted string."
+    },
+    {
+      "id": "prose-049",
+      "text": "Realtime channel name format is `workshop:{workshopSessionId}`.",
+      "task_brief": "Implement the Supabase Realtime channel subscription. Verify that the channel name follows the pattern 'workshop:{workshopSessionId}'.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "workshop:",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact channel name format stated."
+    },
+    {
+      "id": "prose-050",
+      "text": "All realtime messages include `eventId` (UUID, client-generated).",
+      "task_brief": "Implement the realtime message payload construction. Verify that all outgoing realtime messages include an eventId field containing a UUID.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "eventId",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact field name stated; present in all 6 message type definitions."
+    },
+    {
+      "id": "prose-051",
+      "text": "Broadcast-first interactions: the facilitator client keeps an in-memory `Set<string>` of received `eventId` values per workshop session and ignores duplicates.",
+      "task_brief": "Implement the facilitator client broadcast idempotency. Verify that a Set<string> is used to track received eventIds for deduplication on the facilitator side.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "new Set|Set<string>",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact data structure stated."
+    },
+    {
+      "id": "prose-052",
+      "text": "Authoritative-state interactions (risk.aggregate, qna.question, qna.upvote) use the `processed_events` table for server-side idempotency.",
+      "task_brief": "Implement server-side idempotency for risk.aggregate, qna.question, and qna.upvote API routes. Verify that each route checks the processed_events table before processing.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "processed_events",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact table name stated; clear requirement."
+    },
+    {
+      "id": "prose-053",
+      "text": "Q&A upvote duplicate attempt returns silently (no error to client).",
+      "task_brief": "Implement the Q&A upvote API route. Verify that when a duplicate upvote is attempted (same question_id + anonymous_session_id), the response is a success (2xx) with no error message.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.92,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear behavioral requirement but verification requires runtime testing."
+    },
+    {
+      "id": "prose-054",
+      "text": "Do NOT build: gamification, free-text chat, collaborative editing, leaderboards.",
+      "task_brief": "Review the realtime workshop implementation. Verify that no gamification, free-text chat, collaborative editing, or leaderboard features exist in the codebase.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.93,
+      "deterministic_check": null,
+      "confidence_reasoning": "Explicit prohibition; absence checks require semantic review of feature set."
+    },
+    {
+      "id": "prose-055",
+      "text": "Square admin activation route is `POST /api/admin/activate` (facilitator-authenticated). Body: `{ userEmail: string, squarePaymentId: string }`. Action: look up profiles by email, set `entitlement_status = 'active'`, create `square_entitlements` row with `square_payment_id`.",
+      "task_brief": "Implement the admin activation route. Verify that POST /api/admin/activate exists, is facilitator-authenticated, accepts userEmail and squarePaymentId, sets entitlement_status='active', and creates a square_entitlements row.",
+      "source": "prose",
+      "source_location": "7. Square Integration Contract",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "/api/admin/activate",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact route path, body fields, and actions stated."
+    },
+    {
+      "id": "prose-056",
+      "text": "On user conversion: generate a new UUID and set `profiles.current_trial_id = <uuid>`, `profiles.trial_started_at = now()`, `profiles.trial_ends_at = now() + interval '14 days'`.",
+      "task_brief": "Implement the user conversion (magic link auth) handler. Verify that current_trial_id, trial_started_at, and trial_ends_at are all set on the profiles row at conversion time.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "current_trial_id|trial_started_at",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact field names and values stated."
+    },
+    {
+      "id": "prose-057",
+      "text": "All 3 emails (welcome, day12_warning, day14_downgrade) must use HTML format with plain-text fallback and include: subject line, body text, deep link to `{APP_URL}/results`, unsubscribe link `{APP_URL}/unsubscribe?token={token}`, and legal disclaimer footer.",
+      "task_brief": "Implement the email templates for all 3 lifecycle emails. Verify that each email includes an unsubscribe link with the pattern /unsubscribe?token= and a deep link to /results.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "/unsubscribe\\?token=",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact URL pattern stated; unsubscribe link is a specific verifiable element."
+    },
+    {
+      "id": "prose-058",
+      "text": "Email idempotency key format: `{userId}:{emailType}:{trialId}`. Stored as UNIQUE constraint on `email_jobs.idempotency_key`.",
+      "task_brief": "Implement the email_jobs table and idempotency key generation. Verify that the idempotency_key is constructed as '{userId}:{emailType}:{trialId}' and has a UNIQUE constraint.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "idempotency_key",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact format and constraint stated."
+    },
+    {
+      "id": "prose-059",
+      "text": "Before sending an email: check `profiles.email_opt_out`. If true, set job `status = 'skipped'`.",
+      "task_brief": "Implement the email sending logic in the cron job. Verify that email_opt_out is checked before each send and the job status is set to 'skipped' if opt-out is true.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "email_opt_out",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact field name and behavior stated."
+    },
+    {
+      "id": "prose-060",
+      "text": "Email retry: if Resend returns 5xx, retry once after 60 seconds. If still failing, set `status = 'failed'`.",
+      "task_brief": "Implement the email sending retry logic. Verify that on a 5xx response from Resend, the code retries after 60 seconds and sets status='failed' if the retry also fails.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "60.*second|60000|retry",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact retry delay and outcome stated."
+    },
+    {
+      "id": "prose-061",
+      "text": "Unsubscribe sets `profiles.email_opt_out = true`. Check before every send.",
+      "task_brief": "Implement the unsubscribe endpoint. Verify that the unsubscribe action sets profiles.email_opt_out = true and that the cron send logic checks this field before every send.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "email_opt_out.*true|email_opt_out = true",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact field and value stated."
+    },
+    {
+      "id": "prose-062",
+      "text": "Daily Vercel Cron job at `/api/cron/process-emails` is protected by `CRON_SECRET` (Vercel cron authorization header).",
+      "task_brief": "Implement the email cron endpoint. Verify that /api/cron/process-emails validates the CRON_SECRET from the authorization header before processing.",
+      "source": "prose",
+      "source_location": "8. Email Lifecycle Contract",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "/api/cron/process-emails",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact route path and secret name stated."
+    },
+    {
+      "id": "prose-063",
+      "text": "Rate limiting uses an in-memory `Map<string, { count: number; resetAt: number }>`. Do not add Upstash, Redis, or any new infrastructure.",
+      "task_brief": "Implement rate limiting. Verify that rate limiting uses a Map data structure (not Redis or Upstash) and that no Redis or Upstash imports/dependencies exist.",
+      "source": "prose",
+      "source_location": "9. Rate Limiting",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "new Map|Map<string",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact data structure stated; prohibition of Redis/Upstash is explicit."
+    },
+    {
+      "id": "prose-064",
+      "text": "On rate limit exceeded, return HTTP 429 with body `{ \"error\": \"rate_limited\", \"retryAfter\": <seconds> }`.",
+      "task_brief": "Implement the rate limit exceeded response. Verify that the API returns HTTP 429 with a JSON body containing the 'error' field set to 'rate_limited' and a 'retryAfter' field.",
+      "source": "prose",
+      "source_location": "9. Rate Limiting",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "rate_limited",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact HTTP status code and response body structure stated."
+    },
+    {
+      "id": "prose-065",
+      "text": "Mock mode bypasses Anthropic API but still enforces rate limits and input validation.",
+      "task_brief": "Implement mock mode for the AI routes. Verify that rate limiting middleware and Zod input validation are applied even when ANTHROPIC_API_KEY is absent.",
+      "source": "prose",
+      "source_location": "9. Rate Limiting",
+      "confidence": 0.93,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear requirement but verifying that rate limits fire in mock mode requires runtime testing."
+    },
+    {
+      "id": "prose-066",
+      "text": "All persisted tool outputs implement the `ToolEvent` interface with fields: eventId (UUID client-generated), schemaVersion: 1, workshopSessionId?, anonymousSessionId, userId?, toolType, deterministicPayload, probabilisticPayload?, createdAt (ISO 8601).",
+      "task_brief": "Implement the ToolEvent TypeScript interface. Verify that the interface includes all required fields: eventId, schemaVersion, anonymousSessionId, toolType, deterministicPayload, createdAt, and optional fields workshopSessionId, userId, probabilisticPayload.",
+      "source": "prose",
+      "source_location": "10. Autopilot Phasing Strategy",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "interface ToolEvent|type ToolEvent",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact interface definition provided in spec."
+    },
+    {
+      "id": "prose-067",
+      "text": "Festival Policy Lookup does NOT create ToolEvent records.",
+      "task_brief": "Implement the Festival Policy Lookup. Verify that no tool_events INSERT is performed in the festival policy lookup route or handler.",
+      "source": "prose",
+      "source_location": "10. Autopilot Phasing Strategy",
+      "confidence": 0.95,
+      "deterministic_check": null,
+      "confidence_reasoning": "Explicitly stated; verification requires checking absence of tool_events insert in that specific route."
+    },
+    {
+      "id": "prose-068",
+      "text": "Phase 2.0 gate: All Zod schemas from Section 4 must be implemented as shared TypeScript modules and fixture tests must pass before any tool worker starts.",
+      "task_brief": "Implement the shared Zod schema modules. Verify that DisclosureInput, DisclosureOutput, DisclosureAI, PolicyLookupInput, RiskScannerInput, RiskScannerOutput, RiskAI, ProvenanceInput, ProvenanceOutput, BudgetInput, BudgetOutput, and BudgetAI are all exported from shared TypeScript modules.",
+      "source": "prose",
+      "source_location": "10. Autopilot Phasing Strategy",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "export.*DisclosureInput|export.*RiskScannerInput|export.*ProvenanceInput|export.*BudgetInput",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicit gate requirement; schema names are all stated."
+    },
+    {
+      "id": "prose-069",
+      "text": "Phase reports must be written under `docs/reports/` with specific filenames: phase-1-foundation.md, phase-2-tools.md, phase-3-realtime.md, phase-4-integration.md. Each must include: STATUS: PASS/FAIL, files created/modified, gate results, issues found.",
+      "task_brief": "Implement the phase reporting requirement. Verify that the docs/reports/ directory contains the four phase report files and that each file includes a 'STATUS:' line.",
+      "source": "prose",
+      "source_location": "11. Swarm Execution Guardrails",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "STATUS: PASS|STATUS: FAIL",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact filenames and required content elements stated."
+    },
+    {
+      "id": "prose-070",
+      "text": "Agents must use `git -C <path>` instead of `cd <path> && git`.",
+      "task_brief": "Review agent bash scripts. Verify that no 'cd && git' compound command pattern appears and that git commands use the -C flag for path specification.",
+      "source": "prose",
+      "source_location": "11. Swarm Execution Guardrails",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "cd.*&&.*git",
+        "mode": "absence"
+      },
+      "confidence_reasoning": "Explicit prohibition with exact alternative pattern stated."
+    },
+    {
+      "id": "prose-071",
+      "text": "In development/mock mode, only `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `NEXT_PUBLIC_APP_URL` are required. All other missing keys trigger mock/fallback mode for their respective services.",
+      "task_brief": "Implement the environment variable fallback logic. Verify that the app initializes successfully without ANTHROPIC_API_KEY, RESEND_API_KEY, SQUARE_ACCESS_TOKEN, and FACILITATOR_PASSWORD_HASH when in development/mock mode.",
+      "source": "prose",
+      "source_location": "12. Environment Variables",
+      "confidence": 0.93,
+      "deterministic_check": {
+        "pattern": "NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|NEXT_PUBLIC_APP_URL",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact env var names stated; fallback behavior is clear."
+    },
+    {
+      "id": "prose-072",
+      "text": "Festival Policy Lookup seed data must include exactly 12 records inserted during Phase 2.",
+      "task_brief": "Implement the festival_policies seed migration. Verify that the seed script or migration file inserts exactly 12 festival policy records.",
+      "source": "prose",
+      "source_location": "4. Core Workflow Contracts (The 5 Tools)",
+      "confidence": 0.95,
+      "deterministic_check": null,
+      "confidence_reasoning": "Explicit count (12) stated; verification requires counting inserted records in migration."
+    },
+    {
+      "id": "prose-073",
+      "text": "The `word_cloud.submit` message `phrase` field has a maximum of 50 characters.",
+      "task_brief": "Implement the word cloud submission message handling. Verify that the phrase field is validated to a maximum of 50 characters.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "max.*50|maxLength.*50|\\.max\\(50\\)",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicit max length stated."
+    },
+    {
+      "id": "prose-074",
+      "text": "The `confidence.submit` message `value` field must be an integer 1-10.",
+      "task_brief": "Implement the confidence slider submission message validation. Verify that the value field is validated as an integer between 1 and 10 inclusive.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "\\.min\\(1\\)\\.max\\(10\\)|min.*1.*max.*10",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Explicit range stated."
+    },
+    {
+      "id": "prose-075",
+      "text": "Risk Scanner aggregate on reconnect: server replays last known score for that `anonymousSessionId` without duplicating.",
+      "task_brief": "Implement the risk aggregate reconnect logic. Verify that when an attendee reconnects, the server fetches and broadcasts their last risk score from workshop_risk_scores without creating a duplicate record.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.88,
+      "deterministic_check": null,
+      "confidence_reasoning": "Clear requirement but verifying no-duplicate on reconnect requires runtime/integration testing."
+    },
+    {
+      "id": "prose-076",
+      "text": "The `POST /api/workshop/risk-aggregate`, `POST /api/workshop/qna/question`, and `POST /api/workshop/qna/upvote` routes are the three persisted realtime routes.",
+      "task_brief": "Implement the persisted realtime API routes. Verify that all three routes /api/workshop/risk-aggregate, /api/workshop/qna/question, and /api/workshop/qna/upvote exist and return 2xx responses.",
+      "source": "prose",
+      "source_location": "5. Realtime Sync & Dual-Mode UX",
+      "confidence": 0.97,
+      "deterministic_check": {
+        "pattern": "/api/workshop/risk-aggregate|/api/workshop/qna/question|/api/workshop/qna/upvote",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact route paths stated."
+    },
+    {
+      "id": "prose-077",
+      "text": "Square checkout URL is configured via `SQUARE_CHECKOUT_URL` env var. v1 does NOT implement full Square subscription webhooks.",
+      "task_brief": "Implement the Square checkout redirect. Verify that the checkout URL is read from the SQUARE_CHECKOUT_URL environment variable and no Square webhook handler is implemented.",
+      "source": "prose",
+      "source_location": "7. Square Integration Contract",
+      "confidence": 0.95,
+      "deterministic_check": {
+        "pattern": "SQUARE_CHECKOUT_URL",
+        "mode": "presence"
+      },
+      "confidence_reasoning": "Exact env var name stated."
+    }
+  ]
+}
