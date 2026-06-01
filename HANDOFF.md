@@ -1,108 +1,42 @@
-# HANDOFF -- Pitfall Eval Harness + Spec Eval Gate
+# HANDOFF -- Sandbox
 
-**Branch:** `feat/pitfall-eval-harness`
 **Date:** 2026-06-01
-**Last commit:** `df83d70`
+**Branch:** `feat/pitfall-eval-harness`
+**Phase:** Compound complete (autonomy hardening). Eval harness spec-eval gate calibration still pending.
 
-## What Exists
+## Current State
 
-A three-layer pipeline for testing and optimizing agent-pitfalls.md rules:
+Sandbox autonomy hardening is complete through the compound phase. The burn-zone safety model is shipped: `.gitignore` expanded to 77 patterns, secrets policy defined, advisory audit extracted to helper skill, data inventory completed, 2 sensitive CSVs untracked, destructive git rewrites added to CLAUDE.md forbidden actions. 5-agent review found and fixed 3 P1s. Solution doc written.
 
-1. **Eval Harness** (`eval-harness/pitfall_eval.py`) -- Tests whether LLM agents follow rules by running scenarios with/without rule injection. 25 FCs covered, 172 scenarios. Calibration gate at 90% agreement.
+The eval harness spec-eval gate (Phases 1-5 code) is complete but calibration requires a real API key — that work is pending.
 
-2. **Monte Carlo Simulator** (`eval-harness/mc_simulator.py`) -- Projects P(clean build) for N-agent swarms using eval harness pass rates + empirical relevance weights calibrated from 20 swarm builds (255 agent-runs).
+## Key Artifacts
 
-3. **Relevance Calibrator** (`eval-harness/calibrate_relevance.py`) -- Extracts FC occurrence rates from build history to weight the MC simulator.
+| Phase | Location |
+|-------|----------|
+| Plan | `docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md` |
+| Data Inventory | `docs/reports/data-inventory-2026-06-01.md` |
+| Solution | `docs/solutions/2026-06-01-sandbox-autonomy-hardening-blast-radius.md` |
+| Advisory Audit Skill | `.claude/skills/advisory-audit/SKILL.md` |
+| Scan Script | `scripts/sensitive-file-scan.sh` |
+| Spec Eval Gate Plan | `eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md` |
 
-### Key Results (Pitfall Eval)
+## Deferred Items
 
-- **25 FCs scored:** All CLEAR after rule rewrites (FC10, FC14 regex, FC41 judge)
-- **MC projection at 25 agents:** 100% clean with all rules injected
-- **Total eval cost:** ~$4 across all runs
+- **Credential rotation:** 5 `.env` files with real API keys on disk. User committed to rotating. Priority: Anthropic keys (billing).
+- **Contact data in git history:** 2 CSVs in public git history on origin/master (Option A: accept exposure). Remediation path: `git filter-repo` + force-push if sensitivity changes.
+- **SKILL.md at 735 lines:** Still above 500-line concern. Future additions should evaluate second extraction.
+- **Spec eval gate calibration:** Run with real ANTHROPIC_API_KEY against WRC and Ethics Toolkit specs, then add step 9w.8 to SKILL.md.
 
-### Spec Eval Gate (COMPLETE -- validated end-to-end)
+## Three Questions
 
-A pre-swarm gate (step 9w.8) that tests whether agents can follow a spec's concrete instructions before launching a swarm build.
+1. **Hardest decision?** Keeping autopilot fully powerful and moving all safety to the perimeter. If a production credential enters the sandbox, no internal control catches it until the advisory audit — which is non-blocking.
+2. **What was rejected?** Removing `dangerouslySkipPermissions`, adding blocking gates, relying on prose reminders, restricting agent file access, history rewriting for the 2 CSVs.
+3. **Least confident about?** Whether the advisory audit will actually run consistently in practice. It's a numbered step (not prose), but explicitly marked non-blocking. FC11 shows optional steps get skipped under context pressure.
 
-**End-to-end validation on WRC spec:**
-- 130 claims (55 table + 75 prose), 126 HIGH confidence
-- 102/126 HIGH passed (81%) -- gate correctly returned FAIL
-- 24 failures are genuine spec-adherence issues (mock functions calling real APIs, missing route patterns, incorrect validation)
-- **Cost: $0.90** (under the $1 budget)
-- **Runtime: ~6.5 min** (130 scenarios, 5 concurrent)
+## Prompt for Next Session
 
-**Calibration artifacts (both blocking prerequisites met):**
-- `eval-harness/calibration/spec-eval/wrc-extraction.json` -- 216 claims (pre-filter)
-- `eval-harness/calibration/spec-eval/wrc-extraction-tables-only.json` -- 156 table claims (pre-filter)
-- `eval-harness/calibration/spec-eval/ethics-extraction.json` -- 156 claims (pre-filter)
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `eval-harness/spec_eval_gate.py` | CLI entry point (async, Click) |
-| `eval-harness/extractor.py` | Claim extraction (tables + prose + dedup) |
-| `eval-harness/spec_scenario_gen.py` | Claim to Scenario mapping |
-| `eval-harness/spec_scorer.py` | Gate scoring (confidence-filtered 100% threshold) |
-| `eval-harness/spec_judge.py` | Spec-adherence LLM judge |
-| `eval-harness/judges/spec-eval-base.txt` | Judge prompt (anti-leniency rubric) |
-| `eval-harness/runner.py` | Runner (refactored to accept rule_text) |
-| `eval-harness/models.py` | All models (Claim, GateResult, etc.) |
-| `eval-harness/exceptions.py` | SpecEvalError hierarchy |
-| `eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md` | The plan |
-| `docs/handoffs/2026-05-25-cross-plan-dependency-autopilot.md` | Cross-plan note |
-
-### Commits This Session
-
-| Hash | Description |
-|------|-------------|
-| `e010bff` | Cross-plan dependency note + session brief |
-| `a6410c1` | Phase 2: extractor (table + prose + dedup) |
-| `e45d3d3` | Phases 3-5: scenario gen, scorer, judge, CLI |
-| `210c958` | Graceful API key handling + WRC table-only calibration |
-| `cb4bd6e` | HANDOFF update |
-| `198fdb4` | Model ID fix + WRC full calibration (table + prose) |
-| `875eb50` | Ethics Toolkit calibration + timeout fix |
-| `e8cb24c` | Fix claim-to-result mapping in gate scorer |
-| `df83d70` | Filter non-code tables from extraction |
-
-## What To Do Next
-
-### 1. Add step 9w.8 to autopilot SKILL.md
-
-Add between Steps 9w.7 and 10w in the swarm path:
 ```
-### Step 9w.8: Spec Eval Gate (MANDATORY -- SWARM ONLY)
-
-Run the spec eval gate against the plan:
-  `python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id>`
-
-Check exit code:
-- Exit 0 (PASS): proceed to Step 10w.
-- Exit 1 (FAIL/WARN/RETRY): abort with gate report details.
+Read HANDOFF.md for context. This is the sandbox repo, an autopilot burn zone for compound engineering builds.
+Autonomy hardening is complete. Next: run spec-eval gate calibration with a real API key (see eval-harness section of HANDOFF), then add step 9w.8 to SKILL.md.
 ```
-
-### 2. Review phase
-
-Run `/workflows:review` on the spec eval gate code. Key areas to scrutinize:
-- Table filter accuracy (are we skipping any real code tables?)
-- Prose extraction prompt quality (confidence calibration)
-- Cost tracking accuracy (Haiku vs Sonnet pricing)
-- The 24 WRC failures -- are any false positives from the judge?
-
-### 3. Deferred: table parser refinement
-
-The table filter uses a header allowlist/blocklist. Some edge cases:
-- Email schedule tables (testable but filtered) -- prose extractor catches these
-- Tables with no recognized headers default to SKIP (conservative)
-- Future specs may have new table types that need adding to the allowlist
-
-## Concurrent Work Awareness
-
-Branch `refactor/autopilot-agent-delegation` (worktree: `~/Projects/sandbox-autopilot-delegation`) modifies `.claude/skills/autopilot/SKILL.md` but only touches solo-path steps (3, 5, 6, 7s) and Shared Tail. Swarm-path steps (7w-16w) are preserved. Step 9w.8 goes in the swarm path -- no conflict. Full analysis: `docs/handoffs/2026-05-25-cross-plan-dependency-autopilot.md`.
-
-## Feed-Forward
-
-- **Hardest decision:** Table filter design. Too aggressive = false passes (miss real spec issues). Too permissive = false fails (test untestable claims). Chose allowlist-by-header with conservative default-skip. The 81% pass rate on WRC with 24 genuine failures validates this balance.
-- **Rejected alternatives:** (1) No table filter (62% pass, $3 cost, 86 false failures). (2) Section-name-based filter (fragile -- section names vary across specs). (3) LLM-based table classification (adds cost and latency to a pre-flight gate).
-- **Least confident:** Whether the 24 WRC failures are all genuine or include false positives from the judge. The anti-leniency rubric biases toward FAIL, which is correct for a pre-swarm gate but may over-flag on complex instructions. Review phase should sample 5-10 failures and verify.
