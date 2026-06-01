@@ -118,15 +118,19 @@ async def _run_scenarios_concurrent(
 def _eval_results_to_claim_results(
     eval_results: list[EvalResult],
     claims: list[Claim],
+    scenario_to_claim: dict[str, str],
 ) -> list[ClaimResult]:
-    """Convert EvalResults to ClaimResults for the scorer."""
+    """Convert EvalResults to ClaimResults for the scorer.
+
+    Uses a pre-built scenario_id -> claim_id mapping instead of
+    parsing claim_id from scenario_id (which breaks when run_id
+    contains dashes).
+    """
     claim_map = {c.id: c for c in claims}
     results: list[ClaimResult] = []
 
     for er in eval_results:
-        # Extract claim_id from scenario_id: "spec-{run_id[:8]}-{claim.id}"
-        parts = er.scenario_id.split("-", 2)
-        claim_id = parts[2] if len(parts) > 2 else er.scenario_id
+        claim_id = scenario_to_claim.get(er.scenario_id, er.scenario_id)
 
         claim = claim_map.get(claim_id)
         claim_text = claim.text if claim else er.scenario_id
@@ -266,6 +270,12 @@ async def _run_gate(
 
     # Phase 3: Generate scenarios
     scenarios_and_rules = claims_to_scenarios(all_claims, run_id)
+
+    # Build scenario_id -> claim_id lookup for result mapping
+    scenario_to_claim: dict[str, str] = {}
+    for (scenario, _rule_text), claim in zip(scenarios_and_rules, all_claims):
+        scenario_to_claim[scenario.id] = claim.id
+
     if verbose:
         click.echo(f"Scenarios generated: {len(scenarios_and_rules)}")
 
@@ -284,7 +294,7 @@ async def _run_gate(
         )
 
     # Convert to ClaimResults for scorer
-    claim_results = _eval_results_to_claim_results(eval_results, all_claims)
+    claim_results = _eval_results_to_claim_results(eval_results, all_claims, scenario_to_claim)
 
     # Score
     runtime_ms = int((time.monotonic() - start_time) * 1000)
