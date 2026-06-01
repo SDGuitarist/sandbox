@@ -321,7 +321,7 @@ Use the **spec-completeness-checker** agent. Pass:
 
 The agent writes its report to `docs/reports/<run-id>/spec-completeness-check.md`.
 Read that file and check STATUS.
-- If PASS: continue to Step 10w (Parallel Swarm Work).
+- If PASS: continue to Step 9w.7 (Pre-Swarm Gate Verification).
 - If FAIL: read the Details section. Fix the spec omissions identified in the
   report (add missing entries to the coverage tables). Commit the fix:
   `git add docs/plans/<plan-file>`
@@ -366,13 +366,41 @@ swarm launched anyway). The artifact is a hard precondition for Step 10w.
    Do NOT write CLEARED speculatively or without reading both reports.
 4. If BLOCKED: output `"PRE-SWARM GATE BLOCKED"` with the two quoted
    status lines. Do NOT proceed to Step 10w. This is a hard abort.
-5. If CLEARED: proceed to Step 10w.
+5. If CLEARED: proceed to Step 9w.8.
+
+### Step 9w.8: Spec Eval Gate (MANDATORY -- SWARM ONLY)
+
+Test whether agents can actually follow this spec's concrete instructions.
+This gate catches specs that are structurally complete (9w.6 passed) but
+too vague for agents to implement correctly.
+
+Run the spec eval gate from the project root:
+
+1. Run: `python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id> --cost-cap 1.0`
+2. Check exit code:
+   - Exit 0 (PASS): all HIGH-confidence claims passed. Proceed to Step 10w.
+   - Exit 1 (FAIL): read `docs/reports/<run-id>/spec-eval-*/spec-eval-gate.json`.
+     The `failed_details` array lists which spec instructions agents couldn't
+     follow, with evidence and fix hints. Fix the spec, commit, and re-run.
+     Max 1 retry.
+   - Exit 1 (WARN_UNSCORABLE): too few testable claims extracted. The spec
+     may lack concrete instructions. Proceed with caution -- log the warning
+     in BUILD_TRACKING.
+   - Exit 1 (RETRY): transient API errors. Re-run once.
+3. If still FAIL after retry: abort with
+   `"SPEC EVAL GATE FAILED: <N> claims failed. See report for details."`
+
+**What this catches that other gates don't:** Spec completeness (9w.6) checks
+that sections exist. Spec eval gate checks that the instructions in those
+sections are precise enough for agents to follow. Example: "validate email"
+passes completeness but fails spec eval because it doesn't say how.
 
 ### Step 10w: Parallel Swarm Work
 
 **PRECONDITION:** Before reading the agent assignment table, verify that
 `docs/reports/<run-id>/gate-verification.md` exists AND contains
-`STATUS: CLEARED`. If the file does not exist or contains `STATUS: BLOCKED`,
+`STATUS: CLEARED`, and that Step 9w.8 (Spec Eval Gate) passed (exit 0).
+If the gate-verification file does not exist or contains `STATUS: BLOCKED`,
 abort with: `"CANNOT SPAWN: gate-verification.md missing or BLOCKED.
 Run Step 9w.7 first."` This check is non-negotiable -- it prevents the
 orchestrator from skipping the gate verification step entirely.
