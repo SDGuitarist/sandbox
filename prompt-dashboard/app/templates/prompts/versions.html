@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Versions - {{ prompt['name'] }} - Prompt Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Versions: {{ prompt['name'] }}</h1>
+    <a href="{{ url_for('prompts.detail', prompt_id=prompt['id']) }}" class="btn btn-outline-secondary">Back to Prompt</a>
+</div>
+
+{% if versions | length < 2 %}
+<p class="text-muted">Need at least 2 versions to compare diffs. Edit the prompt to create a new version.</p>
+{% endif %}
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Created</th>
+                <th>Compare</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for version in versions %}
+            <tr>
+                <td>v{{ version['version_number'] }}</td>
+                <td>{{ version['created_at'] }}</td>
+                <td>
+                    {% if not loop.last %}
+                    <a href="{{ url_for('prompts.diff', prompt_id=prompt['id'], v1=versions[loop.index]['id'], v2=version['id']) }}"
+                       class="btn btn-sm btn-outline-primary">
+                        Diff with v{{ versions[loop.index]['version_number'] }}
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
