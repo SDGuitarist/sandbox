@@ -637,7 +637,7 @@ render_template('testing/result.html',
 | `update_prompt` | model function | `app/models.py` | `prompts_routes` agent |
 | `delete_prompt` | model function | `app/models.py` | `prompts_routes` agent |
 | `get_prompt_versions` | model function | `app/models.py` | `prompts_routes` agent |
-| `get_prompt_version` | model function | `app/models.py` | `prompts_routes` agent |
+| `get_prompt_version` | model function | `app/models.py` | `prompts_routes`, `testing_routes` |
 | `extract_variables` | model function | `app/models.py` | (internal — called by create/update_prompt) |
 | `substitute_variables` | model function | `app/models.py` | `testing_routes` agent |
 | `get_all_tags` | model function | `app/models.py` | `prompts_routes`, `dashboard_routes` |
@@ -696,7 +696,7 @@ render_template('testing/result.html',
 | `app/database.py` | `app/blueprints/dashboard/routes.py` | `from app.database import get_db` |
 | `app/database.py` | `app/__init__.py` | `from .database import init_db, close_db` |
 | `app/models.py` | `app/blueprints/prompts/routes.py` | `from app.models import create_prompt, get_prompt, update_prompt, delete_prompt, get_prompt_versions, get_prompt_version, get_prompt_tags, get_all_tags, get_test_runs_for_prompt` |
-| `app/models.py` | `app/blueprints/testing/routes.py` | `from app.models import get_prompt, substitute_variables, create_test_run, get_test_run` |
+| `app/models.py` | `app/blueprints/testing/routes.py` | `from app.models import get_prompt, get_prompt_version, substitute_variables, create_test_run, get_test_run` |
 | `app/models.py` | `app/blueprints/dashboard/routes.py` | `from app.models import get_all_prompts, get_all_tags, get_dashboard_stats` |
 | `app/models.py` | `app/seed.py` | `from app.models import create_prompt` |
 | `app/database.py` | `app/seed.py` | `from app.database import get_db` |
