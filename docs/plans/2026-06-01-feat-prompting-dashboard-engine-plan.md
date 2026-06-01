@@ -65,7 +65,7 @@ New app at `prompt-dashboard/` with:
 - WHEN a user creates a prompt with name "Test Prompt" and system prompt "You are helpful" THE SYSTEM SHALL save it and redirect to the detail page showing version 1
 - WHEN a user edits a prompt THE SYSTEM SHALL create a new version and increment the version count
 - WHEN a user visits `/prompts/<id>/versions` THE SYSTEM SHALL list all versions with timestamps
-- WHEN a user visits `/prompts/<id>/diff?v1=1&v2=2` THE SYSTEM SHALL display a side-by-side diff of the two versions
+- WHEN a user visits `/prompts/<id>/diff?v1=<version_id>&v2=<version_id>` THE SYSTEM SHALL display a side-by-side diff of the two versions (v1/v2 are prompt_versions.id primary keys, NOT version numbers)
 - WHEN a user fills variables and submits a test THE SYSTEM SHALL send the substituted prompt to Claude API, display the response, and store the test run
 - WHEN a user searches "hello" on the dashboard THE SYSTEM SHALL return only prompts matching the FTS5 query
 - WHEN a user filters by tag "coding" THE SYSTEM SHALL return only prompts with that tag
@@ -662,7 +662,7 @@ render_template('testing/result.html',
 | `prompts.diff` | endpoint | `app/blueprints/prompts/routes.py` | `prompts_templates` (versions page diff links) |
 | `testing.test_form` | endpoint | `app/blueprints/testing/routes.py` | `prompts_templates` (detail page test button) |
 | `testing.execute` | endpoint | `app/blueprints/testing/routes.py` | `testing_templates` (run form action) |
-| `testing.view_run` | endpoint | `app/blueprints/testing/routes.py` | `prompts_templates` (detail page run links), `testing_templates` (redirect after test) |
+| `testing.view_run` | endpoint | `app/blueprints/testing/routes.py` | `prompts_templates` (detail page run links) |
 | `dashboard` | blueprint name | `app/blueprints/dashboard/routes.py` | `core` agent (registration) |
 | `prompts` | blueprint name | `app/blueprints/prompts/routes.py` | `core` agent (registration) |
 | `testing` | blueprint name | `app/blueprints/testing/routes.py` | `core` agent (registration) |
@@ -713,7 +713,7 @@ render_template('testing/result.html',
 | `POST /prompts/create` | `tags` | `tags` | Comma-separated string, strip each, max 50 chars per tag | Ignore empty tags |
 | `POST /prompts/<id>/edit` | same as create | same as create | same as create | same as create, redirect to `prompts.edit_form` |
 | `POST /prompts/<id>/delete` | `prompt_id` (URL) | N/A | Must exist in DB | `abort(404)` |
-| `GET /prompts/<id>/diff` | `v1`, `v2` (query) | N/A | Both must be int, both must exist, both must belong to prompt_id | Flash "Invalid version", redirect to `prompts.versions` |
+| `GET /prompts/<id>/diff` | `v1`, `v2` (query) | N/A | Both must be int (prompt_versions.id primary keys, NOT version numbers), both must exist via `get_prompt_version()`, both must belong to prompt_id | Flash "Invalid version", redirect to `prompts.versions` |
 | `POST /testing/<id>` | `model` | `model` | Must be one of: `claude-sonnet-4-5-20250514`, `claude-haiku-4-5-20251001` | Default to `claude-sonnet-4-5-20250514` |
 | `POST /testing/<id>` | `var_<name>` | `var_<name>` | One field per variable, string, optional (empty = empty string) | None |
 | `GET /prompts/<id>` | `prompt_id` (URL) | N/A | Must exist in DB | `abort(404)` |
