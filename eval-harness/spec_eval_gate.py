@@ -16,7 +16,6 @@ import json
 import os
 import sys
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
 
 import click
@@ -24,7 +23,7 @@ import httpx
 
 import anthropic
 
-from exceptions import ExtractionError, SpecEvalError
+from exceptions import ExtractionError
 from extractor import deduplicate_claims, extract_prose_claims, parse_tables, strip_tables
 from models import Claim, ClaimResult, EvalResult, GateStatus, CONFIDENCE_THRESHOLD
 from runner import run_scenario
@@ -36,41 +35,23 @@ from spec_scorer import GateConfig, score_gate
 CONCURRENCY_LIMIT = 5
 
 
-@dataclass
-class CostTracker:
-    """Track API costs across concurrent calls."""
+def _haiku_cost(input_tokens: int, output_tokens: int) -> float:
+    """Haiku pricing: $0.80/M input, $4/M output."""
+    return (input_tokens * 0.80 + output_tokens * 4.0) / 1_000_000
 
-    cap: float = 1.0
-    total: float = 0.0
-    haiku_tokens: int = 0
-    sonnet_tokens: int = 0
 
-    def add_haiku(self, input_tokens: int, output_tokens: int) -> None:
-        # Haiku pricing: $0.80/M input, $4/M output
-        cost = (input_tokens * 0.80 + output_tokens * 4.0) / 1_000_000
-        self.total += cost
-        self.haiku_tokens += input_tokens + output_tokens
-
-    def add_sonnet(self, input_tokens: int, output_tokens: int) -> None:
-        # Sonnet pricing: $3/M input, $15/M output
-        cost = (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
-        self.total += cost
-        self.sonnet_tokens += input_tokens + output_tokens
-
-    @property
-    def exceeded(self) -> bool:
-        return self.total >= self.cap
+def _sonnet_cost(input_tokens: int, output_tokens: int) -> float:
+    """Sonnet pricing: $3/M input, $15/M output."""
+    return (input_tokens * 3.0 + output_tokens * 15.0) / 1_000_000
 
 
 def _run_and_judge(
-    scenario,
+    scenario: Scenario,
     rule_text: str,
     client: anthropic.Anthropic,
     max_tokens_scenario: int,
-) -> tuple[EvalResult, CostTracker]:
-    """Sync function called inside a thread. Uses sync anthropic.Anthropic client."""
-    tracker = CostTracker()
-
+) -> tuple[EvalResult, float]:
+    """Sync function called inside a thread. Returns (result, cost)."""
     result = run_scenario(
         scenario,
         rule_text,
@@ -80,39 +61,48 @@ def _run_and_judge(
         client,
         max_tokens=max_tokens_scenario,
     )
-    tracker.add_haiku(result.input_tokens, result.output_tokens)
+    cost = _haiku_cost(result.input_tokens, result.output_tokens)
 
     result = evaluate_spec(result, scenario, rule_text, client)
-    tracker.add_sonnet(result.judge_input_tokens, result.judge_output_tokens)
+    cost += _sonnet_cost(result.judge_input_tokens, result.judge_output_tokens)
 
-    return result, tracker
+    return result, cost
 
 
 async def _run_scenarios_concurrent(
-    scenarios_and_rules: list[tuple],
+    scenarios_and_rules: list[tuple[Scenario, str]],
     client: anthropic.Anthropic,
-    cost_tracker: CostTracker,
+    cost_cap: float,
     max_tokens_scenario: int,
-) -> list[EvalResult]:
-    """Run scenarios concurrently with semaphore-based throttling."""
-    sem = asyncio.Semaphore(CONCURRENCY_LIMIT)
-    results: list[EvalResult | None] = []
+) -> tuple[list[EvalResult], float]:
+    """Run scenarios concurrently. Returns (results, total_cost).
 
-    async def run_one(scenario, rule_text) -> EvalResult | None:
+    Costs are accumulated after gather completes to avoid race conditions.
+    The cost cap is checked between batches as a best-effort early stop.
+    """
+    sem = asyncio.Semaphore(CONCURRENCY_LIMIT)
+    total_cost = 0.0
+
+    async def run_one(scenario: Scenario, rule_text: str) -> tuple[EvalResult, float] | None:
         async with sem:
-            if cost_tracker.exceeded:
+            if total_cost >= cost_cap:
                 return None
-            result, local_cost = await asyncio.to_thread(
+            return await asyncio.to_thread(
                 _run_and_judge, scenario, rule_text, client, max_tokens_scenario
             )
-            cost_tracker.total += local_cost.total
-            cost_tracker.haiku_tokens += local_cost.haiku_tokens
-            cost_tracker.sonnet_tokens += local_cost.sonnet_tokens
-            return result
 
     tasks = [run_one(s, r) for s, r in scenarios_and_rules]
-    results = await asyncio.gather(*tasks)
-    return [r for r in results if r is not None]
+    raw = await asyncio.gather(*tasks)
+
+    # Aggregate costs sequentially after all tasks complete (no race)
+    eval_results: list[EvalResult] = []
+    for item in raw:
+        if item is not None:
+            result, cost = item
+            eval_results.append(result)
+            total_cost += cost
+
+    return eval_results, total_cost
 
 
 def _eval_results_to_claim_results(
@@ -203,11 +193,11 @@ async def _run_gate(
             prose_claims = []
         else:
             click.echo(
-                "Error: ANTHROPIC_API_KEY not set. Required for prose extraction "
+                "ENV_ERROR: ANTHROPIC_API_KEY not set. Required for prose extraction "
                 "and scenario execution.",
                 err=True,
             )
-            return 1
+            return 2  # env error, not spec failure
     else:
         client = anthropic.Anthropic(
             max_retries=3,
@@ -280,15 +270,13 @@ async def _run_gate(
         click.echo(f"Scenarios generated: {len(scenarios_and_rules)}")
 
     # Phase 4-5: Run scenarios concurrently and judge
-    cost_tracker = CostTracker(cap=cost_cap)
-
-    eval_results = await _run_scenarios_concurrent(
-        scenarios_and_rules, client, cost_tracker, max_tokens_scenario
+    eval_results, total_cost = await _run_scenarios_concurrent(
+        scenarios_and_rules, client, cost_cap, max_tokens_scenario
     )
 
-    if cost_tracker.exceeded:
+    if total_cost >= cost_cap:
         click.echo(
-            f"Warning: cost cap reached (${cost_tracker.total:.3f} >= ${cost_cap}). "
+            f"Warning: cost cap reached (${total_cost:.3f} >= ${cost_cap}). "
             f"Partial run: {len(eval_results)}/{len(scenarios_and_rules)} scenarios.",
             err=True,
         )
@@ -306,7 +294,7 @@ async def _run_gate(
         claim_results,
         all_claims,
         config,
-        cost_usd=cost_tracker.total,
+        cost_usd=total_cost,
         runtime_ms=runtime_ms,
         spec_path=spec_path,
         run_id=run_id,
@@ -344,7 +332,17 @@ async def _run_gate(
         for w in gate_result.low_warnings:
             click.echo(f"  WARN: {w.claim_id} -- {w.claim_text[:60]}")
 
-    # Exit code: 0 for PASS, 1 for everything else
+    # Write verification artifact on PASS (prevents gate-bypass bugs like Run 054)
+    if gate_result.status == GateStatus.PASS:
+        verification_path = report_dir / "spec-eval-verification.md"
+        verification_path.write_text(
+            f"STATUS: PASS\n"
+            f"high_passed: {gate_result.high_confidence.passed}/{gate_result.high_confidence.total}\n"
+            f"cost_usd: {gate_result.cost_usd:.3f}\n"
+            f"report: {report_path}\n"
+        )
+
+    # Exit codes: 0=PASS, 1=FAIL/WARN/RETRY, 2=ENV_ERROR (set earlier)
     return 0 if gate_result.status == GateStatus.PASS else 1
 
 
