@@ -467,7 +467,7 @@ git ls-files | rg '\.(pem|key|p12|pfx|crt|p8)$'
 git ls-files | rg '(credentials|service-account)\.json$|\.npmrc$|\.tfstate$|\.tfvars$|kubeconfig$'
 
 # Full sensitive-file filesystem scan (catches gitignored files)
-find . -type f \( -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' -o -name '*.p8' -o -name 'credentials.json' -o -name '*-service-account.json' -o -name '*.tfstate' -o -name 'kubeconfig' -o -name '.env.local' -o -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/venv/*' -not -path '*/.next/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/.claude/worktrees/*'
+find . -type f \( -name '.env' -o -name '.env.*' -o -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.csv' -o -name '*.jsonl' -o -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' -o -name '*.p8' -o -name '*.crt' -o -name 'credentials.json' -o -name '*-credentials.json' -o -name '*-service-account.json' -o -name '.npmrc' -o -name 'kubeconfig' -o -name '*.tfstate' -o -name '*.tfstate.backup' -o -name '*.tfvars' -o -name '.docker/config.json' \) -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/venv/*' -not -path '*/.next/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/.claude/worktrees/*'
 ```
 
 ### Expected results after implementation

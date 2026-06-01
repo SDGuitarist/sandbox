@@ -1,7 +1,7 @@
 # Environment files (NOT .env.example — those are safe)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # Claude Code volatile/local state (skills, agents, settings.json stay tracked)
 .claude/worktrees/

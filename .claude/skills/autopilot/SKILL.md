@@ -760,13 +760,16 @@ captured in Step 1.55. This step cannot fail the run. Its findings are
 informational only -- do not check them for pass/fail.
 
 1. Read the `baseline_sha` from the `## Advisory Baseline` section of
-   BUILD_TRACKING.md. If missing, skip to step 6.
+   BUILD_TRACKING.md. If missing, skip to Step 6.
 2. Copy `docs/reports/advisory-filesystem-baseline.txt` into
    `docs/reports/<run-id>/advisory-filesystem-baseline.txt` for archival.
    If the staging file is missing, note this and continue without it.
 3. Run `git diff --name-only --diff-filter=A <baseline_sha> HEAD` to find
-   new tracked files. Filter for `.db`, `.csv`, `.jsonl`, `.env*`, `.pem`,
-   `.key`, `.p12`, `.pfx`, `.p8`, `credentials.json`, `*-service-account.json`.
+   new tracked files. Filter for `.db`, `.sqlite`, `.sqlite3`, `.csv`,
+   `.jsonl`, `.env*`, `.pem`, `.key`, `.p12`, `.pfx`, `.p8`, `.crt`,
+   `credentials.json`, `*-credentials.json`, `*-service-account.json`,
+   `.npmrc`, `.docker/config.json`, `kubeconfig`, `*.tfstate`,
+   `*.tfstate.backup`, `*.tfvars`.
 4. Re-run the filesystem scan from Step 1.55. Diff the output against
    `docs/reports/<run-id>/advisory-filesystem-baseline.txt` to find new
    sensitive untracked/ignored files created during the run. If the

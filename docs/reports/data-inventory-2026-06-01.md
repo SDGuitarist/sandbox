@@ -31,13 +31,13 @@ Both contain business contact information obtained from public web sources. Not 
 
 **WARNING:** The following `.env` files exist on disk and contain real API keys and secrets. None are tracked by git. All should be treated as potentially exposed per the sandbox secrets policy (agents run with `dangerouslySkipPermissions: true`).
 
-| File path | Tracked? | Contains real credentials? | Notes |
-|-----------|----------|---------------------------|-------|
-| `.env` (root) | No | Yes | Anthropic API key |
-| `lead-scraper/.env` | No | Yes | Apify, Hunter, Perplexity, Anthropic API keys + email |
-| `venue-scraper/.env` | No | Yes | SerpAPI, Anthropic API keys |
-| `workshop-registration/.env` | No | Yes | Flask secret key, admin password |
-| `writers-room-council/.env.local` | No | Yes | Supabase URL + keys (including service_role), Anthropic API key |
+| File path | Tracked? | Contains real credentials? |
+|-----------|----------|---------------------------|
+| `.env` (root) | No | Yes |
+| `lead-scraper/.env` | No | Yes |
+| `venue-scraper/.env` | No | Yes |
+| `workshop-registration/.env` | No | Yes |
+| `writers-room-council/.env.local` | No | Yes |
 
 **Recommendation:** All credentials in these files should be treated as potentially exposed and rotated if they have real value. The sandbox secrets policy says dev-only low-limit keys are acceptable; production/billing keys are not.
 
