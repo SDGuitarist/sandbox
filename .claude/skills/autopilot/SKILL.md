@@ -89,42 +89,11 @@ Run Info + AGENT_STATUS table header + empty FAILURES + empty RUN_METRICS.
 
 ### Step 1.55: Advisory Baseline Capture (non-blocking)
 
-Record the advisory baseline for the post-run audit. This step is best-effort
-and cannot fail the run.
+Run `/advisory-audit baseline`
 
-1. Run `git rev-parse HEAD` and append the SHA to BUILD_TRACKING.md:
-   ```
-   ## Advisory Baseline
-   baseline_sha: <the SHA output>
-   ```
-2. Run `mkdir -p docs/reports` (best-effort -- if it fails, skip the
-   filesystem baseline and proceed).
-3. Run the sensitive-file filesystem scan and write output to
-   `docs/reports/advisory-filesystem-baseline.txt`:
-   ```
-   find . -type f \( \
-     -name '.env' -o -name '.env.local' -o -name '.env.*.local' \
-     -o -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \
-     -o -name '*.csv' -o -name '*.jsonl' \
-     -o -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' -o -name '*.p8' \
-     -o -name 'credentials.json' -o -name '*-service-account.json' \
-     -o -name '.npmrc' -o -name 'kubeconfig' \
-     -o -name '*.tfstate' -o -name '*.tfvars' \
-   \) \
-     -not -path '*/.git/*' \
-     -not -path '*/node_modules/*' \
-     -not -path '*/.venv/*' \
-     -not -path '*/venv/*' \
-     -not -path '*/.next/*' \
-     -not -path '*/dist/*' \
-     -not -path '*/build/*' \
-     -not -path '*/.claude/worktrees/*'
-   ```
-   Write the output (file list) to `docs/reports/advisory-filesystem-baseline.txt`.
-
-If any step in this block errors, skip the rest and continue to Step 1.6.
-The advisory audit will run in degraded mode (git-diff only) if the
-filesystem baseline is missing.
+This captures the git SHA and filesystem snapshot for the post-run audit.
+Best-effort -- if it fails, continue to Step 1.6. The post-run audit will
+run in degraded mode (git-diff only) if the baseline is missing.
 
 ### Step 1.6: Inject Agent Pitfalls
 
@@ -755,42 +724,11 @@ Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.
 
 ### Advisory Audit (non-blocking, best-effort)
 
-Run a read-only advisory audit comparing current state against the baseline
-captured in Step 1.55. This step cannot fail the run. Its findings are
-informational only -- do not check them for pass/fail.
+Run `/advisory-audit report <run-id>`
 
-1. Read the `baseline_sha` from the `## Advisory Baseline` section of
-   BUILD_TRACKING.md. If missing, skip to Step 6.
-2. Copy `docs/reports/advisory-filesystem-baseline.txt` into
-   `docs/reports/<run-id>/advisory-filesystem-baseline.txt` for archival.
-   If the staging file is missing, note this and continue without it.
-3. Run `git diff --name-only --diff-filter=A <baseline_sha> HEAD` to find
-   new tracked files. Filter for `.db`, `.sqlite`, `.sqlite3`, `.csv`,
-   `.jsonl`, `.env*`, `.pem`, `.key`, `.p12`, `.pfx`, `.p8`, `.crt`,
-   `credentials.json`, `*-credentials.json`, `*-service-account.json`,
-   `.npmrc`, `.docker/config.json`, `kubeconfig`, `*.tfstate`,
-   `*.tfstate.backup`, `*.tfvars`.
-4. Re-run the filesystem scan from Step 1.55. Diff the output against
-   `docs/reports/<run-id>/advisory-filesystem-baseline.txt` to find new
-   sensitive untracked/ignored files created during the run. If the
-   baseline file is missing, list all current scan results instead.
-5. Write the advisory audit report to
-   `docs/reports/<run-id>/advisory-audit.md` with these sections:
-   - New environment files
-   - Newly tracked data files
-   - New sensitive untracked/ignored files
-   - Large databases (any `.db`/`.sqlite` over 10 MB)
-   - New API-touching code (files with `fetch(`, `axios.`, `requests.`,
-     `http.get`, `urllib`, `httpx`)
-   - Git remotes / GitHub automation changes
-   - Claude/agent config changes
-6. If report generation fails at any point, try to append a one-line note
-   to BUILD_TRACKING.md:
-   ```
-   ## Advisory Audit
-   Advisory audit skipped: [reason]
-   ```
-   If that append also fails, proceed to Done anyway.
+This generates the post-run advisory report comparing current state against
+the baseline captured in Step 1.55. Cannot fail the run -- if anything
+errors, it logs what it can and proceeds to Done.
 
 ### Done
 

@@ -40,6 +40,12 @@ build/
 *.pfx
 *.crt
 *.p8
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.jks
+*.keystore
+*.asc
 
 # Service account, credential, and auth config files
 *-service-account.json

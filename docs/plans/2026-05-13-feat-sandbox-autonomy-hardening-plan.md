@@ -351,24 +351,10 @@ The post-run audit uses both baselines:
 
 This scan catches files that `.gitignore` intentionally hides — exactly the category the audit needs to surface. It uses direct filesystem scanning instead of `git ls-files --others --exclude-standard`, which would miss ignored files.
 
+The canonical scan is defined in `scripts/sensitive-file-scan.sh`. Both the baseline capture (Step 1.55) and the post-run audit reference this single script to avoid duplication.
+
 ```bash
-find . -type f \( \
-  -name '.env' -o -name '.env.local' -o -name '.env.*.local' \
-  -o -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \
-  -o -name '*.csv' -o -name '*.jsonl' \
-  -o -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' -o -name '*.p8' \
-  -o -name 'credentials.json' -o -name '*-service-account.json' \
-  -o -name '.npmrc' -o -name 'kubeconfig' \
-  -o -name '*.tfstate' -o -name '*.tfvars' \
-\) \
-  -not -path '*/.git/*' \
-  -not -path '*/node_modules/*' \
-  -not -path '*/.venv/*' \
-  -not -path '*/venv/*' \
-  -not -path '*/.next/*' \
-  -not -path '*/dist/*' \
-  -not -path '*/build/*' \
-  -not -path '*/.claude/worktrees/*'
+bash scripts/sensitive-file-scan.sh
 ```
 
 No `-maxdepth` limit — the scan walks the full tree. Generated/dependency directories are excluded by path to keep it fast and noise-free.
