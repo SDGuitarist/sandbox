@@ -1,11 +1,70 @@
+# Environment files (NOT .env.example — those are safe)
+.env
+.env.local
+.env.*.local
+
+# Claude Code volatile/local state (skills, agents, settings.json stay tracked)
+.claude/worktrees/
+.claude/agent-memory/
+.claude/settings.local.json
+.claude/cache/
+.claude/todos/
+.claude/logs/
+
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Dependencies and build artifacts
+node_modules/
+.next/
+dist/
+build/
+
+# Data files that may contain sensitive content
 *.db
 *.db-wal
 *.db-shm
-.venv/
-venv/
-*.egg-info/
-dist/
-build/
-.env
+*.sqlite
+*.sqlite3
+*.csv
+*.jsonl
+
+# Key and certificate files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.p8
+
+# Service account, credential, and auth config files
+*-service-account.json
+*-credentials.json
+credentials.json
+service-account.json
+.npmrc
+.docker/config.json
+
+# Terraform state (may contain secrets in plaintext)
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Kubernetes config
+kubeconfig
+.kube/
+
+# Logs
+*.log
+logs/
+
+# Upload and result directories
+uploads/
+results/
+
+# Advisory audit staging file (overwritten each run)
+docs/reports/advisory-filesystem-baseline.txt

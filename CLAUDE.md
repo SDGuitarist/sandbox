@@ -16,6 +16,7 @@ These apply to all autonomy classes:
 
 - No production database access. Sandbox apps use local SQLite or dev-only Supabase projects.
 - No `git push --force` or `git reset --hard` without human confirmation.
+- No destructive history rewrites (`git rebase` on published commits, `git filter-repo`, `git filter-branch`, amending pushed commits) without human confirmation.
 - No external API calls without explicit declaration in the plan or spec.
 - No edits to files outside `~/Projects/sandbox/` except during learnings propagation (see below).
 - No deleting solution docs, prior run reports, or BUILD_TRACKING files.
