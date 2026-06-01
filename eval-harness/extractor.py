@@ -24,7 +24,7 @@ from pydantic import BaseModel
 # Constants
 # ---------------------------------------------------------------------------
 
-EXTRACTION_MODEL = "claude-sonnet-4-6-20250514"
+EXTRACTION_MODEL = "claude-sonnet-4-6"
 
 # Regex: one or more consecutive lines that start and end with |
 _TABLE_BLOCK_RE = re.compile(
@@ -276,7 +276,7 @@ def extract_prose_claims(
     try:
         response = client.messages.parse(
             model=model,
-            max_tokens=4096,
+            max_tokens=16384,
             output_format=ExtractionResult,
             system=EXTRACTION_SYSTEM_PROMPT,
             messages=[

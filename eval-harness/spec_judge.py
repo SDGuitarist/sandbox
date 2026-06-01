@@ -14,7 +14,7 @@ import anthropic
 from judge import check_deterministic
 from models import CheckResult, EvalResult, Scenario
 
-JUDGE_MODEL = "claude-sonnet-4-6-20250514"
+JUDGE_MODEL = "claude-sonnet-4-6"
 JUDGES_DIR = Path(__file__).parent / "judges"
 SPEC_JUDGE_PROMPT_FILE = "spec-eval-base.txt"
 
