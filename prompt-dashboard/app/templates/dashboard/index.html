@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Prompt Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center bg-dark border-secondary">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Prompts</h5>
+                <p class="display-6">{{ stats.total_prompts }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center bg-dark border-secondary">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Versions</h5>
+                <p class="display-6">{{ stats.total_versions }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center bg-dark border-secondary">
+            <div class="card-body">
+                <h5 class="card-title text-muted">Total Tests</h5>
+                <p class="display-6">{{ stats.total_tests }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar and New Prompt Button -->
+<div class="row mb-3">
+    <div class="col-md-8">
+        <form method="GET" action="{{ url_for('dashboard.index') }}">
+            <div class="input-group">
+                <input type="text"
+                       class="form-control"
+                       name="q"
+                       placeholder="Search prompts..."
+                       value="{{ search_query or '' }}">
+                <button class="btn btn-outline-light" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('prompts.create_form') }}" class="btn btn-primary">
+            + New Prompt
+        </a>
+    </div>
+</div>
+
+<!-- Tag Filter -->
+{% if tags %}
+<div class="mb-3">
+    <span class="text-muted me-2">Filter by tag:</span>
+    {% for tag in tags %}
+        {% if selected_tag == tag['name'] %}
+            <a href="{{ url_for('dashboard.index', tag=tag['name']) }}"
+               class="btn btn-sm btn-light me-1 mb-1">
+                {{ tag['name'] }}
+            </a>
+        {% else %}
+            <a href="{{ url_for('dashboard.index', tag=tag['name']) }}"
+               class="btn btn-sm btn-outline-secondary me-1 mb-1">
+                {{ tag['name'] }}
+            </a>
+        {% endif %}
+    {% endfor %}
+    {% if selected_tag %}
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-sm btn-outline-danger ms-2 mb-1">
+            Clear Filter
+        </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Prompt Cards -->
+{% if prompts %}
+<div class="row">
+    {% for prompt in prompts %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card bg-dark border-secondary h-100">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">
+                    <a href="{{ url_for('prompts.detail', prompt_id=prompt['id']) }}"
+                       class="text-decoration-none text-info">
+                        {{ prompt['name'] }}
+                    </a>
+                </h5>
+                <p class="card-text text-muted flex-grow-1">
+                    {{ prompt['description'][:120] }}{% if prompt['description']|length > 120 %}...{% endif %}
+                </p>
+                <div class="mt-auto">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">
+                            Versions: {{ prompt['version_count'] }}
+                        </small>
+                        <small class="text-muted">
+                            {% if prompt['last_tested_at'] %}
+                                Tested: {{ prompt['last_tested_at'] }}
+                            {% else %}
+                                Not tested yet
+                            {% endif %}
+                        </small>
+                    </div>
+                    {% if prompt['tags'] %}
+                    <div>
+                        {% for tag_name in prompt['tags'].split(',') %}
+                            <span class="badge bg-secondary me-1">{{ tag_name.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="text-center py-5">
+    <p class="text-muted fs-4">No prompts yet. Create your first one!</p>
+    <a href="{{ url_for('prompts.create_form') }}" class="btn btn-primary btn-lg">
+        + New Prompt
+    </a>
+</div>
+{% endif %}
+{% endblock %}
