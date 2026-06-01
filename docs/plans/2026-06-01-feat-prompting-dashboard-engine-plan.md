@@ -667,6 +667,16 @@ render_template('testing/result.html',
 | `prompts` | blueprint name | `app/blueprints/prompts/routes.py` | `core` agent (registration) |
 | `testing` | blueprint name | `app/blueprints/testing/routes.py` | `core` agent (registration) |
 | `register_seed_command` | CLI function | `app/seed.py` | `core` agent (app factory) |
+| `/` | route path | `app/blueprints/dashboard/routes.py` | `layout` (navbar), `dashboard_templates` |
+| `/prompts/new` | route path | `app/blueprints/prompts/routes.py` | `layout` (navbar), `dashboard_templates` |
+| `/prompts/create` | route path | `app/blueprints/prompts/routes.py` | `prompts_templates` (form action) |
+| `/prompts/<int:prompt_id>` | route path | `app/blueprints/prompts/routes.py` | `prompts_routes` (redirect), `dashboard_templates` (links) |
+| `/prompts/<int:prompt_id>/edit` | route path | `app/blueprints/prompts/routes.py` | `prompts_templates` |
+| `/prompts/<int:prompt_id>/delete` | route path | `app/blueprints/prompts/routes.py` | `prompts_templates` |
+| `/prompts/<int:prompt_id>/versions` | route path | `app/blueprints/prompts/routes.py` | `prompts_templates` |
+| `/prompts/<int:prompt_id>/diff` | route path | `app/blueprints/prompts/routes.py` | `prompts_templates` |
+| `/testing/<int:prompt_id>` | route path | `app/blueprints/testing/routes.py` | `prompts_templates` |
+| `/testing/runs/<int:run_id>` | route path | `app/blueprints/testing/routes.py` | `testing_templates`, `prompts_templates` |
 | `templates/base.html` | template | `layout` agent | ALL template agents (extends) |
 | `templates/dashboard/index.html` | template | `dashboard_templates` agent | `dashboard_routes` agent |
 | `templates/prompts/create.html` | template | `prompts_templates` agent | `prompts_routes` agent |
