@@ -25,14 +25,14 @@ import anthropic
 
 from exceptions import ExtractionError
 from extractor import deduplicate_claims, extract_prose_claims, parse_tables, strip_tables
-from models import Claim, ClaimResult, EvalResult, GateStatus, CONFIDENCE_THRESHOLD
+from models import Claim, ClaimResult, EvalResult, GateStatus, Scenario, CONFIDENCE_THRESHOLD
 from runner import run_scenario
 from spec_judge import evaluate_spec
 from spec_scenario_gen import claims_to_scenarios
 from spec_scorer import GateConfig, score_gate
 
 
-CONCURRENCY_LIMIT = 5
+DEFAULT_CONCURRENCY = 10
 
 
 def _haiku_cost(input_tokens: int, output_tokens: int) -> float:
@@ -74,13 +74,14 @@ async def _run_scenarios_concurrent(
     client: anthropic.Anthropic,
     cost_cap: float,
     max_tokens_scenario: int,
+    concurrency: int = DEFAULT_CONCURRENCY,
 ) -> tuple[list[EvalResult], float]:
     """Run scenarios concurrently. Returns (results, total_cost).
 
     Costs are accumulated after gather completes to avoid race conditions.
     The cost cap is checked between batches as a best-effort early stop.
     """
-    sem = asyncio.Semaphore(CONCURRENCY_LIMIT)
+    sem = asyncio.Semaphore(concurrency)
     total_cost = 0.0
 
     async def run_one(scenario: Scenario, rule_text: str) -> tuple[EvalResult, float] | None:
@@ -126,14 +127,15 @@ def _eval_results_to_claim_results(
         claim_text = claim.text if claim else er.scenario_id
 
         passed = er.verdict == "pass"
-        evidence = er.evidence if er.verdict != "error" else "error"
+        is_error = er.verdict == "error"
 
         results.append(
             ClaimResult(
                 claim_id=claim_id,
                 claim_text=claim_text,
                 passed=passed,
-                evidence=evidence,
+                evidence=er.evidence,
+                is_error=is_error,
             )
         )
 
@@ -147,6 +149,7 @@ async def _run_gate(
     min_high_claims: int,
     cost_cap: float,
     max_tokens_scenario: int,
+    concurrency: int,
     dry_run: bool,
     verbose: bool,
 ) -> int:
@@ -199,12 +202,18 @@ async def _run_gate(
             )
             return 2  # env error, not spec failure
     else:
-        client = anthropic.Anthropic(
+        # Long timeout for Sonnet extraction (large input)
+        extraction_client = anthropic.Anthropic(
             max_retries=3,
             timeout=httpx.Timeout(600.0, connect=10.0),
         )
+        # Short timeout for Haiku scenarios + Sonnet judge (small input)
+        scenario_client = anthropic.Anthropic(
+            max_retries=3,
+            timeout=httpx.Timeout(60.0, connect=10.0),
+        )
         try:
-            prose_claims = extract_prose_claims(spec_without_tables, client)
+            prose_claims = extract_prose_claims(spec_without_tables, extraction_client)
         except ExtractionError as e:
             click.echo(f"Extraction error: {e}", err=True)
             return 1
@@ -271,7 +280,7 @@ async def _run_gate(
 
     # Phase 4-5: Run scenarios concurrently and judge
     eval_results, total_cost = await _run_scenarios_concurrent(
-        scenarios_and_rules, client, cost_cap, max_tokens_scenario
+        scenarios_and_rules, scenario_client, cost_cap, max_tokens_scenario, concurrency
     )
 
     if total_cost >= cost_cap:
@@ -353,6 +362,8 @@ async def _run_gate(
 @click.option("--min-high-claims", default=3, type=int)
 @click.option("--cost-cap", default=1.0, type=float)
 @click.option("--max-tokens-scenario", default=1024, type=int)
+@click.option("--concurrency", default=DEFAULT_CONCURRENCY, type=int,
+              help="Max concurrent scenario runs")
 @click.option("--dry-run", is_flag=True, help="Extract claims only, don't run scenarios")
 @click.option("--verbose", is_flag=True)
 def main(
@@ -362,6 +373,7 @@ def main(
     min_high_claims: int,
     cost_cap: float,
     max_tokens_scenario: int,
+    concurrency: int,
     dry_run: bool,
     verbose: bool,
 ) -> None:
@@ -374,6 +386,7 @@ def main(
             min_high_claims,
             cost_cap,
             max_tokens_scenario,
+            concurrency,
             dry_run,
             verbose,
         )

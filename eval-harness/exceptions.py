@@ -9,7 +9,3 @@ class SpecEvalError(Exception):
 
 class ExtractionError(SpecEvalError):
     """Failed to extract claims from spec."""
-
-
-class ScoringError(SpecEvalError):
-    """Failed to score a claim against generated code."""

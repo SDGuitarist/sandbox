@@ -376,7 +376,7 @@ too vague for agents to implement correctly.
 
 Run the spec eval gate from the project root:
 
-1. Run: `python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id> --cost-cap 1.0`
+1. Run: `eval-harness/.venv/bin/python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id> --cost-cap 1.0`
 2. Check exit code:
    - Exit 0 (PASS): all HIGH-confidence claims passed. Proceed to Step 10w.
    - Exit 1 (FAIL): read `docs/reports/<run-id>/spec-eval-*/spec-eval-gate.json`.

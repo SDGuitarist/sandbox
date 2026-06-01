@@ -193,8 +193,7 @@ class ClaimResult(BaseModel):
     claim_text: str
     passed: bool
     evidence: str
-    failure_type: str = ""
-    fix_hint: str = ""
+    is_error: bool = False
 
 
 class TierSummary(BaseModel):

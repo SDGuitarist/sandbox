@@ -66,14 +66,14 @@ def score_gate(
 
     # Count HIGH outcomes
     high_passed = sum(1 for r in high_results if r.passed)
-    high_failed = sum(1 for r in high_results if not r.passed and r.evidence != "error")
-    high_errors = sum(1 for r in high_results if not r.passed and r.evidence == "error")
+    high_failed = sum(1 for r in high_results if not r.passed and not r.is_error)
+    high_errors = sum(1 for r in high_results if r.is_error)
     high_total = len(high_results)
 
     # Count LOW outcomes
     low_passed = sum(1 for r in low_results if r.passed)
-    low_failed = sum(1 for r in low_results if not r.passed and r.evidence != "error")
-    low_errors = sum(1 for r in low_results if not r.passed and r.evidence == "error")
+    low_failed = sum(1 for r in low_results if not r.passed and not r.is_error)
+    low_errors = sum(1 for r in low_results if r.is_error)
     low_total = len(low_results)
 
     high_summary = TierSummary(

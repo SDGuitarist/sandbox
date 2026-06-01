@@ -18,6 +18,15 @@ JUDGE_MODEL = "claude-sonnet-4-6"
 JUDGES_DIR = Path(__file__).parent / "judges"
 SPEC_JUDGE_PROMPT_FILE = "spec-eval-base.txt"
 
+# Fail-fast: load judge prompt at module level
+_JUDGE_PROMPT_PATH = JUDGES_DIR / SPEC_JUDGE_PROMPT_FILE
+if not _JUDGE_PROMPT_PATH.exists():
+    raise FileNotFoundError(
+        f"Judge prompt not found: {_JUDGE_PROMPT_PATH}. "
+        f"Cannot run spec eval gate without it."
+    )
+_JUDGE_PROMPT = _JUDGE_PROMPT_PATH.read_text()
+
 # Tool schema: reasoning before verdict (chain-of-thought debiasing)
 SPEC_JUDGE_TOOL = {
     "name": "submit_verdict",
@@ -108,15 +117,6 @@ def _check_spec_llm_judge(
     client: anthropic.Anthropic,
 ) -> CheckResult:
     """Run the spec-adherence LLM judge via tool_use."""
-    # Load the spec-eval judge prompt
-    prompt_path = JUDGES_DIR / SPEC_JUDGE_PROMPT_FILE
-    if not prompt_path.exists():
-        return CheckResult(
-            verdict="error",
-            evidence=f"{SPEC_JUDGE_PROMPT_FILE} not found in judges/",
-        )
-
-    system_prompt = prompt_path.read_text()
 
     user_message = (
         f"## Spec Instruction\n\n{rule_text}\n\n"
@@ -130,7 +130,7 @@ def _check_spec_llm_judge(
         response = client.messages.create(
             model=JUDGE_MODEL,
             max_tokens=1024,
-            system=system_prompt,
+            system=_JUDGE_PROMPT,
             messages=[{"role": "user", "content": user_message}],
             tools=[SPEC_JUDGE_TOOL],
             tool_choice={"type": "tool", "name": "submit_verdict"},
