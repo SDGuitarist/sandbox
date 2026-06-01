@@ -1,25 +1,26 @@
-# Review Context -- Sandbox Autonomy Hardening
+# Review Context -- Sandbox Eval Harness (Spec Eval Gate)
 
 ## Risk Chain
 
-**Brainstorm risk:** N/A -- plan was revised directly from prior version, no brainstorm phase
+**Brainstorm risk:** "Quality of LLM-extracted prose claims is untested. Harness reuse requires careful model adaptation."
 
-**Plan mitigation:** Burn-zone safety model -- keep autopilot powerful, move all safety to the perimeter (gitignore, secrets policy, data inventory, advisory audit)
+**Plan mitigation:** Blocking prerequisite -- extraction prompt must be tested against 2 real specs (WRC, Ethics Toolkit) with --dry-run before implementing Phases 3-5. Confidence threshold raised from 0.85 to 0.90 due to LLM overconfidence.
 
-**Work risk (from Feed-Forward):** "Whether existing tracked .db, .csv, and .jsonl files contain sensitive material"
+**Work risk (from Feed-Forward):** "Whether the 24 WRC failures include false positives from the anti-leniency judge."
 
-**Review resolution:** 5 agents (security, architecture, simplicity, pattern, learnings), 3 P1s fixed (`.env.*` gap, audit filter alignment, verification command sync), 4 P2s (1 fixed, 3 deferred), 5 P3s (1 fixed, 4 accepted). Feed-Forward risk resolved: inventory completed, 2 sensitive files untracked, rest classified safe/generated.
+**Review resolution:** 7 agents (python, security, performance, architecture, simplicity, agent-native, learnings), 3 P1s fixed (CostTracker race, missing verification artifact, exit code ambiguity), 8 P2s + 8 P3s deferred. Feed-Forward risk (extraction quality) was validated -- 81% pass rate with 24 genuine failures on WRC. Anti-leniency bias remains open for human triage on first real swarm run.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| .gitignore | 12 -> 77 lines, broad sensitive-file coverage | Pattern completeness -- missing types leave gaps |
-| .claude/skills/autopilot/SKILL.md | Step 1.55 + Advisory Audit (now delegated to helper skill) | FC11 skip risk for non-blocking steps |
-| .claude/skills/advisory-audit/SKILL.md | New helper skill (baseline + report modes) | First real run will validate |
-| scripts/sensitive-file-scan.sh | Centralized find command | Single point of failure for audit accuracy |
-| CLAUDE.md | Destructive git rewrites added to forbidden actions | Coverage completeness |
+| eval-harness/spec_eval_gate.py | New CLI entry point, async orchestration | Cost cap race (P1 fixed), concurrent execution correctness |
+| eval-harness/extractor.py | Table parser + prose extraction + dedup | Table filter false negatives (skip real code tables), prompt injection via spec content |
+| eval-harness/spec_judge.py | Anti-leniency LLM judge | False positive rate on complex multi-step instructions |
+| eval-harness/spec_scorer.py | Confidence-filtered 100% threshold | Threshold calibration (0.90 may be too strict or too loose) |
+| eval-harness/models.py | 7 new types added | Type compatibility with existing pitfall eval models |
+| eval-harness/runner.py | Signature change: rule_text: str | Backward compat with pitfall_eval.py callers |
 
 ## Plan Reference
 
-`docs/plans/2026-05-13-feat-sandbox-autonomy-hardening-plan.md`
+`eval-harness/docs/plans/2026-05-24-feat-spec-eval-gate-plan.md`
