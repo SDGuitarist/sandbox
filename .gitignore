@@ -89,5 +89,8 @@ eval-harness/reports/spec-eval-*/
 # Runtime session state
 .content-pipeline-agent/
 
+# Nested repos (separate projects, not submodules)
+writers-room-council/
+
 # Build output (PDFs, HTML, compiled guides)
 output/
