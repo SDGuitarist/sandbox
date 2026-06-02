@@ -29,8 +29,9 @@ None — all 2 P1 + 6 P2 resolved.
 - P3: Duplicate API key warning in testing/run.html:15-19
 - P3: Unused current_app import in database.py:4
 - P3: Model dropdown hardcoded separately from AVAILABLE_MODELS (testing/run.html:38-41)
-- Future: Tier 2 Pre-Review Resume checkpoint for autopilot (context death prevention)
-- Future: Expand context budget heuristic to include pre-swarm work density
+- [061-W5] (above 4 P3 items, severity: LOW) — code quality, no correctness/security impact
+- [061-W3] Future: Tier 2 Pre-Review Resume checkpoint for autopilot (context death prevention) — severity: HIGH — requires skill authoring in a future session; root cause documented in docs/reports/061/context-death-analysis.md
+- Future: Expand context budget heuristic to include pre-swarm work density (related to [061-W3])
 
 ## Three Questions
 
