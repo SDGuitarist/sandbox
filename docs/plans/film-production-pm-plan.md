@@ -1113,12 +1113,12 @@ fetch(url, {
 | `authenticate` | model fn | auth_models | auth routes |
 | `get_user` | model fn | auth_models | auth routes, decorators |
 | `create_project` | model fn | project_models | projects routes |
-| `get_project` | model fn | project_models | decorators, projects routes |
+| `get_project` | model fn | project_models | auth routes (decorator), projects routes |
 | `get_active_project` | model fn | project_models | app factory (index route) |
 | `get_project_stats` | model fn | project_models | projects routes |
 | `transition_project_phase` | model fn | project_models | projects routes |
 | `create_scene` | model fn | scene_models | scenes routes |
-| `get_scenes` | model fn | scene_models | scenes routes, schedule routes, callsheets routes |
+| `get_scenes` | model fn | scene_models | scenes routes, schedule routes |
 | `get_scenes_by_ids` | model fn | scene_models | callsheet_models |
 | `get_scene` | model fn | scene_models | scenes routes |
 | `transition_scene_status` | model fn | scene_models | scenes routes |
@@ -1235,6 +1235,18 @@ fetch(url, {
 | app/models/schedule_models.py | app/blueprints/reports/routes.py | `from app.models.schedule_models import get_shoot_dates, get_schedule_entries` |
 | app/models/cast_models.py | app/blueprints/reports/routes.py | `from app.models.cast_models import get_cast_members` |
 
+### Decorator Internal Wiring
+
+| Producer | Consumer | Import Path |
+|----------|----------|-------------|
+| app/models/project_models.py | app/blueprints/auth/routes.py | `from app.models.project_models import get_project` |
+
+### Form Dropdown Wiring (crew)
+
+| Producer | Consumer | Import Path |
+|----------|----------|-------------|
+| app/models/department_models.py | app/blueprints/crew/routes.py | `from app.models.department_models import get_departments` |
+
 ### Auth Decorator Wiring (all route agents consume)
 
 | Producer | Consumer | Import Path |
@@ -1276,6 +1288,14 @@ fetch(url, {
 | POST /budget/\<pid\>/line-items | category_id, description, estimated_cents | category must exist, description required, cents int >= 0 | Flash specific, redirect |
 | POST /expenses/\<pid\> | department_id, amount_cents, vendor, expense_date, category_id | amount int > 0, vendor required, date YYYY-MM-DD, dept must exist, spent+amount <= allocated | Flash with remaining, redirect |
 | POST /expenses/\<pid\>/\<eid\>/delete | -- | expense must exist, ownership check | 404 or 403 |
+| POST /scenes/\<pid\>/\<sid\>/edit | scene_number, int_ext, day_night, page_count_eighths | same as create: scene_number unique, int_ext in set, day_night in set, page_count int > 0 | Flash specific, redirect |
+| POST /cast/\<pid\>/\<cid\>/edit | name, character_name, cast_id_number | same as create: name required, character required, cast_id 1-99 | Flash specific, redirect |
+| POST /crew/\<pid\>/\<cid\>/edit | name, role_title, department_id | same as create: name required, role_title required, dept exists | Flash specific, redirect |
+| POST /departments/\<pid\>/\<did\>/head | user_id | user_id must exist and be a project member | Flash "User not found", redirect |
+| POST /locations/\<pid\>/\<lid\>/edit | name | required 1-200 chars | Flash "Name is required", redirect |
+| POST /budget/\<pid\>/line-items/\<iid\>/edit | estimated_cents, actual_cents | int() try/except >= 0 for each | Flash "Invalid amount", redirect |
+| POST /expenses/\<pid\>/\<eid\>/approve | -- | expense must exist, expense.project_id == pid | 404 |
+| POST /call-sheets/\<pid\>/\<csid\>/publish | -- | call_sheet must exist, cs.project_id == pid, cs.status == 'draft' | Flash "Already published", redirect |
 | GET /search/\<pid\>?q= | q (query param) | strip, sanitize FTS5 operators, wrap in quotes | Empty results if empty |
 
 **Money parsing pattern (ALL budget/expense routes):**
@@ -1464,6 +1484,18 @@ def some_write_function(conn, ...):
 | GET /reports/\<pid\>/dood | role-only | all members | `require_project_member` |
 | GET /reports/\<pid\>/progress | role-only | all members | `require_project_member` |
 | GET /search/\<pid\> | role-only | all members | `require_project_member` |
+| GET /scenes/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
+| GET /scenes/\<pid\>/\<sid\>/edit | role-only | producer, ad | `require_role` + scene.project_id == pid |
+| GET /cast/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
+| GET /cast/\<pid\>/\<cid\> | role-only | all members | `require_project_member` + cast.project_id == pid |
+| GET /crew/\<pid\>/new | role-only | producer, ad, department_head | `require_role` + dept_head: own dept |
+| GET /crew/\<pid\>/\<cid\> | role-only | all members | `require_project_member` + crew.project_id == pid |
+| GET /locations/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
+| GET /locations/\<pid\>/\<lid\> | role-only | all members | `require_project_member` + loc.project_id == pid |
+| GET /schedule/\<pid\>/day/\<date\> | role-only | all members | `require_project_member` |
+| GET /schedule/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
+| GET /budget/\<pid\>/line-items/new | role-only | producer | `require_role('producer')` |
+| GET /expenses/\<pid\>/new | role+ownership | producer, department_head | producer: any; dept_head: own dept |
 
 **IDOR Prevention Pattern (FC35):**
 After every database lookup on a detail/edit/delete route, verify the resource belongs to the current project:
