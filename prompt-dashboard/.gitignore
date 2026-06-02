@@ -1,7 +1,0 @@
-prompts.db
-prompts.db-wal
-prompts.db-shm
-.env
-__pycache__/
-*.pyc
-.venv/
