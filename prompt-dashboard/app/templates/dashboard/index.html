@@ -106,13 +106,7 @@
                             {% endif %}
                         </small>
                     </div>
-                    {% if prompt['tags'] %}
-                    <div>
-                        {% for tag_name in prompt['tags'].split(',') %}
-                            <span class="badge bg-secondary me-1">{{ tag_name.strip() }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
+                    {# tags display removed: get_all_prompts() does not return a tags column #}
                 </div>
             </div>
         </div>
