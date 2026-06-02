@@ -9,3 +9,6 @@ venv/
 dist/
 build/
 .env
+test_smoke.py
+node_modules/
+.DS_Store

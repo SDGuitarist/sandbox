@@ -1,0 +1,115 @@
+/* Film Production PM Tool - Custom Styles */
+
+/* Strip color classes for schedule strips (production standard) */
+/* NEVER use Bootstrap bg-* for these -- use these classes exclusively */
+
+.strip-day-ext {
+    background-color: #ffc107 !important; /* Yellow */
+    color: #000 !important;
+}
+
+.strip-day-int {
+    background-color: #ffffff !important; /* White */
+    color: #000 !important;
+}
+
+.strip-night-int {
+    background-color: #0d6efd !important; /* Blue */
+    color: #fff !important;
+}
+
+.strip-night-ext {
+    background-color: #198754 !important; /* Green */
+    color: #fff !important;
+}
+
+/* Strip badge styling for schedule view */
+.strip-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    min-width: 2rem;
+    text-align: center;
+}
+
+/* Drag handle styling for SortableJS */
+.drag-handle {
+    cursor: grab;
+    padding: 0.25rem;
+    color: #6c757d;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Schedule item styling */
+.schedule-item {
+    transition: background-color 0.15s ease;
+}
+
+.schedule-item.sortable-ghost {
+    opacity: 0.4;
+}
+
+.schedule-item.sortable-chosen {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Dark theme overrides */
+body {
+    min-height: 100vh;
+}
+
+/* Flash message spacing */
+.alert {
+    margin-bottom: 1rem;
+}
+
+/* Detail page headings */
+h1, h2 {
+    margin-bottom: 1rem;
+}
+
+/* Action button spacing */
+.btn + .btn,
+.btn + form,
+form + .btn,
+form + form {
+    margin-left: 0.25rem;
+}
+
+/* Inline delete forms */
+form.d-inline {
+    display: inline;
+}
+
+/* DOOD grid styling */
+.dood-table th {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    white-space: nowrap;
+    padding: 0.5rem 0.25rem;
+}
+
+.dood-table td {
+    text-align: center;
+    min-width: 2rem;
+    padding: 0.25rem;
+}
+
+/* Status badge colors */
+.badge-not-started { background-color: #6c757d; }
+.badge-in-prep { background-color: #0dcaf0; color: #000; }
+.badge-ready { background-color: #198754; }
+.badge-shooting { background-color: #ffc107; color: #000; }
+.badge-wrapped { background-color: #0d6efd; }
+.badge-on-hold { background-color: #dc3545; }
+
+/* Navbar search form alignment */
+.navbar .nav-item form.d-flex {
+    align-items: center;
+    padding: 0.25rem 0;
+}
