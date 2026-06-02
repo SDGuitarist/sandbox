@@ -1,9 +1,13 @@
 """Smoke tests -- run with: .venv/bin/python test_smoke.py"""
 import os
 import re
+import tempfile
 os.environ.setdefault("SECRET_KEY", "test-smoke-key-not-production")
 os.environ.setdefault("ADMIN_PASSWORD", "test-strong-pw-123")
-os.environ.setdefault("DATABASE", ":memory:")
+_tmp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+_tmp_db.close()
+os.unlink(_tmp_db.name)
+os.environ.setdefault("DATABASE", _tmp_db.name)
 
 from app import create_app
 

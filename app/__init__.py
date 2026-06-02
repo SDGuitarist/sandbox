@@ -12,6 +12,7 @@ def create_app():
     if not secret:
         raise RuntimeError('SECRET_KEY environment variable is required')
     app.config['SECRET_KEY'] = secret
+    app.config['DATABASE'] = os.environ.get('DATABASE', 'filmpm.db')
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SECURE'] = True
