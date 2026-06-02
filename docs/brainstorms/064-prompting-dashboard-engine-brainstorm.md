@@ -167,3 +167,12 @@ Components are stored in `component_definitions` with cluster assignment. No com
 - **Hardest decision:** How to handle search on encrypted content. FTS5 requires plaintext for indexing, but content is Fernet-encrypted at rest. Decision: FTS5 indexes plaintext at insert/update time (triggers), actual content column stores ciphertext. This means the FTS5 index IS effectively a plaintext cache — acceptable for a workshop tool, but worth noting.
 - **Rejected alternatives:** (1) Encrypt everything including FTS5 — makes search impossible. (2) Skip encryption — violates spec requirement. (3) Use application-level search without FTS5 — too slow for large libraries, and we have the FC36 pattern ready.
 - **Least confident:** The Fernet encryption/decryption integration with the wizard form flow. Every read decrypts, every write encrypts. If the encryption key is wrong or missing, all saved prompts become unreadable. Need fail-closed behavior: if `PROMPT_ENCRYPTION_KEY` is missing, app should refuse to start (like SECRET_KEY).
+
+## Refinement Findings
+
+**STATUS: PASS** — 4 gaps found, all addressable in plan phase:
+
+1. **CSP-CDN Script Source Mismatch (FC38)** — Bootstrap 5 loaded from CDN but no CSP header prescribes the CDN domain. Plan must either include CDN domains in `script-src`/`style-src` or explicitly omit restrictive CSP. (Source: gigsheet-31-agent-swarm-build)
+2. **Markup() Filter Escaping** — Brainstorm bans `|safe` but custom display filters (cluster badge, completeness pill) that return `Markup()` bypass autoescaping. Plan must require `markupsafe.escape()` on every interpolated value inside `Markup()`. (Source: client-intake-dashboard FC47)
+3. **Share Token Referrer Leakage** — Anonymous users on `/share/<token>` pages can leak tokens via HTTP Referer header on external links. Plan must prescribe `Referrer-Policy: no-referrer` header. Invalid/revoked tokens should return 404 (not 403) to avoid confirming token existence. (Source: client-music-planner)
+4. **session.clear() on Logout** — Without explicit guidance, agents default to `session.pop('user_id')` which leaves other session keys intact (session fixation vector). Plan must prescribe `session.clear()`. (Source: client-intake-dashboard)
