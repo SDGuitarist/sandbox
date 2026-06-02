@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Top Sheet - {{ project['title'] }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Top Sheet</h1>
+        <a href="{{ url_for('budget.index', project_id=project['id']) }}" class="btn btn-outline-light">Back to Budget</a>
+    </div>
+
+    <!-- Overall Totals -->
+    <div class="card bg-dark border-secondary mb-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="fs-4">{{ project['total_budget_cents'] | dollars }}</div>
+                    <small class="text-muted">Total Budget</small>
+                </div>
+                <div class="col-md-3">
+                    <div class="fs-4">{{ summary['total_estimated_cents'] | dollars }}</div>
+                    <small class="text-muted">Total Estimated</small>
+                </div>
+                <div class="col-md-3">
+                    <div class="fs-4">{{ summary['total_actual_cents'] | dollars }}</div>
+                    <small class="text-muted">Total Actual</small>
+                </div>
+                <div class="col-md-3">
+                    <div class="fs-4 {% if summary['variance_cents'] < 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ summary['variance_cents'] | dollars }}
+                    </div>
+                    <small class="text-muted">Variance</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Groups -->
+    {% for group in groups %}
+    <div class="card bg-dark border-secondary mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">
+                {% if group['parent_group'] == 'ATL' %}Above the Line
+                {% elif group['parent_group'] == 'BTL_PRODUCTION' %}Below the Line - Production
+                {% elif group['parent_group'] == 'BTL_POST' %}Below the Line - Post Production
+                {% elif group['parent_group'] == 'OTHER' %}Other
+                {% endif %}
+            </h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark table-striped table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th>Category</th>
+                        <th class="text-end">Estimated</th>
+                        <th class="text-end">Actual</th>
+                        <th class="text-end">Variance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat in group['categories'] %}
+                    <tr>
+                        <td>{{ cat['account_number'] }}</td>
+                        <td>{{ cat['name'] }}</td>
+                        <td class="text-end">{{ cat['estimated_cents'] | dollars }}</td>
+                        <td class="text-end">{{ cat['actual_cents'] | dollars }}</td>
+                        <td class="text-end {% if cat['estimated_cents'] - cat['actual_cents'] < 0 %}text-danger{% endif %}">
+                            {{ (cat['estimated_cents'] - cat['actual_cents']) | dollars }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="2">Subtotal</td>
+                        <td class="text-end">{{ group['total_estimated_cents'] | dollars }}</td>
+                        <td class="text-end">{{ group['total_actual_cents'] | dollars }}</td>
+                        <td class="text-end {% if group['total_estimated_cents'] - group['total_actual_cents'] < 0 %}text-danger{% endif %}">
+                            {{ (group['total_estimated_cents'] - group['total_actual_cents']) | dollars }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Grand Totals -->
+    <div class="card bg-dark border-secondary">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0">
+                    <tbody>
+                        <tr class="fw-bold fs-5">
+                            <td>Grand Total</td>
+                            <td class="text-end">{{ summary['total_estimated_cents'] | dollars }}</td>
+                            <td class="text-end">{{ summary['total_actual_cents'] | dollars }}</td>
+                            <td class="text-end {% if summary['variance_cents'] < 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ summary['variance_cents'] | dollars }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
