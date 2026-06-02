@@ -91,16 +91,170 @@ Project membership via project_members table (user_id, project_id, role). @requi
 | 15 | database | -- | All model functions (shared module, not a blueprint) |
 | 16 | tests | -- | Smoke tests for all routes |
 
-## Highest-Risk Integration Surfaces
+## High-Risk Blueprint Details
 
-### Risk 1: Call Sheet Aggregation (FC3/FC1)
-Call sheets consume data from 5-6 model modules simultaneously (schedule, cast, crew, locations, scenes, departments). Any name mismatch or missing export breaks the page. The Cross-Boundary Wiring Table MUST have a dedicated "Call Sheet Wiring" subsection with exact import paths and function signatures.
+The 3 blueprints below have the densest cross-boundary wiring and the
+highest P1 probability. The spec MUST prescribe their model functions,
+wiring, and transaction behavior at this level of detail. Other blueprints
+are straightforward CRUD and the deepening agents can fill in their specs.
 
-### Risk 2: Budget/Expense Transaction Integrity (FC29)
-Creating an expense must atomically deduct from department budget. Deleting must restore. Without BEGIN IMMEDIATE, concurrent submissions corrupt totals. Every expense write function needs "requires BEGIN IMMEDIATE" annotation with try/commit/except/rollback wrapper prescribed in spec.
+### Call Sheets (Risk 1 — FC3/FC1: Cross-Boundary Aggregation)
 
-### Risk 3: Role-Based Authorization Matrix (FC35)
-4 roles create ~60-80 authorization rows. Missing one row means a crew member sees budget data or a department head edits another department's expenses. Complete Authorization Matrix required. Negative smoke tests required ("crew cannot access budget").
+The call sheet is the hardest integration surface in the app. A single
+call sheet generation pulls from 5-6 model modules simultaneously. If any
+consumed function has a name mismatch, missing export, or wrong return
+type, the call sheet page crashes or renders incomplete data.
+
+**Model functions this blueprint CONSUMES (must be in Cross-Boundary Wiring Table):**
+
+| Function | Defined In | Return Type | What It Provides |
+|----------|-----------|-------------|-----------------|
+| `get_schedule_entries(conn, project_id, date)` | schedule_models | `list[dict]` | Scenes scheduled for this shoot day |
+| `get_cast_for_scenes(conn, scene_ids)` | cast_models | `list[dict]` with cast_id, character, actor_name | Cast members needed for today's scenes |
+| `get_crew_by_department(conn, project_id)` | crew_models | `list[dict]` grouped by department | Full crew list with call times |
+| `get_location(conn, location_id)` | location_models | `dict` with name, address, hospital | Shooting location details |
+| `get_scenes(conn, scene_ids)` | scene_models | `list[dict]` with scene_number, int_ext, day_night, page_count | Scene breakdown details |
+| `get_departments(conn, project_id)` | department_models | `list[dict]` | Department names for crew grouping |
+
+**Model functions this blueprint EXPORTS:**
+
+| Function | Return Type | Consumed By |
+|----------|-------------|------------|
+| `generate_call_sheet(conn, project_id, date)` | `int` (call_sheet_id) | reports (for listing), routes (for display) |
+| `get_call_sheet(conn, call_sheet_id)` | `dict` | routes (detail view) |
+| `get_call_sheet_entries(conn, call_sheet_id)` | `list[dict]` | routes (detail view) |
+
+**Transaction behavior:**
+- `generate_call_sheet`: requires BEGIN IMMEDIATE (inserts call_sheets parent row + call_sheet_entries child rows atomically)
+- `get_call_sheet`, `get_call_sheet_entries`: read-only, no transaction needed
+
+**The spec must include exact import paths:**
+```
+from app.models.schedule_models import get_schedule_entries
+from app.models.cast_models import get_cast_for_scenes
+from app.models.crew_models import get_crew_by_department
+from app.models.location_models import get_location
+from app.models.scene_models import get_scenes
+from app.models.department_models import get_departments
+```
+
+### Budget + Expenses (Risk 2 — FC29: Transaction Integrity)
+
+Budget and expenses are tightly coupled — creating an expense must
+atomically deduct from the department's allocation, and deleting must
+restore it. This is the financial equivalent of inventory deduction
+(the pattern that produced P1s in GigSheet and BrewOps).
+
+**Budget model functions:**
+
+| Function | Transaction | Commits? | Error Handling |
+|----------|-------------|----------|----------------|
+| `get_budget_summary(conn, project_id)` | none (read-only) | N/A | N/A |
+| `get_department_allocation(conn, dept_id)` | none (read-only) | N/A | N/A |
+| `allocate_budget(conn, project_id, dept_id, amount_cents)` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
+| `update_line_item(conn, line_item_id, estimated_cents, actual_cents)` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
+| `get_budget_categories(conn, project_id)` | none (read-only) | N/A | N/A |
+
+**Expense model functions:**
+
+| Function | Transaction | Commits? | Error Handling |
+|----------|-------------|----------|----------------|
+| `create_expense(conn, dept_id, amount_cents, vendor, date, category)` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
+| `delete_expense(conn, expense_id)` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
+| `approve_expense(conn, expense_id, approved_by)` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
+| `get_expenses_for_department(conn, dept_id)` | none (read-only) | N/A | N/A |
+
+**Derived state chain (must be in same transaction):**
+- `create_expense` → UPDATE departments SET spent_cents = spent_cents + ? WHERE id = ?
+- `delete_expense` → UPDATE departments SET spent_cents = spent_cents - ? WHERE id = ?
+- `allocate_budget` → verify SUM(allocations) <= project.total_budget inside BEGIN IMMEDIATE
+
+**Defense-in-depth:**
+
+| Constraint | DB Layer | Model Layer | Route Layer |
+|-----------|----------|-------------|-------------|
+| Budget cannot go negative | `CHECK (remaining_cents >= 0)` | Verify inside BEGIN IMMEDIATE | Flash error before write |
+| Expense amount positive | `CHECK (amount_cents > 0)` | Verify > 0 inside transaction | Flash error + int() try/except |
+| Allocation <= total budget | -- (app-level) | SUM check inside BEGIN IMMEDIATE | Flash with remaining amount |
+
+**Ownership checks (FC35):**
+- Producer: can allocate any department, view all expenses
+- Department head: can only create/view expenses for own department (`departments.head_id == g.user['id']`)
+- AD, Crew: no budget/expense write access
+
+### Schedule (Risk 3 — FC43: TOCTOU + SortableJS Wiring)
+
+The schedule blueprint has two distinct risk surfaces: conflict detection
+(TOCTOU when two users schedule the same location/time) and drag-and-drop
+reordering (SortableJS CSS class matching).
+
+**Model functions:**
+
+| Function | Transaction | Commits? | Notes |
+|----------|-------------|----------|-------|
+| `create_schedule_entry(conn, project_id, scene_id, location_id, date, sort_order)` | BEGIN IMMEDIATE | YES | Re-check location/date conflict inside lock |
+| `update_schedule_entry(conn, entry_id, ...)` | BEGIN IMMEDIATE | YES | Re-check conflicts on location/date change |
+| `delete_schedule_entry(conn, entry_id)` | does NOT commit | NO | Caller controls (may be part of bulk operation) |
+| `reorder_schedule(conn, project_id, date, ordered_ids)` | BEGIN IMMEDIATE | YES | Batch UPDATE sort_order for all entries |
+| `get_schedule_entries(conn, project_id, date)` | none (read-only) | N/A | Consumed by callsheets |
+| `get_scenes_for_day(conn, project_id, date)` | none (read-only) | N/A | Consumed by callsheets, reports |
+
+**TOCTOU fence pattern for schedule conflict:**
+```python
+def create_schedule_entry(conn, project_id, scene_id, location_id, date, sort_order):
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+        # Authoritative conflict check INSIDE the lock
+        conflicts = conn.execute('''
+            SELECT id FROM schedule_entries
+            WHERE project_id = ? AND location_id = ? AND shoot_date = ?
+            AND scene_id != ?
+        ''', (project_id, location_id, date, scene_id)).fetchall()
+        if conflicts:
+            conn.execute('ROLLBACK')
+            return None  # caller flashes "Location already scheduled"
+        conn.execute('INSERT INTO schedule_entries ...', (...))
+        conn.execute('COMMIT')
+        return new_id
+    except Exception:
+        conn.execute('ROLLBACK')
+        raise
+```
+
+**SortableJS wiring (CSS class names MUST match between template and JS):**
+
+Template (schedule routes agent):
+```html
+<div id="schedule-list" class="sortable-container">
+  {% for entry in entries %}
+  <div class="schedule-item" data-id="{{ entry['id'] }}">
+    <span class="drag-handle">&#x2801;</span>
+    Scene {{ entry['scene_number'] }} — {{ entry['location_name'] }}
+    <span class="badge bg-{{ entry['strip_color'] }}">{{ entry['page_count'] }}</span>
+  </div>
+  {% endfor %}
+</div>
+```
+
+JS (static/js):
+```javascript
+new Sortable(document.getElementById('schedule-list'), {
+  handle: '.drag-handle',
+  onEnd: function() {
+    const ids = [...document.querySelectorAll('.schedule-item')]
+      .map(el => el.dataset.id);
+    fetch('/schedule/reorder', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+      body: JSON.stringify({order: ids})
+    });
+  }
+});
+```
+
+**Critical:** `.schedule-item` in template MUST match `.schedule-item` in JS.
+`.drag-handle` in template MUST match `.drag-handle` in JS. Client Music
+Planner Run 048 had a P1 from exactly this mismatch (`btn-move-up` vs `.move-up`).
 
 ## Applicable Patterns from Prior Builds
 
