@@ -110,8 +110,8 @@ def generate_call_sheet(conn, project_id, shoot_date):
                 project_id,
                 next_sheet_number,
                 shoot_date,
-                location['nearest_hospital'] if location else None,  # weather_note left NULL; hospital stored separately
                 None,
+                f"Nearest hospital: {location['nearest_hospital']}" if location and location.get('nearest_hospital') else None,
             ),
         )
         call_sheet_id = cursor.lastrowid
