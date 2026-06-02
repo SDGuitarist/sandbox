@@ -37,6 +37,7 @@
 ### Assembly: 16 worktree merges, 0 conflicts
 ### Contract Check: FAIL → PASS (6 mismatches fixed by assembly-fix)
 ### Smoke Test: PASS (18/18)
+### Review: 1 P1, 3 P2 | Fix commits: pending
 
 ---
 

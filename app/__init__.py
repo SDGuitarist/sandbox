@@ -15,7 +15,7 @@ def create_app():
     app.config['DATABASE'] = os.environ.get('DATABASE', 'filmpm.db')
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
 
     csrf.init_app(app)
 

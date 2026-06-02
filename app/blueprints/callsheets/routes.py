@@ -3,6 +3,8 @@
 url_prefix=/call-sheets (registered in app factory).
 """
 
+import re
+
 from flask import Blueprint, render_template, redirect, url_for, flash, request, g, abort
 from app.database import get_db
 from app.blueprints.auth.routes import login_required, require_project_member, require_role
@@ -58,15 +60,8 @@ def generate(project_id):
     conn = get_db()
     shoot_date = request.form.get('shoot_date', '').strip()
 
-    if not shoot_date:
-        flash('Please select a shoot date', 'error')
-        return redirect(url_for('callsheets.list', project_id=project_id))
-
-    # Validate that the date has schedule entries
-    from app.models.schedule_models import get_schedule_entries
-    entries = get_schedule_entries(conn, project_id, shoot_date)
-    if not entries:
-        flash('No scenes scheduled for that date', 'error')
+    if not shoot_date or not re.match(r'^\d{4}-\d{2}-\d{2}$', shoot_date):
+        flash('Valid date (YYYY-MM-DD) is required', 'error')
         return redirect(url_for('callsheets.list', project_id=project_id))
 
     # Check if a call sheet already exists for this date
