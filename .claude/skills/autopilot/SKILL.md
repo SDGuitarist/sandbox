@@ -433,8 +433,13 @@ assigned files. For each worktree branch, run these as SEPARATE Bash calls
    STATUS: PASS
    ```
 5. Proceed to assembly merge.
-6. **Incremental BUILD_TRACKING:** After writing ownership-gate.md, run:
-   `echo "### Ownership Gate: PASS ([N] agents)" >> BUILD_TRACKING.md`
+6. **Incremental BUILD_TRACKING:** After writing ownership-gate.md, use
+   Edit tool to insert `### Ownership Gate: PASS ([N] agents)` into
+   BUILD_TRACKING.md. Target: the line immediately before the `---`
+   separator that follows the AGENT_STATUS section.
+   If the Edit fails (old_string not found): read BUILD_TRACKING.md,
+   find the correct anchor, retry once. If retry fails: FAIL with
+   "BUILD_TRACKING EDIT FAILED: could not locate AGENT_STATUS separator."
 
 ### Step 11w: Assembly Merge
 
@@ -447,9 +452,15 @@ call (do NOT chain with && or use for-loops):
 3. For each worktree agent that made changes, run ONE merge at a time
    (separate Bash call for each -- do NOT use a for-loop):
    `git merge --no-ff <branch-name>`
-   **Incremental BUILD_TRACKING:** After each successful merge, run two Bash calls:
-   - `git log -1 --format=%h` (capture as commit_hash)
-   - `echo "| [N] | [role] | [commit_hash] | PASS |" >> BUILD_TRACKING.md`
+   **Incremental BUILD_TRACKING:** After each successful merge:
+   - Run `git log -1 --format=%h` (capture as commit_hash)
+   - Use Edit tool to insert `| [N] | [role] | [commit_hash] | PASS |`
+     as a new row at the end of the AGENT_STATUS table. Target: the line
+     immediately before the `---` separator that follows the AGENT_STATUS
+     section.
+     If the Edit fails (old_string not found): read BUILD_TRACKING.md,
+     find the correct anchor, retry once. If retry fails: FAIL with
+     "BUILD_TRACKING EDIT FAILED: could not locate AGENT_STATUS separator."
    Where N is the sequential agent number (1-based) and role is from the assignment table.
 4. If a merge fails (exit code != 0), use Write tool to save the conflict
    output to `docs/reports/<run-id>/merge-conflict.md`, then invoke the
@@ -462,7 +473,11 @@ call (do NOT chain with && or use for-loops):
 Use the **spec-contract-checker** agent. Pass the plan path and project root.
 
 Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
-**Incremental BUILD_TRACKING:** `echo "### Contract Check: [STATUS]" >> BUILD_TRACKING.md`
+**Incremental BUILD_TRACKING:** Use Edit tool to insert
+`### Contract Check: [STATUS]` into BUILD_TRACKING.md. Target: the line
+immediately before the `---` separator that follows the AGENT_STATUS section.
+If the Edit fails: read BUILD_TRACKING.md, find the correct anchor, retry
+once. If retry fails: FAIL with "BUILD_TRACKING EDIT FAILED."
 - If PASS: continue to smoke test.
 - If FAIL: use the **assembly-fix** agent with the contract check report,
   plan path, and project root (max 1 retry). Re-run spec contract check
@@ -473,7 +488,11 @@ Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
 Use the **smoke-test-runner** agent. Pass the plan path and project root.
 
 Read `docs/reports/<run-id>/smoke-test.md`. Check STATUS.
-**Incremental BUILD_TRACKING:** `echo "### Smoke Test: [STATUS]" >> BUILD_TRACKING.md`
+**Incremental BUILD_TRACKING:** Use Edit tool to insert
+`### Smoke Test: [STATUS]` into BUILD_TRACKING.md. Target: the line
+immediately before the `---` separator that follows the AGENT_STATUS section.
+If the Edit fails: read BUILD_TRACKING.md, find the correct anchor, retry
+once. If retry fails: FAIL with "BUILD_TRACKING EDIT FAILED."
 - If PASS: continue to test suite.
 - If FAIL: use the **assembly-fix** agent with the smoke test report, plan
   path, and project root (max 1 retry). Re-run smoke test after fix. If still
@@ -527,8 +546,12 @@ The review agents should scrutinize any areas flagged in the plan's
 Feed-Forward "least confident" item. After review completes, verify that
 review findings reference the Feed-Forward risk if applicable.
 
-**Incremental BUILD_TRACKING:** After review completes, run:
-`echo "### Review: [P1_count] P1, [P2_count] P2 | Fix commits: [hashes]" >> BUILD_TRACKING.md`
+**Incremental BUILD_TRACKING:** After review completes, use Edit tool to
+insert `### Review: [P1_count] P1, [P2_count] P2 | Fix commits: [hashes]`
+into BUILD_TRACKING.md. Target: the line immediately before the `---`
+separator that follows the AGENT_STATUS section. If the Edit fails: read
+BUILD_TRACKING.md, find the correct anchor, retry once. If retry fails:
+FAIL with "BUILD_TRACKING EDIT FAILED."
 
 ### Resolve TODOs
 
