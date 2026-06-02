@@ -1,7 +1,7 @@
 ---
 name: tail-runner
 description: Runs the complete Shared Tail (review through self-audit) in a fresh context window. Spawned by autopilot after swarm build completes.
-tools: Bash, Read, Write, Edit, Grep, Glob, Skill
+tools: Bash, Read, Write, Edit, Grep, Glob, Skill, Agent
 model: sonnet
 ---
 

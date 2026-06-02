@@ -694,29 +694,12 @@ Do NOT proceed to BUILD_TRACKING until ALL four checks pass.
 
 ### Fill BUILD_TRACKING.md (MANDATORY -- SOLO ONLY)
 
-If this is a solo build (not swarm): fill AGENT_STATUS, FAILURES, and
-RUN_METRICS sections now (same bulk-fill behavior as before -- read plan,
-review findings, and report files to populate all three sections).
+**Swarm builds skip this step** — BUILD_TRACKING is filled by the
+tail-runner agent (Step 17w, tail-runner Step 6).
 
-If this is a swarm build: skip this step. AGENT_STATUS is already populated
-from incremental writes in Steps 10.5w-11w. Proceed to the swarm-only fill.
-
-### Fill FAILURES and RUN_METRICS (MANDATORY -- SWARM ONLY)
-
-After review completes and all P1 fixes are committed:
-
-1. Read all report files in `docs/reports/<run-id>/` to compile failure data.
-2. Use Edit tool to replace `<!-- Filled after review -->` under `## FAILURES`
-   with a structured table: one row per finding (severity, detail, resolution,
-   failure class). If no failures, replace with "None".
-3. Use Edit tool to replace `<!-- Filled after review -->` under `## RUN_METRICS`
-   with the Final Build Metrics table: agent count, FC37 rate, merge conflicts,
-   file count, LOC estimate, smoke test results, review finding counts, plus
-   Agent Performance Summary table (agent, findings caused, failure classes).
-
-These edits target the cleaned placeholders written during Step 1.5 template
-cleanup. No duplicate headings. The self-audit agent reads FAILURES and
-RUN_METRICS as canonical sources.
+For solo builds: fill AGENT_STATUS, FAILURES, and RUN_METRICS sections
+now. Read plan, review findings, and report files to populate all three
+sections.
 
 ### Context-Budget Checkpoint -- Pre-Audit (SOLO ONLY)
 
