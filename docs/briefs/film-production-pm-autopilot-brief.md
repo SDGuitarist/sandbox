@@ -217,8 +217,8 @@ reordering (SortableJS CSS class matching).
 
 | Function | Transaction | Commits? | Notes |
 |----------|-------------|----------|-------|
-| `create_schedule_entry(conn, project_id, scene_id, location_id, date, sort_order)` | BEGIN IMMEDIATE | YES | Re-check location/date conflict inside lock |
-| `update_schedule_entry(conn, entry_id, ...)` | BEGIN IMMEDIATE | YES | Re-check conflicts on location/date change |
+| `create_schedule_entry(conn, project_id, scene_id, location_id, date, sort_order)` | BEGIN IMMEDIATE | YES | Re-check duplicate scene scheduling inside lock |
+| `update_schedule_entry(conn, entry_id, ...)` | BEGIN IMMEDIATE | YES | Re-check duplicate scene scheduling on scene/date changes |
 | `delete_schedule_entry(conn, entry_id)` | does NOT commit | NO | Caller controls (may be part of bulk operation) |
 | `reorder_schedule(conn, project_id, date, ordered_ids)` | BEGIN IMMEDIATE | YES | Validate: all IDs belong to project+date, no missing/extra IDs vs DB set, require producer/AD role. Batch UPDATE sort_order. |
 | `get_schedule_entries(conn, project_id, date)` | none (read-only) | N/A | Consumed by callsheets |
@@ -260,7 +260,7 @@ Template (schedule routes agent):
   <div class="schedule-item" data-id="{{ entry['id'] }}">
     <span class="drag-handle">&#x2801;</span>
     Scene {{ entry['scene_number'] }} — {{ entry['location_name'] }}
-    <span class="badge bg-{{ entry['strip_color'] }}">{{ entry['page_count'] }}</span>
+    <span class="strip-badge {{ entry['strip_color_class'] }}">{{ entry['page_count'] }}</span>
   </div>
   {% endfor %}
 </div>
@@ -285,6 +285,10 @@ new Sortable(document.getElementById('schedule-list'), {
 **Critical:** `.schedule-item` in template MUST match `.schedule-item` in JS.
 `.drag-handle` in template MUST match `.drag-handle` in JS. Client Music
 Planner Run 048 had a P1 from exactly this mismatch (`btn-move-up` vs `.move-up`).
+
+`strip_color_class` must be one of: `strip-day-ext`, `strip-day-int`,
+`strip-night-int`, `strip-night-ext`. Never construct arbitrary CSS class
+names from unsanitized scene fields.
 
 ## Applicable Patterns from Prior Builds
 
@@ -343,7 +347,7 @@ Planner Run 048 had a P1 from exactly this mismatch (`btn-move-up` vs `.move-up`
 
 These were identified as contradictions by Codex review and resolved before launch:
 
-1. **Single-production vs multi-project:** Phase 1 uses one active production. Schema keeps `project_id` and `project_members` for permission scoping. Projects CRUD exists (create/select project) but no project list page or switcher UI. Multi-project UI is Phase 2.
+1. **Single-production vs multi-project:** Phase 1 uses one active production. Schema keeps `project_id` and `project_members` for permission scoping. Create/edit the single active project; no project index, no switcher, no multi-project navigation. Multi-project UI is Phase 2.
 2. **Model file ownership:** Each domain owns its own model file (`app/models/scene_models.py`, etc.). The database agent owns ONLY `schema.sql`, `app/database.py` (get_db, init_db, seed), and `app/models/__init__.py` (re-exports). It does NOT own model functions.
 3. **Schedule permits multiple scenes per location per day.** This is normal in film production. The conflict to prevent is the same scene scheduled on two different days (duplicate-scene check, not location-date uniqueness).
 4. **Budget columns:** `department_budgets.allocated_cents` and `department_budgets.spent_cents`. `remaining` is always computed (`allocated_cents - spent_cents`), never stored. Invariant: `spent_cents <= allocated_cents`.
@@ -373,8 +377,8 @@ The tests agent MUST include these specific test cases beyond basic route smoke 
 6. **Crew-member budget IDOR:** Log in as crew member → attempt GET /budget → verify 403
 7. **Schedule reorder validation:** POST /schedule/reorder with IDs from wrong project → verify rejection
 8. **FTS5 sanitization:** Search with `")(DROP TABLE` → verify no 500, results returned safely
-9. **CSRF on JSON POST:** POST /schedule/reorder without X-CSRFToken header → verify 400
-10. **CSP allows SortableJS:** Load schedule page → verify no CSP violation in response headers for cdn.jsdelivr.net
+9. **CSRF on JSON POST:** POST /schedule/reorder without X-CSRFToken header → verify rejection (400 or 403) and order is not mutated
+10. **CSP allows SortableJS:** Verify Content-Security-Policy response header includes `script-src` allowing cdn.jsdelivr.net (the Bootstrap and SortableJS CDN domain)
 
 ## Swarm Configuration
 
