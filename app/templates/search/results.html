@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Search — {{ g.project['title'] }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Search</h2>
+
+    <form method="get" action="{{ url_for('search.search_page', project_id=project_id) }}" class="mb-4">
+        <div class="input-group">
+            <input type="text"
+                   name="q"
+                   class="form-control bg-dark text-light border-secondary"
+                   placeholder="Search scenes, cast, crew, locations..."
+                   value="{{ query }}"
+                   aria-label="Search query">
+            <button class="btn btn-outline-light" type="submit">Search</button>
+        </div>
+    </form>
+
+    {% if query %}
+        {% if results %}
+            <p class="text-muted">{{ results|length }} result{{ 's' if results|length != 1 else '' }} for "{{ query }}"</p>
+
+            <div class="list-group">
+                {% for result in results %}
+                    <div class="list-group-item bg-dark border-secondary">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="mb-1">{{ result.title }}</h5>
+                                <p class="mb-1 text-muted">{{ result.snippet | safe }}</p>
+                            </div>
+                            <span class="badge bg-secondary">{{ result.entity_type }}</span>
+                        </div>
+                        <small class="text-muted">
+                            {% if result.entity_type == 'scene' %}
+                                <a href="{{ url_for('scenes.detail', project_id=project_id, scene_id=result.entity_id) }}" class="text-info">View Scene</a>
+                            {% elif result.entity_type == 'cast' %}
+                                <a href="{{ url_for('cast.detail', project_id=project_id, cast_id=result.entity_id) }}" class="text-info">View Cast Member</a>
+                            {% elif result.entity_type == 'crew' %}
+                                <a href="{{ url_for('crew.detail', project_id=project_id, crew_id=result.entity_id) }}" class="text-info">View Crew Member</a>
+                            {% elif result.entity_type == 'location' %}
+                                <a href="{{ url_for('locations.detail', project_id=project_id, location_id=result.entity_id) }}" class="text-info">View Location</a>
+                            {% endif %}
+                        </small>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-muted">No results found for "{{ query }}".</p>
+        {% endif %}
+    {% else %}
+        <p class="text-muted">Enter a search term to find scenes, cast, crew, and locations.</p>
+    {% endif %}
+</div>
+{% endblock %}
