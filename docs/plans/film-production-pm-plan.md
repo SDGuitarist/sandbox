@@ -37,6 +37,7 @@ def create_app():
     app.config['SECRET_KEY'] = secret
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SECURE'] = True
 
     csrf.init_app(app)
 
@@ -404,7 +405,7 @@ CREATE INDEX IF NOT EXISTS idx_expenses_department ON expenses(department_id);
 -- ============================================================
 
 CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
-    entity_type, entity_id, title, body,
+    entity_type UNINDEXED, entity_id UNINDEXED, title, body,
     content='', contentless_delete=1
 );
 
@@ -439,11 +440,12 @@ def get_db():
     """Get database connection. Sets PRAGMAs on every connection (FC40)."""
     if 'db' not in g:
         db_path = current_app.config.get('DATABASE', DATABASE)
-        g.db = sqlite3.connect(db_path, isolation_level=None)
+        g.db = sqlite3.connect(db_path, autocommit=True)
         g.db.row_factory = sqlite3.Row
         g.db.execute('PRAGMA journal_mode=WAL')
         g.db.execute('PRAGMA foreign_keys=ON')
         g.db.execute('PRAGMA busy_timeout=5000')
+        g.db.execute('PRAGMA synchronous=NORMAL')
     return g.db
 
 def close_db(e=None):
@@ -454,11 +456,12 @@ def close_db(e=None):
 def init_db():
     """Create tables from schema.sql and seed default data."""
     db_path = os.environ.get('DATABASE', DATABASE)
-    conn = sqlite3.connect(db_path, isolation_level=None)
+    conn = sqlite3.connect(db_path, autocommit=True)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA foreign_keys=ON')
     conn.execute('PRAGMA busy_timeout=5000')
+    conn.execute('PRAGMA synchronous=NORMAL')
     with open(os.path.join(os.path.dirname(__file__), '..', 'schema.sql')) as f:
         conn.executescript(f.read())
     seed_data(conn)
@@ -600,6 +603,12 @@ def create_user(conn, username, password, display_name) -> int: ...
 # Returns: dict or None
 # Usage: user = authenticate(conn, username, password)
 #        if user is None: flash('Invalid credentials', 'error')
+# SECURITY: Constant-time -- always call check_password_hash even if user not found
+#   DUMMY_HASH = generate_password_hash("dummy")
+#   user = conn.execute(...).fetchone()
+#   if user is None:
+#       check_password_hash(DUMMY_HASH, password)  # prevent timing attack
+#       return None
 def authenticate(conn, username, password) -> dict | None: ...
 
 # Returns: dict or None
@@ -1204,6 +1213,15 @@ fetch(url, {
 | app/models/scene_models.py | app/models/callsheet_models.py | `from app.models.scene_models import get_scenes_by_ids` | `list[dict]` with scene_number, int_ext, day_night, page_count_eighths |
 | app/models/department_models.py | app/blueprints/callsheets/routes.py | `from app.models.department_models import get_departments` | `list[dict]` with id, name |
 
+### Scene/Schedule Form Dropdowns (missing from initial spec)
+
+| Producer | Consumer | Import Path |
+|----------|----------|-------------|
+| app/models/location_models.py | app/blueprints/scenes/routes.py | `from app.models.location_models import get_locations` |
+| app/models/scene_models.py | app/blueprints/schedule/routes.py | `from app.models.scene_models import get_scenes` |
+| app/models/location_models.py | app/blueprints/schedule/routes.py | `from app.models.location_models import get_locations` |
+| app/models/schedule_models.py | app/blueprints/callsheets/routes.py | `from app.models.schedule_models import get_shoot_dates` |
+
 ### Budget/Expense Wiring
 
 | Producer | Consumer | Import Path |
@@ -1311,7 +1329,7 @@ if amount_cents <= 0:
 
 | Key | Set By | Read By | Example |
 |-----|--------|---------|---------|
-| `session['user_id']` | auth agent (login route) | `login_required` decorator, base.html navbar | `session['user_id'] = user['id']` |
+| `session['user_id']` | auth agent (login route) | `login_required` decorator, base.html navbar | `session.clear()` then `session['user_id'] = user['id']` |
 | `session['username']` | auth agent (login route) | base.html greeting | `session['username'] = user['username']` |
 
 ### Base Template
@@ -1361,6 +1379,22 @@ if amount_cents <= 0:
 | `create_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (spent_cents update in same txn) |
 | `delete_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (spent_cents rollback in same txn) |
 | `approve_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
+| `index_entity` | none | NO | caller commits (fire-and-forget, no transaction needed for FTS5 insert) |
+| `remove_entity` | none | NO | caller commits |
+
+**Compound write guidance for scenes routes:**
+When a scenes route calls `update_scene` + `add_cast_to_scene` + `index_entity` in sequence, wrap all three in a single transaction:
+```python
+conn.execute('BEGIN IMMEDIATE')
+try:
+    update_scene(conn, scene_id, ...)
+    add_cast_to_scene(conn, scene_id, cast_member_id)
+    index_entity(conn, 'scene', scene_id, ...)
+    conn.execute('COMMIT')
+except Exception:
+    conn.execute('ROLLBACK')
+    raise
+```
 
 **Pattern for all BEGIN IMMEDIATE functions:**
 ```python
@@ -1476,6 +1510,7 @@ These 3 names MUST match across HTML template, JavaScript, and Python exactly:
 | Drag handle | `class="drag-handle"` | `handle: '.drag-handle'` | -- |
 | Item data-id | `data-id="{{ entry['id'] }}"` | `el.dataset.id` | `request.json['order']` (list of int IDs) |
 | Strip badge class | `class="strip-badge {{ entry['strip_color_class'] }}"` | -- | `strip_color_class` from model |
+| Move buttons (a11y) | `<button class="btn-move-up">` / `<button class="btn-move-down">` | `.btn-move-up`, `.btn-move-down` click handlers call same reorder endpoint | Same reorder endpoint |
 | Reorder endpoint | -- | `fetch('/schedule/<pid>/reorder', ...)` | `@bp.route('/<int:project_id>/reorder', methods=['POST'])` |
 | JSON body | -- | `JSON.stringify({order: ids, shoot_date: currentDate})` | `request.json['order']`, `request.json['shoot_date']` |
 | CSRF header | -- | `'X-CSRFToken': csrfToken` | validated by flask-wtf |
