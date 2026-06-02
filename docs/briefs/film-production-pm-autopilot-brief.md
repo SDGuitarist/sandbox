@@ -2,24 +2,35 @@
 
 ## App Description
 
-Film production project management tool for indie/mid-budget producers. A local-first Flask + SQLite + Jinja2 web app that combines scheduling, call sheet generation, and budget tracking — the three pillars that StudioBinder, Movie Magic, and Yamdu each handle separately. Target user: a film producer managing a single production with 4 role levels (producer, assistant director, department head, crew member).
+Film production project management tool for indie/mid-budget producers. A local-first Flask + SQLite + Jinja2 web app that combines scheduling, call sheet generation, and budget tracking — the three pillars that StudioBinder, Movie Magic, and Yamdu each handle separately. Target user: a film producer managing one production at a time, with 4 role levels (producer, assistant director, department head, crew member). Phase 1 supports one active production but keeps project_id scoping in the schema and queries for permission isolation and future multi-project support.
 
 ## MVP Features (Phase 1 — this build)
 
 1. **Project Dashboard** — overview of current production: phase, key dates, budget spent vs total, scenes shot vs remaining
 2. **Crew & Cast Database** — contacts with name, role, department, phone, email, rate. Cast members get character name and cast ID number. Filter by department.
 3. **Scene Breakdown Manager** — all scenes with INT/EXT, location, DAY/NIGHT, page count (1/8ths), tagged elements (cast, props, wardrobe, SFX). Foundation for schedule and call sheets.
-4. **Shooting Schedule / Stripboard** — order scenes into shoot days. Drag-and-drop reordering via SortableJS. Page count totals per day. Color coding: yellow=DAY/EXT, white=DAY/INT, blue=NIGHT/INT, green=NIGHT/EXT.
+4. **Shooting Schedule / Stripboard** — order scenes into shoot days. Drag-and-drop reordering via SortableJS. Page count totals per day. Color coding via custom CSS classes: `.strip-day-ext` (yellow background), `.strip-day-int` (white/light), `.strip-night-int` (blue), `.strip-night-ext` (green). Do NOT use Bootstrap `bg-*` utilities — define these 4 classes in the app's CSS.
 5. **Call Sheet Generator** — given a shoot day, auto-populate scenes (from schedule), cast (from breakdown), crew (from departments). Add call times and notes. Print/view as formatted page.
 6. **Budget Tracker** — categories seeded from standard film template (ATL/BTL-Production/BTL-Post/Other). Line items with estimated vs actual amounts in integer cents. Running totals, variance, top sheet summary. Expense logging with department allocation enforcement.
 7. **Day Out of Days (DOOD) Grid** — auto-generated from schedule + cast. Grid view: cast as rows, shoot days as columns, cells show W/SW/WF/SWF/H status.
+
+**DOOD status derivation algorithm (must be prescribed exactly — do not leave to agents):**
+For each cast member, find all shoot days where they appear in a scheduled scene:
+- **W** (Work): a working day that is neither the first nor last working day
+- **SW** (Start/Work): the cast member's first working day
+- **WF** (Work/Finish): the cast member's last working day
+- **SWF** (Start/Work/Finish): cast member works only one day (first == last)
+- **H** (Hold): a non-working day that falls between the first and last working days (actor is on hold, not released)
+- **blank**: day is outside the cast member's start-to-finish range
+
+Logic: `working_days = set of dates where cast_member_id appears in schedule_entries via scene_cast`. Sort chronologically. First = SW, Last = WF, First == Last = SWF, between first and last but not in working_days = H, in working_days but not first/last = W.
 
 ## Out of Scope (Phase 2)
 
 - Script import/parser (NLP problem)
 - Shot lists and storyboards
 - Document management (contracts, permits)
-- Multi-project support
+- Multi-project UI (project switcher, project list page). Schema supports it; UI deferred.
 - Real-time collaboration / WebSocket
 - Email/SMS call sheet distribution
 - Vendor/rental tracking, petty cash
@@ -70,6 +81,8 @@ Model as BudgetCategory with account_number, name, parent_group. Seed defaults.
 
 Project membership via project_members table (user_id, project_id, role). @require_project_member decorator on all project-scoped routes.
 
+**Identity model:** `users` table holds login credentials and app-level identity. `crew_members` table has a nullable `user_id` FK to `users` — crew can exist in the database without having a login (e.g., day-hire extras). When `user_id` is set, that crew member can log in and see "my schedule." `cast_members` do NOT have user accounts in Phase 1 (actors don't log into this tool — their agent does). "Own profile" for crew means `crew_members.user_id == g.user['id']`.
+
 ## Blueprint Architecture (~16 agents)
 
 | # | Blueprint | url_prefix | Key Responsibility |
@@ -88,8 +101,15 @@ Project membership via project_members table (user_id, project_id, role). @requi
 | 12 | expenses | /expenses | Expense logging, department allocation enforcement, approvals |
 | 13 | reports | /reports | Budget summary, DOOD grid, production progress |
 | 14 | search | /search | FTS5 across scenes, cast, crew, locations |
-| 15 | database | -- | All model functions (shared module, not a blueprint) |
-| 16 | tests | -- | Smoke tests for all routes |
+| 15 | database | -- | Schema DDL, init_db, seed data, get_db, connection helpers. Does NOT own model functions. |
+| 16 | tests | -- | Smoke tests (see Critical-Flow Tests below) |
+
+**Model file ownership:** Each domain owns its own model file under `app/models/`.
+The database agent owns `app/models/__init__.py` (re-exports), `app/database.py`
+(get_db, init_db, seed), and `schema.sql`. Domain agents own their model files:
+`scene_models.py`, `cast_models.py`, `crew_models.py`, `schedule_models.py`,
+`callsheet_models.py`, `budget_models.py`, `expense_models.py`, `location_models.py`,
+`department_models.py`, `project_models.py`, `auth_models.py`, `search_models.py`.
 
 ## High-Risk Blueprint Details
 
@@ -164,16 +184,21 @@ restore it. This is the financial equivalent of inventory deduction
 | `approve_expense(conn, expense_id, approved_by)` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
 | `get_expenses_for_department(conn, dept_id)` | none (read-only) | N/A | N/A |
 
+**Budget columns (exact schema):**
+- `department_budgets`: `allocated_cents` (set by producer), `spent_cents` (derived from expenses)
+- Invariant: `spent_cents <= allocated_cents` (enforced at model layer inside BEGIN IMMEDIATE)
+- `remaining` is always derived: `allocated_cents - spent_cents` (never stored, computed in queries/templates)
+
 **Derived state chain (must be in same transaction):**
-- `create_expense` → UPDATE departments SET spent_cents = spent_cents + ? WHERE id = ?
-- `delete_expense` → UPDATE departments SET spent_cents = spent_cents - ? WHERE id = ?
-- `allocate_budget` → verify SUM(allocations) <= project.total_budget inside BEGIN IMMEDIATE
+- `create_expense` → UPDATE department_budgets SET spent_cents = spent_cents + ? WHERE department_id = ?
+- `delete_expense` → UPDATE department_budgets SET spent_cents = spent_cents - ? WHERE department_id = ?
+- `allocate_budget` → verify SUM(allocated_cents) <= project.total_budget_cents inside BEGIN IMMEDIATE
 
 **Defense-in-depth:**
 
 | Constraint | DB Layer | Model Layer | Route Layer |
 |-----------|----------|-------------|-------------|
-| Budget cannot go negative | `CHECK (remaining_cents >= 0)` | Verify inside BEGIN IMMEDIATE | Flash error before write |
+| spent <= allocated | `CHECK (spent_cents <= allocated_cents)` | Verify inside BEGIN IMMEDIATE | Flash error before write |
 | Expense amount positive | `CHECK (amount_cents > 0)` | Verify > 0 inside transaction | Flash error + int() try/except |
 | Allocation <= total budget | -- (app-level) | SUM check inside BEGIN IMMEDIATE | Flash with remaining amount |
 
@@ -195,24 +220,29 @@ reordering (SortableJS CSS class matching).
 | `create_schedule_entry(conn, project_id, scene_id, location_id, date, sort_order)` | BEGIN IMMEDIATE | YES | Re-check location/date conflict inside lock |
 | `update_schedule_entry(conn, entry_id, ...)` | BEGIN IMMEDIATE | YES | Re-check conflicts on location/date change |
 | `delete_schedule_entry(conn, entry_id)` | does NOT commit | NO | Caller controls (may be part of bulk operation) |
-| `reorder_schedule(conn, project_id, date, ordered_ids)` | BEGIN IMMEDIATE | YES | Batch UPDATE sort_order for all entries |
+| `reorder_schedule(conn, project_id, date, ordered_ids)` | BEGIN IMMEDIATE | YES | Validate: all IDs belong to project+date, no missing/extra IDs vs DB set, require producer/AD role. Batch UPDATE sort_order. |
 | `get_schedule_entries(conn, project_id, date)` | none (read-only) | N/A | Consumed by callsheets |
 | `get_scenes_for_day(conn, project_id, date)` | none (read-only) | N/A | Consumed by callsheets, reports |
 
-**TOCTOU fence pattern for schedule conflict:**
+**TOCTOU fence pattern for duplicate-scene prevention:**
+
+Multiple scenes at the same location on the same shoot day is normal in
+film production (you shoot all scenes at a location in one day to save
+travel time). The conflict to prevent is the SAME scene being scheduled
+twice on different days.
+
 ```python
 def create_schedule_entry(conn, project_id, scene_id, location_id, date, sort_order):
     try:
         conn.execute('BEGIN IMMEDIATE')
-        # Authoritative conflict check INSIDE the lock
-        conflicts = conn.execute('''
-            SELECT id FROM schedule_entries
-            WHERE project_id = ? AND location_id = ? AND shoot_date = ?
-            AND scene_id != ?
-        ''', (project_id, location_id, date, scene_id)).fetchall()
-        if conflicts:
+        # Prevent same scene scheduled on multiple days
+        existing = conn.execute('''
+            SELECT id, shoot_date FROM schedule_entries
+            WHERE project_id = ? AND scene_id = ?
+        ''', (project_id, scene_id)).fetchone()
+        if existing:
             conn.execute('ROLLBACK')
-            return None  # caller flashes "Location already scheduled"
+            return None  # caller flashes "Scene already scheduled on [date]"
         conn.execute('INSERT INTO schedule_entries ...', (...))
         conn.execute('COMMIT')
         return new_id
@@ -246,7 +276,7 @@ new Sortable(document.getElementById('schedule-list'), {
     fetch('/schedule/reorder', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
-      body: JSON.stringify({order: ids})
+      body: JSON.stringify({order: ids, shoot_date: currentDate})
     });
   }
 });
@@ -309,13 +339,42 @@ Planner Run 048 had a P1 from exactly this mismatch (`btn-move-up` vs `.move-up`
 - **FC40** (PRAGMA per-connection): busy_timeout on every connection path.
 - **FC37** (Agent no-commit): Brief must say "YOU MUST git add and git commit."
 
+## Architecture Decisions (Resolved — do not revisit during planning)
+
+These were identified as contradictions by Codex review and resolved before launch:
+
+1. **Single-production vs multi-project:** Phase 1 uses one active production. Schema keeps `project_id` and `project_members` for permission scoping. Projects CRUD exists (create/select project) but no project list page or switcher UI. Multi-project UI is Phase 2.
+2. **Model file ownership:** Each domain owns its own model file (`app/models/scene_models.py`, etc.). The database agent owns ONLY `schema.sql`, `app/database.py` (get_db, init_db, seed), and `app/models/__init__.py` (re-exports). It does NOT own model functions.
+3. **Schedule permits multiple scenes per location per day.** This is normal in film production. The conflict to prevent is the same scene scheduled on two different days (duplicate-scene check, not location-date uniqueness).
+4. **Budget columns:** `department_budgets.allocated_cents` and `department_budgets.spent_cents`. `remaining` is always computed (`allocated_cents - spent_cents`), never stored. Invariant: `spent_cents <= allocated_cents`.
+5. **DOOD derivation is algorithmic, not agent-interpreted.** The W/SW/WF/SWF/H algorithm is prescribed exactly in MVP Features above.
+6. **Reorder endpoint validates full ID set.** Server checks: all IDs belong to current project and shoot date, no missing or extra IDs vs the database set, and requires producer/AD role.
+7. **Crew identity:** `crew_members.user_id` is nullable FK to `users`. Crew without accounts exist in the database but can't log in. Cast members have no user accounts in Phase 1.
+8. **Call sheet child tables:** `call_sheet_scenes` and `call_sheet_cast` — two separate tables, not one polymorphic table.
+9. **Stripboard colors:** Custom CSS classes (`.strip-day-ext`, etc.), not Bootstrap `bg-*` utilities.
+
 ## Pre-Plan Design Decisions (Resolved)
 
 1. **Project membership:** Yes — project_members table with (user_id, project_id, role). @require_project_member decorator.
-2. **Call sheet data model:** Parent row (call_sheets) + child rows (call_sheet_entries per scene/cast). Multi-table write = BEGIN IMMEDIATE.
+2. **Call sheet data model:** Parent row (`call_sheets`) + two child tables: `call_sheet_scenes` (scene_id, sort_order — which scenes shoot that day) and `call_sheet_cast` (cast_member_id, call_time, makeup_time, on_set_time, status W/SW/WF/SWF/H, remarks). Crew call times are derived from department defaults, not stored per call sheet. Multi-table write = BEGIN IMMEDIATE.
 3. **Budget storage:** Integer cents. dollars template filter for display. round(float(val)*100) for parsing.
 4. **Activity logging:** Deferred to Phase 2. Reduces spec complexity by ~15%.
 5. **Department head assignment:** Foreign key departments.head_id -> users.id. Ownership checks use this.
+
+## Critical-Flow Tests (Required — not just "smoke tests for all routes")
+
+The tests agent MUST include these specific test cases beyond basic route smoke tests:
+
+1. **Call sheet generation:** Create project → add scenes → add cast to scenes → create schedule entries → generate call sheet → verify call sheet contains correct scenes, cast with statuses, and location
+2. **DOOD grid:** Schedule 3 scenes across 5 days with overlapping cast → verify W/SW/WF/SWF/H statuses are correct for each cast member
+3. **Budget overspend rejection:** Allocate 1000 cents to department → create expense for 1001 cents → verify rejection with flash message
+4. **Expense rollback:** Create expense → verify spent_cents incremented → delete expense → verify spent_cents restored to original
+5. **Department-head IDOR:** Log in as dept_head for Camera → attempt to create expense for Sound department → verify 403
+6. **Crew-member budget IDOR:** Log in as crew member → attempt GET /budget → verify 403
+7. **Schedule reorder validation:** POST /schedule/reorder with IDs from wrong project → verify rejection
+8. **FTS5 sanitization:** Search with `")(DROP TABLE` → verify no 500, results returned safely
+9. **CSRF on JSON POST:** POST /schedule/reorder without X-CSRFToken header → verify 400
+10. **CSP allows SortableJS:** Load schedule page → verify no CSP violation in response headers for cdn.jsdelivr.net
 
 ## Swarm Configuration
 
@@ -327,7 +386,14 @@ Planner Run 048 had a P1 from exactly this mismatch (`btn-move-up` vs `.move-up`
 
 ## Monitoring (Tail Delegation Validation)
 
-This build validates the tail delegation feature shipped earlier today. Monitor:
+This build validates the tail delegation feature shipped earlier today.
+Note: a 16-agent feature-heavy app makes tail delegation failures harder
+to attribute vs a smaller swarm. The app is the priority — tail delegation
+validation is a secondary benefit. If the tail-runner fails, diagnose
+whether the failure is tail-runner infrastructure or app-specific review
+complexity before concluding the feature is broken.
+
+Monitor:
 - Does the tail-runner agent complete all 10 steps?
 - What is the tail-runner's context consumption at completion?
 - Does the orchestrator reach Step 17w without context death?
