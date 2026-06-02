@@ -125,8 +125,7 @@ def create(project_id):
     )
 
     # Index for search
-    index_entity(conn, 'crew_member', crew_member_id,
-                 f'{name} {role_title}')
+    index_entity(conn, 'crew', crew_member_id, name, role_title)
 
     flash('Crew member added', 'success')
     return redirect(url_for('crew.detail', project_id=project_id,
@@ -243,8 +242,7 @@ def update(project_id, crew_member_id):
                        daily_rate_cents=daily_rate_cents)
 
     # Update search index
-    index_entity(conn, 'crew_member', crew_member_id,
-                 f'{name} {role_title}')
+    index_entity(conn, 'crew', crew_member_id, name, role_title)
 
     flash('Crew member updated', 'success')
     return redirect(url_for('crew.detail', project_id=project_id,

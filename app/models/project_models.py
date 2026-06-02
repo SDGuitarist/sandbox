@@ -76,6 +76,17 @@ def get_active_project(conn):
     return dict(row)
 
 
+def update_project(conn, project_id, title, description, total_budget_cents):
+    """Update project title, description, and budget.
+
+    Returns: None -- requires BEGIN IMMEDIATE from caller.
+    """
+    conn.execute(
+        "UPDATE projects SET title = ?, description = ?, total_budget_cents = ?, updated_at = datetime('now') WHERE id = ?",
+        (title, description, total_budget_cents, project_id)
+    )
+
+
 def get_project_stats(conn, project_id):
     """Compute dashboard statistics for a project.
 

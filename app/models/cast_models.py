@@ -107,6 +107,23 @@ def remove_cast_from_scene(conn, scene_id, cast_member_id):
     )
 
 
+def update_cast_member(conn, cast_member_id, name, character_name, cast_id_number,
+                       agent_name=None, agent_phone=None, agent_email=None, notes=None):
+    """Update an existing cast member.
+
+    Returns: None -- requires BEGIN IMMEDIATE from caller.
+    Raises sqlite3.IntegrityError if cast_id_number is not unique per project.
+    """
+    conn.execute(
+        '''UPDATE cast_members
+           SET name = ?, character_name = ?, cast_id_number = ?,
+               agent_name = ?, agent_phone = ?, agent_email = ?, notes = ?
+           WHERE id = ?''',
+        (name, character_name, cast_id_number,
+         agent_name, agent_phone, agent_email, notes, cast_member_id)
+    )
+
+
 def get_scene_cast(conn, scene_id):
     """Get all cast members assigned to a specific scene.
 

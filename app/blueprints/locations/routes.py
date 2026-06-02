@@ -3,7 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, abort
 from app.database import get_db
 from app.blueprints.auth.routes import login_required, require_project_member, require_role
-from app.models.location_models import create_location, get_locations, get_location
+from app.models.location_models import create_location, get_locations, get_location, update_location
 from app.models.search_models import index_entity
 
 bp = Blueprint('locations', __name__)
@@ -110,14 +110,10 @@ def update(project_id, location_id):
 
     try:
         conn.execute('BEGIN IMMEDIATE')
-        conn.execute(
-            '''UPDATE locations
-               SET name = ?, address = ?, contact_name = ?, contact_phone = ?,
-                   nearest_hospital = ?, permit_status = ?, notes = ?
-               WHERE id = ?''',
-            (name, address, contact_name, contact_phone,
-             nearest_hospital, permit_status, notes, location_id)
-        )
+        update_location(conn, location_id, name, address=address,
+                        contact_name=contact_name, contact_phone=contact_phone,
+                        nearest_hospital=nearest_hospital,
+                        permit_status=permit_status, notes=notes)
         # Re-index for search
         index_entity(conn, 'location', location_id, name,
                      ' '.join(filter(None, [address, contact_name])))

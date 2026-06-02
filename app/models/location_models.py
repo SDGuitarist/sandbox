@@ -34,6 +34,23 @@ def get_locations(conn, project_id):
     return [dict(row) for row in rows]
 
 
+def update_location(conn, location_id, name, address=None, contact_name=None,
+                    contact_phone=None, nearest_hospital=None,
+                    permit_status='pending', notes=None):
+    """Update an existing location.
+
+    Returns: None -- requires BEGIN IMMEDIATE from caller.
+    """
+    conn.execute(
+        '''UPDATE locations
+           SET name = ?, address = ?, contact_name = ?, contact_phone = ?,
+               nearest_hospital = ?, permit_status = ?, notes = ?
+           WHERE id = ?''',
+        (name, address, contact_name, contact_phone,
+         nearest_hospital, permit_status, notes, location_id)
+    )
+
+
 def get_location(conn, location_id):
     """Return dict or None with keys: id, name, address, contact_name,
     contact_phone, permit_status, nearest_hospital, project_id, notes."""

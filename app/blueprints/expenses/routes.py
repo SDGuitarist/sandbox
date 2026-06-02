@@ -48,7 +48,7 @@ def _get_user_departments(conn, project_id, user):
 @login_required
 @require_project_member
 @require_role('producer', 'department_head')
-def list_expenses(project_id):
+def list(project_id):
     """List expenses. Producer sees all; dept_head sees own departments only."""
     conn = get_db()
 
@@ -215,7 +215,7 @@ def create(project_id):
         else:
             flash(error_msg, 'error')
 
-    return redirect(url_for('expenses.list_expenses', project_id=project_id))
+    return redirect(url_for('expenses.list', project_id=project_id))
 
 
 @bp.route('/<int:project_id>/<int:expense_id>/delete', methods=['POST'])
@@ -261,7 +261,7 @@ def delete(project_id, expense_id):
     else:
         flash('Expense not found', 'error')
 
-    return redirect(url_for('expenses.list_expenses', project_id=project_id))
+    return redirect(url_for('expenses.list', project_id=project_id))
 
 
 @bp.route('/<int:project_id>/<int:expense_id>/approve', methods=['POST'])
@@ -289,4 +289,4 @@ def approve(project_id, expense_id):
     else:
         flash('Expense not found', 'error')
 
-    return redirect(url_for('expenses.list_expenses', project_id=project_id))
+    return redirect(url_for('expenses.list', project_id=project_id))

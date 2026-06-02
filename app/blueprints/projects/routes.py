@@ -12,6 +12,7 @@ from app.models.project_models import (
     create_project,
     get_project,
     get_project_stats,
+    update_project,
     transition_project_phase,
     VALID_PHASE_TRANSITIONS,
     PHASE_LABELS,
@@ -112,10 +113,7 @@ def update(project_id):
     conn = get_db()
     conn.execute('BEGIN IMMEDIATE')
     try:
-        conn.execute(
-            "UPDATE projects SET title = ?, description = ?, total_budget_cents = ?, updated_at = datetime('now') WHERE id = ?",
-            (title, description, total_budget_cents, project_id)
-        )
+        update_project(conn, project_id, title, description, total_budget_cents)
         conn.execute('COMMIT')
     except Exception:
         conn.execute('ROLLBACK')

@@ -15,6 +15,7 @@ from app.models.cast_models import (
     create_cast_member,
     get_cast_members,
     get_cast_member,
+    update_cast_member,
 )
 from app.models.search_models import index_entity
 
@@ -81,7 +82,7 @@ def create(project_id):
         return redirect(url_for('cast.new', project_id=project_id))
 
     # Index for search
-    index_entity(conn, 'cast_member', cast_member_id, name, character_name)
+    index_entity(conn, 'cast', cast_member_id, name, character_name)
 
     flash('Cast member added', 'success')
     return redirect(url_for('cast.detail', project_id=project_id, cast_member_id=cast_member_id))
@@ -151,15 +152,11 @@ def update(project_id, cast_member_id):
     # Update within a transaction
     try:
         conn.execute('BEGIN IMMEDIATE')
-        conn.execute(
-            '''UPDATE cast_members
-               SET name = ?, character_name = ?, cast_id_number = ?,
-                   agent_name = ?, agent_phone = ?, agent_email = ?, notes = ?
-               WHERE id = ?''',
-            (name, character_name, cast_id_number, agent_name, agent_phone, agent_email, notes, cast_member_id)
-        )
+        update_cast_member(conn, cast_member_id, name, character_name, cast_id_number,
+                           agent_name=agent_name, agent_phone=agent_phone,
+                           agent_email=agent_email, notes=notes)
         # Re-index for search
-        index_entity(conn, 'cast_member', cast_member_id, name, character_name)
+        index_entity(conn, 'cast', cast_member_id, name, character_name)
         conn.execute('COMMIT')
     except sqlite3.IntegrityError:
         conn.execute('ROLLBACK')
