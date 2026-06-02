@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Production Progress - {{ project.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('reports.index', project_id=project.id) }}">Reports</a></li>
+            <li class="breadcrumb-item active">Production Progress</li>
+        </ol>
+    </nav>
+
+    <h1>Production Progress</h1>
+    <p class="text-muted">{{ project.title }}</p>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">Scenes</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Wrapped</span>
+                        <span>{{ stats.scenes_wrapped }} / {{ stats.total_scenes }}</span>
+                    </div>
+                    {% if stats.total_scenes > 0 %}
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {{ (stats.scenes_wrapped / stats.total_scenes * 100) | round(1) }}%"
+                             aria-valuenow="{{ stats.scenes_wrapped }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ stats.total_scenes }}">
+                            {{ (stats.scenes_wrapped / stats.total_scenes * 100) | round(1) }}%
+                        </div>
+                    </div>
+                    {% endif %}
+                    <p class="text-muted mt-2 mb-0">{{ stats.scenes_remaining }} remaining</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">Shoot Days</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Completed</span>
+                        <span>{{ stats.shoot_days_completed }} / {{ stats.total_shoot_days }}</span>
+                    </div>
+                    {% if stats.total_shoot_days > 0 %}
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-info" role="progressbar"
+                             style="width: {{ (stats.shoot_days_completed / stats.total_shoot_days * 100) | round(1) }}%"
+                             aria-valuenow="{{ stats.shoot_days_completed }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ stats.total_shoot_days }}">
+                            {{ (stats.shoot_days_completed / stats.total_shoot_days * 100) | round(1) }}%
+                        </div>
+                    </div>
+                    {% endif %}
+                    <p class="text-muted mt-2 mb-0">{{ stats.total_shoot_days - stats.shoot_days_completed }} remaining</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-dark border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">Pages</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Wrapped</span>
+                        <span>{{ stats.wrapped_page_eighths | page_count }} / {{ stats.total_page_eighths | page_count }}</span>
+                    </div>
+                    {% if stats.total_page_eighths > 0 %}
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-warning" role="progressbar"
+                             style="width: {{ (stats.wrapped_page_eighths / stats.total_page_eighths * 100) | round(1) }}%"
+                             aria-valuenow="{{ stats.wrapped_page_eighths }}"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ stats.total_page_eighths }}">
+                            {{ (stats.wrapped_page_eighths / stats.total_page_eighths * 100) | round(1) }}%
+                        </div>
+                    </div>
+                    {% endif %}
+                    <p class="text-muted mt-2 mb-0">{{ (stats.total_page_eighths - stats.wrapped_page_eighths) | page_count }} remaining</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
