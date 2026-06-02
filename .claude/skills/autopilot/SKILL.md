@@ -37,6 +37,23 @@ agent -- not just swarm workers. Without this, spawned agents inherit the
 session's permission mode and may prompt for tool approval, breaking the
 zero-prompt guarantee.
 
+## Interactive Skill Prohibition (MANDATORY)
+
+NEVER invoke a skill via the Skill tool during autopilot execution. Skills
+like `/compound-engineering:document-review`, `/workflows:brainstorm`, and
+`/workflows:plan` use `AskUserQuestion` which blocks the pipeline waiting
+for user input. Instead:
+
+- For document review: use the inline self-review steps (6.05/6.07)
+- For brainstorm: pass "Autopilot Mode: pick simplest option" in args
+- For plan: the plan workflow has a "Pipeline mode" clause — but prefer
+  passing the full brief inline to avoid any interactive prompts
+- For any other skill: read its SKILL.md for assessment criteria and
+  apply them inline
+
+The only skills safe to invoke are non-interactive ones (e.g.,
+`/verify-self-audit`, `/update-learnings-noninteractive`).
+
 ## Bash Command Rules (MANDATORY -- read before any Bash call)
 
 Security heuristics fire on compound commands regardless of permissions. One command per Bash call. Always.
@@ -179,24 +196,35 @@ Run `/compound-engineering:deepen-plan`
 After deepening completes, read the plan document in `docs/plans/`. Extract the
 `swarm:` field from its YAML frontmatter.
 
-### Step 6.05: Plan Review and Refine (Pass 1)
+### Step 6.05: Plan Self-Review Pass 1 (INLINE — do NOT invoke document-review skill)
 
-Run `/compound-engineering:document-review` on the plan document in `docs/plans/`.
+Read the plan document. Assess against these 4 criteria:
 
-This is the first review pass -- it assesses clarity, completeness, specificity,
-and YAGNI compliance, then fixes issues inline. The skill will identify the
-single most impactful improvement and apply it.
+1. **Clarity**: Any vague language? ("probably", "consider", "try to", "maybe")
+2. **Completeness**: All 6 mandatory spec sections present and non-empty?
+   (Export Names, Cross-Boundary Wiring, Input Validation, Coordinated
+   Behaviors, Transaction Contracts, Authorization Matrix)
+3. **Specificity**: Concrete enough for agents to implement without asking
+   questions? Every function has a signature + return type? Every route has
+   method + path + auth?
+4. **YAGNI**: Any hypothetical features, over-engineering, or Phase 2 items
+   leaking into Phase 1?
 
-If the skill asks whether to refine again or mark as complete, choose
-**refine again** (this feeds into Step 6.07).
+Identify the single most impactful issue and fix it inline (Edit tool).
+If no issues found, proceed. Do NOT invoke `/compound-engineering:document-review`
+— that skill uses AskUserQuestion which blocks the autopilot pipeline.
 
-### Step 6.07: Plan Review and Refine (Pass 2)
+### Step 6.07: Plan Self-Review Pass 2 (INLINE — do NOT invoke document-review skill)
 
-Run `/compound-engineering:document-review` on the same plan document again.
+Re-read the plan. Check whether pass 1's fix introduced new inconsistencies
+(e.g., a renamed function in one section but not updated in another). Fix any
+found. After 2 passes, diminishing returns — proceed to Step 6.1.
 
-This second pass catches issues introduced or exposed by the first refinement.
-After this pass, the skill will recommend completion (diminishing returns after
-2 passes). Accept completion and proceed.
+**Why inline?** The document-review skill is designed for interactive use
+(AskUserQuestion at the end of each pass). In autopilot, this stalls the
+pipeline. The 4-criteria check above captures the same value without the
+interactive prompt. The pre-swarm gates (Steps 9w.5/9w.6) handle the deeper
+cross-section contradiction checks that Codex would do in manual flow.
 
 ### Step 6.1: Generate Run ID and Reports Directory (MANDATORY)
 
