@@ -1124,7 +1124,7 @@ fetch(url, {
 | `transition_scene_status` | model fn | scene_models | scenes routes |
 | `update_scene` | model fn | scene_models | scenes routes |
 | `create_cast_member` | model fn | cast_models | cast routes |
-| `get_cast_members` | model fn | cast_models | cast routes |
+| `get_cast_members` | model fn | cast_models | cast routes, reports routes |
 | `get_cast_member` | model fn | cast_models | cast routes |
 | `get_cast_for_scenes` | model fn | cast_models | callsheet_models |
 | `add_cast_to_scene` | model fn | cast_models | scenes routes |
@@ -1141,7 +1141,7 @@ fetch(url, {
 | `get_locations` | model fn | location_models | locations routes, scenes routes, schedule routes |
 | `get_location` | model fn | location_models | locations routes, callsheet_models |
 | `create_schedule_entry` | model fn | schedule_models | schedule routes |
-| `get_schedule_entries` | model fn | schedule_models | schedule routes, callsheet_models |
+| `get_schedule_entries` | model fn | schedule_models | schedule routes, callsheet_models, reports routes |
 | `get_shoot_dates` | model fn | schedule_models | schedule routes, callsheets routes, reports routes |
 | `reorder_schedule` | model fn | schedule_models | schedule routes |
 | `delete_schedule_entry` | model fn | schedule_models | schedule routes |
