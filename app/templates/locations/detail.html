@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}{{ location.name }} - {{ project.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ location.name }}</h2>
+    <a href="{{ url_for('locations.list', project_id=project.id) }}" class="btn btn-secondary">
+        Back to Locations
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card bg-dark border-secondary mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Location Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Address</dt>
+                    <dd class="col-sm-8">{{ location.address or 'Not specified' }}</dd>
+
+                    <dt class="col-sm-4">Contact Name</dt>
+                    <dd class="col-sm-8">{{ location.contact_name or 'Not specified' }}</dd>
+
+                    <dt class="col-sm-4">Contact Phone</dt>
+                    <dd class="col-sm-8">{{ location.contact_phone or 'Not specified' }}</dd>
+
+                    <dt class="col-sm-4">Nearest Hospital</dt>
+                    <dd class="col-sm-8">{{ location.nearest_hospital or 'Not specified' }}</dd>
+
+                    <dt class="col-sm-4">Permit Status</dt>
+                    <dd class="col-sm-8">
+                        {% if location.permit_status == 'approved' %}
+                        <span class="badge bg-success">Approved</span>
+                        {% elif location.permit_status == 'denied' %}
+                        <span class="badge bg-danger">Denied</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </dd>
+
+                    {% if location.notes %}
+                    <dt class="col-sm-4">Notes</dt>
+                    <dd class="col-sm-8">{{ location.notes }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if g.member.role in ('producer', 'ad') %}
+<div class="card bg-dark border-secondary">
+    <div class="card-header">
+        <h5 class="mb-0">Edit Location</h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('locations.update', project_id=project.id, location_id=location.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="name" class="form-label">Location Name *</label>
+                <input type="text" class="form-control" id="name" name="name"
+                       value="{{ location.name }}" required maxlength="200">
+            </div>
+
+            <div class="mb-3">
+                <label for="address" class="form-label">Address</label>
+                <input type="text" class="form-control" id="address" name="address"
+                       value="{{ location.address or '' }}">
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="contact_name" class="form-label">Contact Name</label>
+                    <input type="text" class="form-control" id="contact_name" name="contact_name"
+                           value="{{ location.contact_name or '' }}">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="contact_phone" class="form-label">Contact Phone</label>
+                    <input type="text" class="form-control" id="contact_phone" name="contact_phone"
+                           value="{{ location.contact_phone or '' }}">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="nearest_hospital" class="form-label">Nearest Hospital</label>
+                <input type="text" class="form-control" id="nearest_hospital" name="nearest_hospital"
+                       value="{{ location.nearest_hospital or '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label for="permit_status" class="form-label">Permit Status</label>
+                <select class="form-select" id="permit_status" name="permit_status">
+                    <option value="pending" {% if location.permit_status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="approved" {% if location.permit_status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="denied" {% if location.permit_status == 'denied' %}selected{% endif %}>Denied</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="notes" class="form-label">Notes</label>
+                <textarea class="form-control" id="notes" name="notes" rows="3">{{ location.notes or '' }}</textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Update Location</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
