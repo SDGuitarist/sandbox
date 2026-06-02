@@ -35,6 +35,8 @@
 | 16 | tests | ec5e6ea | PASS |
 ### Ownership Gate: PASS (16 agents)
 ### Assembly: 16 worktree merges, 0 conflicts
+### Contract Check: FAIL → PASS (6 mismatches fixed by assembly-fix)
+### Smoke Test: PASS (18/18)
 
 ---
 
