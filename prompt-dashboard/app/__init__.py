@@ -28,6 +28,12 @@ def create_app():
     def inject_api_key_status():
         return dict(api_key_configured=bool(os.environ.get('ANTHROPIC_API_KEY', '')))
 
+    @app.after_request
+    def set_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        return response
+
     from .seed import register_seed_command
     register_seed_command(app)
 

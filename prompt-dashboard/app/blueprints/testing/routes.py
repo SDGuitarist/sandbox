@@ -17,6 +17,7 @@ from flask import Blueprint, abort, render_template, request
 from app.database import get_db
 from app.models import (
     create_test_run,
+    get_latest_version_id,
     get_prompt,
     get_prompt_version,
     get_test_run,
@@ -82,18 +83,9 @@ def execute(prompt_id):
         user_text = substitute_variables(prompt['user_prompt'], variables_used)
 
         # --- Get the latest version for this prompt ---
-        # The prompt's current version_count tells us the latest version number.
-        # We need the prompt_versions row to link the test run.
-        latest_version = conn.execute(
-            'SELECT id FROM prompt_versions '
-            'WHERE prompt_id = ? ORDER BY version_number DESC LIMIT 1',
-            (prompt_id,)
-        ).fetchone()
-
-        if latest_version is None:
+        version_id = get_latest_version_id(conn, prompt_id)
+        if version_id is None:
             abort(404)
-
-        version_id = latest_version['id']
 
         # --- Call Claude API ---
         api_key = os.environ.get('ANTHROPIC_API_KEY', '')
@@ -125,7 +117,7 @@ def execute(prompt_id):
                     timeout=60.0,
                 )
                 duration_ms = int(time.time() * 1000) - start_ms
-                response_text = response.content[0].text
+                response_text = response.content[0].text if response.content else None
                 input_tokens = response.usage.input_tokens
                 output_tokens = response.usage.output_tokens
                 error = None
@@ -163,6 +155,16 @@ def execute(prompt_id):
                     'Claude API status error for prompt %d: %s',
                     prompt_id,
                     str(e),
+                )
+            except Exception:
+                duration_ms = int(time.time() * 1000) - start_ms
+                response_text = None
+                input_tokens = None
+                output_tokens = None
+                error = 'Unexpected error during API call. Check server logs.'
+                logger.exception(
+                    'Unexpected error calling Claude API for prompt %d',
+                    prompt_id,
                 )
 
             run_id = create_test_run(

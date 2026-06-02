@@ -20,6 +20,26 @@ from app.models import (
 bp = Blueprint('prompts', __name__, url_prefix='/prompts')
 
 
+def _parse_prompt_form():
+    """Parse and validate prompt form fields. Returns (name, desc, sys, usr, tags)."""
+    name = request.form.get('name', '').strip()
+    if len(name) > 200:
+        name = name[:200]
+    description = request.form.get('description', '').strip()
+    if len(description) > 1000:
+        description = description[:1000]
+    system_prompt = request.form.get('system_prompt', '').strip()[:100000]
+    user_prompt = request.form.get('user_prompt', '').strip()[:100000]
+    tags_raw = request.form.get('tags', '').strip()
+    tag_names = []
+    if tags_raw:
+        for t in tags_raw.split(','):
+            t = t.strip()[:50]
+            if t:
+                tag_names.append(t)
+    return name, description, system_prompt, user_prompt, tag_names
+
+
 def generate_diff_html(text1: str, text2: str, label1: str, label2: str) -> str:
     """Generate side-by-side HTML diff using difflib.
 
@@ -49,27 +69,10 @@ def create_form():
 @bp.route('/create', methods=['POST'])
 def create():
     """POST /prompts/create -- create a new prompt, redirect to detail."""
-    name = request.form.get('name', '').strip()
+    name, description, system_prompt, user_prompt, tag_names = _parse_prompt_form()
     if not name:
         flash('Name is required', 'error')
         return redirect(url_for('prompts.create_form'))
-    if len(name) > 200:
-        name = name[:200]
-
-    description = request.form.get('description', '').strip()
-    if len(description) > 1000:
-        description = description[:1000]
-
-    system_prompt = request.form.get('system_prompt', '').strip()
-    user_prompt = request.form.get('user_prompt', '').strip()
-
-    tags_raw = request.form.get('tags', '').strip()
-    tag_names = []
-    if tags_raw:
-        for t in tags_raw.split(','):
-            t = t.strip()[:50]
-            if t:
-                tag_names.append(t)
 
     with get_db() as conn:
         prompt_id = create_prompt(conn, name, description, system_prompt, user_prompt, tag_names)
@@ -110,35 +113,18 @@ def edit_form(prompt_id):
 @bp.route('/<int:prompt_id>/edit', methods=['POST'])
 def update(prompt_id):
     """POST /prompts/<id>/edit -- update prompt, redirect to detail."""
+    name, description, system_prompt, user_prompt, tag_names = _parse_prompt_form()
+    if not name:
+        flash('Name is required', 'error')
+        return redirect(url_for('prompts.edit_form', prompt_id=prompt_id))
+
     with get_db() as conn:
         prompt = get_prompt(conn, prompt_id)
         if prompt is None:
             abort(404)
-
-    name = request.form.get('name', '').strip()
-    if not name:
-        flash('Name is required', 'error')
-        return redirect(url_for('prompts.edit_form', prompt_id=prompt_id))
-    if len(name) > 200:
-        name = name[:200]
-
-    description = request.form.get('description', '').strip()
-    if len(description) > 1000:
-        description = description[:1000]
-
-    system_prompt = request.form.get('system_prompt', '').strip()
-    user_prompt = request.form.get('user_prompt', '').strip()
-
-    tags_raw = request.form.get('tags', '').strip()
-    tag_names = []
-    if tags_raw:
-        for t in tags_raw.split(','):
-            t = t.strip()[:50]
-            if t:
-                tag_names.append(t)
-
-    with get_db() as conn:
-        update_prompt(conn, prompt_id, name, description, system_prompt, user_prompt, tag_names)
+        result = update_prompt(conn, prompt_id, name, description, system_prompt, user_prompt, tag_names)
+        if result is None:
+            abort(404)
 
     flash('Prompt updated successfully', 'success')
     return redirect(url_for('prompts.detail', prompt_id=prompt_id))

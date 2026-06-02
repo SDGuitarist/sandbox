@@ -1,4 +1,3 @@
-test_smoke.py
 prompts.db
 prompts.db-wal
 prompts.db-shm

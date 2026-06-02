@@ -185,8 +185,9 @@ def get_all_prompts(conn: sqlite3.Connection,
 
 def update_prompt(conn: sqlite3.Connection, prompt_id: int, name: str,
                   description: str, system_prompt: str, user_prompt: str,
-                  tag_names: list[str]) -> int:
-    """Update prompt and create a new version. Returns new version_id.
+                  tag_names: list[str]) -> int | None:
+    """Update prompt and create a new version. Returns new version_id,
+    or None if the prompt does not exist.
     Calls extract_variables() internally.
     Commits internally (BEGIN IMMEDIATE).
     """
@@ -200,6 +201,9 @@ def update_prompt(conn: sqlite3.Connection, prompt_id: int, name: str,
         row = conn.execute(
             'SELECT version_count FROM prompts WHERE id = ?', (prompt_id,)
         ).fetchone()
+        if row is None:
+            conn.execute('ROLLBACK')
+            return None
         new_version_number = row['version_count'] + 1
 
         # Update the prompt row
@@ -264,6 +268,17 @@ def get_prompt_version(conn: sqlite3.Connection,
     return conn.execute(
         'SELECT * FROM prompt_versions WHERE id = ?', (version_id,)
     ).fetchone()
+
+
+def get_latest_version_id(conn: sqlite3.Connection,
+                          prompt_id: int) -> int | None:
+    """Get the primary key ID of the latest version for a prompt."""
+    row = conn.execute(
+        'SELECT id FROM prompt_versions '
+        'WHERE prompt_id = ? ORDER BY version_number DESC LIMIT 1',
+        (prompt_id,),
+    ).fetchone()
+    return row['id'] if row else None
 
 
 # ---------------------------------------------------------------------------
