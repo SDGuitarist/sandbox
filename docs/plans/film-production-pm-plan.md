@@ -22,7 +22,7 @@ Film production project management tool for indie/mid-budget producers. Flask + 
 ```python
 # app/__init__.py (scaffold agent owns this file)
 import os
-from flask import Flask
+from flask import Flask, session, redirect, url_for
 from flask_wtf import CSRFProtect
 
 csrf = CSRFProtect()
@@ -90,20 +90,18 @@ def create_app():
     app.register_blueprint(reports_bp, url_prefix='/reports')
     app.register_blueprint(search_bp, url_prefix='/search')
 
-    # Dashboard route on root
+    # Dashboard route on root -- simple redirect, auth checked at destination
     @app.route('/')
     def index():
-        from app.blueprints.auth.routes import login_required
+        if not session.get('user_id'):
+            return redirect(url_for('auth.login'))
         from app.database import get_db
-        @login_required
-        def _index():
-            from app.models.project_models import get_active_project
-            conn = get_db()
-            project = get_active_project(conn)
-            if project is None:
-                return redirect(url_for('projects.new'))
-            return redirect(url_for('projects.dashboard', project_id=project['id']))
-        return _index()
+        from app.models.project_models import get_active_project
+        conn = get_db()
+        project = get_active_project(conn)
+        if project is None:
+            return redirect(url_for('projects.new'))
+        return redirect(url_for('projects.dashboard', project_id=project['id']))
 
     # Template filters
     @app.template_filter('dollars')
@@ -1120,7 +1118,7 @@ fetch(url, {
 | `get_project_stats` | model fn | project_models | projects routes |
 | `transition_project_phase` | model fn | project_models | projects routes |
 | `create_scene` | model fn | scene_models | scenes routes |
-| `get_scenes` | model fn | scene_models | scenes routes, callsheets routes |
+| `get_scenes` | model fn | scene_models | scenes routes, schedule routes, callsheets routes |
 | `get_scenes_by_ids` | model fn | scene_models | callsheets routes |
 | `get_scene` | model fn | scene_models | scenes routes |
 | `transition_scene_status` | model fn | scene_models | scenes routes |
@@ -1140,11 +1138,11 @@ fetch(url, {
 | `get_department` | model fn | department_models | departments routes |
 | `assign_department_head` | model fn | department_models | departments routes |
 | `create_location` | model fn | location_models | locations routes |
-| `get_locations` | model fn | location_models | locations routes, schedule routes |
+| `get_locations` | model fn | location_models | locations routes, scenes routes, schedule routes |
 | `get_location` | model fn | location_models | locations routes, callsheets routes |
 | `create_schedule_entry` | model fn | schedule_models | schedule routes |
 | `get_schedule_entries` | model fn | schedule_models | schedule routes, callsheets routes |
-| `get_shoot_dates` | model fn | schedule_models | schedule routes, reports routes |
+| `get_shoot_dates` | model fn | schedule_models | schedule routes, callsheets routes, reports routes |
 | `reorder_schedule` | model fn | schedule_models | schedule routes |
 | `delete_schedule_entry` | model fn | schedule_models | schedule routes |
 | `generate_call_sheet` | model fn | callsheet_models | callsheets routes |
