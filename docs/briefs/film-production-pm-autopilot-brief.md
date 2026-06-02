@@ -79,7 +79,7 @@ Model as BudgetCategory with account_number, name, parent_group. Seed defaults.
 - **Department Head:** own department's crew, expenses (own dept only), callsheets (read). No budget allocation.
 - **Crew Member:** own schedule, callsheets (read-only). No write access beyond own profile.
 
-Project membership via project_members table (user_id, project_id, role). @require_project_member decorator on all project-scoped routes.
+Project membership via project_members table (user_id, project_id, role). @require_project_member decorator on all project-scoped routes. All project-scoped queries (reads AND writes) must include `WHERE project_id = ?` to enforce data isolation for future multi-project support.
 
 **Identity model:** `users` table holds login credentials and app-level identity. `crew_members` table has a nullable `user_id` FK to `users` — crew can exist in the database without having a login (e.g., day-hire extras). When `user_id` is set, that crew member can log in and see "my schedule." `cast_members` do NOT have user accounts in Phase 1 (actors don't log into this tool — their agent does). "Own profile" for crew means `crew_members.user_id == g.user['id']`.
 
@@ -209,9 +209,9 @@ restore it. This is the financial equivalent of inventory deduction
 
 ### Schedule (Risk 3 — FC43: TOCTOU + SortableJS Wiring)
 
-The schedule blueprint has two distinct risk surfaces: conflict detection
-(TOCTOU when two users schedule the same location/time) and drag-and-drop
-reordering (SortableJS CSS class matching).
+The schedule blueprint has two distinct risk surfaces: duplicate-scene
+prevention (TOCTOU when two users schedule the same scene concurrently)
+and drag-and-drop reordering (SortableJS CSS class matching).
 
 **Model functions:**
 
@@ -387,6 +387,7 @@ The tests agent MUST include these specific test cases beyond basic route smoke 
 - **Pre-swarm gates:** spec-consistency-checker + spec-completeness-checker
 - **Plan frontmatter:** `swarm: true`
 - **Tail delegation:** This is the first swarm build with the new tail-runner agent. Steps 17w-18w delegate the entire Shared Tail to a fresh context window.
+- **FC37 prevention:** Every agent brief MUST end with: "After completing all files, YOU MUST run `git add` for each file you created/modified, then `git commit -m 'agent-name: description'`. Verify with `git status` that no untracked files remain."
 
 ## Monitoring (Tail Delegation Validation)
 
