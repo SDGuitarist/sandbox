@@ -1,25 +1,25 @@
-# Review Context — CPAA Shadow Lab
+# Review Context — Prompting Dashboard Engine
 
 ## Risk Chain
 
-**Brainstorm risk:** "Phase 0 is logical-time only — it proves state derivation from complete history but does NOT test arrival-order bugs, burst handling, or real-time edge conditions."
+**Brainstorm risk:** "Claude API synchronous calls may timeout in Flask request cycle"
 
-**Plan mitigation:** Explicitly scoped Phase 0 as logical-time replay. Removed "delayed event" injection that couldn't actually be tested with pre-loaded data. Deferred arrival-order testing to Phase 1.
+**Plan mitigation:** 60s explicit timeout on Anthropic client, distinct exception handling for APITimeoutError/APIConnectionError/APIStatusError, threaded=True on dev server.
 
-**Work risk (from Feed-Forward):** "Whether absence-detection via query-time computation (heartbeat staleness, auction stall) will perform acceptably when the dashboard is polling every 500ms at 10x speed."
+**Work risk (from Feed-Forward):** "Whether the 60s timeout + distinct exception handling is sufficient, or if Phase 2 async is needed."
 
-**Review resolution:** Ultrareview clean — 0 bugs found in cpaa-shadow-lab code. Absence-detection verified <1ms at 1,595 events. Performance risk accepted for Phase 0, deferred optimization to Phase 1.
+**Review resolution:** 7-agent review found 12 issues (2 P1, 6 P2, 4 P3). All P1+P2 fixed. Top findings: missing generic exception handler (P1-048), non-atomic update route (P1-049). Feed-forward risk confirmed well-handled with two gaps fixed.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/models/events.py | 8 projection handlers, rebuild/advance, alert merging | Double-counting on rebuild, station name loss |
-| app/replay.py | Thread-safe replay clock, 3-state machine | Race conditions between poll and control endpoints |
-| app/blueprints/dashboard/routes.py | 6 API endpoints, projection wiring | Concurrent advance + rebuild on same DB connection |
-| app/__init__.py | Flask factory, static_folder, CSP | CWD-dependent path resolution |
-| static/js/replay.js | Polling, controls, timeline rendering | isDragging guard, filter state, DOM updates |
+| app/blueprints/testing/routes.py | Claude API call, exception handling, model function wiring | Timeout path, empty content arrays |
+| app/blueprints/prompts/routes.py | Form parsing helper, single with-block update | TOCTOU race on update |
+| app/models.py | update_prompt None guard, get_latest_version_id | Transaction boundary |
+| app/__init__.py | Security headers, CSRF | Defense-in-depth |
+| run.py | Environment-controlled debug mode | RCE surface |
 
 ## Plan Reference
 
-`docs/plans/2026-05-24-feat-cpaa-shadow-lab-event-replay-simulator-plan.md`
+`docs/plans/2026-06-01-feat-prompting-dashboard-engine-plan.md`
