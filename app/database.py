@@ -7,16 +7,26 @@ from werkzeug.security import generate_password_hash
 DATABASE = 'filmpm.db'
 
 
+def _connect(db_path):
+    """Open a connection with correct PRAGMAs. Handles :memory: via shared cache."""
+    if db_path == ':memory:':
+        conn = sqlite3.connect('file::memory:?cache=shared', uri=True, autocommit=True)
+    else:
+        conn = sqlite3.connect(db_path, autocommit=True)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA busy_timeout=5000')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    if db_path != ':memory:':
+        conn.execute('PRAGMA journal_mode=WAL')
+    return conn
+
+
 def get_db():
     """Get database connection. Sets PRAGMAs on every connection (FC40)."""
     if 'db' not in g:
         db_path = current_app.config.get('DATABASE', DATABASE)
-        g.db = sqlite3.connect(db_path, autocommit=True)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute('PRAGMA journal_mode=WAL')
-        g.db.execute('PRAGMA foreign_keys=ON')
-        g.db.execute('PRAGMA busy_timeout=5000')
-        g.db.execute('PRAGMA synchronous=NORMAL')
+        g.db = _connect(db_path)
     return g.db
 
 
@@ -28,17 +38,13 @@ def close_db(e=None):
 
 def init_db():
     """Create tables from schema.sql and seed default data."""
-    db_path = os.environ.get('DATABASE', DATABASE)
-    conn = sqlite3.connect(db_path, autocommit=True)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA foreign_keys=ON')
-    conn.execute('PRAGMA busy_timeout=5000')
-    conn.execute('PRAGMA synchronous=NORMAL')
+    db_path = current_app.config.get('DATABASE', DATABASE)
+    conn = _connect(db_path)
     with open(os.path.join(os.path.dirname(__file__), '..', 'schema.sql')) as f:
         conn.executescript(f.read())
     seed_data(conn)
-    conn.close()
+    if db_path != ':memory:':
+        conn.close()
 
 
 def seed_data(conn):
@@ -133,6 +139,7 @@ def seed_data(conn):
 
 def init_app(app):
     app.teardown_appcontext(close_db)
-    if not os.path.exists(app.config.get('DATABASE', DATABASE)):
+    db_path = app.config.get('DATABASE', DATABASE)
+    if db_path == ':memory:' or not os.path.exists(db_path):
         with app.app_context():
             init_db()
