@@ -17,6 +17,24 @@
 
 | # | Agent | Commit | Status |
 |---|-------|--------|--------|
+| 1 | database | 4cc4722 | PASS |
+| 2 | scaffold | 3b3908c | PASS |
+| 3 | auth | merged | PASS |
+| 4 | projects | merged | PASS |
+| 5 | scenes | merged | PASS |
+| 6 | cast | merged | PASS |
+| 7 | crew | merged | PASS |
+| 8 | departments | merged | PASS |
+| 9 | locations | merged | PASS |
+| 10 | schedule | merged | PASS |
+| 11 | callsheets | merged | PASS |
+| 12 | budget | merged | PASS |
+| 13 | expenses | merged | PASS |
+| 14 | reports | merged | PASS |
+| 15 | search | merged | PASS |
+| 16 | tests | ec5e6ea | PASS |
+### Ownership Gate: PASS (16 agents)
+### Assembly: 16 worktree merges, 0 conflicts
 
 ---
 
