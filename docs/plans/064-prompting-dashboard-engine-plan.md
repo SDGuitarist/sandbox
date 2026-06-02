@@ -345,25 +345,10 @@ CREATE VIRTUAL TABLE IF NOT EXISTS prompts_fts USING fts5(
     content_rowid='id'
 );
 
--- FTS5 triggers -- use BEFORE (not AFTER) to avoid stale reads (Run 061 lesson)
-CREATE TRIGGER IF NOT EXISTS prompts_ai BEFORE INSERT ON prompts BEGIN
-    INSERT INTO prompts_fts(rowid, title) VALUES (NEW.id, NEW.title);
-END;
-
-CREATE TRIGGER IF NOT EXISTS prompts_ad BEFORE DELETE ON prompts BEGIN
-    INSERT INTO prompts_fts(prompts_fts, rowid, title) VALUES('delete', OLD.id, OLD.title);
-END;
-
-CREATE TRIGGER IF NOT EXISTS prompts_au BEFORE UPDATE ON prompts BEGIN
-    INSERT INTO prompts_fts(prompts_fts, rowid, title) VALUES('delete', OLD.id, OLD.title);
-    INSERT INTO prompts_fts(rowid, title) VALUES (NEW.id, NEW.title);
-END;
-```
-
-**Note on FTS5 triggers:** FTS5 external-content tables with BEFORE INSERT triggers need special handling — the NEW.id is not yet assigned at BEFORE INSERT time for AUTOINCREMENT tables. The trigger will use NULL for rowid on INSERT. Instead, use AFTER INSERT for the insert trigger only, and BEFORE for DELETE/UPDATE:
-
-```sql
--- CORRECTED FTS5 triggers
+-- FTS5 triggers:
+-- INSERT: AFTER (NEW.id not yet assigned at BEFORE time for AUTOINCREMENT)
+-- DELETE: BEFORE (row still exists to read OLD values)
+-- UPDATE: split into BEFORE (delete old) + AFTER (insert new)
 CREATE TRIGGER IF NOT EXISTS prompts_ai AFTER INSERT ON prompts BEGIN
     INSERT INTO prompts_fts(rowid, title) VALUES (NEW.id, NEW.title);
 END;
@@ -372,11 +357,11 @@ CREATE TRIGGER IF NOT EXISTS prompts_ad BEFORE DELETE ON prompts BEGIN
     INSERT INTO prompts_fts(prompts_fts, rowid, title) VALUES('delete', OLD.id, OLD.title);
 END;
 
-CREATE TRIGGER IF NOT EXISTS prompts_au BEFORE UPDATE ON prompts BEGIN
+CREATE TRIGGER IF NOT EXISTS prompts_au_del BEFORE UPDATE ON prompts BEGIN
     INSERT INTO prompts_fts(prompts_fts, rowid, title) VALUES('delete', OLD.id, OLD.title);
 END;
 
-CREATE TRIGGER IF NOT EXISTS prompts_au2 AFTER UPDATE ON prompts BEGIN
+CREATE TRIGGER IF NOT EXISTS prompts_au_ins AFTER UPDATE ON prompts BEGIN
     INSERT INTO prompts_fts(rowid, title) VALUES (NEW.id, NEW.title);
 END;
 ```
