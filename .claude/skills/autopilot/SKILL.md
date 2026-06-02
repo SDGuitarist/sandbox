@@ -532,11 +532,91 @@ On failure (unresolved issues), run each as a SEPARATE Bash call:
 Do NOT delete branches on failure -- they are preserved for inspection.
 Report which branches are kept and why.
 
-Then follow the **Shared Tail** below.
+Then proceed to **Step 17w** (tail delegation).
+
+### Step 17w: Delegate Shared Tail (SWARM ONLY)
+
+Use the **tail-runner** agent to execute the entire Shared Tail in a
+fresh context window.
+
+Pass these parameters in the prompt:
+- run_id, plan_path, reports_dir, build_tracking_path
+- project_name, date, branch
+- feed_forward_risk (from plan frontmatter)
+- swarm_results summary (agent count, FC37 rate, merge conflicts,
+  smoke test results)
+
+Spawn with `mode: "bypassPermissions"`. Do NOT set `isolation` or
+`run_in_background` — the agent operates on the current branch and
+the orchestrator must wait for its result.
+
+**Branch precondition:** Before spawning, verify that HEAD is on the
+expected branch (the one recorded in Step 11w). If Step 16w preserved
+unmerged branches due to unresolved failures, the assembly branch was
+still merged to main in Step 15w (verification failures are noted but
+don't block the merge — see Steps 12w-14w "continue to review with
+the failure noted"). The tail-runner reviews the merged code on the
+main branch. Preserved branches exist only for manual inspection and
+are NOT the review target.
+
+If Step 15w did NOT merge (catastrophic failure — e.g., spec contract
+check failed after retry), do NOT spawn the tail-runner. The run has
+already failed at Step 14w. Step 17w is unreachable in this case.
+
+Wait for the agent to complete. Read its output and check for the
+terminal STATUS line (PASS or FAIL).
+
+### Step 18w: Verify Tail Artifacts (SWARM ONLY — MANDATORY GATE)
+
+After the tail-runner agent returns, parse its terminal STATUS line.
+If STATUS: FAIL, the run fails immediately with the agent's error.
+
+Then verify these artifacts against CLAUDE.md Required Artifacts:
+
+1. Solution doc: the tail-runner emits `solution_doc_path: <path>` in
+   its output. Read that exact file. If the path is missing from output
+   or the file doesn't exist: FAIL with "TAIL AGENT INCOMPLETE: Solution
+   doc not written."
+
+2. Self-audit report: read `<reports_dir>/self-audit.md`.
+   If missing: FAIL with "TAIL AGENT INCOMPLETE: Self-audit not written."
+   Validate required fields:
+   - STATUS line exists and contains PASS
+   - WARN disposition table exists and every WARN is disposed
+   - Run Quality Grade section exists with 6 dimensions scored 1-5
+   - Every DEFERRED disposition has a matching HANDOFF.md entry
+   If any field is missing or invalid: FAIL with the specific deficiency.
+
+3. HANDOFF.md: read HANDOFF.md, check `**Date:**` contains today's date.
+   If stale: FAIL with "TAIL AGENT INCOMPLETE: HANDOFF.md not updated."
+   Verify that every DEFERRED WARN from the self-audit has a
+   corresponding entry in HANDOFF.md's Deferred Items section.
+
+4. BUILD_TRACKING.md: verify FAILURES and RUN_METRICS sections contain
+   actual content (not placeholder comments like `<!-- Filled after review -->`).
+   If empty: FAIL with "TAIL AGENT INCOMPLETE: BUILD_TRACKING not filled."
+
+5. Learnings propagation: verify BOTH:
+   a. The Update Log table at the bottom of `~/.claude/docs/agent-pitfalls.md`
+      has a row containing today's date AND the current project name.
+   b. The tail-runner output contains the "Learnings Propagated" summary
+      table (confirming /update-learnings-noninteractive completed).
+   If either is missing: FAIL with "TAIL AGENT INCOMPLETE: learnings
+   not propagated."
+
+If ALL 5 pass: output `<promise>DONE</promise>` and stop.
+If ANY fail: output the specific error. Do NOT silently accept.
+
+Partial artifacts (e.g., solution doc exists but self-audit missing) are
+preserved for manual recovery — do not revert commits.
 
 ---
 
 ## Shared Tail (both paths end here)
+
+**Swarm builds:** Do NOT run the Shared Tail inline. Instead, proceed to
+Step 17w (Delegate Shared Tail) which spawns the tail-runner agent.
+The steps below only run inline for solo builds.
 
 ### Review
 
@@ -638,7 +718,10 @@ These edits target the cleaned placeholders written during Step 1.5 template
 cleanup. No duplicate headings. The self-audit agent reads FAILURES and
 RUN_METRICS as canonical sources.
 
-### Context-Budget Checkpoint -- Pre-Audit (MANDATORY)
+### Context-Budget Checkpoint -- Pre-Audit (SOLO ONLY)
+
+**Swarm builds skip this step** — the tail already runs in a fresh
+agent context via Step 17w.
 
 Calculate orchestration load:
 - `swarm_agents` = number of agents spawned in Step 10w (count from assignment table; 0 for solo)
