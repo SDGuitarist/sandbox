@@ -594,7 +594,7 @@ def init_app(app):
 ### auth_models.py
 
 ```python
-# Returns: int (user_id)
+# Returns: int (user_id) -- commits internally (BEGIN IMMEDIATE)
 # Usage: user_id = create_user(conn, username, password, display_name)
 def create_user(conn, username, password, display_name) -> int: ...
 
@@ -1119,14 +1119,14 @@ fetch(url, {
 | `transition_project_phase` | model fn | project_models | projects routes |
 | `create_scene` | model fn | scene_models | scenes routes |
 | `get_scenes` | model fn | scene_models | scenes routes, schedule routes, callsheets routes |
-| `get_scenes_by_ids` | model fn | scene_models | callsheets routes |
+| `get_scenes_by_ids` | model fn | scene_models | callsheet_models |
 | `get_scene` | model fn | scene_models | scenes routes |
 | `transition_scene_status` | model fn | scene_models | scenes routes |
 | `update_scene` | model fn | scene_models | scenes routes |
 | `create_cast_member` | model fn | cast_models | cast routes |
 | `get_cast_members` | model fn | cast_models | cast routes |
 | `get_cast_member` | model fn | cast_models | cast routes |
-| `get_cast_for_scenes` | model fn | cast_models | callsheets routes |
+| `get_cast_for_scenes` | model fn | cast_models | callsheet_models |
 | `add_cast_to_scene` | model fn | cast_models | scenes routes |
 | `remove_cast_from_scene` | model fn | cast_models | scenes routes |
 | `get_scene_cast` | model fn | cast_models | scenes routes |
@@ -1139,9 +1139,9 @@ fetch(url, {
 | `assign_department_head` | model fn | department_models | departments routes |
 | `create_location` | model fn | location_models | locations routes |
 | `get_locations` | model fn | location_models | locations routes, scenes routes, schedule routes |
-| `get_location` | model fn | location_models | locations routes, callsheets routes |
+| `get_location` | model fn | location_models | locations routes, callsheet_models |
 | `create_schedule_entry` | model fn | schedule_models | schedule routes |
-| `get_schedule_entries` | model fn | schedule_models | schedule routes, callsheets routes |
+| `get_schedule_entries` | model fn | schedule_models | schedule routes, callsheet_models |
 | `get_shoot_dates` | model fn | schedule_models | schedule routes, callsheets routes, reports routes |
 | `reorder_schedule` | model fn | schedule_models | schedule routes |
 | `delete_schedule_entry` | model fn | schedule_models | schedule routes |
@@ -1205,7 +1205,7 @@ fetch(url, {
 | Producer | Consumer | Import Path | Return Type |
 |----------|----------|-------------|-------------|
 | app/models/schedule_models.py | app/models/callsheet_models.py | `from app.models.schedule_models import get_schedule_entries` | `list[dict]` |
-| app/models/cast_models.py | app/models/callsheet_models.py | `from app.models.cast_models import get_cast_for_scenes` | `list[dict]` with cast_id, character_name, name |
+| app/models/cast_models.py | app/models/callsheet_models.py | `from app.models.cast_models import get_cast_for_scenes` | `list[dict]` with id, name, character_name, cast_id_number |
 | app/models/crew_models.py | app/blueprints/callsheets/routes.py | `from app.models.crew_models import get_crew_by_department` | `list[dict]` grouped by department |
 | app/models/location_models.py | app/models/callsheet_models.py | `from app.models.location_models import get_location` | `dict` with name, address, nearest_hospital |
 | app/models/scene_models.py | app/models/callsheet_models.py | `from app.models.scene_models import get_scenes_by_ids` | `list[dict]` with scene_number, int_ext, day_night, page_count_eighths |
