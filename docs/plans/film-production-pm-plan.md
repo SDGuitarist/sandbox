@@ -1235,6 +1235,18 @@ fetch(url, {
 | app/models/schedule_models.py | app/blueprints/reports/routes.py | `from app.models.schedule_models import get_shoot_dates, get_schedule_entries` |
 | app/models/cast_models.py | app/blueprints/reports/routes.py | `from app.models.cast_models import get_cast_members` |
 
+### App Factory Internal Wiring
+
+| Producer | Consumer | Import Path |
+|----------|----------|-------------|
+| app/models/project_models.py | app/__init__.py | `from app.models.project_models import get_active_project` |
+
+### Cast-Scene Cross-Agent Wiring
+
+| Producer | Consumer | Import Path |
+|----------|----------|-------------|
+| app/models/cast_models.py | app/blueprints/scenes/routes.py | `from app.models.cast_models import add_cast_to_scene, remove_cast_from_scene, get_scene_cast` |
+
 ### Decorator Internal Wiring
 
 | Producer | Consumer | Import Path |
@@ -1271,6 +1283,7 @@ fetch(url, {
 
 | Route | Input | Validation | Error Response |
 |-------|-------|------------|----------------|
+| POST /auth/logout | -- | login_required | redirect to login |
 | POST /auth/login | username, password | required, strip | Flash "Invalid credentials", redirect |
 | POST /auth/register | username, password, display_name | username 3-50 chars, password 8+ chars, display_name 1-100 | Flash specific error, redirect |
 | POST /projects | title | required, strip, 1-200 chars | Flash "Title is required", redirect |
@@ -1282,6 +1295,7 @@ fetch(url, {
 | POST /crew/\<pid\> | name, role_title, department_id | name required, role_title required, department_id must exist in project | Flash specific, redirect |
 | POST /locations/\<pid\> | name | required 1-200 chars | Flash "Name is required", redirect |
 | POST /schedule/\<pid\> | scene_id, location_id, shoot_date | scene_id must exist, location_id must exist, date YYYY-MM-DD format | Flash specific, redirect |
+| POST /schedule/\<pid\>/\<eid\>/delete | -- | entry must exist, entry.project_id == pid | 404 |
 | POST /schedule/\<pid\>/reorder | JSON: order (list[int]), shoot_date | all IDs belong to project+date, no missing/extra vs DB set | JSON 400 with error |
 | POST /call-sheets/\<pid\>/generate | shoot_date (form) | date must have schedule entries | Flash "No scenes scheduled", redirect |
 | POST /budget/\<pid\>/allocate | department_id, amount_cents | department must exist in project, amount int >= 0, SUM <= total_budget | Flash with remaining, redirect |
