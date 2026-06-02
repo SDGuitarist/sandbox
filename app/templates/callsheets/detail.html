@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Call Sheet #{{ call_sheet.sheet_number }} — {{ project.title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Call Sheet #{{ call_sheet.sheet_number }}</h2>
+    <div>
+        {% if call_sheet.status == 'draft' and g.member.role in ('producer', 'ad') %}
+        <form method="POST"
+              action="{{ url_for('callsheets.publish', project_id=project.id, call_sheet_id=call_sheet.id) }}"
+              class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-success">Publish</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('callsheets.list', project_id=project.id) }}"
+           class="btn btn-outline-light">Back to List</a>
+    </div>
+</div>
+
+<!-- Header Card -->
+<div class="card bg-dark border-secondary mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <strong>Production:</strong> {{ call_sheet.project_title }}
+            </div>
+            <div class="col-md-4">
+                <strong>Shoot Date:</strong> {{ call_sheet.shoot_date }}
+            </div>
+            <div class="col-md-4">
+                <strong>Crew Call:</strong> {{ call_sheet.crew_call_time or '07:00' }}
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-md-4">
+                <strong>Status:</strong>
+                {% if call_sheet.status == 'published' %}
+                <span class="badge bg-success">Published</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Draft</span>
+                {% endif %}
+            </div>
+            {% if call_sheet.weather_note %}
+            <div class="col-md-4">
+                <strong>Weather:</strong> {{ call_sheet.weather_note }}
+            </div>
+            {% endif %}
+            {% if call_sheet.general_notes %}
+            <div class="col-md-4">
+                <strong>Notes:</strong> {{ call_sheet.general_notes }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Scheduled Scenes -->
+<div class="card bg-dark border-secondary mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Scheduled Scenes</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if scenes %}
+        <table class="table table-dark table-striped table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Scene</th>
+                    <th>INT/EXT</th>
+                    <th>D/N</th>
+                    <th>Pages</th>
+                    <th>Location</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scene in scenes %}
+                <tr>
+                    <td>{{ scene.scene_number }}</td>
+                    <td>{{ scene.int_ext }}</td>
+                    <td>{{ scene.day_night }}</td>
+                    <td>{{ scene.page_count_eighths|page_count }}</td>
+                    <td>{{ scene.location_name or '—' }}</td>
+                    <td>{{ scene.description or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">No scenes on this call sheet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Cast -->
+<div class="card bg-dark border-secondary mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Cast</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if cast %}
+        <table class="table table-dark table-striped table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Character</th>
+                    <th>Status</th>
+                    <th>Pickup</th>
+                    <th>Makeup</th>
+                    <th>On Set</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in cast %}
+                <tr>
+                    <td>{{ member.cast_id_number }}</td>
+                    <td>{{ member.name }}</td>
+                    <td>{{ member.character_name }}</td>
+                    <td>
+                        <span class="badge
+                            {% if member.status == 'W' %}bg-primary
+                            {% elif member.status == 'SW' %}bg-info text-dark
+                            {% elif member.status == 'WF' %}bg-secondary
+                            {% elif member.status == 'SWF' %}bg-success
+                            {% elif member.status == 'H' %}bg-warning text-dark
+                            {% endif %}">{{ member.status }}</span>
+                    </td>
+                    <td>{{ member.pickup_time or '—' }}</td>
+                    <td>{{ member.makeup_time or '—' }}</td>
+                    <td>{{ member.on_set_time or '—' }}</td>
+                    <td>{{ member.remarks or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted p-3 mb-0">No cast on this call sheet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Crew by Department -->
+<div class="card bg-dark border-secondary mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Crew</h5>
+    </div>
+    <div class="card-body">
+        {% if crew %}
+            {% for dept in crew %}
+            <h6 class="mt-3">{{ dept.department_name }}</h6>
+            <table class="table table-dark table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Phone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in dept.members %}
+                    <tr>
+                        <td>{{ member.name }}</td>
+                        <td>{{ member.role_title }}</td>
+                        <td>{{ member.phone or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+        {% else %}
+        <p class="text-muted mb-0">No crew members assigned yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ member['name'] }} — {{ project['title'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>{{ member['name'] }}</h1>
+    <a href="{{ url_for('crew.list', project_id=project['id']) }}" class="btn btn-secondary">
+        Back to Crew
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card bg-dark border-secondary mb-4">
+            <div class="card-header">Details</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Name</dt>
+                    <dd class="col-sm-8">{{ member['name'] }}</dd>
+
+                    <dt class="col-sm-4">Role / Title</dt>
+                    <dd class="col-sm-8">{{ member['role_title'] }}</dd>
+
+                    <dt class="col-sm-4">Department</dt>
+                    <dd class="col-sm-8">{{ member['department_name'] }}</dd>
+
+                    <dt class="col-sm-4">Phone</dt>
+                    <dd class="col-sm-8">{{ member['phone'] or '—' }}</dd>
+
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ member['email'] or '—' }}</dd>
+
+                    <dt class="col-sm-4">Daily Rate</dt>
+                    <dd class="col-sm-8">{{ member['daily_rate_cents'] | dollars }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    {% if can_edit %}
+    <div class="col-md-6">
+        <div class="card bg-dark border-secondary mb-4">
+            <div class="card-header">Edit Crew Member</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('crew.update', project_id=project['id'], crew_member_id=member['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ member['name'] }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="role_title" class="form-label">Role / Title</label>
+                        <input type="text" class="form-control" id="role_title" name="role_title"
+                               value="{{ member['role_title'] }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="department_id" class="form-label">Department</label>
+                        <select class="form-select" id="department_id" name="department_id" required>
+                            {% for dept in departments %}
+                            <option value="{{ dept['id'] }}"
+                                    {% if dept['id'] == member['department_id'] %}selected{% endif %}>
+                                {{ dept['name'] }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Phone</label>
+                        <input type="tel" class="form-control" id="phone" name="phone"
+                               value="{{ member['phone'] or '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email"
+                               value="{{ member['email'] or '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="daily_rate" class="form-label">Daily Rate ($)</label>
+                        <input type="number" class="form-control" id="daily_rate" name="daily_rate"
+                               step="0.01" min="0"
+                               value="{{ '%.2f' | format(member['daily_rate_cents'] / 100) }}">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
