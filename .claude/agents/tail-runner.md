@@ -27,7 +27,6 @@ You receive these parameters in the prompt from the orchestrator:
 | date | Today's date | "2026-06-01" |
 | branch | Current git branch | "master" |
 | feed_forward_risk | The plan's Feed-Forward risk | "Claude API timeout..." |
-| swarm_results | Summary of swarm build results | "10 agents, 0 conflicts, 13/13 smoke" |
 
 ## Internal Variables
 
@@ -39,7 +38,16 @@ used by later ones. Do NOT rely on discovery heuristics.
 - `p1_count`, `p2_count` — set after Review step (step 1) completes
 - `fix_commits` — set after Resolve TODOs step (step 2) completes
 
+## Bash Command Rules (MANDATORY)
+
+One command per Bash call. Always. Do not use `&&`, `;`, or `for` loops.
+Use full paths instead of `cd`. Use Write tool instead of `echo` for
+variable content. See CLAUDE.md Bash Command Rules for the full list.
+
 ## Steps
+
+<!-- TAIL_SYNC_POINT: This logic is duplicated in SKILL.md Shared Tail
+(solo path). Changes here MUST be mirrored there, and vice versa. -->
 
 ### Step 1: Review
 
@@ -84,7 +92,9 @@ proceeding.
 
 After compound completes, save the exact path to the solution doc as
 `solution_doc_path`. This is critical — the orchestrator uses this path
-for exact file verification in Step 18w.
+for exact file verification in Step 18w. If the compound workflow output
+does not explicitly state the path, use Glob to find the most recently
+modified file in `docs/solutions/` and use that as `solution_doc_path`.
 
 ### Step 4: Update Learnings
 
