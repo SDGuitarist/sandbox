@@ -1,25 +1,22 @@
-# Review Context — Prompting Dashboard Engine
+# Review Context — Tail Delegation for Context Resilience
 
 ## Risk Chain
 
-**Brainstorm risk:** "Claude API synchronous calls may timeout in Flask request cycle"
+**Brainstorm risk:** "Whether delegation or checkpointing is the better pattern for context death prevention"
 
-**Plan mitigation:** 60s explicit timeout on Anthropic client, distinct exception handling for APITimeoutError/APIConnectionError/APIStatusError, threaded=True on dev server.
+**Plan mitigation:** Chose delegation (fresh agent) over checkpointing (state serialization). Verify-first spike as mandatory Step 1.
 
-**Work risk (from Feed-Forward):** "Whether the 60s timeout + distinct exception handling is sufficient, or if Phase 2 async is needed."
+**Work risk (from Feed-Forward):** "Whether /workflows:review and /workflows:compound work when invoked from inside a spawned agent — architecturally supported but untested at this depth"
 
-**Review resolution:** 7-agent review found 12 issues (2 P1, 6 P2, 4 P3). All P1+P2 fixed. Top findings: missing generic exception handler (P1-048), non-atomic update route (P1-049). Feed-forward risk confirmed well-handled with two gaps fixed.
+**Review resolution:** 4-agent review found 7 issues (2 P1, 5 P2). All fixed. Top finding: missing Agent tool in tail-runner frontmatter (P1, flagged by 3/4 agents). Step 18w collapsed from 43 to 8 lines (redundant re-verification).
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/blueprints/testing/routes.py | Claude API call, exception handling, model function wiring | Timeout path, empty content arrays |
-| app/blueprints/prompts/routes.py | Form parsing helper, single with-block update | TOCTOU race on update |
-| app/models.py | update_prompt None guard, get_latest_version_id | Transaction boundary |
-| app/__init__.py | Security headers, CSRF | Defense-in-depth |
-| run.py | Environment-controlled debug mode | RCE surface |
+| .claude/agents/tail-runner.md | NEW — 10-step agent definition for swarm tail | Agent tool access, skill invocation depth |
+| .claude/skills/autopilot/SKILL.md | Steps 17w-18w added, echo >> replaced, SOLO guard | Dead code in Shared Tail, drift with tail-runner |
 
 ## Plan Reference
 
-`docs/plans/2026-06-01-feat-prompting-dashboard-engine-plan.md`
+`docs/plans/2026-06-01-feat-tail-delegation-context-resilience-plan.md`

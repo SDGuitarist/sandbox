@@ -1,58 +1,54 @@
-# HANDOFF — Prompting Dashboard Engine
+# HANDOFF — Sandbox Autopilot Infrastructure
 
 **Date:** 2026-06-01
 **Branch:** master
-**Phase:** Run 061 complete. All 9 tail steps finished. Self-audit VERIFIED.
+**Phase:** Compound complete. Tail delegation feature shipped. Learnings propagating.
 
 ## Current State
 
-Run 061 (Prompting Dashboard Engine) is fully complete. A 10-agent swarm built a local-first prompt engineering workbench (Flask + SQLite + Jinja2 + Bootstrap 5 dark theme). The orchestrator ran out of context before the shared tail, requiring a manual 9-step completion: BUILD_TRACKING fix, 7-agent review (12 findings, 8 fixed), resolve todos, solution doc, learnings propagation (8 targets), verify learnings, fill BUILD_TRACKING metrics, self-audit (PIPELINE_PASS_WITH_DEFERRED_RISK, 4.5/5.0 A grade, all 9 gates PASS), and this HANDOFF update.
+Tail delegation for autopilot context resilience is complete. The feature adds a tail-runner agent that executes the entire Shared Tail (review through self-audit) in a fresh context window after swarm builds, preventing the context death that killed run 061. Also fixed all 5 `echo >> BUILD_TRACKING.md` patterns with Edit tool instructions. 4-agent review found 2 P1 + 5 P2, all fixed. 7 commits total.
 
 ## Key Artifacts
 
 | Artifact | Location |
 |----------|----------|
-| Brainstorm | docs/brainstorms/2026-06-01-prompting-dashboard-engine-brainstorm.md |
-| Plan | docs/plans/2026-06-01-feat-prompting-dashboard-engine-plan.md |
-| Review Summary | docs/reports/061/review-summary.md |
-| Flow Trace | docs/reports/061/flow-trace-review.md |
-| Self-Audit | docs/reports/061/self-audit.md |
+| Brainstorm | docs/brainstorms/2026-06-01-tail-delegation-brainstorm.md |
+| Plan | docs/plans/2026-06-01-feat-tail-delegation-context-resilience-plan.md |
+| Spike | docs/reports/061/skill-invocation-spike.md |
 | Context Death Analysis | docs/reports/061/context-death-analysis.md |
-| Solution Doc | docs/solutions/2026-06-01-prompting-dashboard-engine.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
-| App | prompt-dashboard/ (25 files, ~1700 LOC) |
+| Solution Doc | docs/solutions/2026-06-01-tail-delegation-context-resilience.md |
+| Tail-Runner Agent | .claude/agents/tail-runner.md |
+| Autopilot Skill | .claude/skills/autopilot/SKILL.md |
 
 ## Review Fixes Applied
 
-All 2 P1 + 6 P2 resolved. 0 pending.
+All 2 P1 + 5 P2 resolved. 0 pending.
 
-## Deferred Items
+## Deferred Items (P3 — cosmetic)
 
-- P3: get_dashboard_stats uses 3 COUNT queries instead of 1 (models.py:336-351)
-- P3: Duplicate API key warning in testing/run.html:15-19
-- P3: Unused current_app import in database.py:4
-- P3: Model dropdown hardcoded separately from AVAILABLE_MODELS (testing/run.html:38-41)
-- [061-W5] (above 4 P3 items, severity: LOW) — code quality, no correctness/security impact
-- [061-W3] Future: Tier 2 Pre-Review Resume checkpoint for autopilot (context death prevention) — severity: HIGH — requires skill authoring in a future session; root cause documented in docs/reports/061/context-death-analysis.md
-- Future: Expand context budget heuristic to include pre-swarm work density (related to [061-W3])
-- Future: Mock timeout test for Claude API error path (Q1 from self-audit skeptical questions)
+- Stale "both paths end here" in SKILL.md heading comment (already updated to "SOLO ONLY" but inline references may remain)
+- Section naming inconsistency: tail-runner uses "Steps" vs other agents' "Process"
+- 30-minute timeout is prose-only, not enforced by Agent tool
+- Piped Bash command in Step 5 check 4 (inherited from SKILL.md)
+- Tool ordering inconsistency across agent frontmatter files
+
+## Deferred Items (from prior work)
+
+- P3s from run 061 (Prompting Dashboard Engine): get_dashboard_stats, duplicate API key warning, unused import, hardcoded model dropdown
+- [061-W3] Pre-Step 16w context death unsolved (monitor next 3-5 runs)
+- Dual maintenance drift between tail-runner.md and SKILL.md Shared Tail (TAIL_SYNC_POINT markers added, no automated enforcement)
 
 ## Three Questions
 
-1. **Hardest decision?** Two-table version storage (prompts + prompt_versions). Adds transaction complexity but makes dashboard queries trivial.
-2. **What was rejected?** Single version table (slow dashboard), SPA frontend (overkill), Jinja2 template engine for variables (too powerful).
-3. **Least confident about?** Whether the context death fix (Tier 2 checkpoint) should be automatic or require plan frontmatter opt-in. The heuristic needs pre-swarm work density, not just agent count.
+1. **Hardest decision?** Delegation over checkpointing — preserves uninterrupted execution without state serialization complexity.
+2. **What was rejected?** Heuristic expansion (unreliable), split tail into two agents (YAGNI), auto-checkpoint (unnecessary file handoff), remove Tier 1 (unsafe for solo).
+3. **Least confident about?** Whether dual maintenance between tail-runner.md and SKILL.md Shared Tail will cause silent drift. TAIL_SYNC_POINT markers are procedural, not automated.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. Run 061 (Prompting Dashboard Engine) is complete.
-The app is at prompt-dashboard/ — a Flask prompt engineering workbench with
-Claude API integration. All review fixes applied, self-audit verified.
-
-Priority deferred work:
-1. [061-W3] HIGH: Build Tier 2 Pre-Review Resume checkpoint for autopilot
-   (see docs/reports/061/context-death-analysis.md for spec)
-2. Tail delegation plan is ready for work phase (separate build)
-3. 4 P3 code quality items in prompt-dashboard/ (LOW)
+Read HANDOFF.md for context. This is sandbox, the autopilot infrastructure repo.
+Tail delegation feature is shipped — the tail-runner agent runs the Shared Tail
+in fresh context for swarm builds. Next: run a swarm build to validate the
+delegation pattern end-to-end, or pick up deferred items.
 ```
