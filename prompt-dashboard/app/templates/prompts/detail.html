@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ prompt['name'] }} - Prompt Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <h1>{{ prompt['name'] }}</h1>
+    <div>
+        <a href="{{ url_for('prompts.edit_form', prompt_id=prompt['id']) }}" class="btn btn-outline-primary">Edit</a>
+        <a href="{{ url_for('testing.test_form', prompt_id=prompt['id']) }}" class="btn btn-outline-success">Test</a>
+        <form method="POST" action="{{ url_for('prompts.delete', prompt_id=prompt['id']) }}"
+              class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger"
+                    onclick="return confirm('Delete this prompt? This will also delete all versions and test run history.')">Delete</button>
+        </form>
+    </div>
+</div>
+
+{% if prompt['description'] %}
+<p class="text-muted">{{ prompt['description'] }}</p>
+{% endif %}
+
+<!-- Tags -->
+{% if tags %}
+<div class="mb-3">
+    {% for tag in tags %}
+    <span class="badge bg-secondary">{{ tag['name'] }}</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- System Prompt -->
+<div class="card mb-3">
+    <div class="card-header">System Prompt</div>
+    <div class="card-body">
+        <pre class="mono mb-0"><code>{{ prompt['system_prompt'] }}</code></pre>
+    </div>
+</div>
+
+<!-- User Prompt -->
+<div class="card mb-3">
+    <div class="card-header">User Prompt</div>
+    <div class="card-body">
+        <pre class="mono mb-0"><code>{{ prompt['user_prompt'] }}</code></pre>
+    </div>
+</div>
+
+<!-- Version History -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Versions</span>
+        <a href="{{ url_for('prompts.versions', prompt_id=prompt['id']) }}"
+           class="btn btn-sm btn-outline-secondary">
+            View All ({{ versions | length }})
+        </a>
+    </div>
+</div>
+
+<!-- Recent Test Runs -->
+<div class="card mb-3">
+    <div class="card-header">Recent Test Runs</div>
+    <div class="card-body">
+        {% if recent_runs %}
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Model</th>
+                        <th>Tokens</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for run in recent_runs %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('testing.view_run', run_id=run['id']) }}">
+                                {{ run['created_at'] }}
+                            </a>
+                        </td>
+                        <td>{{ run['model_name'] }}</td>
+                        <td>
+                            {% if run['input_tokens'] is not none %}
+                                {{ run['input_tokens'] + run['output_tokens'] }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if run['error'] %}
+                                <span class="badge bg-danger">Error</span>
+                            {% else %}
+                                <span class="badge bg-success">Success</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No test runs yet. <a href="{{ url_for('testing.test_form', prompt_id=prompt['id']) }}">Run a test</a>.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
