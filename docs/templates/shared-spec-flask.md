@@ -6,16 +6,41 @@ Every section is mandatory. Agents rely on exact names, signatures, and examples
 ## App Configuration
 
 ```python
-# Secret key -- NEVER hardcode in production
 import os
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-fallback')
-
-# CSRF protection -- required for all POST forms
+from flask import Flask
 from flask_wtf import CSRFProtect
-csrf = CSRFProtect(app)
+
+csrf = CSRFProtect()
+
+def create_app():
+    app = Flask(__name__, static_folder='static', template_folder='templates')
+
+    # SECRET_KEY -- fail closed, never fall back to dev string (FC10)
+    secret = os.environ.get('SECRET_KEY')
+    if not secret:
+        raise RuntimeError('SECRET_KEY environment variable is required')
+    app.config['SECRET_KEY'] = secret
+
+    # DATABASE -- map from env so smoke tests can override (Run 063 lesson)
+    app.config['DATABASE'] = os.environ.get('DATABASE', '[appname].db')
+
+    # Session cookie security
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_COOKIE_HTTPONLY'] = True
+    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+
+    csrf.init_app(app)
+
+    # ... blueprint registration, security headers, filters ...
+    return app
 ```
 
 **Requirements:** Include `flask-wtf` in requirements.txt for CSRF support.
+
+**Rules:**
+- SECRET_KEY MUST fail closed (`raise RuntimeError`), never fall back to a dev string
+- DATABASE MUST be mapped from `os.environ` to `app.config` so smoke tests can override
+- SESSION_COOKIE_SECURE MUST be conditional on production — `True` unconditionally breaks local HTTP dev (Run 063 P2)
 
 ## Database Schema
 
@@ -70,18 +95,43 @@ def get_project(conn: sqlite3.Connection, project_id: int) -> sqlite3.Row | None
 a usage example showing correct variable naming. Without this, agents assume
 object returns and access `.id` on ints.
 
-## Context Manager Usage
-
-If using context managers for database connections:
+## Database Connection
 
 ```python
-# Usage -- always use `with` syntax:
-#   with get_db() as conn:
-#       projects = get_all_projects(conn)
+# app/database.py -- standard pattern for Flask + SQLite swarm builds
+
+def _connect(db_path):
+    """Open a connection with correct PRAGMAs."""
+    if db_path == ':memory:':
+        conn = sqlite3.connect('file::memory:?cache=shared', uri=True, autocommit=True)
+    else:
+        conn = sqlite3.connect(db_path, autocommit=True)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA busy_timeout=5000')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    if db_path != ':memory:':
+        conn.execute('PRAGMA journal_mode=WAL')
+    return conn
+
+def get_db():
+    if 'db' not in g:
+        db_path = current_app.config.get('DATABASE', '[appname].db')
+        g.db = _connect(db_path)
+    return g.db
 ```
 
-**Rule:** If `get_db` uses `@contextmanager`, include the `with` usage
-example. Without it, agents write `conn = get_db()` (plain function call).
+**Usage -- plain function call (NOT a context manager):**
+```python
+conn = get_db()
+projects = get_all_projects(conn)
+```
+
+**Rules:**
+- Use `autocommit=True` (Python 3.12+), NOT `isolation_level=None` (legacy)
+- PRAGMAs (foreign_keys, busy_timeout, synchronous, journal_mode) on EVERY connection (FC40)
+- `get_db()` is NOT a context manager — do NOT use `with get_db() as conn:`
+- For `:memory:` databases, use `file::memory:?cache=shared` URI so init_db and get_db share the same database (Run 063 lesson — without this, each connect() creates a separate empty database)
 
 ## Route Table
 
@@ -129,7 +179,17 @@ if not COLOR_RE.match(color):
 name = request.form.get('name', '').strip()[:100]
 if not name:
     flash('Name is required', 'error')
+
+# Date: MUST validate YYYY-MM-DD format on EVERY date-accepting route (Run 063 P1)
+DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+if not DATE_RE.match(date_str):
+    flash('Invalid date format', 'error')
 ```
+
+**Rule:** Every route that accepts a date parameter MUST validate YYYY-MM-DD
+format. List ALL date-accepting routes in the Input Validation Prescriptions
+table — not just the "obvious" ones. Run 063 P1: the schedule agent applied
+date validation, the callsheets agent consuming the same dates did not.
 
 ## Export Names Table
 
@@ -274,9 +334,16 @@ Inline commands trigger security heuristics above `dangerouslySkipPermissions`.
 """Smoke tests -- run with: .venv/bin/python test_smoke.py"""
 import os
 import re
-os.environ.setdefault("SECRET_KEY", "test-smoke-key")
+import tempfile
+os.environ.setdefault("SECRET_KEY", "test-smoke-key-not-production")
 os.environ.setdefault("ADMIN_PASSWORD", "test-strong-pw-123")
-os.environ.setdefault("FLASK_DEBUG", "1")
+# Use a real temp file, NOT :memory: -- each connect(':memory:') creates a
+# separate empty database, so init_db seeds one DB and get_db opens another.
+# (Run 063 lesson: 3 fix attempts before landing on this pattern.)
+_tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+_tmp.close()
+os.unlink(_tmp.name)  # remove so init_app's os.path.exists check triggers init_db
+os.environ.setdefault("DATABASE", _tmp.name)
 
 from app import create_app
 

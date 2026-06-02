@@ -358,7 +358,33 @@ swarm launched anyway). The artifact is a hard precondition for Step 10w.
    Do NOT write CLEARED speculatively or without reading both reports.
 4. If BLOCKED: output `"PRE-SWARM GATE BLOCKED"` with the two quoted
    status lines. Do NOT proceed to Step 10w. This is a hard abort.
-5. If CLEARED: proceed to Step 10w.
+5. If CLEARED: proceed to Step 9w.8.
+
+### Step 9w.8: Ghost-File Cleanup (MANDATORY -- SWARM ONLY)
+
+Before launching swarm agents, check for files left over from prior builds
+in the same repo (FC48). Ghost files from prior projects silently ship with
+the new build and create import landmines.
+
+1. Read the File Assignment Boundaries section from the plan. Collect ALL
+   prescribed file paths into a set.
+2. Check for unexpected files in `app/`:
+   - Run: `find app/ -name "*.py" -type f` (use Bash, not Glob — need recursive)
+   - Compare against the prescribed set.
+   - Any `.py` file NOT in the prescribed set is a ghost file.
+3. Check for unexpected directories:
+   - Run: `ls app/routes/ 2>/dev/null` (common ghost from prior builds)
+   - Run: `ls app/db.py 2>/dev/null` (common ghost from prior builds)
+4. If ghost files found:
+   - List them with: `"GHOST FILES DETECTED: [list]"`
+   - Delete each one (separate Bash call per file/directory).
+   - Commit: `git add -A app/` then
+     `git commit -m "chore: remove ghost files from prior build (FC48)"`
+5. If no ghost files: proceed to Step 10w.
+
+**Why this matters:** Run 063 shipped 42 ghost files from BrewOps (prior build).
+`app/db.py` defined a second `get_db()` pointing to `brewops.db` — a landmine.
+The review caught it as P2, but it should have been caught before agents launched.
 
 ### Step 10w: Parallel Swarm Work
 
