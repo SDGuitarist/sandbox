@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Prompt Wizard - {{ industry.name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1>Prompt Wizard</h1>
+        <p class="text-secondary">
+            <strong>{{ industry.name }}</strong> &mdash; {{ industry.description }}
+        </p>
+    </div>
+</div>
+
+<!-- Overall Progress -->
+<div class="card mb-4 border-secondary">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>Overall Completeness</strong>
+            <span id="overall-label">0 / 12 components</span>
+        </div>
+        <div class="progress" style="height: 24px;">
+            <div id="overall-progress" class="progress-bar bg-info" role="progressbar"
+                 style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                0%
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cluster Progress Cards -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
+    {% for cluster_id, cluster_components in grouped.items() %}
+    <div class="col">
+        <div class="card h-100 border-secondary" id="cluster-card-{{ cluster_id }}">
+            <div class="card-body">
+                <h6 class="card-title text-capitalize">{{ cluster_id }}</h6>
+                <div class="progress" style="height: 16px;">
+                    <div id="cluster-progress-{{ cluster_id }}" class="progress-bar bg-success"
+                         role="progressbar" style="width: 0%;"
+                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        0%
+                    </div>
+                </div>
+                <small id="cluster-label-{{ cluster_id }}" class="text-secondary mt-1 d-block">
+                    0 / {{ cluster_components|length }}
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Wizard Form -->
+{% if is_share %}
+<!-- Share mode: no form action, read-only display with copy/export -->
+<div id="wizard-content">
+{% else %}
+<form id="wizard-form" method="post"
+      action="{% if is_edit %}{{ url_for('wizard.generate_preview') }}{% else %}{{ url_for('wizard.generate_preview') }}{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="industry_id" value="{{ industry.id }}">
+    {% if is_edit and prompt_id %}
+    <input type="hidden" name="prompt_id" value="{{ prompt_id }}">
+    {% endif %}
+{% endif %}
+
+    <!-- Title Field -->
+    <div class="mb-4">
+        <label for="title" class="form-label fw-bold">Prompt Title</label>
+        <input type="text" class="form-control" id="title" name="title"
+               value="{{ title }}" maxlength="200"
+               placeholder="Give your prompt a descriptive name..."
+               {% if is_share %}readonly{% endif %}
+               required>
+    </div>
+
+    <!-- Component Textareas grouped by cluster -->
+    {% for cluster_id, cluster_components in grouped.items() %}
+    <div class="card mb-4 border-secondary" id="cluster-section-{{ cluster_id }}">
+        <div class="card-header bg-transparent border-secondary">
+            <h4 class="mb-0 text-capitalize">{{ cluster_id }}</h4>
+        </div>
+        <div class="card-body">
+            {% for comp in cluster_components %}
+            <div class="mb-3">
+                <label for="component_{{ comp.id }}" class="form-label">
+                    <strong>{{ comp.name }}</strong>
+                    <small class="text-secondary ms-2">{{ comp.description }}</small>
+                </label>
+                {% if guidance.get(comp.id) %}
+                <div class="form-text text-info mb-1">
+                    <small>Tip: {{ guidance[comp.id] }}</small>
+                </div>
+                {% endif %}
+                <textarea class="form-control mono"
+                          id="component_{{ comp.id }}"
+                          name="component_{{ comp.id }}"
+                          data-component="{{ comp.id }}"
+                          data-cluster="{{ cluster_id }}"
+                          rows="4"
+                          maxlength="5000"
+                          placeholder="{{ comp.placeholder }}"
+                          {% if is_share %}readonly{% endif %}
+                >{{ components_data.get(comp.id, '') }}</textarea>
+                <small class="text-secondary">
+                    <span id="charcount_{{ comp.id }}">0</span> / 5000
+                </small>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Action Buttons -->
+    <div class="d-flex gap-2 mb-4">
+        {% if is_share %}
+            <!-- Share mode: copy and export only -->
+            <button type="button" class="btn btn-primary" id="btn-copy">
+                Copy Prompt
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-export">
+                Export as Text
+            </button>
+        {% else %}
+            <button type="submit" class="btn btn-primary">
+                Generate Preview
+            </button>
+            <a href="{{ url_for('wizard.select_industry') }}" class="btn btn-outline-secondary">
+                Change Industry
+            </a>
+        {% endif %}
+    </div>
+
+{% if is_share %}
+</div>
+{% else %}
+</form>
+{% endif %}
+
+<!-- Client-Side JavaScript for real-time completeness tracking -->
+<script>
+(function() {
+    'use strict';
+
+    // All textareas with data-component attribute
+    var textareas = document.querySelectorAll('textarea[data-component]');
+
+    // Cluster IDs from the page
+    var clusterIds = [];
+    {% for cluster_id in grouped.keys() %}
+    clusterIds.push('{{ cluster_id }}');
+    {% endfor %}
+
+    // Track state
+    function getClusterStats() {
+        var stats = {};
+        clusterIds.forEach(function(cid) {
+            stats[cid] = { filled: 0, total: 0 };
+        });
+
+        textareas.forEach(function(ta) {
+            var cluster = ta.getAttribute('data-cluster');
+            if (stats[cluster] !== undefined) {
+                stats[cluster].total += 1;
+                if (ta.value.trim().length > 0) {
+                    stats[cluster].filled += 1;
+                }
+            }
+        });
+
+        return stats;
+    }
+
+    function updateProgress() {
+        var stats = getClusterStats();
+        var totalFilled = 0;
+        var totalComponents = 0;
+        var weakestCluster = null;
+        var weakestPercent = 101;
+
+        // Update per-cluster progress
+        clusterIds.forEach(function(cid) {
+            var s = stats[cid];
+            totalFilled += s.filled;
+            totalComponents += s.total;
+
+            var percent = s.total > 0 ? Math.round((s.filled / s.total) * 100) : 0;
+
+            // Update progress bar
+            var bar = document.getElementById('cluster-progress-' + cid);
+            if (bar) {
+                bar.style.width = percent + '%';
+                bar.textContent = percent + '%';
+                bar.setAttribute('aria-valuenow', percent);
+            }
+
+            // Update label
+            var label = document.getElementById('cluster-label-' + cid);
+            if (label) {
+                label.textContent = s.filled + ' / ' + s.total;
+            }
+
+            // Track weakest cluster (lowest percent, at least one component)
+            if (s.total > 0 && percent < weakestPercent) {
+                weakestPercent = percent;
+                weakestCluster = cid;
+            }
+        });
+
+        // Update overall progress
+        var overallPercent = totalComponents > 0
+            ? Math.round((totalFilled / totalComponents) * 100)
+            : 0;
+
+        var overallBar = document.getElementById('overall-progress');
+        if (overallBar) {
+            overallBar.style.width = overallPercent + '%';
+            overallBar.textContent = overallPercent + '%';
+            overallBar.setAttribute('aria-valuenow', overallPercent);
+        }
+
+        var overallLabel = document.getElementById('overall-label');
+        if (overallLabel) {
+            overallLabel.textContent = totalFilled + ' / ' + totalComponents + ' components';
+        }
+
+        // Highlight weakest cluster with border-warning class
+        clusterIds.forEach(function(cid) {
+            var card = document.getElementById('cluster-card-' + cid);
+            var section = document.getElementById('cluster-section-' + cid);
+            if (card) {
+                card.classList.remove('border-warning');
+            }
+            if (section) {
+                section.classList.remove('border-warning');
+            }
+        });
+
+        if (weakestCluster !== null && weakestPercent < 100) {
+            var weakCard = document.getElementById('cluster-card-' + weakestCluster);
+            var weakSection = document.getElementById('cluster-section-' + weakestCluster);
+            if (weakCard) {
+                weakCard.classList.add('border-warning');
+            }
+            if (weakSection) {
+                weakSection.classList.add('border-warning');
+            }
+        }
+    }
+
+    function updateCharCount(ta) {
+        var compId = ta.getAttribute('data-component');
+        var counter = document.getElementById('charcount_' + compId);
+        if (counter) {
+            counter.textContent = ta.value.length;
+        }
+    }
+
+    // Attach event listeners
+    textareas.forEach(function(ta) {
+        ta.addEventListener('input', function() {
+            updateProgress();
+            updateCharCount(ta);
+        });
+        // Initialize char counts
+        updateCharCount(ta);
+    });
+
+    // Initial progress calculation
+    updateProgress();
+
+    // Share mode: copy and export buttons
+    var btnCopy = document.getElementById('btn-copy');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', function() {
+            var content = buildPromptText();
+            navigator.clipboard.writeText(content).then(function() {
+                btnCopy.textContent = 'Copied!';
+                setTimeout(function() { btnCopy.textContent = 'Copy Prompt'; }, 2000);
+            });
+        });
+    }
+
+    var btnExport = document.getElementById('btn-export');
+    if (btnExport) {
+        btnExport.addEventListener('click', function() {
+            var content = buildPromptText();
+            var blob = new Blob([content], { type: 'text/plain' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'prompt.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    }
+
+    function buildPromptText() {
+        var titleEl = document.getElementById('title');
+        var title = titleEl ? titleEl.value : '';
+        var lines = [];
+        if (title) {
+            lines.push('# ' + title);
+            lines.push('');
+        }
+        textareas.forEach(function(ta) {
+            var compId = ta.getAttribute('data-component');
+            var label = ta.previousElementSibling;
+            var content = ta.value.trim();
+            if (content) {
+                // Get the label text from the label element
+                var labelEl = document.querySelector('label[for="component_' + compId + '"]');
+                var name = labelEl ? labelEl.querySelector('strong').textContent : compId;
+                lines.push('## ' + name);
+                lines.push(content);
+                lines.push('');
+            }
+        });
+        return lines.join('\n');
+    }
+
+})();
+</script>
+{% endblock %}
