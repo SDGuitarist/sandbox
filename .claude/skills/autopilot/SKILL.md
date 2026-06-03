@@ -221,12 +221,72 @@ Run `/workflows:plan $ARGUMENTS`
 
 If any are missing, add them before proceeding.
 
-### Step 6: Deepen Plan
+### Step 5.5: Generate Run ID and Reports Directory (MANDATORY)
 
-Run `/compound-engineering:deepen-plan`
+Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
+the `run-id` (e.g., 21 solutions = run `022`). Create `docs/reports/<run-id>/`.
 
-After deepening completes, read the plan document in `docs/plans/`. Extract the
-`swarm:` field from its YAML frontmatter.
+This step runs before deepening so `run_id` and `docs/reports/<run-id>/` exist
+before the merge step needs them. Both solo and swarm paths use this run-id --
+the duplicate generation in Steps 7s.0 and 8w/9w is removed.
+
+After creating the directory, update BUILD_TRACKING.md Run State: replace
+`- run_id: [TBD]` with `- run_id: <run-id>` (Edit tool).
+
+### Step 6: Deepen Plan (INLINE)
+
+Run `/compound-engineering:deepen-plan` inline. The deepen-plan skill spawns
+research sub-agents via the Agent tool, which only the orchestrator has, so
+deepening MUST run in the orchestrator (both solo and swarm).
+
+After deepening completes, read the plan document in `docs/plans/` and extract
+the `swarm:` field from its YAML frontmatter (used at the Branch Point and by
+Steps 6.03/6.03s).
+
+Then extract a compressed correction summary from the deepening outputs: for
+each section that changed, note the section name, the change, and the
+rationale. Use this format, one block per correction:
+
+  ### <Section Name>
+  **Change:** <old text → new text, or addition>
+  **Rationale:** <why the deepening agent recommended this>
+
+### Step 6.03: Merge Deepening (DELEGATED — SWARM ONLY)
+
+If `swarm: true` in the plan frontmatter:
+
+Spawn the **deepen-merge-runner** agent with `mode: "bypassPermissions"`. Pass:
+`plan_path`, `reports_dir` (`docs/reports/<run-id>/`), `run_id`,
+`build_tracking_path` (BUILD_TRACKING.md), and the correction summary from
+Step 6. Wait for the result.
+
+Search backward in the agent's output for a line starting with `STATUS:`.
+- If `STATUS: PASS`: proceed to Step 6.05. DO NOT read the full report.
+- If `STATUS: FAIL`: find the `report_path:` line in the output and read the
+  full report. Re-spawn once (max 1 retry). On a second FAIL, abort.
+
+### Step 6.03s: Merge Deepening (INLINE — SOLO ONLY)
+
+If `swarm: false` or `swarm:` is missing:
+
+Merge all accepted corrections into the plan file in-place. The orchestrator
+already has the plan and amendment outputs in context.
+
+1. Read all deepening agent outputs. Identify changes per plan section.
+2. If multiple agents modified the same section: synthesize a single merged
+   edit. Document conflicts in the audit trail.
+3. Use Write tool to overwrite the plan file with the merged version.
+4. Use Write tool to create `docs/reports/<run-id>/deepening-applied.md` with
+   a summary of what changed and why (audit trail only, not execution input).
+5. Commit the rewritten plan:
+   `git add docs/plans/<plan-file>`
+6. Commit the audit trail:
+   `git add docs/reports/<run-id>/deepening-applied.md`
+7. Create the commit:
+   `git commit -m "chore: merge deepening corrections into plan"`
+
+Proceed to Step 6.05. All downstream steps (swarm planner, agents, contract
+check) read the rewritten plan. No agent should see raw amendment notes.
 
 ### Step 6.05: Plan Self-Review Pass 1 (INLINE — do NOT invoke document-review skill)
 
@@ -250,7 +310,7 @@ If no issues found, proceed. Do NOT invoke `/compound-engineering:document-revie
 
 Re-read the plan. Check whether pass 1's fix introduced new inconsistencies
 (e.g., a renamed function in one section but not updated in another). Fix any
-found. After 2 passes, diminishing returns — proceed to Step 6.1.
+found. After 2 passes, diminishing returns — proceed to Step 6.08.
 
 **Why inline?** The document-review skill is designed for interactive use
 (AskUserQuestion at the end of each pass). In autopilot, this stalls the
@@ -258,35 +318,14 @@ pipeline. The 4-criteria check above captures the same value without the
 interactive prompt. The pre-swarm gates (Steps 9w.5/9w.6) handle the deeper
 cross-section contradiction checks that Codex would do in manual flow.
 
-### Step 6.1: Generate Run ID and Reports Directory (MANDATORY)
+### Step 6.08: Commit Self-Review Edits (MANDATORY)
 
-Count the files in `docs/solutions/` and add 1. Zero-pad to 3 digits. This is
-the `run-id` (e.g., 21 solutions = run `022`). Create `docs/reports/<run-id>/`.
+If Steps 6.05/6.07 produced any plan edits, commit them:
+  `git add docs/plans/<plan-file>`
+  `git commit -m "chore: plan self-review edits"`
 
-This step runs before the deepening merge so `docs/reports/<run-id>/` exists
-for the audit trail. Both solo and swarm paths use this run-id -- the duplicate
-generation in Steps 7s.0 and 8w/9w is removed.
-
-### Step 6.5: Merge Deepening Into Plan (MANDATORY)
-
-After deepening completes, merge all accepted corrections into the plan file
-in-place. The orchestrator already has the plan and amendment outputs in context.
-
-1. Read all deepening agent outputs. Identify changes per plan section.
-2. If multiple agents modified the same section: synthesize a single merged
-   edit. Document conflicts in the audit trail.
-3. Use Write tool to overwrite the plan file with the merged version.
-4. Use Write tool to create `docs/reports/<run-id>/deepening-applied.md` with
-   a summary of what changed and why (audit trail only, not execution input).
-5. Commit the rewritten plan:
-   `git add docs/plans/<plan-file>`
-6. Commit the audit trail:
-   `git add docs/reports/<run-id>/deepening-applied.md`
-7. Create the commit:
-   `git commit -m "chore: merge deepening corrections into plan"`
-
-All downstream steps (swarm planner, agents, contract check) read the
-rewritten plan. No agent should see raw amendment notes.
+If no edits were made, skip. This ensures self-review changes are not left
+uncommitted after the deepening merge commit (Step 6.03/6.03s).
 
 ---
 
@@ -301,9 +340,9 @@ Read the plan's YAML frontmatter. Check the `swarm:` field.
 
 ## Solo Path
 
-### Step 7s.0: (Removed -- run-id now generated in Step 6.1)
+### Step 7s.0: (Removed -- run-id now generated in Step 5.5)
 
-Use the `run-id` and `docs/reports/<run-id>/` created in Step 6.1.
+Use the `run-id` and `docs/reports/<run-id>/` created in Step 5.5.
 
 ### Step 7s: Work
 
@@ -338,13 +377,13 @@ Use the **swarm-planner** agent. Pass the path to the plan document.
 Read the agent's output. Check for STATUS: PASS. If STATUS: FAIL, abort the
 swarm path and output the error. Do not proceed.
 
-### Step 8w: (Removed -- run-id now generated in Step 6.1)
+### Step 8w: (Removed -- run-id now generated in Step 5.5)
 
-Use the `run-id` from Step 6.1 for branch naming.
+Use the `run-id` from Step 5.5 for branch naming.
 
-### Step 9w: (Removed -- reports directory now created in Step 6.1)
+### Step 9w: (Removed -- reports directory now created in Step 5.5)
 
-Use `docs/reports/<run-id>/` created in Step 6.1. All report paths in
+Use `docs/reports/<run-id>/` created in Step 5.5. All report paths in
 subsequent steps use `docs/reports/<run-id>/`.
 
 ### Pre-Swarm Structural Gates (Steps 9w.5 and 9w.6)
@@ -357,7 +396,7 @@ Both must PASS for the swarm to launch.
 
 Use the **spec-consistency-checker** agent. Pass:
 1. The path to the plan document
-2. `docs/reports/<run-id>/` (the reports directory created in Step 6.1)
+2. `docs/reports/<run-id>/` (the reports directory created in Step 5.5)
 3. BUILD_TRACKING.md is at: BUILD_TRACKING.md (for the agent's Phase Status row)
 
 The agent writes its report to `docs/reports/<run-id>/spec-consistency-check.md`.
@@ -371,7 +410,7 @@ Read that file with `limit: 1` and check the STATUS line (line 1).
 
 Use the **spec-completeness-checker** agent. Pass:
 1. The path to the plan document
-2. `docs/reports/<run-id>/` (the reports directory created in Step 6.1)
+2. `docs/reports/<run-id>/` (the reports directory created in Step 5.5)
 3. BUILD_TRACKING.md is at: BUILD_TRACKING.md (for the agent's Phase Status row)
 
 The agent writes its report to `docs/reports/<run-id>/spec-completeness-check.md`.
@@ -783,7 +822,7 @@ If `load > 30`:
 ```yaml
 ---
 status: PAUSED_FOR_CONTEXT
-run_id: "<run-id from Step 6.1>"
+run_id: "<run-id from Step 5.5>"
 date: "<today>"
 branch: "<current branch>"
 project_name: "<project name from Step 2>"
@@ -839,7 +878,7 @@ If any section is missing or empty, FAIL with:
 undisposed warnings, and false success claims before the run is marked done.**
 
 Use the **self-audit-reviewer** agent. Pass these six arguments:
-1. The run-id (from Step 6.1)
+1. The run-id (from Step 5.5)
 2. The reports directory path (`docs/reports/<run-id>/`)
 3. The plan document path
 4. The solution doc path (the file created during Compound)
