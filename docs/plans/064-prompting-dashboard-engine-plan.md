@@ -1498,14 +1498,14 @@ Every POST form MUST include:
 | `get_template_components` | model function | `app/models/template_models.py` | wizard, sharing, admin |
 | `save_template_component` | model function | `app/models/template_models.py` | admin, seed |
 | `delete_template` | model function | `app/models/template_models.py` | admin |
-| `create_prompt` | model function | `app/models/prompt_models.py` | wizard |
+| `create_prompt` | model function | `app/models/prompt_models.py` | wizard, seed |
 | `get_prompt` | model function | `app/models/prompt_models.py` | library, wizard, grading, admin |
 | `get_prompt_components` | model function | `app/models/prompt_models.py` | library, wizard, grading, export |
 | `get_prompts_for_user` | model function | `app/models/prompt_models.py` | library |
 | `get_all_prompts` | model function | `app/models/prompt_models.py` | admin |
 | `update_prompt` | model function | `app/models/prompt_models.py` | wizard (edit) |
 | `delete_prompt` | model function | `app/models/prompt_models.py` | library |
-| `save_grade` | model function | `app/models/grading_models.py` | grading |
+| `save_grade` | model function | `app/models/grading_models.py` | grading, seed |
 | `get_grade` | model function | `app/models/grading_models.py` | library, grading, admin |
 | `get_all_grades` | model function | `app/models/grading_models.py` | admin |
 | `generate_share_token` | model function | `app/models/sharing_models.py` | admin |
@@ -1576,7 +1576,7 @@ Every POST form MUST include:
 | `app/models/auth_models.py` | `app/blueprints/auth/routes.py` | `from app.models.auth_models import create_user, get_user_by_username, verify_password` |
 | `app/models/component_models.py` | `app/blueprints/wizard/routes.py` | `from app.models.component_models import get_all_components, get_components_grouped` |
 | `app/models/industry_models.py` | `app/blueprints/wizard/routes.py` | `from app.models.industry_models import get_all_industries, get_industry, get_guidance_for_industry` |
-| `app/models/template_models.py` | `app/blueprints/wizard/routes.py` | `from app.models.template_models import get_template, get_template_components` |
+| `app/models/template_models.py` | `app/blueprints/wizard/routes.py` | `from app.models.template_models import get_template, get_all_templates, get_template_components` |
 | `app/models/template_models.py` | `app/blueprints/admin/routes.py` | `from app.models.template_models import create_template, get_template, get_all_templates, get_template_components, save_template_component, delete_template` |
 | `app/models/prompt_models.py` | `app/blueprints/wizard/routes.py` | `from app.models.prompt_models import create_prompt, get_prompt, get_prompt_components, update_prompt, format_prompt, calculate_cluster_completeness` |
 | `app/models/prompt_models.py` | `app/blueprints/library/routes.py` | `from app.models.prompt_models import get_prompt, get_prompt_components, get_prompts_for_user, delete_prompt, format_prompt, calculate_cluster_completeness` |
