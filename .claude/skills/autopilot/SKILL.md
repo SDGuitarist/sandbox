@@ -30,12 +30,16 @@ directory with dangerouslySkipPermissions enabled in settings.local.json.
 ## Agent Permission Mode (MANDATORY)
 
 ALL agents spawned during this pipeline MUST use `mode: "bypassPermissions"`.
-This includes verification agents (spec-consistency-checker, spec-completeness-checker, spec-contract-checker),
-test runners (smoke-test-runner, test-suite-runner), fix agents (assembly-fix),
-review agents (brainstorm-refinement, flow-trace-reviewer), and the self-audit
-agent -- not just swarm workers. Without this, spawned agents inherit the
-session's permission mode and may prompt for tool approval, breaking the
-zero-prompt guarantee.
+This includes the pre-swarm gate agents (spec-consistency-checker,
+spec-completeness-checker), the delegation runners (deepen-merge-runner,
+swarm-runner, tail-runner), review agents (brainstorm-refinement,
+flow-trace-reviewer), and the self-audit agent -- not just swarm workers.
+Without this, spawned agents inherit the session's permission mode and may
+prompt for tool approval, breaking the zero-prompt guarantee.
+
+(The swarm-runner inlines the former contract/smoke/test checks and merge-conflict
+resolution; spec-contract-checker, smoke-test-runner, test-suite-runner, and
+assembly-fix are no longer spawned — sub-agents lack the Agent tool.)
 
 ## Interactive Skill Prohibition (MANDATORY)
 
@@ -570,98 +574,43 @@ assigned files. For each worktree branch, run these as SEPARATE Bash calls
    find the correct anchor, retry once. If retry fails: FAIL with
    "BUILD_TRACKING EDIT FAILED: could not locate AGENT_STATUS separator."
 
-### Step 11w: Assembly Merge
+### Steps 11w-16w: Assembly + Verification (DELEGATED)
 
-After all swarm agents pass the ownership gate, run each as a SEPARATE Bash
-call (do NOT chain with && or use for-loops):
+The assembly merge, contract/smoke/test verification, merge-to-main, and
+cleanup all run inside the **swarm-runner** agent in a fresh context window.
+The orchestrator does NOT read the contract/smoke/test report files — the
+swarm-runner inlines those checks and reports a single STATUS line.
 
-1. Run: `git branch --show-current`
-   Save the output as `original-branch` for use in Step 15w.
-2. Run: `git checkout -b swarm-<run-id>-assembly`
-3. For each worktree agent that made changes, run ONE merge at a time
-   (separate Bash call for each -- do NOT use a for-loop):
-   `git merge --no-ff <branch-name>`
-   **Incremental BUILD_TRACKING:** After each successful merge:
-   - Run `git log -1 --format=%h` (capture as commit_hash)
-   - Use Edit tool to insert `| [N] | [role] | [commit_hash] | PASS |`
-     as a new row at the end of the AGENT_STATUS table. Target: the line
-     immediately before the `---` separator that follows the AGENT_STATUS
-     section.
-     If the Edit fails (old_string not found): read BUILD_TRACKING.md,
-     find the correct anchor, retry once. If retry fails: FAIL with
-     "BUILD_TRACKING EDIT FAILED: could not locate AGENT_STATUS separator."
-   Where N is the sequential agent number (1-based) and role is from the assignment table.
-4. If a merge fails (exit code != 0), use Write tool to save the conflict
-   output to `docs/reports/<run-id>/merge-conflict.md`, then invoke the
-   **assembly-fix** agent with the conflict report, plan path, and project root.
-   Check its STATUS. If FIXED, continue merging. If FAIL, abort and report.
-5. After all merges succeed, the assembly branch has the combined code.
+First capture the current branch: run `git branch --show-current` and save it
+as `original_branch`.
 
-### Step 12w: Circuit Breaker -- Spec Contract Check
+Spawn the **swarm-runner** agent with `mode: "bypassPermissions"`. Pass:
+- `plan_path`, `run_id`, `reports_dir` (`docs/reports/<run-id>/`),
+  `build_tracking_path` (BUILD_TRACKING.md)
+- `assembly_branch`: `swarm-<run-id>-assembly`
+- `original_branch`: the branch captured above
+- `worker_branches`: the list of worktree branch names
+- `agent_assignments`: the `{ role, branch, files }` list from the swarm planner
+- `worker_status`: per-worker completion status `{ role, branch, status }`
+  where status is COMPLETED, TIMED_OUT, or FAILED (from the Step 10w spawn
+  results). The swarm-runner skips merging TIMED_OUT or FAILED branches.
+- `agent_pitfalls`: the pitfalls text captured in Step 1.6
 
-Use the **spec-contract-checker** agent. Pass the plan path and project root.
+Wait for the result. Search backward in the agent's output for a line starting
+with `STATUS:`.
+- If `STATUS: PASS`: proceed to Step 17w. DO NOT read the full report.
+  (Smoke/test failures, if any, are noted in `assembly-summary.md` and reviewed
+  by the tail.)
+- If `STATUS: FAIL` and the reason starts with `contract-check:` or
+  `merge-conflict:`: the swarm-runner has already aborted (no merge to main, no
+  cleanup) and set `final_status` in BUILD_TRACKING.md Run State. Do NOT proceed
+  to Step 17w. The run ends. (These are the two blocking failure classes — see
+  CLAUDE.md Escalation Rules.)
+- If `STATUS: FAIL` for any other reason: read the full report at `report_path`
+  and abort.
 
-Read `docs/reports/<run-id>/contract-check.md`. Check STATUS.
-**Incremental BUILD_TRACKING:** Use Edit tool to insert
-`### Contract Check: [STATUS]` into BUILD_TRACKING.md. Target: the line
-immediately before the `---` separator that follows the AGENT_STATUS section.
-If the Edit fails: read BUILD_TRACKING.md, find the correct anchor, retry
-once. If retry fails: FAIL with "BUILD_TRACKING EDIT FAILED."
-- If PASS: continue to smoke test.
-- If FAIL: use the **assembly-fix** agent with the contract check report,
-  plan path, and project root (max 1 retry). Re-run spec contract check
-  after fix. If still FAIL, abort the pipeline and report.
-
-### Step 13w: Smoke Test
-
-Use the **smoke-test-runner** agent. Pass the plan path and project root.
-
-Read `docs/reports/<run-id>/smoke-test.md`. Check STATUS.
-**Incremental BUILD_TRACKING:** Use Edit tool to insert
-`### Smoke Test: [STATUS]` into BUILD_TRACKING.md. Target: the line
-immediately before the `---` separator that follows the AGENT_STATUS section.
-If the Edit fails: read BUILD_TRACKING.md, find the correct anchor, retry
-once. If retry fails: FAIL with "BUILD_TRACKING EDIT FAILED."
-- If PASS: continue to test suite.
-- If FAIL: use the **assembly-fix** agent with the smoke test report, plan
-  path, and project root (max 1 retry). Re-run smoke test after fix. If still
-  FAIL, continue to review with the failure noted.
-
-### Step 14w: Test Suite
-
-Use the **test-suite-runner** agent. Pass the project root.
-
-Read `docs/reports/<run-id>/test-results.md`. Check STATUS.
-- If PASS: continue to review.
-- If FAIL: use the **assembly-fix** agent with the test report, plan path,
-  and project root (max 1 retry). Re-run tests after fix. If still FAIL,
-  continue to review with the failure noted.
-
-### Step 15w: Merge Assembly to Main
-
-If all verification passed (or failures were fixed), merge the assembly branch
-back into the branch recorded in Step 11w. Run each as a SEPARATE Bash call:
-
-1. Run: `git checkout <original-branch>`
-2. Run: `git merge --no-ff swarm-<run-id>-assembly`
-
-### Step 16w: Cleanup
-
-On success (all checks passed), run each as a SEPARATE Bash call
-(do NOT use a for-loop -- run each removal as its own Bash call):
-
-1. `git worktree remove <path>` (one call per worktree)
-2. `git branch -D swarm-<run-id>-<role>` (one call per branch)
-3. `git branch -D swarm-<run-id>-assembly`
-
-On failure (unresolved issues), run each as a SEPARATE Bash call:
-
-1. `git worktree remove <path>` (one call per worktree)
-
-Do NOT delete branches on failure -- they are preserved for inspection.
-Report which branches are kept and why.
-
-Then proceed to **Step 17w** (tail delegation).
+The swarm-runner agent file is the single source of truth for
+assembly/verification logic. Do NOT reintroduce inline Steps 11w-16w here.
 
 ### Step 17w: Delegate Shared Tail (SWARM ONLY)
 
@@ -677,18 +626,17 @@ Spawn with `mode: "bypassPermissions"`. Do NOT set `isolation` or
 `run_in_background` — the agent operates on the current branch and
 the orchestrator must wait for its result.
 
-**Branch precondition:** Before spawning, verify that HEAD is on the
-expected branch (the one recorded in Step 11w). If Step 16w preserved
-unmerged branches due to unresolved failures, the assembly branch was
-still merged to main in Step 15w (verification failures are noted but
-don't block the merge — see Steps 12w-14w "continue to review with
-the failure noted"). The tail-runner reviews the merged code on the
-main branch. Preserved branches exist only for manual inspection and
-are NOT the review target.
+**Branch precondition:** Before spawning, verify that HEAD is on
+`original_branch` — the swarm-runner merged the assembly branch into it on
+success. Smoke/test failures are non-blocking: the swarm-runner still merges to
+main and returns `STATUS: PASS` with failures noted in `assembly-summary.md`, so
+the tail-runner reviews the merged code on the main branch. Any worker branches
+the swarm-runner preserved (TIMED_OUT/FAILED workers) exist only for manual
+inspection and are NOT the review target.
 
-If Step 15w did NOT merge (catastrophic failure — e.g., spec contract
-check failed after retry), do NOT spawn the tail-runner. The run has
-already failed at Step 14w. Step 17w is unreachable in this case.
+A blocking failure (`contract-check:` or `merge-conflict:`) means the
+swarm-runner aborted WITHOUT merging to main. In that case the orchestrator
+already ended the run at the Steps 11w-16w handler and never reaches Step 17w.
 
 Wait for the agent to complete. Read its output and check for the
 terminal STATUS line (PASS or FAIL).
@@ -703,7 +651,7 @@ After the tail-runner agent returns, parse its terminal STATUS line.
 The tail-runner already verifies all 5 artifacts internally (learnings,
 BUILD_TRACKING, self-audit via `/verify-self-audit`, HANDOFF.md). This is
 consistent with how the orchestrator trusts STATUS lines from all other
-agents (spec-completeness-checker, smoke-test-runner, self-audit-reviewer).
+agents (spec-completeness-checker, swarm-runner, self-audit-reviewer).
 
 If the agent crashes without emitting a STATUS line: FAIL with
 "TAIL AGENT INCOMPLETE: no STATUS line in output."
@@ -811,7 +759,7 @@ Calculate orchestration load:
 - `swarm_agents` = number of agents spawned in Step 10w (count from assignment table; 0 for solo)
 - `deepening_agents` = number of agents spawned in Step 6 (count from deepen-plan output, default 4)
 - `review_agents` = number of review agents spawned during Review
-- `fix_retries` = number of assembly-fix agent invocations in Steps 12w-14w (count from report files; 0 for solo)
+- `fix_retries` = number of inline verification fix retries during the work phase (0 for solo — assembly-fix is not used in the solo path; swarm inlines fixes inside swarm-runner)
 - `load = swarm_agents + (deepening_agents * 2) + (review_agents * 1.5) + (fix_retries * 3)`
 
 If `load > 30`:
