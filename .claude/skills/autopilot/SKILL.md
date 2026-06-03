@@ -65,6 +65,16 @@ Security heuristics fire on compound commands regardless of permissions. One com
 5. `echo "${variable}"` -- use Write tool for variable content
 6. `&&` or `;` to chain commands -- one command per Bash call. Always.
 
+## Phase Report Standardization (MANDATORY)
+
+Phase reports MUST NOT have YAML frontmatter. Line 1 is always the STATUS
+line: `STATUS: PASS` or `STATUS: FAIL -- <reason>`. No markdown formatting
+around the STATUS value (no `**bold**`, no `#` heading).
+
+This lets the orchestrator read only line 1 (`limit: 1`) of a report to learn
+the outcome on PASS, instead of pulling the whole report into context. The
+orchestrator reads the full report ONLY when line 1 says FAIL.
+
 ## Steps
 
 Execute these steps in order. Do not stop between steps.
@@ -100,9 +110,31 @@ skip. The template is at `~/.claude/docs/autopilot-tracking-template.md`.
      `## Template Version` with:
      `<!-- Filled after review -->`
 5. Solo builds: skip step 4. Keep the original template scaffold for bulk fill.
+6. **Both paths -- insert the Phase Status section.** The global template is
+   NOT modified; insert this into the local BUILD_TRACKING.md instead. Use the
+   Edit tool to insert it immediately before the `## AGENT_STATUS` line (i.e.,
+   between Run Info and AGENT_STATUS):
+   ```markdown
+   ## Phase Status
+
+   | Phase | Status | Report Path |
+   |-------|--------|-------------|
+
+   **Run State:**
+   - run_id: [TBD]
+   - plan_path: [TBD]
+   - branch: [TBD]
+   - context_proxy_chars: 0
+   - manual_resume: false
+   - final_status: null
+   ```
+7. Fill the Run State fields where known (plan_path, branch). Leave `run_id`
+   as `[TBD]` -- it is populated later in Step 5.5. Phase agents append rows to
+   the Phase Status table as they complete.
 
 If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
-Run Info + AGENT_STATUS table header + empty FAILURES + empty RUN_METRICS.
+Run Info + Phase Status section + AGENT_STATUS table header + empty FAILURES +
+empty RUN_METRICS.
 
 ### Step 1.6: Inject Agent Pitfalls
 
@@ -326,24 +358,27 @@ Both must PASS for the swarm to launch.
 Use the **spec-consistency-checker** agent. Pass:
 1. The path to the plan document
 2. `docs/reports/<run-id>/` (the reports directory created in Step 6.1)
+3. BUILD_TRACKING.md is at: BUILD_TRACKING.md (for the agent's Phase Status row)
 
 The agent writes its report to `docs/reports/<run-id>/spec-consistency-check.md`.
-Read that file and check STATUS.
-- If PASS: continue to Step 9w.6.
-- If FAIL: abort the swarm path. Output the contradiction list. The spec
-  author must fix the contradictions and re-run. Do not proceed.
+Read that file with `limit: 1` and check the STATUS line (line 1).
+- If `STATUS: PASS`: continue to Step 9w.6. DO NOT read the full report.
+- If `STATUS: FAIL`: read the full report to understand the failure, then abort
+  the swarm path. Output the contradiction list. The spec author must fix the
+  contradictions and re-run. Do not proceed.
 
 ### Step 9w.6: Spec Completeness Gate (MANDATORY -- SWARM ONLY)
 
 Use the **spec-completeness-checker** agent. Pass:
 1. The path to the plan document
 2. `docs/reports/<run-id>/` (the reports directory created in Step 6.1)
+3. BUILD_TRACKING.md is at: BUILD_TRACKING.md (for the agent's Phase Status row)
 
 The agent writes its report to `docs/reports/<run-id>/spec-completeness-check.md`.
-Read that file and check STATUS.
-- If PASS: continue to Step 10w (Parallel Swarm Work).
-- If FAIL: read the Details section. Fix the spec omissions identified in the
-  report (add missing entries to the coverage tables). Commit the fix:
+Read that file with `limit: 1` and check the STATUS line (line 1).
+- If `STATUS: PASS`: continue to Step 9w.7. DO NOT read the full report.
+- If `STATUS: FAIL`: read the full report's Details section. Fix the spec omissions
+  identified in the report (add missing entries to the coverage tables). Commit the fix:
   `git add docs/plans/<plan-file>`
   `git commit -m "fix: add missing spec coverage entries (completeness gate)"`
   Re-run Step 9w.6. Max 1 retry.
@@ -362,16 +397,17 @@ verification artifact. This step exists because the orchestrator has
 historically proceeded past failed gates (Run 054 -- both gates FAIL,
 swarm launched anyway). The artifact is a hard precondition for Step 10w.
 
-1. Read `docs/reports/<run-id>/spec-consistency-check.md`. Find the line
-   containing `STATUS:`. Copy the full line verbatim. Then normalize it
-   by stripping these specific characters from the start and end of the
-   line: `*` (bold), `_` (italic), `#` (heading), and leading/trailing
-   whitespace. Do NOT strip backticks, brackets, or other characters.
+1. Read `docs/reports/<run-id>/spec-consistency-check.md` with `limit: 1`
+   (STATUS is line 1 per Phase Report Standardization). Copy that line
+   verbatim. Then normalize it by stripping these specific characters from
+   the start and end of the line: `*` (bold), `_` (italic), `#` (heading),
+   and leading/trailing whitespace. Do NOT strip backticks, brackets, or
+   other characters.
    Example: `**STATUS: PASS**` → `STATUS: PASS`.
    Example: `### STATUS: FAIL -- 3 contradictions` → `STATUS: FAIL -- 3 contradictions`.
-2. Read `docs/reports/<run-id>/spec-completeness-check.md`. Same procedure:
-   copy verbatim, normalize by stripping `*`, `_`, `#`, and whitespace
-   from start and end.
+2. Read `docs/reports/<run-id>/spec-completeness-check.md` with `limit: 1`
+   (STATUS is line 1). Same procedure: copy verbatim, normalize by stripping
+   `*`, `_`, `#`, and whitespace from start and end.
 3. Write `docs/reports/<run-id>/gate-verification.md` with this exact format:
    ```
    STATUS: [CLEARED or BLOCKED]
