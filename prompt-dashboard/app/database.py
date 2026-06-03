@@ -1,48 +1,42 @@
-import sqlite3
 import os
-from contextlib import contextmanager
+import sqlite3
 from flask import g, current_app
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'prompts.db')
 
-@contextmanager
+def _connect(db_path):
+    """Open a connection with correct PRAGMAs."""
+    conn = sqlite3.connect(db_path, autocommit=True)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA busy_timeout=5000')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    result = conn.execute('PRAGMA journal_mode=WAL').fetchone()
+    assert result[0] == 'wal', f'WAL mode failed: got {result[0]}'
+    return conn
+
+
 def get_db():
-    """Context manager for database connections.
-    Usage:
-        with get_db() as conn:
-            rows = conn.execute('SELECT ...').fetchall()
-    """
+    """Get per-request database connection. NOT a context manager."""
     if 'db' not in g:
-        # isolation_level left as default ("") — DO NOT use isolation_level=None,
-        # which makes conn.commit() a no-op (3-build recurrence: runs 054, 056, 057)
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        # WAL mode persists on the DB file — set only in init_db(), not per-connection
-        conn.execute('PRAGMA foreign_keys=ON')
-        conn.execute('PRAGMA busy_timeout=5000')
-        g.db = conn
-    try:
-        yield g.db
-    finally:
-        pass  # Connection closed in teardown
+        db_path = current_app.config.get('DATABASE', 'prompting.db')
+        g.db = _connect(db_path)
+    return g.db
+
 
 def close_db(e=None):
+    """Teardown: close per-request connection."""
     db = g.pop('db', None)
     if db is not None:
         db.close()
 
-def init_db():
-    """Initialize database schema.
-    Uses raw sqlite3.connect(), NOT get_db() — executescript() issues
-    implicit COMMIT that breaks context manager contract (brainstorm refinement #1).
-    """
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('PRAGMA journal_mode=WAL')
-    result = conn.execute('PRAGMA journal_mode').fetchone()
-    assert result[0] == 'wal', f'WAL mode failed: got {result[0]}'
-    conn.execute('PRAGMA foreign_keys=ON')
-    conn.execute('PRAGMA busy_timeout=5000')
-    schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-    with open(schema_path) as f:
-        conn.executescript(f.read())
-    conn.close()
+
+def init_db(app):
+    """Initialize database schema. Uses raw sqlite3.connect(), NOT get_db().
+    executescript() issues implicit COMMIT that would break context manager."""
+    db_path = app.config.get('DATABASE', 'prompting.db')
+    if not os.path.exists(db_path):
+        conn = sqlite3.connect(db_path)
+        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+        with open(schema_path) as f:
+            conn.executescript(f.read())
+        conn.close()
