@@ -1,4 +1,6 @@
 flask>=3.0
 flask-wtf>=1.2
-anthropic>=0.39
 markupsafe>=2.1
+cryptography>=42.0
+bcrypt>=4.1
+email-validator>=2.0
