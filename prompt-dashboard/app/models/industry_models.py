@@ -1,5 +1,8 @@
-"""Industry and guidance queries — reads from industries and industry_guidance tables."""
-from app.encryption import encrypt_field, decrypt_field
+"""Industry and guidance queries — reads from industries and industry_guidance tables.
+
+Note: industry_guidance.guidance_text is stored as plaintext (admin-authored, non-PII).
+Only prompt_components, template_components, and prompt_grades fields are encrypted.
+"""
 
 
 def get_all_industries(conn):
@@ -22,7 +25,7 @@ def get_industry(conn, industry_id):
 
 
 def get_guidance_for_industry(conn, industry_id):
-    """Returns: list[dict] with decrypted guidance_text
+    """Returns: list[dict] with guidance_text as plaintext (not encrypted).
     Usage:
         guidance = get_guidance_for_industry(conn, industry_id)
         # Returns: [{'component_id': 1, 'guidance_text': 'plaintext...'}, ...]
@@ -32,21 +35,20 @@ def get_guidance_for_industry(conn, industry_id):
         (industry_id,)
     ).fetchall()
     return [{'component_id': r['component_id'],
-             'guidance_text': decrypt_field(r['guidance_text'])} for r in rows]
+             'guidance_text': r['guidance_text']} for r in rows]
 
 
 def save_guidance(conn, industry_id, component_id, guidance_text):
-    """Save/update industry guidance. Encrypts before storing.
+    """Save/update industry guidance. Stored as plaintext (admin-authored, non-PII).
     Returns: None
     Usage:
         save_guidance(conn, industry_id, component_id, 'Helpful tip...')
     """
-    encrypted = encrypt_field(guidance_text)
     conn.execute(
         '''INSERT INTO industry_guidance (industry_id, component_id, guidance_text)
            VALUES (?, ?, ?)
            ON CONFLICT(industry_id, component_id)
            DO UPDATE SET guidance_text = excluded.guidance_text''',
-        (industry_id, component_id, encrypted)
+        (industry_id, component_id, guidance_text)
     )
     # No conn.commit() -- autocommit=True

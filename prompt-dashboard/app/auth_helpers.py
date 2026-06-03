@@ -24,14 +24,17 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if not session.get('user_id'):
             return redirect(url_for('auth.login'))
+        # Short-circuit: check role from session before DB query.
+        # Avoids an unnecessary SELECT for the common case of a non-admin
+        # probing admin routes.
+        if session.get('role') != 'admin':
+            abort(403)
         conn = get_db()
         user = conn.execute('SELECT * FROM users WHERE id = ?',
                             (session['user_id'],)).fetchone()
         if user is None:
             session.clear()
             return redirect(url_for('auth.login'))
-        if user['role'] != 'admin':
-            abort(403)
         g.user = user
         return f(*args, **kwargs)
     return decorated

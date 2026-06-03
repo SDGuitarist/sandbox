@@ -11,11 +11,11 @@ def create_prompt(conn, title, industry_id, user_id, component_data):
         prompt_id = create_prompt(conn, 'My Prompt', 1, user_id, component_data)
     """
     completeness = sum(1 for _, content in component_data if content.strip()) / 12.0
-    # Explicit transaction for atomicity -- autocommit=True auto-commits each
-    # statement, so without BEGIN the prompt row commits before components.
-    # If a component INSERT fails, the orphan prompt row is already committed.
-    conn.execute('BEGIN')
-    try:
+    # Use 'with conn:' context manager for atomicity. This is the correct pattern
+    # for Python 3.12+ with autocommit=True -- explicit BEGIN/commit() silently
+    # fails to persist data after conn.close() in Python 3.14 (in_transaction
+    # stays True even after commit, write is lost on close).
+    with conn:
         cursor = conn.execute(
             'INSERT INTO prompts (title, industry_id, user_id, completeness) VALUES (?, ?, ?, ?)',
             (title, industry_id, user_id, completeness)
@@ -27,10 +27,6 @@ def create_prompt(conn, title, industry_id, user_id, component_data):
                 'INSERT INTO prompt_components (prompt_id, component_id, content) VALUES (?, ?, ?)',
                 (prompt_id, component_id, encrypted)
             )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
     return prompt_id
 
 
@@ -119,9 +115,9 @@ def update_prompt(conn, prompt_id, title, component_data):
         update_prompt(conn, prompt_id, 'New Title', [(1, 'updated text'), ...])
     """
     completeness = sum(1 for _, content in component_data if content.strip()) / 12.0
-    # Explicit transaction for atomicity (same pattern as create_prompt)
-    conn.execute('BEGIN')
-    try:
+    # Use 'with conn:' context manager for atomicity (same fix as create_prompt).
+    # Python 3.14 autocommit=True + explicit BEGIN/commit() silently loses writes.
+    with conn:
         conn.execute(
             "UPDATE prompts SET title = ?, completeness = ?, updated_at = datetime('now') WHERE id = ?",
             (title, completeness, prompt_id)
@@ -135,10 +131,6 @@ def update_prompt(conn, prompt_id, title, component_data):
                    DO UPDATE SET content = excluded.content''',
                 (prompt_id, component_id, encrypted)
             )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
 
 
 def delete_prompt(conn, prompt_id):

@@ -153,6 +153,7 @@ def update_prompt_route(prompt_id):
 
 
 @bp.route('/generate', methods=['POST'])
+@login_required
 def generate_preview():
     conn = get_db()
     title = request.form.get('title', '').strip()[:200]
