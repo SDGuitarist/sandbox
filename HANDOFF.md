@@ -1,36 +1,35 @@
-# HANDOFF — Sandbox (Autopilot Infrastructure)
+# HANDOFF — Sandbox (Prompting Dashboard Engine)
 
 **Date:** 2026-06-02
 **Branch:** master
-**Phase:** Ready for next build. Repo cleaned of Run 063 app files.
+**Phase:** Run 064 complete. Review findings fixed. Ready for next build.
 
 ## Current State
 
-Run 063 (Film Production PM Tool) completed and cleaned up. All deferred code fixes applied (todo 060 — nearest_hospital moved to general_notes). App files removed to prepare for next autopilot build. Infrastructure improvements from this session already committed: spec template updates, autopilot ghost-file check (Step 9w.8), inline plan self-review, interactive skill prohibition, 3 new agent pitfalls (FC48/FC49/test rules).
+Run 064 (Prompting Dashboard Engine) completed. 12-agent swarm build with Fernet encryption at rest. 62 files, ~3800 LOC. All 6 review findings (2 P1, 3 P2, 1 P3) resolved.
 
-## Key Artifacts (Run 063 — archived)
+## Key Artifacts
 
-| Phase | Location |
-|-------|----------|
-| Brainstorm | docs/brainstorms/2026-06-02-film-production-pm-brainstorm.md |
-| Plan | docs/plans/film-production-pm-plan.md |
-| Review Report | docs/reports/063/review.md |
-| Solution Doc | docs/solutions/2026-06-02-film-production-pm-swarm-build.md |
-| Contract Check | docs/reports/063/contract-check.md |
-| Smoke Test | docs/reports/063/smoke-test.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
-| Self-Audit | docs/reports/063/self-audit.md |
+- **Plan:** `docs/plans/064-prompting-dashboard-engine-plan.md`
+- **Brainstorm:** `docs/brainstorms/064-prompting-dashboard-engine-brainstorm.md`
+- **Solution doc:** `docs/solutions/2026-06-02-prompting-dashboard-engine-run-064.md`
+- **Review report:** `docs/reports/064/review.md`
+- **BUILD_TRACKING:** `BUILD_TRACKING.md`
+- **App directory:** `prompt-dashboard/`
 
 ## Deferred Items
 
-- **[infrastructure]** TAIL_SYNC_POINT drift between tail-runner.md and SKILL.md Shared Tail — TAIL_SYNC_POINT markers are procedural, not automated.
-- **[prior]** P3s from run 061 (Prompting Dashboard Engine): get_dashboard_stats, duplicate API key warning, unused import, hardcoded model dropdown.
+None — all findings fixed.
 
-## Prompt for Next Session
+## Lessons for Next Build
+
+1. **Python 3.14 autocommit=True + explicit BEGIN/commit silently drops data.** Use `with conn:` pattern instead. This is a new FC6 variant not in prior builds.
+2. **Wizard agent spec divergence:** Agent created hardcoded components instead of DB-backed models. Need stronger spec enforcement for data source (DB table vs hardcoded).
+3. **Auth agent worktree failure (FC37 variant):** 1 of 12 agents didn't get its own worktree. Manual fallback was needed.
+4. **Over-encryption:** Agent copied encrypt/decrypt from neighbors without checking Encrypted Fields table. The table prevented this from being a design-level issue, but agents need to be explicitly told "ONLY encrypt these fields."
+
+## Next Session Prompt
 
 ```
-Read HANDOFF.md for context. This is sandbox, the autopilot infrastructure + project build repo.
-Run 063 complete, repo cleaned. Ready for next /autopilot build.
-Infrastructure: ghost-file check, inline plan self-review, spec template hardened.
-Deferred: TAIL_SYNC_POINT drift (infra), run 061 P3s.
+Read HANDOFF.md. Run 064 is complete. The prompt-dashboard/ app is built and functional. If starting a new build, clean up prompt-dashboard/ files first (FC48 ghost file prevention).
 ```
