@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Preview - {{ title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col">
+        <h1>Prompt Preview</h1>
+        <p class="text-secondary">
+            <strong>{{ title }}</strong> &mdash; {{ industry.name }}
+        </p>
+    </div>
+</div>
+
+<!-- Completeness Summary -->
+<div class="card mb-4 border-secondary">
+    <div class="card-header bg-transparent border-secondary">
+        <h5 class="mb-0">Completeness: {{ overall_percent }}%</h5>
+    </div>
+    <div class="card-body">
+        <div class="progress mb-3" style="height: 24px;">
+            <div class="progress-bar bg-info" role="progressbar"
+                 style="width: {{ overall_percent }}%;"
+                 aria-valuenow="{{ overall_percent }}" aria-valuemin="0" aria-valuemax="100">
+                {{ overall_percent }}%
+            </div>
+        </div>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-2">
+            {% for cluster_id, stats in cluster_stats.items() %}
+            <div class="col">
+                <div class="d-flex justify-content-between">
+                    <span class="text-capitalize">{{ cluster_id }}</span>
+                    <span class="text-secondary">{{ stats.filled }} / {{ stats.total }}</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar {% if stats.percent < 50 %}bg-warning{% else %}bg-success{% endif %}"
+                         role="progressbar"
+                         style="width: {{ stats.percent }}%;"
+                         aria-valuenow="{{ stats.percent }}" aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Formatted Prompt Output -->
+<div class="card mb-4 border-secondary">
+    <div class="card-header bg-transparent border-secondary d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Assembled Prompt</h5>
+        <button type="button" class="btn btn-sm btn-outline-info" id="btn-copy-preview">
+            Copy
+        </button>
+    </div>
+    <div class="card-body">
+        <pre class="mono mb-0" style="white-space: pre-wrap;">{{ formatted_prompt }}</pre>
+    </div>
+</div>
+
+<!-- Component Breakdown -->
+<div class="card mb-4 border-secondary">
+    <div class="card-header bg-transparent border-secondary">
+        <h5 class="mb-0">Component Breakdown</h5>
+    </div>
+    <div class="card-body">
+        {% for cluster_id, cluster_components in grouped.items() %}
+        <h6 class="text-capitalize mt-3 mb-2">{{ cluster_id }}</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead>
+                    <tr>
+                        <th style="width: 150px;">Component</th>
+                        <th>Content</th>
+                        <th style="width: 80px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for comp in cluster_components %}
+                    <tr>
+                        <td>{{ comp.name }}</td>
+                        <td>
+                            {% if components_data.get(comp.id, '').strip() %}
+                            <span class="mono" style="white-space: pre-wrap; font-size: 0.85em;">{{ components_data[comp.id][:200] }}{% if components_data[comp.id]|length > 200 %}...{% endif %}</span>
+                            {% else %}
+                            <span class="text-secondary fst-italic">Empty</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if components_data.get(comp.id, '').strip() %}
+                            <span class="badge bg-success">Filled</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Empty</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="d-flex gap-2 mb-4">
+    <form method="post" action="{{ url_for('wizard.save_prompt') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="title" value="{{ title }}">
+        <input type="hidden" name="industry_id" value="{{ industry.id }}">
+        {% for comp_id, content in components_data.items() %}
+        <input type="hidden" name="component_{{ comp_id }}" value="{{ content }}">
+        {% endfor %}
+        <button type="submit" class="btn btn-success">Save Prompt</button>
+    </form>
+    <form method="post" action="{{ url_for('wizard.generate_preview') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="title" value="{{ title }}">
+        <input type="hidden" name="industry_id" value="{{ industry.id }}">
+        {% for comp_id, content in components_data.items() %}
+        <input type="hidden" name="component_{{ comp_id }}" value="{{ content }}">
+        {% endfor %}
+        <button type="submit" class="btn btn-outline-primary" formaction="{{ url_for('wizard.new_prompt', industry_id=industry.id) }}" formmethod="get"
+                onclick="event.preventDefault(); window.history.back();">
+            Back to Editor
+        </button>
+    </form>
+    <a href="{{ url_for('wizard.select_industry') }}" class="btn btn-outline-secondary">
+        Start Over
+    </a>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    var btnCopy = document.getElementById('btn-copy-preview');
+    if (btnCopy) {
+        btnCopy.addEventListener('click', function() {
+            var pre = document.querySelector('pre.mono');
+            if (pre) {
+                navigator.clipboard.writeText(pre.textContent).then(function() {
+                    btnCopy.textContent = 'Copied!';
+                    setTimeout(function() { btnCopy.textContent = 'Copy'; }, 2000);
+                });
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

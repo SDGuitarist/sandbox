@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Select Industry - Prompt Wizard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1>Prompt Wizard</h1>
+        <p class="text-secondary">
+            Choose an industry to get tailored guidance for each prompt component.
+        </p>
+    </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for industry in industries %}
+    <div class="col">
+        <a href="{{ url_for('wizard.new_prompt', industry_id=industry.id) }}"
+           class="text-decoration-none">
+            <div class="card h-100 border-secondary">
+                <div class="card-body">
+                    <h5 class="card-title">{{ industry.name }}</h5>
+                    <p class="card-text text-secondary">{{ industry.description }}</p>
+                </div>
+                <div class="card-footer bg-transparent border-secondary">
+                    <small class="text-info">Start wizard &rarr;</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

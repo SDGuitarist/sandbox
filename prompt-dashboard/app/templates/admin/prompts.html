@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}All Prompts - Admin{% endblock %}
+
+{% block content %}
+<h1>All Prompts</h1>
+
+<form method="GET" action="{{ url_for('admin.all_prompts') }}" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="industry_id" class="form-select form-select-sm">
+            <option value="">All Industries</option>
+            {% for ind in industries %}
+            <option value="{{ ind.id }}"
+                    {{ "selected" if filter_industry == ind.id else "" }}>
+                {{ ind.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="user_id" class="form-select form-select-sm">
+            <option value="">All Users</option>
+            {% for u in users %}
+            <option value="{{ u.id }}"
+                    {{ "selected" if filter_user == u.id else "" }}>
+                {{ u.username }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+        <a href="{{ url_for('admin.all_prompts') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
+{% if prompts %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Industry</th>
+            <th>User</th>
+            <th>Completeness</th>
+            <th>Grade</th>
+            <th>Updated</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in prompts %}
+        <tr>
+            <td>{{ p.title }}</td>
+            <td>{{ p.industry_name }}</td>
+            <td>{{ p.username }}</td>
+            <td>{{ "%.0f" | format(p.completeness * 100) }}%</td>
+            <td>{{ p.grade_score if p.grade_score else '-' }}</td>
+            <td>{{ p.updated_at }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">No prompts found.</p>
+{% endif %}
+{% endblock %}

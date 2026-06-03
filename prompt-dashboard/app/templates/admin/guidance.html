@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Industry Guidance - Admin{% endblock %}
+
+{% block content %}
+<h1>Industry Guidance Editor</h1>
+<p class="text-muted">Edit guidance text for each industry/component combination. This text helps users fill in their prompts.</p>
+
+{% if industries and components %}
+<div class="table-responsive mt-3">
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Industry / Component</th>
+                {% for comp in components %}
+                <th>{{ comp.name }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for ind in industries %}
+            <tr>
+                <td><strong>{{ ind.name }}</strong></td>
+                {% for comp in components %}
+                <td>
+                    <form method="POST"
+                          action="{{ url_for('admin.guidance_save', industry_id=ind.id, component_id=comp.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <textarea class="form-control form-control-sm" name="guidance_text"
+                                  rows="2">{{ guidance.get((ind.id, comp.id), '') }}</textarea>
+                        <button type="submit" class="btn btn-sm btn-outline-primary mt-1">Save</button>
+                    </form>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">No industries or components defined. Run the seed command first.</p>
+{% endif %}
+{% endblock %}

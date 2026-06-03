@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Grade: {{ prompt.title }} - Prompt Dashboard{% endblock %}
+
+{% block content %}
+<h1>Grade Prompt</h1>
+<p class="text-muted">{{ prompt.title }}</p>
+
+<form method="post" action="{{ url_for('grading.save_grade', prompt_id=prompt.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="mb-3">
+        <label for="score" class="form-label">Score (1-5) <span class="text-danger">*</span></label>
+        <select class="form-select" id="score" name="score" required>
+            <option value="">Select a score</option>
+            {% for i in range(1, 6) %}
+            <option value="{{ i }}" {% if grade and grade.score == i %}selected{% endif %}>{{ i }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="worked_well" class="form-label">What worked well</label>
+        <textarea class="form-control" id="worked_well" name="worked_well" rows="4"
+                  maxlength="2000">{{ grade.worked_well if grade else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="needs_improvement" class="form-label">What needs improvement</label>
+        <textarea class="form-control" id="needs_improvement" name="needs_improvement" rows="4"
+                  maxlength="2000">{{ grade.needs_improvement if grade else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label for="notes" class="form-label">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="4"
+                  maxlength="2000">{{ grade.notes if grade else '' }}</textarea>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Grade</button>
+        <a href="{{ url_for('library.detail', prompt_id=prompt.id) }}" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+{% endblock %}
