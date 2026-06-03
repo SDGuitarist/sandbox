@@ -1,7 +1,7 @@
 ---
 name: spec-completeness-checker
 description: Pre-swarm gate that checks whether a spec prescribes complete coverage for 6 critical surfaces (export names, wiring, validation, registration, transactions, authorization). Catches omissions that produce predictable P1s at swarm scale.
-tools: Read, Grep, Glob, Write
+tools: Read, Grep, Glob, Write, Edit
 model: sonnet
 ---
 
@@ -18,9 +18,10 @@ declared in the coverage table).
 
 ## Inputs
 
-You receive two arguments:
+You receive three arguments:
 1. Path to the plan document (contains the shared interface spec)
 2. Path to the reports directory (e.g., `docs/reports/052/`)
+3. Path to BUILD_TRACKING.md (for the Phase Status row -- see Output Contract)
 
 Read the full plan document.
 
@@ -171,9 +172,30 @@ Missing route = FAIL finding.
 
 ## Output Contract
 
-Write report to `[reports-directory]/spec-completeness-check.md`:
+1. Write the full report to `[reports-directory]/spec-completeness-check.md`
+   with STATUS on **line 1** (see Report Format below).
+2. Write one row to the Phase Status table in BUILD_TRACKING.md (path given as
+   argument 3) using the **Edit tool**. Same append pattern as AGENT_STATUS
+   rows -- proven across 15+ builds. The row is:
+   `| gates-completeness | PASS | [reports-directory]/spec-completeness-check.md |`
+   Use `FAIL` instead of `PASS` if any omissions were found.
+3. End your output with these two plain-text lines (nothing after them):
+   ```
+   report_path: [reports-directory]/spec-completeness-check.md
+   STATUS: PASS
+   ```
+   (or `STATUS: FAIL -- N omissions found across M surfaces`). Do NOT return the
+   full report in your output -- the orchestrator reads line 1 of the report
+   file on disk.
+
+### Report Format
+
+Phase reports MUST NOT have YAML frontmatter. **Line 1 is always the STATUS
+line.** Format:
 
 ```markdown
+STATUS: PASS
+
 # Pre-Swarm Spec Completeness Check
 
 **Plan:** <plan filename>
@@ -206,12 +228,10 @@ Write report to `[reports-directory]/spec-completeness-check.md`:
 - **WARN:** Z
 - **N/A:** W
 - **BLOCKED:** B
-
-STATUS: PASS
 ```
 
-Use `STATUS: PASS` if zero FAILs (WARNs and BLOCKED allowed).
-Use `STATUS: FAIL -- N omissions found across M surfaces` if any FAILs.
+Use `STATUS: PASS` (line 1) if zero FAILs (WARNs and BLOCKED allowed).
+Use `STATUS: FAIL -- N omissions found across M surfaces` (line 1) if any FAILs.
 
 **CRITICAL:** The STATUS line MUST be plain text on its own line. Do NOT
 wrap it in markdown bold (`**STATUS: PASS**`), headers, or any other

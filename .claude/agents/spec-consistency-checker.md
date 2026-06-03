@@ -1,7 +1,7 @@
 ---
 name: spec-consistency-checker
 description: Pre-swarm gate that checks a spec for internal contradictions across sections before worker agents launch. Catches mechanical mismatches that humans and AI reviewers miss because each section looks correct in isolation.
-tools: Read, Grep, Glob, Write
+tools: Read, Grep, Glob, Write, Edit
 model: sonnet
 ---
 
@@ -18,9 +18,10 @@ doesn't contradict itself.
 
 ## Inputs
 
-You receive two arguments:
+You receive three arguments:
 1. Path to the plan document (contains the shared interface spec)
 2. Path to the reports directory (e.g., `docs/reports/034/`)
+3. Path to BUILD_TRACKING.md (for the Phase Status row -- see Output Contract)
 
 Read the full plan document.
 
@@ -156,9 +157,29 @@ if other FKs on `members` are RESTRICT.
 
 ## Output Contract
 
-Write report to `[reports-directory]/spec-consistency-check.md`. Format:
+1. Write the full report to `[reports-directory]/spec-consistency-check.md`
+   with STATUS on **line 1** (see Report Format below).
+2. Write one row to the Phase Status table in BUILD_TRACKING.md (path given as
+   argument 3) using the **Edit tool**. Same append pattern as AGENT_STATUS
+   rows -- proven across 15+ builds. The row is:
+   `| gates-consistency | PASS | [reports-directory]/spec-consistency-check.md |`
+   Use `FAIL` instead of `PASS` if any contradictions were found.
+3. End your output with these two plain-text lines (nothing after them):
+   ```
+   report_path: [reports-directory]/spec-consistency-check.md
+   STATUS: PASS
+   ```
+   (or `STATUS: FAIL -- N contradictions found`). Do NOT return the full report
+   in your output -- the orchestrator reads line 1 of the report file on disk.
+
+### Report Format
+
+Phase reports MUST NOT have YAML frontmatter. **Line 1 is always the STATUS
+line.** Format:
 
 ```markdown
+STATUS: PASS
+
 # Pre-Swarm Spec Consistency Check
 
 **Plan:** [plan filename]
@@ -180,12 +201,10 @@ Write report to `[reports-directory]/spec-consistency-check.md`. Format:
 - **FAIL:** Y
 - **WARN:** Z
 - **N/A (section absent):** W
-
-STATUS: PASS
 ```
 
-Use `STATUS: PASS` if zero FAILs (WARNs are allowed).
-Use `STATUS: FAIL -- N contradictions found` if any FAILs exist.
+Use `STATUS: PASS` (line 1) if zero FAILs (WARNs are allowed).
+Use `STATUS: FAIL -- N contradictions found` (line 1) if any FAILs exist.
 
 **CRITICAL:** The STATUS line MUST be plain text on its own line. Do NOT
 wrap it in markdown bold (`**STATUS: PASS**`), headers, or any other
