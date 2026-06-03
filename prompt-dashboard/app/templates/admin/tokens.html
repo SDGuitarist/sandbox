@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Token Management - Admin{% endblock %}
+
+{% block content %}
+<h1>Share Token Management</h1>
+
+{% if new_token %}
+<div class="alert alert-warning">
+    <strong>New Token Generated!</strong> Copy this token now. It will not be shown again.<br>
+    <code class="fs-5 user-select-all">{{ new_token }}</code>
+</div>
+{% endif %}
+
+<h3 class="mt-4">Generate New Token</h3>
+<form method="POST" action="{{ url_for('admin.token_generate') }}" class="row g-2 mb-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-auto">
+        <select name="template_id" class="form-select" required>
+            <option value="">Select a template...</option>
+            {% for t in templates %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary">Generate Token</button>
+    </div>
+</form>
+
+<h3>Existing Tokens</h3>
+{% if tokens %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Template</th>
+            <th>Created By</th>
+            <th>Created</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tok in tokens %}
+        <tr>
+            <td>{{ tok.id }}</td>
+            <td>{{ tok.template_name }}</td>
+            <td>{{ tok.creator_name }}</td>
+            <td>{{ tok.created_at }}</td>
+            <td>
+                {% if tok.revoked_at %}
+                <span class="badge bg-danger">Revoked {{ tok.revoked_at }}</span>
+                {% else %}
+                <span class="badge bg-success">Active</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if not tok.revoked_at %}
+                <form method="POST" action="{{ url_for('admin.token_revoke', id=tok.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Revoke this token?')">Revoke</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">No tokens generated yet.</p>
+{% endif %}
+{% endblock %}
