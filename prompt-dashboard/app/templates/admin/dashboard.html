@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Prompt Dashboard{% endblock %}
+
+{% block content %}
+<h1>Admin Dashboard</h1>
+
+<div class="row mt-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Users</h5>
+                <p class="display-6">{{ total_users }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Prompts</h5>
+                <p class="display-6">{{ total_prompts }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Templates</h5>
+                <p class="display-6">{{ total_templates }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Avg Completeness</h5>
+                <p class="display-6">{{ "%.0f" | format(avg_completeness * 100) }}%</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="mt-4">Quick Links</h3>
+<div class="list-group mt-2">
+    <a href="{{ url_for('admin.templates_list') }}" class="list-group-item list-group-item-action">Manage Templates</a>
+    <a href="{{ url_for('admin.guidance_list') }}" class="list-group-item list-group-item-action">Edit Guidance</a>
+    <a href="{{ url_for('admin.all_prompts') }}" class="list-group-item list-group-item-action">View All Prompts</a>
+    <a href="{{ url_for('admin.all_grades') }}" class="list-group-item list-group-item-action">View All Grades</a>
+    <a href="{{ url_for('admin.tokens_list') }}" class="list-group-item list-group-item-action">Token Management</a>
+    <a href="{{ url_for('admin.export_page') }}" class="list-group-item list-group-item-action">Export Data</a>
+</div>
+{% endblock %}
