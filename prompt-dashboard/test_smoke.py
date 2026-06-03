@@ -78,20 +78,20 @@ with client.session_transaction() as sess:
           f"role: {sess.get('role')}")
 
 # Phase 3: Authenticated routes
-r = client.get("/library")
+r = client.get("/library/")
 check("GET /library (authenticated)", r.status_code == 200, f"got {r.status_code}")
 
-r = client.get("/wizard")
+r = client.get("/wizard/")
 check("GET /wizard (industry selection)", r.status_code == 200, f"got {r.status_code}")
 
 r = client.get("/wizard/new?industry_id=1")
 check("GET /wizard/new", r.status_code == 200, f"got {r.status_code}")
 
-r = client.get("/search?q=email")
+r = client.get("/search/?q=email")
 check("GET /search", r.status_code == 200, f"got {r.status_code}")
 
 # Phase 4: Admin routes
-r = client.get("/admin")
+r = client.get("/admin/")
 check("GET /admin (admin user)", r.status_code == 200, f"got {r.status_code}")
 
 r = client.get("/admin/templates")
@@ -147,7 +147,7 @@ r = client.post("/auth/login", data={
     "csrf_token": csrf_token,
 }, follow_redirects=False)
 
-r = client.get("/admin")
+r = client.get("/admin/")
 check("Non-admin blocked from /admin", r.status_code == 403, f"got {r.status_code}")
 
 # Summary

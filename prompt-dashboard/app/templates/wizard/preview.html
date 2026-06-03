@@ -120,7 +120,7 @@
         {% for comp_id, content in components_data.items() %}
         <input type="hidden" name="component_{{ comp_id }}" value="{{ content }}">
         {% endfor %}
-        <button type="submit" class="btn btn-outline-primary" formaction="{{ url_for('wizard.wizard_form', industry_id=industry.id) }}" formmethod="get"
+        <button type="submit" class="btn btn-outline-primary" formaction="{{ url_for('wizard.new_prompt', industry_id=industry.id) }}" formmethod="get"
                 onclick="event.preventDefault(); window.history.back();">
             Back to Editor
         </button>

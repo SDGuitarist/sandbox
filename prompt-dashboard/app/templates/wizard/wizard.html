@@ -30,7 +30,7 @@
 
 <!-- Cluster Progress Cards -->
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-3 mb-4">
-    {% for cluster_id, cluster_components in grouped.items() %}
+    {% for cluster_id, cluster_components in clusters.items() %}
     <div class="col">
         <div class="card h-100 border-secondary" id="cluster-card-{{ cluster_id }}">
             <div class="card-body">
@@ -75,8 +75,8 @@
                required>
     </div>
 
-    <!-- Component Textareas grouped by cluster -->
-    {% for cluster_id, cluster_components in grouped.items() %}
+    <!-- Component Textareas clusters by cluster -->
+    {% for cluster_id, cluster_components in clusters.items() %}
     <div class="card mb-4 border-secondary" id="cluster-section-{{ cluster_id }}">
         <div class="card-header bg-transparent border-secondary">
             <h4 class="mb-0 text-capitalize">{{ cluster_id }}</h4>
@@ -148,7 +148,7 @@
 
     // Cluster IDs from the page
     var clusterIds = [];
-    {% for cluster_id in grouped.keys() %}
+    {% for cluster_id in clusters.keys() %}
     clusterIds.push('{{ cluster_id }}');
     {% endfor %}
 

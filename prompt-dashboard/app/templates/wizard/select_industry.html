@@ -15,7 +15,7 @@
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
     {% for industry in industries %}
     <div class="col">
-        <a href="{{ url_for('wizard.wizard_form', industry_id=industry.id) }}"
+        <a href="{{ url_for('wizard.new_prompt', industry_id=industry.id) }}"
            class="text-decoration-none">
             <div class="card h-100 border-secondary">
                 <div class="card-body">

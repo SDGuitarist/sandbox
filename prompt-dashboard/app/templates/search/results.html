@@ -6,7 +6,7 @@
 <h1 class="mb-4">Search Prompts</h1>
 
 <!-- Search form (GET — no CSRF needed) -->
-<form method="get" action="{{ url_for('search.results') }}" class="mb-4">
+<form method="get" action="{{ url_for('search.search_page') }}" class="mb-4">
     <div class="input-group">
         <input type="text"
                name="q"
