@@ -37,7 +37,7 @@ A Flask + SQLite + Jinja2 + Bootstrap 5 web app for Amplify AI that turns Alex's
 ## What Exactly Is Changing?
 
 New app at `prompt-dashboard/` with:
-- 10 blueprints: auth, wizard, components, templates, library, grading, sharing, admin, search, export
+- 8 blueprints: auth, wizard, library, grading, sharing, admin, search, export
 - 12 database tables + 1 FTS5 virtual table
 - ~50 routes, ~25 templates, ~45 model functions
 - Fernet encryption at rest for prompt content and component answers
@@ -583,7 +583,7 @@ def create_user(conn, username, email, password):
         'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
         (username, email, password_hash)
     )
-    conn.commit()
+    # No conn.commit() needed -- autocommit=True handles single statements
     return cursor.lastrowid
 
 
@@ -597,7 +597,7 @@ def create_admin_user(conn, username, email, password):
         'INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, ?)',
         (username, email, password_hash, 'admin')
     )
-    conn.commit()
+    # No conn.commit() needed -- autocommit=True handles single statements
     return cursor.lastrowid
 
 
@@ -720,7 +720,7 @@ def save_guidance(conn, industry_id, component_id, guidance_text):
            DO UPDATE SET guidance_text = excluded.guidance_text''',
         (industry_id, component_id, encrypted)
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True handles single statements
 ```
 
 ### Template Models (app/models/template_models.py)
@@ -738,7 +738,7 @@ def create_template(conn, name, description, industry_id, created_by):
         'INSERT INTO prompt_templates (name, description, industry_id, created_by) VALUES (?, ?, ?, ?)',
         (name, description, industry_id, created_by)
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True
     return cursor.lastrowid
 
 
@@ -793,17 +793,17 @@ def save_template_component(conn, template_id, component_id, content):
            DO UPDATE SET content = excluded.content''',
         (template_id, component_id, encrypted)
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True
 
 
 def delete_template(conn, template_id):
-    """Delete a template and all its components (CASCADE). Commits internally.
+    """Delete a template and all its components (CASCADE).
     Returns: None
     Usage:
         delete_template(conn, template_id)
     """
     conn.execute('DELETE FROM prompt_templates WHERE id = ?', (template_id,))
-    conn.commit()
+    # No conn.commit() -- autocommit=True
 ```
 
 ### Prompt Models (app/models/prompt_models.py)
@@ -953,13 +953,13 @@ def update_prompt(conn, prompt_id, title, component_data):
 
 
 def delete_prompt(conn, prompt_id):
-    """Delete a prompt and all components/grades (CASCADE). Commits internally.
+    """Delete a prompt and all components/grades (CASCADE).
     Returns: None
     Usage:
         delete_prompt(conn, prompt_id)
     """
     conn.execute('DELETE FROM prompts WHERE id = ?', (prompt_id,))
-    conn.commit()
+    # No conn.commit() -- autocommit=True
 ```
 
 ### Grading Models (app/models/grading_models.py)
@@ -985,7 +985,7 @@ def save_grade(conn, prompt_id, score, worked_well, needs_improvement, notes):
         (prompt_id, score, encrypt_field(worked_well),
          encrypt_field(needs_improvement), encrypt_field(notes))
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True
     return cursor.lastrowid
 
 
@@ -1053,7 +1053,7 @@ def generate_share_token(conn, template_id, created_by):
         'INSERT INTO share_tokens (template_id, token_hash, created_by) VALUES (?, ?, ?)',
         (template_id, token_hash, created_by)
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True
     return raw_token
 
 
@@ -1075,7 +1075,7 @@ def get_template_by_token(conn, raw_token):
 
 
 def revoke_token(conn, token_id):
-    """Revoke a share token. Commits internally.
+    """Revoke a share token.
     Returns: None
     Usage:
         revoke_token(conn, token_id)
@@ -1084,7 +1084,7 @@ def revoke_token(conn, token_id):
         "UPDATE share_tokens SET revoked_at = datetime('now') WHERE id = ?",
         (token_id,)
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True
 
 
 def get_all_tokens(conn):
@@ -1244,7 +1244,7 @@ def export_all_prompts_json(conn):
 
 ```python
 def log_audit_event(conn, user_id, action, resource_type, resource_id=None):
-    """Log an audit event. Commits internally.
+    """Log an audit event.
     Returns: None
     Usage:
         log_audit_event(conn, user_id, 'create', 'prompt', prompt_id)
@@ -1254,7 +1254,7 @@ def log_audit_event(conn, user_id, action, resource_type, resource_id=None):
         'INSERT INTO audit_events (user_id, action, resource_type, resource_id) VALUES (?, ?, ?, ?)',
         (user_id, action, resource_type, resource_id)
     )
-    conn.commit()
+    # No conn.commit() -- autocommit=True
 ```
 
 ## Route Table
@@ -1485,10 +1485,10 @@ Every POST form MUST include:
 | `get_user_by_username` | model function | `app/models/auth_models.py` | auth agent |
 | `get_user_by_id` | model function | `app/models/auth_models.py` | auth agent |
 | `verify_password` | model function | `app/models/auth_models.py` | auth agent |
-| `get_all_components` | model function | `app/models/component_models.py` | wizard, admin, seed |
+| `get_all_components` | model function | `app/models/component_models.py` | wizard, admin |
 | `get_components_grouped` | model function | `app/models/component_models.py` | wizard, admin |
 | `get_component` | model function | `app/models/component_models.py` | admin |
-| `get_all_industries` | model function | `app/models/industry_models.py` | wizard, admin, seed |
+| `get_all_industries` | model function | `app/models/industry_models.py` | wizard, admin |
 | `get_industry` | model function | `app/models/industry_models.py` | wizard, admin |
 | `get_guidance_for_industry` | model function | `app/models/industry_models.py` | wizard, admin |
 | `save_guidance` | model function | `app/models/industry_models.py` | admin |
@@ -1594,6 +1594,12 @@ Every POST form MUST include:
 | `app/models/template_models.py` | `app/seed.py` | `from app.models.template_models import create_template, save_template_component` |
 | `app/models/prompt_models.py` | `app/seed.py` | `from app.models.prompt_models import create_prompt` |
 | `app/models/grading_models.py` | `app/seed.py` | `from app.models.grading_models import save_grade` |
+| `app/models/component_models.py` | `app/blueprints/admin/routes.py` | `from app.models.component_models import get_all_components, get_components_grouped, get_component` |
+| `app/models/industry_models.py` | `app/blueprints/admin/routes.py` | `from app.models.industry_models import get_all_industries, get_industry, get_guidance_for_industry, save_guidance` |
+| `app/models/component_models.py` | `app/blueprints/sharing/routes.py` | `from app.models.component_models import get_all_components, get_components_grouped` |
+| `app/models/industry_models.py` | `app/blueprints/sharing/routes.py` | `from app.models.industry_models import get_industry, get_guidance_for_industry` |
+| `app/models/template_models.py` | `app/blueprints/sharing/routes.py` | `from app.models.template_models import get_template, get_template_components` |
+| `app/models/auth_models.py` | `app/blueprints/auth/routes.py` | `from app.models.auth_models import get_user_by_id` |
 
 ## Input Validation Prescriptions
 
@@ -1630,6 +1636,10 @@ Every POST form MUST include:
 | `GET /library/<int:prompt_id>` | `prompt_id` (URL) | Must exist, must be owned by user | `abort(404)` |
 | `GET /grading/<int:prompt_id>` | `prompt_id` (URL) | Must exist, must be owned by user | `abort(404)` |
 | `GET /admin/templates/<int:id>/edit` | `id` (URL) | Must exist | `abort(404)` |
+| `POST /admin/templates/<int:id>` | `id` (URL) | Must exist in prompt_templates | `abort(404)` |
+| `POST /admin/templates/<int:id>` | `name` (form) | Strip, 1-200 chars, required | Flash error, redirect back |
+| `POST /admin/templates/<int:id>` | `industry_id` (form) | Integer, must exist | Flash error, redirect back |
+| `POST /admin/templates/<int:id>/delete` | `id` (URL) | Must exist in prompt_templates | `abort(404)` |
 
 ## Coordinated Behaviors
 
@@ -1683,19 +1693,19 @@ Every POST form MUST include:
 
 | Function | SQL Operations | Commits | Error Handling |
 |----------|---------------|---------|----------------|
-| `create_user` | INSERT users | commits internally | let IntegrityError propagate (UNIQUE violation) |
-| `create_admin_user` | INSERT users | commits internally | let IntegrityError propagate |
-| `create_template` | INSERT prompt_templates | commits internally | N/A |
-| `save_template_component` | INSERT OR UPDATE template_components | commits internally | N/A |
-| `delete_template` | DELETE prompt_templates (CASCADE) | commits internally | N/A |
+| `create_user` | INSERT users | autocommit (no explicit commit) | let IntegrityError propagate (UNIQUE violation) |
+| `create_admin_user` | INSERT users | autocommit (no explicit commit) | let IntegrityError propagate |
+| `create_template` | INSERT prompt_templates | autocommit (no explicit commit) | N/A |
+| `save_template_component` | INSERT OR UPDATE template_components | autocommit (no explicit commit) | N/A |
+| `delete_template` | DELETE prompt_templates (CASCADE) | autocommit (no explicit commit) | N/A |
 | `create_prompt` | BEGIN + INSERT prompts + N×INSERT prompt_components + COMMIT | commits internally (explicit BEGIN for atomicity) | try/except/rollback |
 | `update_prompt` | BEGIN + UPDATE prompts + N×INSERT OR UPDATE prompt_components + COMMIT | commits internally (explicit BEGIN for atomicity) | try/except/rollback |
-| `delete_prompt` | DELETE prompts (CASCADE) | commits internally | N/A |
-| `save_grade` | INSERT OR UPDATE prompt_grades | commits internally | N/A |
-| `generate_share_token` | INSERT share_tokens | commits internally | N/A |
-| `revoke_token` | UPDATE share_tokens | commits internally | N/A |
-| `save_guidance` | INSERT OR UPDATE industry_guidance | commits internally | N/A |
-| `log_audit_event` | INSERT audit_events | commits internally | N/A |
+| `delete_prompt` | DELETE prompts (CASCADE) | autocommit (no explicit commit) | N/A |
+| `save_grade` | INSERT OR UPDATE prompt_grades | autocommit (no explicit commit) | N/A |
+| `generate_share_token` | INSERT share_tokens | autocommit (no explicit commit) | N/A |
+| `revoke_token` | UPDATE share_tokens | autocommit (no explicit commit) | N/A |
+| `save_guidance` | INSERT OR UPDATE industry_guidance | autocommit (no explicit commit) | N/A |
+| `log_audit_event` | INSERT audit_events | autocommit (no explicit commit) | N/A |
 
 **Note:** All model functions commit internally because they are atomic single-table or single-logical-unit operations. No multi-step transactions requiring external commit control are needed in this app.
 
@@ -1788,7 +1798,7 @@ def register_seed_command(app):
                    VALUES (?, ?, ?, ?, ?, ?)''',
                 (comp_id, name, cluster, position, description, placeholder)
             )
-        conn.commit()
+        # No conn.commit() -- autocommit=True handles each INSERT
 
         # 2. Seed industries (4+)
         industries = [
@@ -1803,7 +1813,7 @@ def register_seed_command(app):
                 'INSERT INTO industries (id, name, description) VALUES (?, ?, ?)',
                 (ind_id, name, description)
             )
-        conn.commit()
+        # No conn.commit() -- autocommit=True
 
         # 3. Seed users (1 admin, 1 normal)
         admin_id = create_admin_user(conn, 'alex', 'alex@amplifyai.com', 'admin-password-123')
@@ -2139,20 +2149,168 @@ else:
 
 ## Swarm Agent Assignment
 
-| # | Role | Files | Dependencies |
-|---|------|-------|-------------|
-| 1 | database | schema.sql, database.py, encryption.py, models/__init__.py | None |
-| 2 | scaffold | __init__.py, auth_helpers.py, run.py, requirements.txt, .env.example, base.html, error templates, style.css | database (imports) |
-| 3 | auth | auth_models.py, auth routes, auth templates | database, scaffold (auth_helpers) |
-| 4 | wizard | component_models.py, industry_models.py, wizard routes, wizard templates | database, encryption, auth_helpers, prompt_models, template_models |
-| 5 | library | prompt_models.py, library routes, library templates | database, encryption, auth_helpers, grading_models |
-| 6 | grading | grading_models.py, grading routes, grading templates | database, encryption, auth_helpers, prompt_models |
-| 7 | sharing | sharing_models.py, sharing routes, sharing templates | database, template_models, component_models |
-| 8 | admin | template_models.py, admin_models.py, admin routes, admin templates | database, encryption, auth_helpers, all model modules |
-| 9 | search | search_models.py, search routes, search templates | database, auth_helpers |
-| 10 | export | export_models.py, export routes | database, encryption, auth_helpers |
-| 11 | seed | seed.py, audit_models.py | database, all model modules, encryption |
-| 12 | tests | test_smoke.py, .gitignore | ALL (integration test) |
+**Total agents:** 12
+**Total files:** 62
+**Validation:** No file appears in multiple assignments
+
+### Agent: database
+**Files:**
+- `prompt-dashboard/app/database.py`
+- `prompt-dashboard/app/encryption.py`
+- `prompt-dashboard/app/schema.sql`
+- `prompt-dashboard/app/models/__init__.py`
+
+**Responsibility:** Defines the database connection layer, encryption module, SQL schema (all tables, indexes, FTS5, triggers), and the models barrel re-export file. No other agent writes to these files.
+
+---
+
+### Agent: scaffold
+**Files:**
+- `prompt-dashboard/app/__init__.py`
+- `prompt-dashboard/app/auth_helpers.py`
+- `prompt-dashboard/run.py`
+- `prompt-dashboard/requirements.txt`
+- `prompt-dashboard/.env.example`
+- `prompt-dashboard/app/templates/base.html`
+- `prompt-dashboard/app/templates/errors/403.html`
+- `prompt-dashboard/app/templates/errors/404.html`
+- `prompt-dashboard/app/templates/errors/500.html`
+- `prompt-dashboard/app/static/style.css`
+
+**Responsibility:** Builds the app factory, blueprint registration, auth decorators, base template with Bootstrap 5 navbar, error pages, and static CSS. Defines `base.html` that all other template agents extend.
+
+---
+
+### Agent: auth
+**Files:**
+- `prompt-dashboard/app/models/auth_models.py`
+- `prompt-dashboard/app/blueprints/auth/__init__.py`
+- `prompt-dashboard/app/blueprints/auth/routes.py`
+- `prompt-dashboard/app/templates/auth/login.html`
+- `prompt-dashboard/app/templates/auth/register.html`
+
+**Responsibility:** Implements user creation, password verification, login/register/logout routes, and auth form templates.
+
+---
+
+### Agent: wizard
+**Files:**
+- `prompt-dashboard/app/models/component_models.py`
+- `prompt-dashboard/app/models/industry_models.py`
+- `prompt-dashboard/app/blueprints/wizard/__init__.py`
+- `prompt-dashboard/app/blueprints/wizard/routes.py`
+- `prompt-dashboard/app/templates/wizard/select_industry.html`
+- `prompt-dashboard/app/templates/wizard/wizard.html`
+- `prompt-dashboard/app/templates/wizard/preview.html`
+
+**Responsibility:** Implements the 12-component prompt wizard including industry selection, component queries, guidance queries, wizard form, preview generation, and save/edit/update routes.
+
+---
+
+### Agent: library
+**Files:**
+- `prompt-dashboard/app/models/prompt_models.py`
+- `prompt-dashboard/app/blueprints/library/__init__.py`
+- `prompt-dashboard/app/blueprints/library/routes.py`
+- `prompt-dashboard/app/templates/library/index.html`
+- `prompt-dashboard/app/templates/library/detail.html`
+
+**Responsibility:** Implements prompt CRUD model functions (create, get, update, delete, format_prompt, calculate_cluster_completeness), library list, and prompt detail views.
+
+---
+
+### Agent: grading
+**Files:**
+- `prompt-dashboard/app/models/grading_models.py`
+- `prompt-dashboard/app/blueprints/grading/__init__.py`
+- `prompt-dashboard/app/blueprints/grading/routes.py`
+- `prompt-dashboard/app/templates/grading/form.html`
+
+**Responsibility:** Implements grade save/get/list model functions, grading form route, and grading template.
+
+---
+
+### Agent: sharing
+**Files:**
+- `prompt-dashboard/app/models/sharing_models.py`
+- `prompt-dashboard/app/blueprints/sharing/__init__.py`
+- `prompt-dashboard/app/blueprints/sharing/routes.py`
+- `prompt-dashboard/app/templates/sharing/expired.html`
+
+**Responsibility:** Implements share token generation, SHA-256 hashing, lookup, revocation model functions, public share view route, and expired/invalid token template.
+
+---
+
+### Agent: admin
+**Files:**
+- `prompt-dashboard/app/models/template_models.py`
+- `prompt-dashboard/app/models/admin_models.py`
+- `prompt-dashboard/app/blueprints/admin/__init__.py`
+- `prompt-dashboard/app/blueprints/admin/routes.py`
+- `prompt-dashboard/app/templates/admin/dashboard.html`
+- `prompt-dashboard/app/templates/admin/templates.html`
+- `prompt-dashboard/app/templates/admin/template_form.html`
+- `prompt-dashboard/app/templates/admin/guidance.html`
+- `prompt-dashboard/app/templates/admin/prompts.html`
+- `prompt-dashboard/app/templates/admin/grades.html`
+- `prompt-dashboard/app/templates/admin/tokens.html`
+- `prompt-dashboard/app/templates/admin/export.html`
+
+**Responsibility:** Implements template CRUD, admin dashboard stats, all admin routes (templates, guidance, prompts, grades, tokens, export), and all admin templates.
+
+---
+
+### Agent: search
+**Files:**
+- `prompt-dashboard/app/models/search_models.py`
+- `prompt-dashboard/app/blueprints/search/__init__.py`
+- `prompt-dashboard/app/blueprints/search/routes.py`
+- `prompt-dashboard/app/templates/search/results.html`
+
+**Responsibility:** Implements FTS5 search with query sanitization, search route, and results template.
+
+---
+
+### Agent: export
+**Files:**
+- `prompt-dashboard/app/models/export_models.py`
+- `prompt-dashboard/app/blueprints/export/__init__.py`
+- `prompt-dashboard/app/blueprints/export/routes.py`
+
+**Responsibility:** Implements CSV and JSON export model functions and user export route.
+
+---
+
+### Agent: seed
+**Files:**
+- `prompt-dashboard/app/seed.py`
+- `prompt-dashboard/app/models/audit_models.py`
+
+**Responsibility:** Implements the Flask CLI seed command with all deterministic fixture data and the audit event logging model function used by all write routes.
+
+---
+
+### Agent: tests
+**Files:**
+- `prompt-dashboard/test_smoke.py`
+- `prompt-dashboard/.gitignore`
+
+**Responsibility:** Implements the end-to-end smoke test suite covering public routes, auth flow, authenticated routes, admin routes, wizard save, encryption verification, and IDOR protection.
+
+---
+
+**Duplicate scan results:**
+- All 12 model files: unique across agents (A1: `models/__init__.py`; A3: `auth_models.py`; A4: `component_models.py`, `industry_models.py`; A5: `prompt_models.py`; A6: `grading_models.py`; A7: `sharing_models.py`; A8: `template_models.py`, `admin_models.py`; A9: `search_models.py`; A10: `export_models.py`; A11: `audit_models.py`)
+- All blueprint `__init__.py` + `routes.py` files: one pair per blueprint per agent (A3-A10), unique
+- All templates: `base.html` + error pages (A2), auth (A3), wizard (A4), library (A5), grading (A6), sharing (A7), admin 8 files (A8), search (A9), none for export (A10), none for seed (A11)
+- Infrastructure files: `database.py`, `encryption.py`, `schema.sql` (A1); `app/__init__.py`, `auth_helpers.py`, `run.py`, `requirements.txt`, `.env.example`, `style.css` (A2); `seed.py` (A11); `test_smoke.py`, `.gitignore` (A12) -- all unique
+
+**Cross-boundary wiring coverage:**
+- All 29 entries in the Cross-Boundary Wiring Table are fully documented with producer file, consumer file, and import path
+- `app/models/admin_models.py` (Agent 8) has no cross-boundary consumers -- it is internal to the admin agent, so no wiring entry is required
+- `app/models/audit_models.py` (Agent 11) consumed by ALL write routes -- documented in wiring table
+
+STATUS: PASS
 
 ## Wizard Client-Side JavaScript
 
