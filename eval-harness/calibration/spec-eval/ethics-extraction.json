@@ -1,0 +1,942 @@
+[
+  {
+    "id": "tbl-001",
+    "text": "Route Pattern: `/api/ai/*`, Limit: 10 requests/hour, 30 requests/day, Scope: Per IP (hourly), per user (daily)",
+    "task_brief": "Implement the following as specified: Route Pattern: `/api/ai/*`, Limit: 10 requests/hour, 30 requests/day, Scope: Per IP (hourly), per user (daily)",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 1)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-002",
+    "text": "Route Pattern: `/api/realtime/*`, Limit: 120 requests/minute, Scope: Per IP",
+    "task_brief": "Implement the following as specified: Route Pattern: `/api/realtime/*`, Limit: 120 requests/minute, Scope: Per IP",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 2)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-003",
+    "text": "Route Pattern: `/api/auth/save-results`, Limit: 5 requests/hour, Scope: Per IP",
+    "task_brief": "Implement the following as specified: Route Pattern: `/api/auth/save-results`, Limit: 5 requests/hour, Scope: Per IP",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 3)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-004",
+    "text": "Route Pattern: All other `/api/*`, Limit: 60 requests/minute, Scope: Per IP",
+    "task_brief": "Implement the following as specified: Route Pattern: All other `/api/*`, Limit: 60 requests/minute, Scope: Per IP",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 4)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "prose-001",
+    "text": "ALL AI-generated and deterministic outputs must be explicitly labeled with 'Guidance, not legal advice. Consult an entertainment attorney for legal counsel.'",
+    "task_brief": "Build a tool output component that renders a disclaimer label. Verify the exact string 'Guidance, not legal advice. Consult an entertainment attorney for legal counsel.' is present on all AI-generated and deterministic tool outputs.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Guidance, not legal advice\\. Consult an entertainment attorney for legal counsel\\.",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct quote with exact required text string. Very high confidence."
+  },
+  {
+    "id": "prose-002",
+    "text": "Cached UI shell, Festival JSON, and Rate JSON must work without network (offline mode).",
+    "task_brief": "Implement a Service Worker or equivalent caching strategy so that the UI shell, Festival JSON, and Rate JSON are accessible without a network connection. Write a test that disables the network and verifies these assets load.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.92,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated requirement. The specific assets are named. Minor inference needed on implementation mechanism (Service Worker implied later)."
+  },
+  {
+    "id": "prose-003",
+    "text": "Auth, LLM, Square, email, and realtime actions require network and must show queued/retry/unavailable states when offline. Never block the UI.",
+    "task_brief": "For each of the following action types -- Auth, LLM, Square, email, and realtime -- implement offline handling that shows a queued, retry, or unavailable state rather than blocking the UI. Verify UI does not freeze or block on network failure.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.88,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated requirement listing specific services. Slight inference needed on what 'queued/retry/unavailable' means per action type."
+  },
+  {
+    "id": "prose-004",
+    "text": "Minimum 16pt body text (mobile-first attendee UX).",
+    "task_brief": "Implement global CSS for the attendee-facing UI with a minimum body text size of 16pt (or equivalent in px/rem). Verify via CSS that no body text falls below 16pt.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "font-size:\\s*1(?:6px|rem|em|pt|[6-9]px|[0-9]{2,}px)",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct numeric requirement stated explicitly."
+  },
+  {
+    "id": "prose-005",
+    "text": "Minimum 44pt tap targets (mobile-first attendee UX).",
+    "task_brief": "Implement CSS/component styles ensuring all interactive tap targets in the attendee UI are at least 44pt (approximately 44px) in width and height. Verify tap target dimensions in CSS or component styles.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "min-height:\\s*44px|min-width:\\s*44px|height:\\s*44px|width:\\s*44px",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct numeric requirement stated explicitly."
+  },
+  {
+    "id": "prose-006",
+    "text": "Aggregated facilitator views must only render when at least 5 responses exist. Below 5, display 'Waiting for more responses.'",
+    "task_brief": "Build the facilitator dashboard aggregation view. Implement a guard that shows the text 'Waiting for more responses.' when fewer than 5 responses exist, and only renders aggregate data when 5 or more responses are present.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Waiting for more responses",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct quote with exact UI string and numeric threshold stated explicitly."
+  },
+  {
+    "id": "prose-007",
+    "text": "At startup (or deployment), check that Haiku 4.5 and Sonnet 4.6 are reachable. If unavailable, app falls back to mock mode automatically.",
+    "task_brief": "Implement a model access preflight check at app startup that pings Haiku 4.5 and Sonnet 4.6. If either is unreachable, automatically switch to mock mode without manual intervention.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.92,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated requirement with specific model names and behavior specified."
+  },
+  {
+    "id": "prose-008",
+    "text": "When AI models are unavailable, user-facing UI shows deterministic output and 'AI recommendation temporarily unavailable.'",
+    "task_brief": "When the model preflight check fails or models are unreachable, display the string 'AI recommendation temporarily unavailable.' alongside deterministic output in the UI.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "AI recommendation temporarily unavailable",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct quote with exact UI string."
+  },
+  {
+    "id": "prose-009",
+    "text": "All tests must pass in mock mode without API keys.",
+    "task_brief": "Configure the test suite so it runs entirely in mock mode without requiring any API keys (ANTHROPIC_API_KEY, RESEND_API_KEY, SQUARE_ACCESS_TOKEN). Run the test suite with these keys absent and verify all tests pass.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clear, directly stated requirement."
+  },
+  {
+    "id": "prose-010",
+    "text": "API errors must be logged to console/Vercel logs with requestId, route, userId/anonymousSessionId when available.",
+    "task_brief": "Implement an API error logger that includes requestId, route, and userId or anonymousSessionId fields. Verify log output contains these fields on error.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "requestId",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific field names are enumerated directly."
+  },
+  {
+    "id": "prose-011",
+    "text": "Do not log project descriptions, disclosure text, or provenance notes.",
+    "task_brief": "Audit all logging calls in the API routes and tool handlers. Verify that project descriptions, disclosure text, and provenance notes are never passed to console.log, console.error, or any logging utility.",
+    "source": "prose",
+    "source_location": "1. Global Platform Constraints & Guardrails",
+    "confidence": 0.93,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated prohibition. Cannot write a single regex to verify absence of these data types in logs without false positives."
+  },
+  {
+    "id": "prose-012",
+    "text": "Users join via QR code or URL. Generate an ephemeral anonymousSessionId (UUID) stored in browser localStorage.",
+    "task_brief": "On first app load (before authentication), generate a UUID as anonymousSessionId and store it in browser localStorage under the key 'anonymousSessionId'. Verify localStorage contains a valid UUID after page load.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Identity Flow (Option A)",
+    "confidence": 0.93,
+    "deterministic_check": {
+      "pattern": "anonymousSessionId",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific field name, storage location, and type stated directly."
+  },
+  {
+    "id": "prose-013",
+    "text": "Anonymous workshop tool outputs are stored server-side in tool_events keyed by anonymousSessionId, with no PII. This data is hard-deleted after 30 days if the user never converts.",
+    "task_brief": "Implement a cleanup job or cron that hard-deletes rows in tool_events where the associated anonymous_sessions.user_id IS NULL and created_at is older than 30 days. Verify the deletion query targets unclaimed sessions.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Identity Flow (Option A)",
+    "confidence": 0.9,
+    "deterministic_check": null,
+    "confidence_reasoning": "Specific retention rule with exact duration stated. Implementation mechanism (cron/job) requires minor inference."
+  },
+  {
+    "id": "prose-014",
+    "text": "On successful magic link auth, claim all data for that anonymousSessionId into the authenticated userId by updating anonymous_sessions.user_id and all related tool_events.user_id.",
+    "task_brief": "Implement the magic link conversion handler. After successful Supabase Auth, update anonymous_sessions.user_id to the new userId and update all tool_events.user_id for rows matching that anonymousSessionId. Write a test verifying both tables are updated atomically.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Identity Flow (Option A)",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Specific tables and columns named, exact operation described."
+  },
+  {
+    "id": "prose-015",
+    "text": "Browser localStorage caches anonymousSessionId and last tool outputs for offline deterministic use.",
+    "task_brief": "Implement localStorage caching so that the anonymousSessionId and the most recent output for each tool are persisted. Verify these values are readable when network is unavailable.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Identity Flow (Option A)",
+    "confidence": 0.88,
+    "deterministic_check": {
+      "pattern": "localStorage",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific storage mechanism and data types stated. Minor inference on 'last tool outputs' format."
+  },
+  {
+    "id": "prose-016",
+    "text": "Email capture initiates a 14-day premium trial (trial_ends_at = trial_started_at + 14 days).",
+    "task_brief": "Implement the conversion flow so that when a user completes magic link auth, profiles.trial_started_at is set to now() and profiles.trial_ends_at is set to now() + 14 days. Write a test verifying the 14-day interval.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Monetization (Reverse Trial)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "interval '14 days'|trial_ends_at|14.*day",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific duration and field names stated directly."
+  },
+  {
+    "id": "prose-017",
+    "text": "Downgrade executes gracefully to the free tier strictly via UI when trial_ends_at is reached.",
+    "task_brief": "Implement the trial expiration check so that when trial_ends_at passes, the UI transitions to free tier features without server-side forced logout. Verify the entitlement_status check gates premium UI elements.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Monetization (Reverse Trial)",
+    "confidence": 0.87,
+    "deterministic_check": {
+      "pattern": "trial_ends_at",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Clear requirement. 'Strictly via UI' needs minor interpretation but the core constraint is clear."
+  },
+  {
+    "id": "prose-018",
+    "text": "Pricing is $15/mo subscription only. $49 one-time Project Export is deferred to post-launch.",
+    "task_brief": "Implement the subscription pricing display showing $15/mo as the only purchasable option. Verify no $49 export purchase option is presented in the UI.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Monetization (Reverse Trial)",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "\\$15",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit price stated. Clear constraint on what NOT to build."
+  },
+  {
+    "id": "prose-019",
+    "text": "Facilitator route /facilitator is protected by one env-configured password via FACILITATOR_PASSWORD_HASH (a bcrypt hash). Use bcrypt.compare() server-side.",
+    "task_brief": "Implement the /facilitator route protection using bcrypt.compare() server-side against the FACILITATOR_PASSWORD_HASH environment variable. Verify unauthenticated access returns 401/403, and that bcrypt.compare is used (not plain text comparison).",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Facilitator Authentication",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "bcrypt\\.compare",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function name and env var name stated directly."
+  },
+  {
+    "id": "prose-020",
+    "text": "On successful facilitator auth, set an httpOnly, secure, sameSite=lax cookie named facilitator_session with a signed value and maxAge: 86400.",
+    "task_brief": "Implement facilitator session cookie creation. After successful bcrypt.compare, set a cookie named 'facilitator_session' with httpOnly=true, secure=true, sameSite='lax', maxAge=86400, and a signed value (JWT or HMAC). Verify all cookie attributes are set.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Facilitator Authentication",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "facilitator_session",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "All cookie attributes and the cookie name are specified explicitly."
+  },
+  {
+    "id": "prose-021",
+    "text": "All facilitator API routes validate the facilitator_session cookie before processing.",
+    "task_brief": "Implement middleware or per-route guards on all /api/facilitator/* (and /api/admin/*) routes that verify the facilitator_session cookie is valid before executing any logic. Verify a request without the cookie returns 401/403.",
+    "source": "prose",
+    "source_location": "2. Identity & Monetization Architecture - Facilitator Authentication",
+    "confidence": 0.93,
+    "deterministic_check": {
+      "pattern": "facilitator_session",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Clear requirement referencing the specific cookie name."
+  },
+  {
+    "id": "prose-022",
+    "text": "The DisclosureInput Zod schema must include projectTitle as z.string().min(1).max(200).",
+    "task_brief": "Implement the DisclosureInput Zod schema with projectTitle defined as z.string().min(1).max(200). Write a test verifying validation passes for a 1-char title and fails for an empty string and a 201-char string.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.99,
+    "deterministic_check": {
+      "pattern": "projectTitle.*z\\.string\\(\\)\\.min\\(1\\)\\.max\\(200\\)|z\\.string\\(\\)\\.min\\(1\\)\\.max\\(200\\).*projectTitle",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact Zod schema code is provided verbatim in the spec."
+  },
+  {
+    "id": "prose-023",
+    "text": "The DisclosureInput aiUsageAreas department field must be z.enum with values: writing, music, vfx, voice, storyboard, editing, sound_design, colorist, other.",
+    "task_brief": "Implement the DisclosureInput Zod schema's aiUsageAreas.department field as z.enum(['writing','music','vfx','voice','storyboard','editing','sound_design','colorist','other']). Write a test verifying valid/invalid enum values.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.99,
+    "deterministic_check": {
+      "pattern": "writing.*music.*vfx.*voice.*storyboard.*editing.*sound_design.*colorist.*other",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact enum values listed verbatim in spec."
+  },
+  {
+    "id": "prose-024",
+    "text": "DisclosureAI probabilistic output schema must be z.object({ disclosureText: z.string().min(50).max(2000) }) and call Haiku 4.5.",
+    "task_brief": "Implement the AI disclosure generation route using Haiku 4.5. Define the output Zod schema as z.object({ disclosureText: z.string().min(50).max(2000) }). Write a test verifying the schema rejects strings shorter than 50 and longer than 2000 chars.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "disclosureText.*z\\.string\\(\\)\\.min\\(50\\)\\.max\\(2000\\)|z\\.string\\(\\)\\.min\\(50\\)\\.max\\(2000\\).*disclosureText",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact schema code provided verbatim."
+  },
+  {
+    "id": "prose-025",
+    "text": "Free tier for Disclosure Generator shows checklist + template structure with AI wording placeholder: 'Upgrade to generate custom disclosure language.'",
+    "task_brief": "Implement the free-tier Disclosure Generator UI that shows the checklist and template structure. Replace the AI-generated wording with the exact text 'Upgrade to generate custom disclosure language.' for free-tier users.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Upgrade to generate custom disclosure language",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact placeholder text quoted directly."
+  },
+  {
+    "id": "prose-026",
+    "text": "On LLM failure for Disclosure Generator, show deterministic template with 'AI wording unavailable.'",
+    "task_brief": "Simulate an LLM failure in the Disclosure Generator and verify the UI falls back to showing the deterministic template along with the text 'AI wording unavailable.'",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "AI wording unavailable",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact fallback text quoted directly."
+  },
+  {
+    "id": "prose-027",
+    "text": "Disclosure Generator checklist item 'Human oversight documented' is satisfied if every aiUsageAreas item has a non-empty humanSupervisor.",
+    "task_brief": "Implement the Disclosure Generator deterministic checklist logic. For the 'Human oversight documented' item, set satisfied=true only when every entry in aiUsageAreas has a non-empty humanSupervisor field. Write a unit test with mixed humanSupervisor values.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit satisfaction logic provided with field name."
+  },
+  {
+    "id": "prose-028",
+    "text": "Disclosure Generator checklist item 'Consent obtained' is satisfied if no voice department is listed OR every voice item has consentDocumented === true.",
+    "task_brief": "Implement the Disclosure Generator checklist logic for 'Consent obtained': satisfied=true when no aiUsageAreas entry has department='voice', OR when every voice-department entry has consentDocumented===true. Write unit tests for both conditions.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit satisfaction logic with exact field names."
+  },
+  {
+    "id": "prose-029",
+    "text": "Disclosure Generator checklist item 'Compensation addressed' is satisfied if every item with usageLevel === 'generative' has a non-empty compensationNotes.",
+    "task_brief": "Implement the Disclosure Generator checklist logic for 'Compensation addressed': satisfied=true only when every aiUsageAreas entry where usageLevel==='generative' has a non-empty compensationNotes. Write unit tests verifying generative items without compensationNotes yield satisfied=false.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit satisfaction logic with exact field names."
+  },
+  {
+    "id": "prose-030",
+    "text": "Disclosure Generator checklist item 'Union compliance checked' is satisfied if unionStatus is non_union or unknown, OR every item has unionComplianceChecked === true.",
+    "task_brief": "Implement the Disclosure Generator checklist logic for 'Union compliance checked': satisfied=true when unionStatus is 'non_union' or 'unknown', OR every aiUsageAreas entry has unionComplianceChecked===true. Write unit tests for all branches.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 1: AI Disclosure Generator",
+    "confidence": 0.97,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit satisfaction logic with exact field values."
+  },
+  {
+    "id": "prose-031",
+    "text": "Festival Policy Lookup output must be paginated at 20 records per page.",
+    "task_brief": "Implement the Festival Policy Lookup API endpoint with pagination. Verify the response returns at most 20 records per page and includes pagination metadata (e.g., page number, total count).",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 2: Festival Policy Lookup",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit numeric page size stated directly."
+  },
+  {
+    "id": "prose-032",
+    "text": "Festival Policy Lookup performs case-insensitive substring match on festival_name and policy_details, and supports filtering by ai_policy and categories (array contains).",
+    "task_brief": "Implement the Festival Policy Lookup search logic with case-insensitive substring matching on festival_name and policy_details, plus optional filters for ai_policy (exact match) and categories (array contains). Write tests verifying case-insensitive matching and array filter.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 2: Festival Policy Lookup",
+    "confidence": 0.93,
+    "deterministic_check": null,
+    "confidence_reasoning": "Specific search behavior and filter types stated explicitly."
+  },
+  {
+    "id": "prose-033",
+    "text": "Festival Policy Lookup has no LLM, is fully free, has no free/paid boundary, and is not stored in ToolEvent.",
+    "task_brief": "Implement Festival Policy Lookup with no LLM call, no entitlement check, and no tool_events insert. Write tests verifying no LLM is called and no tool_events row is created on lookup.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 2: Festival Policy Lookup",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Multiple explicit constraints stated directly."
+  },
+  {
+    "id": "prose-034",
+    "text": "Festival Policy Lookup error state: no results shows 'No matching festivals found.' and empty database shows 'Festival data is loading.'",
+    "task_brief": "Implement Festival Policy Lookup error states. When the search returns no results, display 'No matching festivals found.' When the database is empty, display 'Festival data is loading.' Write tests for both states.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 2: Festival Policy Lookup",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "No matching festivals found\\.|Festival data is loading\\.",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact UI strings quoted directly."
+  },
+  {
+    "id": "prose-035",
+    "text": "Festival seed data of 12 records must be inserted during Phase 2.",
+    "task_brief": "Create a database seed script that inserts the 12 festival_policies records specified in Section 4 Tool 2 during Phase 2. Verify the database contains exactly 12 records after seeding.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 2: Festival Policy Lookup",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Exact count and timing stated explicitly."
+  },
+  {
+    "id": "prose-036",
+    "text": "Risk Scanner deterministic output totalScore formula: round(legal * 0.30 + ethical * 0.25 + reputational * 0.25 + union * 0.20).",
+    "task_brief": "Implement the Risk Scanner total score calculation as round(legalScore * 0.30 + ethicalScore * 0.25 + reputationalScore * 0.25 + unionScore * 0.20). Write a unit test using the fixture input (composer/generated + screenwriter/assisted + vfx/none, major_festival, non_union) and verify totalScore=4.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 3: Project Risk Scanner",
+    "confidence": 0.99,
+    "deterministic_check": {
+      "pattern": "0\\.30.*0\\.25.*0\\.25.*0\\.20|legal.*0\\.30|ethical.*0\\.25",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact formula with weights provided verbatim."
+  },
+  {
+    "id": "prose-037",
+    "text": "Risk Scanner dimension scores are clamped to [0,10] using: dimensionScore = clamp(round(rawScore * multiplier), 0, 10).",
+    "task_brief": "Implement the Risk Scanner dimension score normalization that clamps values to the range [0,10] using clamp(round(rawScore * multiplier), 0, 10). Write tests verifying values above 10 are clamped to 10 and below 0 are clamped to 0.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 3: Project Risk Scanner",
+    "confidence": 0.98,
+    "deterministic_check": {
+      "pattern": "clamp",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact formula with function name provided verbatim."
+  },
+  {
+    "id": "prose-038",
+    "text": "Risk Scanner probabilistic output uses Sonnet 4.6 with schema: z.object({ recommendations: z.array(z.string().min(10).max(500)).min(1).max(10) }).",
+    "task_brief": "Implement the Risk Scanner AI recommendations route using Sonnet 4.6. Define the output Zod schema as z.object({ recommendations: z.array(z.string().min(10).max(500)).min(1).max(10) }). Write tests verifying schema validation.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 3: Project Risk Scanner",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "recommendations.*z\\.array|z\\.array.*z\\.string\\(\\)\\.min\\(10\\)\\.max\\(500\\)",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact schema code provided verbatim."
+  },
+  {
+    "id": "prose-039",
+    "text": "Risk Scanner free tier shows tier (low/medium/high/critical) + department flags only. Premium shows full dimension breakdown + AI recommendations.",
+    "task_brief": "Implement the Risk Scanner tier gating. Free users see only the overall tier label and department flags. Premium users additionally see the full dimension breakdown and AI recommendations. Write tests verifying each tier's visibility.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 3: Project Risk Scanner",
+    "confidence": 0.93,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clear feature split between tiers stated explicitly."
+  },
+  {
+    "id": "prose-040",
+    "text": "On LLM failure for Risk Scanner, show deterministic score with 'AI recommendations unavailable.'",
+    "task_brief": "Simulate an LLM failure for the Risk Scanner and verify the UI falls back to the deterministic score display with the text 'AI recommendations unavailable.'",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 3: Project Risk Scanner",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "AI recommendations unavailable",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact fallback text quoted directly."
+  },
+  {
+    "id": "prose-041",
+    "text": "Provenance Chain Builder has no LLM integration.",
+    "task_brief": "Implement the AI Provenance Chain Builder without any LLM call. Verify no Anthropic API call is made when the tool processes input.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 4: AI Provenance Chain Builder",
+    "confidence": 0.99,
+    "deterministic_check": null,
+    "confidence_reasoning": "Directly and unambiguously stated."
+  },
+  {
+    "id": "prose-042",
+    "text": "Provenance Chain PDF export uses @react-pdf/renderer with filename pattern provenance-chain-{projectTitle}-{date}.pdf.",
+    "task_brief": "Implement PDF export for the Provenance Chain Builder using the @react-pdf/renderer library. Generate filenames following the pattern 'provenance-chain-{projectTitle}-{date}.pdf'. Write a test verifying the filename format.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 4: AI Provenance Chain Builder",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "@react-pdf/renderer",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact library and filename pattern specified."
+  },
+  {
+    "id": "prose-043",
+    "text": "Provenance Chain PDF must include sections in order: (1) Header with project title + generation date + disclaimer, (2) Summary stats table, (3) Entry-by-entry provenance log table, (4) Footer with 'Generated by Ethics Toolkit. Guidance, not legal advice.'",
+    "task_brief": "Implement the Provenance Chain PDF layout with exactly four sections in the specified order: header (project title, generation date, disclaimer), summary stats table, provenance log table (Department | Task | Attribution | Tool | Human | Notes), and footer. Verify the footer text 'Generated by Ethics Toolkit. Guidance, not legal advice.' is present.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 4: AI Provenance Chain Builder",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Generated by Ethics Toolkit\\. Guidance, not legal advice\\.",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact footer text and section order specified directly."
+  },
+  {
+    "id": "prose-044",
+    "text": "Provenance Chain duplicate detection: warn if same department + taskDescription combination exists. Do not block.",
+    "task_brief": "Implement duplicate detection in the Provenance Chain Builder that shows a warning when two entries share the same department and taskDescription. Verify the form still submits successfully (does not block) despite the duplicate warning.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 4: AI Provenance Chain Builder",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Specific fields and non-blocking behavior stated explicitly."
+  },
+  {
+    "id": "prose-045",
+    "text": "On PDF export failure for Provenance Chain Builder, show 'PDF generation failed. Your data is saved.'",
+    "task_brief": "Simulate a PDF export failure in the Provenance Chain Builder and verify the UI displays 'PDF generation failed. Your data is saved.'",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 4: AI Provenance Chain Builder",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "PDF generation failed\\. Your data is saved\\.",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact error text quoted directly."
+  },
+  {
+    "id": "prose-046",
+    "text": "Provenance Chain percentageHuman = round((humanMade / totalEntries) * 100).",
+    "task_brief": "Implement the Provenance Chain summary calculation for percentageHuman as round((humanMade / totalEntries) * 100). Write a unit test using the fixture (1 human_made out of 3 entries) and verify the result is 33.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 4: AI Provenance Chain Builder",
+    "confidence": 0.99,
+    "deterministic_check": null,
+    "confidence_reasoning": "Exact formula provided with a concrete fixture example."
+  },
+  {
+    "id": "prose-047",
+    "text": "Budget Calculator rate lookup uses inline RATE_TABLE[role][budgetTier]. If currentBudgetForRole is provided, userBudgetDelta = { low: currentBudgetForRole - humanCostRange.high, high: currentBudgetForRole - humanCostRange.low }.",
+    "task_brief": "Implement the Budget Calculator rate lookup using the inline RATE_TABLE. When currentBudgetForRole is provided, compute userBudgetDelta.low = currentBudgetForRole - humanCostRange.high and userBudgetDelta.high = currentBudgetForRole - humanCostRange.low. Write a unit test using the fixture (composer, indie, currentBudget=1500) and verify delta={low:-23500, high:-500}.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 5: Budget vs. Ethics Calculator",
+    "confidence": 0.99,
+    "deterministic_check": {
+      "pattern": "RATE_TABLE",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact formula and variable names provided verbatim."
+  },
+  {
+    "id": "prose-048",
+    "text": "Budget Calculator probabilistic output uses Sonnet 4.6 with schema: z.object({ ethicalAnalysis: z.string().min(50).max(2000) }).",
+    "task_brief": "Implement the Budget Calculator AI ethical analysis route using Sonnet 4.6. Define the output Zod schema as z.object({ ethicalAnalysis: z.string().min(50).max(2000) }). Write tests verifying schema validation.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 5: Budget vs. Ethics Calculator",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "ethicalAnalysis.*z\\.string\\(\\)\\.min\\(50\\)\\.max\\(2000\\)|z\\.string\\(\\)\\.min\\(50\\)\\.max\\(2000\\).*ethicalAnalysis",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact schema code provided verbatim."
+  },
+  {
+    "id": "prose-049",
+    "text": "Budget Calculator error state for unknown role/tier combo shows 'Rate data unavailable.'",
+    "task_brief": "Implement the Budget Calculator error handling so that when a role/budgetTier combination is not found in RATE_TABLE, the UI displays 'Rate data unavailable.'",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts - Tool 5: Budget vs. Ethics Calculator",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Rate data unavailable",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact error text quoted directly."
+  },
+  {
+    "id": "prose-050",
+    "text": "Realtime channel name must be workshop:{workshopSessionId}.",
+    "task_brief": "Implement the Supabase Realtime channel subscription using the channel name format 'workshop:{workshopSessionId}'. Write a test verifying the channel name is constructed correctly from the workshopSessionId.",
+    "source": "prose",
+    "source_location": "5. Realtime Sync & Dual-Mode UX - Channel & Message Contract",
+    "confidence": 0.98,
+    "deterministic_check": {
+      "pattern": "workshop:\\$\\{|workshop:`|workshop:.*workshopSessionId|`workshop:",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact channel name format specified."
+  },
+  {
+    "id": "prose-051",
+    "text": "All realtime messages must include eventId (UUID, client-generated).",
+    "task_brief": "Implement all 6 realtime message types so each includes a client-generated UUID as eventId. Write a test verifying the eventId field is present and is a valid UUID in message payloads.",
+    "source": "prose",
+    "source_location": "5. Realtime Sync & Dual-Mode UX - Channel & Message Contract",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "eventId",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Directly stated requirement with field name specified."
+  },
+  {
+    "id": "prose-052",
+    "text": "Broadcast-first idempotency: facilitator client keeps an in-memory Set<string> of received eventId values per workshop session and ignores duplicates.",
+    "task_brief": "Implement facilitator-side idempotency for broadcast interactions using an in-memory Set<string> of received eventIds per workshop session. Duplicate eventIds must be silently ignored without re-processing.",
+    "source": "prose",
+    "source_location": "5. Realtime Sync & Dual-Mode UX - Channel & Message Contract",
+    "confidence": 0.93,
+    "deterministic_check": {
+      "pattern": "new Set|Set<string>",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific data structure (Set<string>) and behavior specified."
+  },
+  {
+    "id": "prose-053",
+    "text": "Server checks processed_events table to silently reject duplicates for risk.aggregate, qna.question, and qna.upvote interactions.",
+    "task_brief": "Implement server-side idempotency for the three authoritative-state API routes (POST /api/workshop/risk-aggregate, POST /api/workshop/qna/question, POST /api/workshop/qna/upvote) by checking the processed_events table before processing. Duplicate eventIds must be silently rejected.",
+    "source": "prose",
+    "source_location": "5. Realtime Sync & Dual-Mode UX - Channel & Message Contract",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "processed_events",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific table and routes named directly."
+  },
+  {
+    "id": "prose-054",
+    "text": "Q&A upvote duplicate attempt returns silently with no error to client.",
+    "task_brief": "Implement the Q&A upvote endpoint so that when the unique constraint (question_id, anonymous_session_id) is violated, the server returns a success response (no error) to the client. Write a test submitting the same upvote twice and verifying no error is returned.",
+    "source": "prose",
+    "source_location": "5. Realtime Sync & Dual-Mode UX - Channel & Message Contract",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated behavior with no ambiguity."
+  },
+  {
+    "id": "prose-055",
+    "text": "Do NOT build gamification, free-text chat, collaborative editing, or leaderboards.",
+    "task_brief": "Verify the codebase contains no implementation of gamification systems, free-text chat, collaborative editing features, or leaderboards. Run a grep search for relevant patterns to confirm absence.",
+    "source": "prose",
+    "source_location": "5. Realtime Sync & Dual-Mode UX",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "leaderboard|freeTextChat|collaborativeEdit|gamif",
+      "mode": "absence"
+    },
+    "confidence_reasoning": "Explicit prohibition stated directly."
+  },
+  {
+    "id": "prose-056",
+    "text": "Square integration v1 uses checkout links only via SQUARE_CHECKOUT_URL env var. Full webhook automation is deferred.",
+    "task_brief": "Implement Square integration by redirecting users to the URL from the SQUARE_CHECKOUT_URL environment variable. Verify no Square webhook handler is implemented. Verify SQUARE_CHECKOUT_URL is read from env.",
+    "source": "prose",
+    "source_location": "7. Square Integration Contract",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "SQUARE_CHECKOUT_URL",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact env var name and constraint stated directly."
+  },
+  {
+    "id": "prose-057",
+    "text": "Admin route POST /api/admin/activate (facilitator-authenticated) accepts body { userEmail: string, squarePaymentId: string }, sets entitlement_status = 'active', and creates a square_entitlements row with square_payment_id.",
+    "task_brief": "Implement POST /api/admin/activate protected by facilitator_session cookie. Accept body {userEmail, squarePaymentId}, look up profiles by email, set entitlement_status='active', and insert a row into square_entitlements with the square_payment_id. Write tests for the happy path and unauthorized access.",
+    "source": "prose",
+    "source_location": "7. Square Integration Contract - Admin Route",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "/api/admin/activate",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact route, body shape, and DB operations specified."
+  },
+  {
+    "id": "prose-058",
+    "text": "On user conversion, generate a new UUID and set profiles.current_trial_id, trial_started_at = now(), trial_ends_at = now() + 14 days, and create 3 email_jobs rows using current_trial_id as trial_id for idempotency keys.",
+    "task_brief": "Implement the conversion handler that sets profiles.current_trial_id to a new UUID, profiles.trial_started_at to now(), profiles.trial_ends_at to now()+14 days, and creates 3 email_jobs rows (welcome, day12_warning, day14_downgrade) with idempotency keys in the format {userId}:{emailType}:{trialId}.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "current_trial_id",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific fields, timing, and idempotency key format stated directly."
+  },
+  {
+    "id": "prose-059",
+    "text": "Email idempotency key format is {userId}:{emailType}:{trialId} stored as UNIQUE constraint on email_jobs.idempotency_key.",
+    "task_brief": "Implement email_jobs rows with idempotency_key formatted as '{userId}:{emailType}:{trialId}'. Verify the UNIQUE constraint on email_jobs.idempotency_key exists in the migration. Write a test verifying that inserting a duplicate idempotency_key fails.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Idempotency & Safety",
+    "confidence": 0.98,
+    "deterministic_check": {
+      "pattern": "idempotency_key",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact format and constraint specified directly."
+  },
+  {
+    "id": "prose-060",
+    "text": "Before sending an email, check profiles.email_opt_out. If true, set job status = 'skipped'.",
+    "task_brief": "Implement the email sending logic to check profiles.email_opt_out before calling the Resend API. If email_opt_out is true, update the email_jobs row status to 'skipped' and do not send. Write a test verifying skipped status when opt_out is true.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Idempotency & Safety",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "email_opt_out",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific field and behavior stated directly."
+  },
+  {
+    "id": "prose-061",
+    "text": "On Resend 5xx error, retry once after 60 seconds. If still failing, set status = 'failed'.",
+    "task_brief": "Implement Resend API call retry logic: on a 5xx response, wait 60 seconds and retry once. If the retry also fails, set email_jobs.status = 'failed'. Write a test using a mocked Resend that fails twice and verify status is 'failed'.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Idempotency & Safety",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Specific retry count and delay, and final status specified directly."
+  },
+  {
+    "id": "prose-062",
+    "text": "Daily Vercel Cron job at /api/cron/process-emails is protected by CRON_SECRET (Vercel cron authorization header).",
+    "task_brief": "Implement the /api/cron/process-emails endpoint protected by verifying the CRON_SECRET from the Vercel cron authorization header. Write a test verifying unauthorized requests (missing or wrong secret) are rejected.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Scheduling",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "/api/cron/process-emails",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact route and env var name specified."
+  },
+  {
+    "id": "prose-063",
+    "text": "Cron query fetches: SELECT * FROM email_jobs WHERE status = 'pending' AND scheduled_for <= now().",
+    "task_brief": "Implement the cron job query to select email_jobs where status='pending' AND scheduled_for <= now(). Write a test verifying only jobs matching both conditions are returned and processed.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Scheduling",
+    "confidence": 0.98,
+    "deterministic_check": {
+      "pattern": "status.*pending.*scheduled_for|scheduled_for.*status.*pending",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact SQL query pattern specified."
+  },
+  {
+    "id": "prose-064",
+    "text": "Rate limiting uses an in-memory Map<string, { count: number; resetAt: number }> for v1. Do not add Upstash, Redis, or any new infrastructure.",
+    "task_brief": "Implement rate limiting using only an in-memory Map<string, { count: number; resetAt: number }>. Verify no Redis, Upstash, or external cache dependency is imported. Write a test verifying rate limits are enforced using only the in-memory map.",
+    "source": "prose",
+    "source_location": "9. Rate Limiting",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Map<string",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact data structure type specified. Explicit prohibition on external dependencies."
+  },
+  {
+    "id": "prose-065",
+    "text": "On rate limit exceeded, return HTTP 429 with body { error: 'rate_limited', retryAfter: <seconds> }.",
+    "task_brief": "Implement rate limit exceeded responses returning HTTP 429 with JSON body { \"error\": \"rate_limited\", \"retryAfter\": <seconds> }. Write a test verifying the status code and body shape.",
+    "source": "prose",
+    "source_location": "9. Rate Limiting",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "rate_limited",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact HTTP status code and response body field specified."
+  },
+  {
+    "id": "prose-066",
+    "text": "Mock mode bypasses Anthropic API but still enforces rate limits and input validation.",
+    "task_brief": "Implement mock mode so that Anthropic API calls are replaced with hardcoded responses, but rate limiting middleware and Zod input validation still execute. Write tests verifying rate limits are hit and invalid input is rejected in mock mode.",
+    "source": "prose",
+    "source_location": "9. Rate Limiting",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clear explicit requirement on mock mode behavior."
+  },
+  {
+    "id": "prose-067",
+    "text": "All persisted tool outputs implement the ToolEvent interface with fields: eventId (UUID client-generated), schemaVersion: 1, workshopSessionId (optional), anonymousSessionId, userId (optional), toolType (ToolType), deterministicPayload, probabilisticPayload (optional), createdAt (ISO 8601).",
+    "task_brief": "Define the ToolEvent TypeScript interface matching the spec. Verify each persisted tool (DISCLOSURE, RISK, PROVENANCE, BUDGET) produces output conforming to the ToolEvent interface. Write a type-check test or Zod validation test for each tool type.",
+    "source": "prose",
+    "source_location": "10. Autopilot Phasing Strategy - Shared Interface Specification",
+    "confidence": 0.98,
+    "deterministic_check": {
+      "pattern": "ToolEvent",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact interface definition provided verbatim."
+  },
+  {
+    "id": "prose-068",
+    "text": "Festival Policy Lookup does NOT create ToolEvent records.",
+    "task_brief": "Verify that the Festival Policy Lookup handler does not insert any rows into tool_events. Write a test performing a lookup and checking that tool_events count is unchanged.",
+    "source": "prose",
+    "source_location": "10. Autopilot Phasing Strategy - Shared Interface Specification",
+    "confidence": 0.97,
+    "deterministic_check": null,
+    "confidence_reasoning": "Directly and explicitly stated."
+  },
+  {
+    "id": "prose-069",
+    "text": "All per-tool payload Zod schemas must be implemented and passing contract tests before Phase 2 tool workers start (Phase 2.0 gate).",
+    "task_brief": "Create a shared TypeScript module containing all 5 tool payload Zod schemas (DisclosureInput/Output, PolicyLookupInput, RiskScannerInput/Output, ProvenanceInput/Output, BudgetInput/Output). All fixture tests must pass before any Phase 2 tool worker begins.",
+    "source": "prose",
+    "source_location": "10. Autopilot Phasing Strategy - Phase 2: The 5 Tools",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit gate condition stated. Phase ordering is a process constraint."
+  },
+  {
+    "id": "prose-070",
+    "text": "Phase reports must be written to docs/reports/ with specific filenames: phase-1-foundation.md, phase-2-tools.md, phase-3-realtime.md, phase-4-integration.md.",
+    "task_brief": "Configure each phase to produce a structured report at the specified paths. Verify docs/reports/phase-1-foundation.md, phase-2-tools.md, phase-3-realtime.md, and phase-4-integration.md are created after each respective phase.",
+    "source": "prose",
+    "source_location": "11. Swarm Execution Guardrails - Phase Reports",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "docs/reports/phase-[1-4]",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact file paths specified directly."
+  },
+  {
+    "id": "prose-071",
+    "text": "Each phase report must include: STATUS: PASS/FAIL, files created/modified, gate results, issues found.",
+    "task_brief": "Implement phase report generation that includes the following sections: STATUS (PASS or FAIL), files created/modified, gate results, and issues found. Verify all four sections are present in the generated report.",
+    "source": "prose",
+    "source_location": "11. Swarm Execution Guardrails - Phase Reports",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "STATUS: PASS|STATUS: FAIL",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact STATUS format specified with required sections listed."
+  },
+  {
+    "id": "prose-072",
+    "text": "Agent bash commands must use git -C <path> instead of cd <path> && git.",
+    "task_brief": "Audit all agent bash scripts and Makefile/CI commands to verify git commands use 'git -C <path>' syntax rather than 'cd <path> && git'. Write a linter or grep check for the cd-then-git pattern.",
+    "source": "prose",
+    "source_location": "11. Swarm Execution Guardrails - Bash Command Rules",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "cd .* && git",
+      "mode": "absence"
+    },
+    "confidence_reasoning": "Exact command pattern and its prohibited alternative specified directly."
+  },
+  {
+    "id": "prose-073",
+    "text": "In development/mock mode, only NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and NEXT_PUBLIC_APP_URL are required. All other missing keys trigger mock/fallback mode.",
+    "task_brief": "Implement environment variable handling so the app starts and functions in mock/fallback mode when ANTHROPIC_API_KEY, RESEND_API_KEY, SQUARE_ACCESS_TOKEN, and SQUARE_CHECKOUT_URL are absent, requiring only the three Supabase/App keys. Write a test starting the app without the non-required keys.",
+    "source": "prose",
+    "source_location": "12. Environment Variables",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "NEXT_PUBLIC_SUPABASE_URL",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Specific env vars and fallback behavior stated explicitly."
+  },
+  {
+    "id": "prose-074",
+    "text": "Email structure for all 3 emails must include: subject line, body text, deep link to {APP_URL}/results, unsubscribe link {APP_URL}/unsubscribe?token={token}, and legal disclaimer footer.",
+    "task_brief": "Implement the email templates for welcome, day12_warning, and day14_downgrade emails. Verify each email contains: a subject line, body text, a deep link ending in '/results', an unsubscribe link matching '/unsubscribe?token=', and a legal disclaimer footer.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Email Structure",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "/unsubscribe\\?token=",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact URL patterns and required elements specified directly."
+  },
+  {
+    "id": "prose-075",
+    "text": "Email format must be HTML with plain-text fallback.",
+    "task_brief": "Implement all 3 lifecycle emails using Resend with both HTML content and plain-text fallback content. Verify the Resend API call includes both html and text fields.",
+    "source": "prose",
+    "source_location": "8. Email Lifecycle Contract - Email Structure",
+    "confidence": 0.93,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clear requirement. Implementation via Resend API fields requires minor inference."
+  }
+]
