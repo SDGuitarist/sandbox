@@ -591,6 +591,21 @@ agents to complete. You will be notified as each finishes.
 a failure and proceed with the agents that did complete. Do not wait
 indefinitely.
 
+**Build worker_status list:** After all agents complete or time out, build
+the `worker_status` list that will be passed to swarm-runner in Steps 11w-16w.
+For each spawned agent, record one entry:
+
+```
+{ role: "<role-name>", branch: "<branch-name>", status: "COMPLETED|TIMED_OUT|FAILED" }
+```
+
+- **COMPLETED:** agent notification returned successfully
+- **TIMED_OUT:** agent did not complete within 10 minutes
+- **FAILED:** agent returned an error or its output contains an error status
+
+Keep this list in memory — it is passed verbatim to the swarm-runner spawn
+in Step 11w-16w. The swarm-runner skips merging TIMED_OUT or FAILED branches.
+
 ### Step 10.5w: Pre-Merge Ownership Gate
 
 Before merging any worktree branch, validate that each agent only touched its
@@ -628,6 +643,13 @@ The assembly merge, contract/smoke/test verification, merge-to-main, and
 cleanup all run inside the **swarm-runner** agent in a fresh context window.
 The orchestrator does NOT read the contract/smoke/test report files — the
 swarm-runner inlines those checks and reports a single STATUS line.
+
+**Context budget note:** This delegation saves the post-spawn tail (assembly,
+verification, merge, cleanup) from loading into the orchestrator's context.
+Deepening (Step 6) and worker spawn (Steps 7w-10.5w) remain inline because
+they require the Agent tool. The 20+ agent context budget is NOT proven by
+this design alone — the first 20+ agent build must be monitored to confirm
+the orchestrator stays under budget through the inline phases.
 
 First capture the current branch: run `git branch --show-current` and save it
 as `original_branch`.
