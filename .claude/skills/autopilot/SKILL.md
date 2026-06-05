@@ -450,15 +450,16 @@ swarm launched anyway). The artifact is a hard precondition for Step 10w.
 
 1. Read `docs/reports/<run-id>/spec-consistency-check.md` with `limit: 1`
    (STATUS is line 1 per Phase Report Standardization). Copy that line
-   verbatim. Then normalize it by stripping these specific characters from
-   the start and end of the line: `*` (bold), `_` (italic), `#` (heading),
-   and leading/trailing whitespace. Do NOT strip backticks, brackets, or
-   other characters.
+   verbatim. Then normalize it by stripping all leading instances of `*`,
+   `_`, `#`, and whitespace from the start of the line, and all trailing
+   instances of `*`, `_`, `#`, and whitespace from the end of the line.
+   Repeat until no more of these characters remain at either end.
+   Do NOT strip backticks, brackets, or other characters.
    Example: `**STATUS: PASS**` → `STATUS: PASS`.
    Example: `### STATUS: FAIL -- 3 contradictions` → `STATUS: FAIL -- 3 contradictions`.
 2. Read `docs/reports/<run-id>/spec-completeness-check.md` with `limit: 1`
-   (STATUS is line 1). Same procedure: copy verbatim, normalize by stripping
-   `*`, `_`, `#`, and whitespace from start and end.
+   (STATUS is line 1). Same procedure: copy verbatim, normalize by
+   iteratively stripping `*`, `_`, `#`, and whitespace from both ends.
 3. Write `docs/reports/<run-id>/gate-verification.md` with this exact format:
    ```
    STATUS: [CLEARED or BLOCKED]
@@ -608,6 +609,10 @@ in Step 11w-16w. The swarm-runner skips merging TIMED_OUT or FAILED branches.
 
 ### Step 10.5w: Pre-Merge Ownership Gate
 
+**Prerequisite:** Step 7w (swarm-planner) must have PASSED. The agent
+assignments used below come from the swarm-planner output. If Step 7w
+FAILed, this step is never reached (7w FAIL aborts the pipeline).
+
 Before merging any worktree branch, validate that each agent only touched its
 assigned files. For each worktree branch, run these as SEPARATE Bash calls
 (one per branch -- do NOT use a for-loop):
@@ -649,7 +654,10 @@ verification, merge, cleanup) from loading into the orchestrator's context.
 Deepening (Step 6) and worker spawn (Steps 7w-10.5w) remain inline because
 they require the Agent tool. The 20+ agent context budget is NOT proven by
 this design alone — the first 20+ agent build must be monitored to confirm
-the orchestrator stays under budget through the inline phases.
+the orchestrator stays under budget through the inline phases. Note: the
+tail-runner has NO auto-checkpoint mechanism (by design — it runs in fresh
+~60K context post-swarm). If a 20+ agent review phase exhausts tail-runner
+context, recovery is manual completion of remaining steps.
 
 First capture the current branch: run `git branch --show-current` and save it
 as `original_branch`.
