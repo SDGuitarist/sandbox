@@ -1,5 +1,30 @@
+# Environment files (NOT .env.example — those are safe)
+.env
+.env.*
+!.env.example
+
+# Claude Code volatile/local state (skills, agents, settings.json stay tracked)
+.claude/worktrees/
+.claude/agent-memory/
+.claude/settings.local.json
+.claude/cache/
+.claude/todos/
+.claude/logs/
+
+# Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Dependencies and build artifacts
+node_modules/
+.next/
+dist/
+build/
+
+# Data files that may contain sensitive content
 *.db
 *.db-wal
 *.db-shm
@@ -11,4 +36,69 @@ build/
 .env
 test_smoke.py
 node_modules/
+*.sqlite
+*.sqlite3
+*.csv
+*.jsonl
+
+# Key and certificate files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.p8
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.jks
+*.keystore
+*.asc
+
+# Service account, credential, and auth config files
+*-service-account.json
+*-credentials.json
+credentials.json
+service-account.json
+.npmrc
+.docker/config.json
+
+# Terraform state (may contain secrets in plaintext)
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Kubernetes config
+kubeconfig
+.kube/
+
+# Logs
+*.log
+logs/
+
+# Upload and result directories
+uploads/
+results/
+
+# Advisory audit staging file (overwritten each run)
+docs/reports/advisory-filesystem-baseline.txt
+
+# macOS metadata
 .DS_Store
+
+# TypeScript/Next.js generated files
+**/next-env.d.ts
+**/tsconfig.tsbuildinfo
+
+# Eval harness timestamped run artifacts (source fixtures in calibration root are tracked)
+eval-harness/calibration/spec-eval/spec-eval-*/
+eval-harness/reports/spec-eval-*/
+
+# Runtime session state
+.content-pipeline-agent/
+
+# Nested repos (separate projects, not submodules)
+writers-room-council/
+
+# Build output (PDFs, HTML, compiled guides)
+output/

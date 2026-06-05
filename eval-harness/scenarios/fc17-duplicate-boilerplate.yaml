@@ -1,0 +1,102 @@
+fc_id: fc17
+fc_slug: duplicate-boilerplate
+scenarios:
+  - id: fc17-three-ai-routes
+    title: "Three AI routes with shared boilerplate"
+    stack: flask
+    task_brief: |
+      Write three Flask routes that each call an external LLM API:
+      1. POST /api/summarize -- summarizes input text
+      2. POST /api/translate -- translates input text to a target language
+      3. POST /api/classify -- classifies input text into categories
+
+      Each route needs:
+      - Rate limiting check: call check_rate_limit(g.user.id) first, return 429 if exceeded
+      - Input validation: request JSON must have "text" field (required, max 5000 chars)
+      - Timeout: call the LLM with a 15-second timeout
+      - Error handling: catch API errors, return 502 with generic message
+      - Fallback: if the LLM returns empty, return 500
+
+      The LLM is called via call_llm(prompt: str, timeout: int) -> str.
+      The only difference between routes is the system prompt.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, boilerplate, factory, dry]
+    pair_group: fc17-ai-routes
+    variant: with_rule
+
+  - id: fc17-three-ai-routes-norule
+    title: "Three AI routes with shared boilerplate (no rule)"
+    stack: flask
+    task_brief: |
+      Write three Flask routes that each call an external LLM API:
+      1. POST /api/summarize -- summarizes input text
+      2. POST /api/translate -- translates input text to a target language
+      3. POST /api/classify -- classifies input text into categories
+
+      Each route needs:
+      - Rate limiting check: call check_rate_limit(g.user.id) first, return 429 if exceeded
+      - Input validation: request JSON must have "text" field (required, max 5000 chars)
+      - Timeout: call the LLM with a 15-second timeout
+      - Error handling: catch API errors, return 502 with generic message
+      - Fallback: if the LLM returns empty, return 500
+
+      The LLM is called via call_llm(prompt: str, timeout: int) -> str.
+      The only difference between routes is the system prompt.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, boilerplate, factory, dry]
+    pair_group: fc17-ai-routes
+    variant: without_rule
+
+  - id: fc17-crud-with-audit
+    title: "CRUD routes with repeated audit logging"
+    stack: flask
+    task_brief: |
+      Write four Flask routes for managing "documents":
+      1. POST /documents -- create
+      2. GET /documents/<int:id> -- read
+      3. POST /documents/<int:id>/edit -- update
+      4. POST /documents/<int:id>/delete -- delete
+
+      Each write route (create, update, delete) needs:
+      - @login_required decorator
+      - Input validation (title required, max 200 chars for create/update)
+      - Audit log entry: call log_audit(user_id, action, resource_id)
+      - Flash message on success
+      - Redirect to /documents
+
+      The only difference is the SQL query and the action string.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, boilerplate, crud, audit]
+    pair_group: fc17-crud
+    variant: with_rule
+
+  - id: fc17-crud-with-audit-norule
+    title: "CRUD routes with repeated audit logging (no rule)"
+    stack: flask
+    task_brief: |
+      Write four Flask routes for managing "documents":
+      1. POST /documents -- create
+      2. GET /documents/<int:id> -- read
+      3. POST /documents/<int:id>/edit -- update
+      4. POST /documents/<int:id>/delete -- delete
+
+      Each write route (create, update, delete) needs:
+      - @login_required decorator
+      - Input validation (title required, max 200 chars for create/update)
+      - Audit log entry: call log_audit(user_id, action, resource_id)
+      - Flash message on success
+      - Redirect to /documents
+
+      The only difference is the SQL query and the action string.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, boilerplate, crud, audit]
+    pair_group: fc17-crud
+    variant: without_rule

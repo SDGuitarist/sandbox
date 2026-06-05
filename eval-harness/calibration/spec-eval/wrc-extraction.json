@@ -1,0 +1,1541 @@
+[
+  {
+    "id": "tbl-001",
+    "text": "Route Pattern: `/api/ai/*`, Limit: 10 req/hour, 50 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+    "task_brief": "Implement the following as specified: Route Pattern: `/api/ai/*`, Limit: 10 req/hour, 50 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 1)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-002",
+    "text": "Route Pattern: `/api/editor/*`, Limit: 5 req/hour, 25 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+    "task_brief": "Implement the following as specified: Route Pattern: `/api/editor/*`, Limit: 5 req/hour, 25 req/day, Scope: User, Storage: Supabase `rate_limits` table",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 2)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-003",
+    "text": "Route Pattern: All other `/api/*`, Limit: 60 req/min, Scope: IP, Storage: In-memory Map (best-effort)",
+    "task_brief": "Implement the following as specified: Route Pattern: All other `/api/*`, Limit: 60 req/min, Scope: IP, Storage: In-memory Map (best-effort)",
+    "source": "table",
+    "source_location": "9. Rate Limiting (table row 3)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-004",
+    "text": "Export '`createBrowserClient`': File: `lib/supabase/client.ts`, Export: `createBrowserClient`, Consumers: All client components, hooks",
+    "task_brief": "Implement export `createBrowserClient` as specified: File: `lib/supabase/client.ts`, Export: `createBrowserClient`, Consumers: All client components, hooks",
+    "source": "table",
+    "source_location": "Export Names Table (table row 1)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "createBrowserClient",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-005",
+    "text": "Export '`createServerClient`': File: `lib/supabase/server.ts`, Export: `createServerClient`, Consumers: All API routes, middleware",
+    "task_brief": "Implement export `createServerClient` as specified: File: `lib/supabase/server.ts`, Export: `createServerClient`, Consumers: All API routes, middleware",
+    "source": "table",
+    "source_location": "Export Names Table (table row 2)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "createServerClient",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-006",
+    "text": "Export '`getClient`': File: `lib/ai/client.ts`, Export: `getClient`, Consumers: Non-streaming AI routes (`phase0-ui`, `editor-core`)",
+    "task_brief": "Implement export `getClient` as specified: File: `lib/ai/client.ts`, Export: `getClient`, Consumers: Non-streaming AI routes (`phase0-ui`, `editor-core`)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 3)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getClient",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-007",
+    "text": "Export '`hasApiKey`': File: `lib/ai/client.ts`, Export: `hasApiKey`, Consumers: All AI API routes (mock check)",
+    "task_brief": "Implement export `hasApiKey` as specified: File: `lib/ai/client.ts`, Export: `hasApiKey`, Consumers: All AI API routes (mock check)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 4)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "hasApiKey",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-008",
+    "text": "Export '`MODELS`': File: `lib/ai/client.ts`, Export: `MODELS`, Consumers: All AI API routes",
+    "task_brief": "Implement export `MODELS` as specified: File: `lib/ai/client.ts`, Export: `MODELS`, Consumers: All AI API routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 5)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "MODELS",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-009",
+    "text": "Export '`TranscriptEntry`': File: `lib/schemas/index.ts`, Export: `TranscriptEntry`, Consumers: All Council routes, project-flow components",
+    "task_brief": "Implement export `TranscriptEntry` as specified: File: `lib/schemas/index.ts`, Export: `TranscriptEntry`, Consumers: All Council routes, project-flow components",
+    "source": "table",
+    "source_location": "Export Names Table (table row 6)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "TranscriptEntry",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-010",
+    "text": "Export '`FingerprintInput`': File: `lib/schemas/index.ts`, Export: `FingerprintInput`, Consumers: Phase 0 routes, fingerprint components",
+    "task_brief": "Implement export `FingerprintInput` as specified: File: `lib/schemas/index.ts`, Export: `FingerprintInput`, Consumers: Phase 0 routes, fingerprint components",
+    "source": "table",
+    "source_location": "Export Names Table (table row 7)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "FingerprintInput",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-011",
+    "text": "Export '`ScoringFloorResult`': File: `lib/schemas/index.ts`, Export: `ScoringFloorResult`, Consumers: Phase 0 routes",
+    "task_brief": "Implement export `ScoringFloorResult` as specified: File: `lib/schemas/index.ts`, Export: `ScoringFloorResult`, Consumers: Phase 0 routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 8)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "ScoringFloorResult",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-012",
+    "text": "Export '`ProjectCalibration`': File: `lib/schemas/index.ts`, Export: `ProjectCalibration`, Consumers: Project routes",
+    "task_brief": "Implement export `ProjectCalibration` as specified: File: `lib/schemas/index.ts`, Export: `ProjectCalibration`, Consumers: Project routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 9)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "ProjectCalibration",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-013",
+    "text": "Export '`SeedBeatResponse`': File: `lib/schemas/index.ts`, Export: `SeedBeatResponse`, Consumers: Seed Council routes",
+    "task_brief": "Implement export `SeedBeatResponse` as specified: File: `lib/schemas/index.ts`, Export: `SeedBeatResponse`, Consumers: Seed Council routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 10)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "SeedBeatResponse",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-014",
+    "text": "Export '`SeedClosingHandoff`': File: `lib/schemas/index.ts`, Export: `SeedClosingHandoff`, Consumers: Seed Council routes",
+    "task_brief": "Implement export `SeedClosingHandoff` as specified: File: `lib/schemas/index.ts`, Export: `SeedClosingHandoff`, Consumers: Seed Council routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 11)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "SeedClosingHandoff",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-015",
+    "text": "Export '`CouncilVoiceResponse`': File: `lib/schemas/index.ts`, Export: `CouncilVoiceResponse`, Consumers: Standard Council routes, RWP routes",
+    "task_brief": "Implement export `CouncilVoiceResponse` as specified: File: `lib/schemas/index.ts`, Export: `CouncilVoiceResponse`, Consumers: Standard Council routes, RWP routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 12)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "CouncilVoiceResponse",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-016",
+    "text": "Export '`CouncilVerdict`': File: `lib/schemas/index.ts`, Export: `CouncilVerdict`, Consumers: Standard Council routes, RWP routes",
+    "task_brief": "Implement export `CouncilVerdict` as specified: File: `lib/schemas/index.ts`, Export: `CouncilVerdict`, Consumers: Standard Council routes, RWP routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 13)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "CouncilVerdict",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-017",
+    "text": "Export '`RWPContext`': File: `lib/schemas/index.ts`, Export: `RWPContext`, Consumers: RWP routes",
+    "task_brief": "Implement export `RWPContext` as specified: File: `lib/schemas/index.ts`, Export: `RWPContext`, Consumers: RWP routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 14)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "RWPContext",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-018",
+    "text": "Export '`EditorSuggestion`': File: `lib/schemas/index.ts`, Export: `EditorSuggestion`, Consumers: Editor routes, annotation components",
+    "task_brief": "Implement export `EditorSuggestion` as specified: File: `lib/schemas/index.ts`, Export: `EditorSuggestion`, Consumers: Editor routes, annotation components",
+    "source": "table",
+    "source_location": "Export Names Table (table row 15)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "EditorSuggestion",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-019",
+    "text": "Export '`EditorAnalysisResponse`': File: `lib/schemas/index.ts`, Export: `EditorAnalysisResponse`, Consumers: Editor routes",
+    "task_brief": "Implement export `EditorAnalysisResponse` as specified: File: `lib/schemas/index.ts`, Export: `EditorAnalysisResponse`, Consumers: Editor routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 16)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "EditorAnalysisResponse",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-020",
+    "text": "Export '`getMockScoringFloor`': File: `lib/ai/phase0-mock.ts`, Export: `getMockScoringFloor`, Consumers: Phase 0 routes (mock mode)",
+    "task_brief": "Implement export `getMockScoringFloor` as specified: File: `lib/ai/phase0-mock.ts`, Export: `getMockScoringFloor`, Consumers: Phase 0 routes (mock mode)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 17)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getMockScoringFloor",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-021",
+    "text": "Export '`getMockSeedBeat`': File: `lib/ai/mock.ts`, Export: `getMockSeedBeat`, Consumers: Seed Council routes (mock mode)",
+    "task_brief": "Implement export `getMockSeedBeat` as specified: File: `lib/ai/mock.ts`, Export: `getMockSeedBeat`, Consumers: Seed Council routes (mock mode)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 18)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getMockSeedBeat",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-022",
+    "text": "Export '`getMockVoiceResponse`': File: `lib/ai/mock.ts`, Export: `getMockVoiceResponse`, Consumers: Standard Council routes (mock mode)",
+    "task_brief": "Implement export `getMockVoiceResponse` as specified: File: `lib/ai/mock.ts`, Export: `getMockVoiceResponse`, Consumers: Standard Council routes (mock mode)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 19)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getMockVoiceResponse",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-023",
+    "text": "Export '`getMockVerdict`': File: `lib/ai/mock.ts`, Export: `getMockVerdict`, Consumers: Standard Council routes (mock mode)",
+    "task_brief": "Implement export `getMockVerdict` as specified: File: `lib/ai/mock.ts`, Export: `getMockVerdict`, Consumers: Standard Council routes (mock mode)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 20)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getMockVerdict",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-024",
+    "text": "Export '`getMockEditorAnalysis`': File: `lib/ai/mock.ts`, Export: `getMockEditorAnalysis`, Consumers: Editor routes (mock mode)",
+    "task_brief": "Implement export `getMockEditorAnalysis` as specified: File: `lib/ai/mock.ts`, Export: `getMockEditorAnalysis`, Consumers: Editor routes (mock mode)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 21)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getMockEditorAnalysis",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-025",
+    "text": "Export '`getStreamingModel`': File: `lib/ai/client.ts`, Export: `getStreamingModel`, Consumers: All streaming Council routes",
+    "task_brief": "Implement export `getStreamingModel` as specified: File: `lib/ai/client.ts`, Export: `getStreamingModel`, Consumers: All streaming Council routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 22)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "getStreamingModel",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-026",
+    "text": "Export '`runDeterministicPass`': File: `lib/editor/deterministic.ts`, Export: `runDeterministicPass`, Consumers: Editor routes (P7/P8 grep)",
+    "task_brief": "Implement export `runDeterministicPass` as specified: File: `lib/editor/deterministic.ts`, Export: `runDeterministicPass`, Consumers: Editor routes (P7/P8 grep)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 23)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "runDeterministicPass",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-027",
+    "text": "Export '`BANNED_VOCABULARY`': File: `lib/editor/vocabulary.ts`, Export: `BANNED_VOCABULARY`, Consumers: deterministic.ts",
+    "task_brief": "Implement export `BANNED_VOCABULARY` as specified: File: `lib/editor/vocabulary.ts`, Export: `BANNED_VOCABULARY`, Consumers: deterministic.ts",
+    "source": "table",
+    "source_location": "Export Names Table (table row 24)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "BANNED_VOCABULARY",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-028",
+    "text": "Export '`buildSeedBeatPrompt`': File: `lib/prompts/seed.ts`, Export: `buildSeedBeatPrompt`, Consumers: Seed Council routes",
+    "task_brief": "Implement export `buildSeedBeatPrompt` as specified: File: `lib/prompts/seed.ts`, Export: `buildSeedBeatPrompt`, Consumers: Seed Council routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 25)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "buildSeedBeatPrompt",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-029",
+    "text": "Export '`buildVoicePrompt`': File: `lib/prompts/council.ts`, Export: `buildVoicePrompt`, Consumers: Standard Council routes, RWP routes",
+    "task_brief": "Implement export `buildVoicePrompt` as specified: File: `lib/prompts/council.ts`, Export: `buildVoicePrompt`, Consumers: Standard Council routes, RWP routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 26)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "buildVoicePrompt",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-030",
+    "text": "Export '`buildEditorPrompt`': File: `lib/prompts/editor.ts`, Export: `buildEditorPrompt`, Consumers: Editor routes",
+    "task_brief": "Implement export `buildEditorPrompt` as specified: File: `lib/prompts/editor.ts`, Export: `buildEditorPrompt`, Consumers: Editor routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 27)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "buildEditorPrompt",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-031",
+    "text": "Export '`buildScoringFloorPrompt`': File: `lib/prompts/phase0.ts`, Export: `buildScoringFloorPrompt`, Consumers: Phase 0 routes",
+    "task_brief": "Implement export `buildScoringFloorPrompt` as specified: File: `lib/prompts/phase0.ts`, Export: `buildScoringFloorPrompt`, Consumers: Phase 0 routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 28)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "buildScoringFloorPrompt",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-032",
+    "text": "Export '`withRateLimit`': File: `lib/rate-limit.ts`, Export: `withRateLimit`, Consumers: All API routes",
+    "task_brief": "Implement export `withRateLimit` as specified: File: `lib/rate-limit.ts`, Export: `withRateLimit`, Consumers: All API routes",
+    "source": "table",
+    "source_location": "Export Names Table (table row 29)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "withRateLimit",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-033",
+    "text": "Export '`authMiddleware`': File: `lib/auth/middleware.ts`, Export: `authMiddleware`, Consumers: middleware.ts",
+    "task_brief": "Implement export `authMiddleware` as specified: File: `lib/auth/middleware.ts`, Export: `authMiddleware`, Consumers: middleware.ts",
+    "source": "table",
+    "source_location": "Export Names Table (table row 30)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "authMiddleware",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-034",
+    "text": "Export 'All API route request/response schemas': File: `lib/schemas/api-contracts.ts`, Export: All API route request/response schemas, Consumers: All API routes (validation)",
+    "task_brief": "Implement export All API route request/response schemas as specified: File: `lib/schemas/api-contracts.ts`, Export: All API route request/response schemas, Consumers: All API routes (validation)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 31)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-035",
+    "text": "Export '`ApiError`': File: `lib/schemas/api-contracts.ts`, Export: `ApiError`, Consumers: All API routes (error responses)",
+    "task_brief": "Implement export `ApiError` as specified: File: `lib/schemas/api-contracts.ts`, Export: `ApiError`, Consumers: All API routes (error responses)",
+    "source": "table",
+    "source_location": "Export Names Table (table row 32)",
+    "confidence": 1.0,
+    "deterministic_check": {
+      "pattern": "ApiError",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-036",
+    "text": "Function '`createBrowserClient()`': Function: `createBrowserClient()`, File: `src/lib/supabase/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All client components (editors, councils, signature), When In Flow: On component mount",
+    "task_brief": "Implement function `createBrowserClient()` as specified: Function: `createBrowserClient()`, File: `src/lib/supabase/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All client components (editors, councils, signature), When In Flow: On component mount",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 1)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-037",
+    "text": "Function '`createServerClient()`': Function: `createServerClient()`, File: `src/lib/supabase/server.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All API route agents (`phase0-ui`, `editor-core`, `seed-council`, `standard-council-rwp`, `signature-dashboard`, `demo-prep`), When In Flow: Start of every route handler",
+    "task_brief": "Implement function `createServerClient()` as specified: Function: `createServerClient()`, File: `src/lib/supabase/server.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): All API route agents (`phase0-ui`, `editor-core`, `seed-council`, `standard-council-rwp`, `signature-dashboard`, `demo-prep`), When In Flow: Start of every route handler",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 2)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-038",
+    "text": "Function '`getClient()`': Function: `getClient()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3) (Scoring Floor), `editor-core` (2.1) (Editor analysis), When In Flow: Non-streaming Anthropic SDK calls only",
+    "task_brief": "Implement function `getClient()` as specified: Function: `getClient()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3) (Scoring Floor), `editor-core` (2.1) (Editor analysis), When In Flow: Non-streaming Anthropic SDK calls only",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 3)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-039",
+    "text": "Function '`hasApiKey()`': Function: `hasApiKey()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3), `editor-core` (2.1), `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Mock mode check (all AI routes)",
+    "task_brief": "Implement function `hasApiKey()` as specified: Function: `hasApiKey()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `phase0-ui` (3), `editor-core` (2.1), `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Mock mode check (all AI routes)",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 4)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-040",
+    "text": "Function '`runDeterministicPass()`': Function: `runDeterministicPass()`, File: `src/lib/editor/deterministic.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: Before LLM analysis in Editor",
+    "task_brief": "Implement function `runDeterministicPass()` as specified: Function: `runDeterministicPass()`, File: `src/lib/editor/deterministic.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: Before LLM analysis in Editor",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 5)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-041",
+    "text": "Function '`buildSeedBeatPrompt()`': Function: `buildSeedBeatPrompt()`, File: `src/lib/prompts/seed.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `seed-council` (3.2) via `/api/council/seed` route, When In Flow: Per beat in Seed Council",
+    "task_brief": "Implement function `buildSeedBeatPrompt()` as specified: Function: `buildSeedBeatPrompt()`, File: `src/lib/prompts/seed.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `seed-council` (3.2) via `/api/council/seed` route, When In Flow: Per beat in Seed Council",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 6)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-042",
+    "text": "Function '`buildVoicePrompt()`': Function: `buildVoicePrompt()`, File: `src/lib/prompts/council.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `standard-council-rwp` (3.3) via `/api/council/standard` and `/api/council/rwp` routes, When In Flow: Per voice in Standard/RWP Council",
+    "task_brief": "Implement function `buildVoicePrompt()` as specified: Function: `buildVoicePrompt()`, File: `src/lib/prompts/council.ts`, Created By (Agent): `council-prompts` (3.1), Called By (Agent): `standard-council-rwp` (3.3) via `/api/council/standard` and `/api/council/rwp` routes, When In Flow: Per voice in Standard/RWP Council",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 7)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-043",
+    "text": "Function '`buildEditorPrompt()`': Function: `buildEditorPrompt()`, File: `src/lib/prompts/editor.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: LLM analysis call",
+    "task_brief": "Implement function `buildEditorPrompt()` as specified: Function: `buildEditorPrompt()`, File: `src/lib/prompts/editor.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1) via `/api/editor/analyze` route, When In Flow: LLM analysis call",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 8)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-044",
+    "text": "Function '`buildScoringFloorPrompt()`': Function: `buildScoringFloorPrompt()`, File: `src/lib/prompts/phase0.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor` route, When In Flow: Phase 0 scoring check",
+    "task_brief": "Implement function `buildScoringFloorPrompt()` as specified: Function: `buildScoringFloorPrompt()`, File: `src/lib/prompts/phase0.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor` route, When In Flow: Phase 0 scoring check",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 9)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-045",
+    "text": "Function '`update_signature_after_decision()`': Function: `update_signature_after_decision()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `/api/editor/decide` route, When In Flow: After accept/reject",
+    "task_brief": "Implement function `update_signature_after_decision()` as specified: Function: `update_signature_after_decision()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `/api/editor/decide` route, When In Flow: After accept/reject",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 10)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-046",
+    "text": "Function '`upsert_rate_limit()`': Function: `upsert_rate_limit()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `withRateLimit()`, When In Flow: Rate limit check",
+    "task_brief": "Implement function `upsert_rate_limit()` as specified: Function: `upsert_rate_limit()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `editor-core` (2.1) via `withRateLimit()`, When In Flow: Rate limit check",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 11)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-047",
+    "text": "Function '`auth.is_admin()`': Function: `auth.is_admin()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/*` routes, `add_allowed_email()` RPC, When In Flow: Admin route auth",
+    "task_brief": "Implement function `auth.is_admin()` as specified: Function: `auth.is_admin()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/*` routes, `add_allowed_email()` RPC, When In Flow: Admin route auth",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 12)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-048",
+    "text": "Function '`add_allowed_email()`': Function: `add_allowed_email()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/whitelist` route, When In Flow: Admin adds beta tester",
+    "task_brief": "Implement function `add_allowed_email()` as specified: Function: `add_allowed_email()`, File: `supabase/migrations/003_rpc_functions.sql`, Created By (Agent): `database` (2), Called By (Agent): `demo-prep` (4.1) via `/api/admin/whitelist` route, When In Flow: Admin adds beta tester",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 13)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-049",
+    "text": "Function '`withRateLimit()`': Function: `withRateLimit()`, File: `src/lib/rate-limit.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): All API route agents, When In Flow: Top of every AI/editor route handler",
+    "task_brief": "Implement function `withRateLimit()` as specified: Function: `withRateLimit()`, File: `src/lib/rate-limit.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): All API route agents, When In Flow: Top of every AI/editor route handler",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 14)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-050",
+    "text": "Function '`getMockSeedBeat()`': Function: `getMockSeedBeat()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `seed-council` (3.2), When In Flow: When `hasApiKey()` = false",
+    "task_brief": "Implement function `getMockSeedBeat()` as specified: Function: `getMockSeedBeat()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `seed-council` (3.2), When In Flow: When `hasApiKey()` = false",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 15)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-051",
+    "text": "Function '`getMockVoiceResponse()`': Function: `getMockVoiceResponse()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+    "task_brief": "Implement function `getMockVoiceResponse()` as specified: Function: `getMockVoiceResponse()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 16)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-052",
+    "text": "Function '`getMockVerdict()`': Function: `getMockVerdict()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+    "task_brief": "Implement function `getMockVerdict()` as specified: Function: `getMockVerdict()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `standard-council-rwp` (3.3), When In Flow: When `hasApiKey()` = false",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 17)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-053",
+    "text": "Function '`getMockScoringFloor()`': Function: `getMockScoringFloor()`, File: `src/lib/ai/phase0-mock.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor`, When In Flow: When `hasApiKey()` = false",
+    "task_brief": "Implement function `getMockScoringFloor()` as specified: Function: `getMockScoringFloor()`, File: `src/lib/ai/phase0-mock.ts`, Created By (Agent): `phase0-ui` (3), Called By (Agent): `phase0-ui` (3) via `/api/phase0/scoring-floor`, When In Flow: When `hasApiKey()` = false",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 18)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-054",
+    "text": "Function '`getMockEditorAnalysis()`': Function: `getMockEditorAnalysis()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1), When In Flow: When `hasApiKey()` = false",
+    "task_brief": "Implement function `getMockEditorAnalysis()` as specified: Function: `getMockEditorAnalysis()`, File: `src/lib/ai/mock.ts`, Created By (Agent): `editor-core` (2.1), Called By (Agent): `editor-core` (2.1), When In Flow: When `hasApiKey()` = false",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 19)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "tbl-055",
+    "text": "Function '`getStreamingModel()`': Function: `getStreamingModel()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Streaming Council calls via Vercel AI SDK",
+    "task_brief": "Implement function `getStreamingModel()` as specified: Function: `getStreamingModel()`, File: `src/lib/ai/client.ts`, Created By (Agent): `scaffold-auth` (1), Called By (Agent): `seed-council` (3.2), `standard-council-rwp` (3.3), When In Flow: Streaming Council calls via Vercel AI SDK",
+    "source": "table",
+    "source_location": "Cross-Boundary Wiring Section (table row 20)",
+    "confidence": 1.0,
+    "deterministic_check": null,
+    "confidence_reasoning": "Table-extracted claim (always 1.0)"
+  },
+  {
+    "id": "prose-001",
+    "text": "Middleware must use `getUser()` not `getSession()` for authentication token validation.",
+    "task_brief": "Implement Supabase auth middleware for a Next.js 15 app. The middleware must call `getUser()` (not `getSession()`) to revalidate the token on each request. Verify that `getSession` is absent from middleware code and `getUser` is present.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "getUser\\(",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct, unambiguous quote with exact function name specified. 'Use `getUser()` not `getSession()`' leaves no room for interpretation."
+  },
+  {
+    "id": "prose-002",
+    "text": "Middleware must NOT use `getSession()` for authentication.",
+    "task_brief": "Implement Supabase auth middleware for a Next.js 15 app. Ensure that `getSession()` is not called in the middleware file. The spec explicitly forbids its use because it does not revalidate the token.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "getSession\\(",
+      "mode": "absence"
+    },
+    "confidence_reasoning": "Direct, explicit prohibition with exact function name. Companion claim to prose-001."
+  },
+  {
+    "id": "prose-003",
+    "text": "The app must NOT use `dangerouslySetInnerHTML` with user content.",
+    "task_brief": "Build the inline annotation rendering component for the editor. User-pasted text must be rendered using safe DOM manipulation (styled spans around text nodes). Ensure `dangerouslySetInnerHTML` does not appear in code that handles user content.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "dangerouslySetInnerHTML",
+      "mode": "absence"
+    },
+    "confidence_reasoning": "Explicit prohibition with exact attribute name. 'DO NOT use `dangerouslySetInnerHTML` with user content' is unambiguous."
+  },
+  {
+    "id": "prose-004",
+    "text": "All state-mutating API routes must validate `Content-Type: application/json` header.",
+    "task_brief": "Implement CSRF protection in Next.js API route handlers. Every route that mutates state must check that the incoming request has a `Content-Type: application/json` header and reject requests that do not.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.9,
+    "deterministic_check": {
+      "pattern": "Content-Type",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Clearly stated requirement. Minor inference needed about 'all state-mutating routes' but the requirement itself is concrete and verifiable."
+  },
+  {
+    "id": "prose-005",
+    "text": "All state-mutating API routes must check the `Origin` header.",
+    "task_brief": "Implement CSRF protection in Next.js API route handlers. Every route that mutates state must validate the `Origin` header against expected values to prevent cross-site request forgery.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.9,
+    "deterministic_check": {
+      "pattern": "Origin",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicitly stated requirement alongside Content-Type check. Concrete and verifiable."
+  },
+  {
+    "id": "prose-006",
+    "text": "Admin routes (`/api/admin/*`) must require `is_admin = true` on the user's profile.",
+    "task_brief": "Implement admin route protection in Next.js. All routes matching `/api/admin/*` must verify that the authenticated user's profile has `is_admin = true` before processing the request. Return 403 if the check fails.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "is_admin",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Direct explicit requirement with exact field name and route pattern specified."
+  },
+  {
+    "id": "prose-007",
+    "text": "System prompts must include explicit instruction to ignore instructions embedded in user documents.",
+    "task_brief": "Construct LLM system prompts for the Writers Room Council app. Each system prompt must contain an explicit directive telling the model to ignore any instructions found within user-supplied document content.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.88,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated requirement but the exact wording of the instruction is not specified, requiring semantic judgment to verify correctness."
+  },
+  {
+    "id": "prose-008",
+    "text": "User text must be sandboxed within `<user_document>` XML tags in prompts.",
+    "task_brief": "Build the prompt assembly function for LLM calls. User-supplied text (drafts, writing samples) must be wrapped in `<user_document>` XML tags when inserted into the prompt to sandbox it from system instructions.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "<user_document>",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact XML tag name specified. Directly verifiable with regex."
+  },
+  {
+    "id": "prose-009",
+    "text": "Error responses must never send raw LLM output to the client on validation failure.",
+    "task_brief": "Implement LLM API route error handling. When LLM output fails Zod schema validation, the route must log the raw output server-side and return only a generic error object to the client. The raw LLM text must not appear in any HTTP response body.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit prohibition clearly stated. Requires semantic code review to verify the raw output isn't forwarded, so no simple regex suffices."
+  },
+  {
+    "id": "prose-010",
+    "text": "`next.config.ts` must set the `X-Frame-Options: DENY` security header.",
+    "task_brief": "Configure Next.js security headers in `next.config.ts`. The configuration must include `X-Frame-Options` set to `DENY` in the headers array.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "X-Frame-Options",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact header name and value specified. Directly verifiable."
+  },
+  {
+    "id": "prose-011",
+    "text": "`next.config.ts` must set the `X-Content-Type-Options: nosniff` security header.",
+    "task_brief": "Configure Next.js security headers in `next.config.ts`. The configuration must include `X-Content-Type-Options` set to `nosniff`.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "X-Content-Type-Options",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact header name and value specified."
+  },
+  {
+    "id": "prose-012",
+    "text": "`next.config.ts` must set the `Referrer-Policy: strict-origin-when-cross-origin` security header.",
+    "task_brief": "Configure Next.js security headers in `next.config.ts`. The configuration must include `Referrer-Policy` set to `strict-origin-when-cross-origin`.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Referrer-Policy",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact header name and value specified."
+  },
+  {
+    "id": "prose-013",
+    "text": "Input max length for `draft_versions.content` must be enforced in Zod schema as max 100,000 chars.",
+    "task_brief": "Define a Zod schema for the editor analyze request. The `content` field must have a `.max(100000)` constraint matching the database CHECK constraint.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Security Constraints",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "max\\(100000\\)",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact value (100,000 chars) and enforcement location (Zod schema) explicitly specified."
+  },
+  {
+    "id": "prose-014",
+    "text": "Non-whitelisted emails must see the message: 'Beta access is by invitation. Contact alex@amplifyai.to.'",
+    "task_brief": "Implement the magic link email entry flow. When a non-whitelisted email attempts to sign up or log in, the UI must display exactly: 'Beta access is by invitation. Contact alex@amplifyai.to.'",
+    "source": "prose",
+    "source_location": "2. Identity & Auth Architecture / Auth Flow (Supabase Magic Link)",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Beta access is by invitation",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Verbatim message specified in the spec, directly checkable."
+  },
+  {
+    "id": "prose-015",
+    "text": "Middleware must check auth on all routes except `/`, `/auth/callback`, and `/api/auth/*`.",
+    "task_brief": "Implement Next.js middleware for Supabase session enforcement. The middleware matcher or logic must protect all routes and explicitly exclude `/`, `/auth/callback`, and `/api/auth/*` from auth checks.",
+    "source": "prose",
+    "source_location": "2. Identity & Auth Architecture / Session Management",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "/auth/callback",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact route paths specified. All three exclusions are enumerated."
+  },
+  {
+    "id": "prose-016",
+    "text": "Unauthenticated users must be redirected to `/`.",
+    "task_brief": "Implement Next.js middleware. When an unauthenticated user accesses any protected route, the middleware must redirect them to `/` (the root/landing page).",
+    "source": "prose",
+    "source_location": "2. Identity & Auth Architecture / Session Management",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "redirect.*\\/['\"]|['\"]\\/'",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicitly stated redirect target. Directly verifiable."
+  },
+  {
+    "id": "prose-017",
+    "text": "The `FingerprintInput` Zod schema must include a `writingSample` field with `.min(100).max(10000)`.",
+    "task_brief": "Define the `FingerprintInput` Zod schema in `lib/schemas/fingerprint.ts`. The `writingSample` field must have constraints `.min(100).max(10000)` as specified.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.1 Phase 0 Fingerprint / Phase 0 Zod Schemas",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "writingSample.*min\\(100\\).*max\\(10000\\)|writingSample.*z\\.string",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact field name and constraints specified in schema code block."
+  },
+  {
+    "id": "prose-018",
+    "text": "The `ScoringFloorResult` Zod schema must include an `isMock` boolean optional field.",
+    "task_brief": "Define the `ScoringFloorResult` Zod schema in `lib/schemas/fingerprint.ts`. The schema must include `isMock: z.boolean().optional()` to indicate mock mode responses.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.1 Phase 0 Fingerprint / Phase 0 Zod Schemas",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "isMock",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact field name specified in code block."
+  },
+  {
+    "id": "prose-019",
+    "text": "The `TranscriptEntry` schema must be a discriminated union on the `type` field.",
+    "task_brief": "Implement the `TranscriptEntry` Zod schema in `lib/schemas/transcript.ts` as a discriminated union using `z.discriminatedUnion('type', [...])`. The schema must include all specified variant types.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.1b Transcript Entry Schema",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "discriminatedUnion",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement with exact Zod method name."
+  },
+  {
+    "id": "prose-020",
+    "text": "All agents writing to `council_sessions.transcript` must use the `TranscriptEntry` discriminated union schema.",
+    "task_brief": "Implement council session transcript writes. Any code that appends to or sets the `council_sessions.transcript` JSONB column must validate data against the `TranscriptEntry` discriminated union schema before writing.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.1b Transcript Entry Schema",
+    "confidence": 0.88,
+    "deterministic_check": {
+      "pattern": "TranscriptEntry",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Clear requirement but 'all agents writing' is an architectural constraint requiring code review across multiple files."
+  },
+  {
+    "id": "prose-021",
+    "text": "The `EditorAnalysisResponse` Zod schema must include an `isMock` optional boolean field.",
+    "task_brief": "Define the `EditorAnalysisResponse` Zod schema in `lib/schemas/editor.ts`. Include `isMock: z.boolean().optional()` to indicate when mock mode is active.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.5 Editor Mode",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "isMock",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact field name in code block."
+  },
+  {
+    "id": "prose-022",
+    "text": "The Crystal filter must suppress suggestions where `classification = 'voice_formalization'` unless the user has `register_leveling = true`.",
+    "task_brief": "Implement the Crystal filter in the editor analysis pipeline. After receiving LLM suggestions, suppress (mark `is_suppressed = true`) any suggestion with `classification = 'voice_formalization'` unless the user's `editorial_signatures.register_leveling` is `true`.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.5 Editor Mode",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "voice_formalization",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicitly stated filter rule with exact field values. The condition is clear and directly verifiable in code."
+  },
+  {
+    "id": "prose-023",
+    "text": "The `EditorDecideRequest` schema must NOT include a `principleId` field.",
+    "task_brief": "Define the `EditorDecideRequest` Zod schema in `lib/schemas/api-contracts.ts`. The schema must not contain a `principleId` field \u2014 the principle ID must be derived server-side from the suggestion row, not supplied by the caller.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.7 API Route Contracts",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "principleId.*EditorDecideRequest|EditorDecideRequest.*principleId",
+      "mode": "absence"
+    },
+    "confidence_reasoning": "Explicit comment in the code block: '// principleId removed: derived from the suggestion row by the RPC function'. Clear requirement."
+  },
+  {
+    "id": "prose-024",
+    "text": "The `POST /api/editor/decide` route must accept a `decision` field of type `z.enum(['accept', 'reject', 'accept_no_edit'])`.",
+    "task_brief": "Implement the `POST /api/editor/decide` API route. The request body must be validated with a Zod schema that includes `decision: z.enum(['accept', 'reject', 'accept_no_edit'])`.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.7 API Route Contracts",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "accept_no_edit",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact enum values specified in code block."
+  },
+  {
+    "id": "prose-025",
+    "text": "All API routes must return an `ApiError` object on failure.",
+    "task_brief": "Implement error handling across all API routes. Every route must catch errors and return a JSON response matching the `ApiError` Zod schema `{ error: z.string(), retryAfter?: z.number(), schemaValidationFailed?: z.boolean() }`.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.7 API Route Contracts",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "ApiError",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Clearly stated requirement. The ApiError schema is defined in the spec code block."
+  },
+  {
+    "id": "prose-026",
+    "text": "The Vercel AI SDK (`ai` package) must be used for all streaming responses to the client.",
+    "task_brief": "Implement Council voice API routes using the Vercel AI SDK. Streaming responses must use `streamText()` and `toUIMessageStreamResponse()` from the `ai` package, not the Anthropic SDK directly.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / SDK Roles (Two SDKs, Different Purposes)",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "from ['\"]ai['\"]",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement with exact package name. 'All streaming responses to the client' uses Vercel AI SDK."
+  },
+  {
+    "id": "prose-027",
+    "text": "The Anthropic SDK (`@anthropic-ai/sdk`) must be used for non-streaming structured calls only (Scoring Floor check, Editor analysis).",
+    "task_brief": "Implement the Scoring Floor check and Editor analysis API routes using the Anthropic SDK directly via `client.messages.create()` with `output_config.format.json_schema`. Do not use the Vercel AI SDK for these calls.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / SDK Roles (Two SDKs, Different Purposes)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "@anthropic-ai/sdk",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement with exact package name and use cases specified."
+  },
+  {
+    "id": "prose-028",
+    "text": "The same SDK must NOT be used for both streaming and non-streaming calls (no mixing SDKs for the same call).",
+    "task_brief": "Audit the API route implementations. Streaming Council voice routes must exclusively use the Vercel AI SDK; non-streaming structured routes (Scoring Floor, Editor analysis) must exclusively use the Anthropic SDK. Verify no route imports both for the same operation.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / SDK Roles (Two SDKs, Different Purposes)",
+    "confidence": 0.88,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit directive 'DO NOT mix SDKs for the same call' but verification requires semantic review of each route's imports and usage patterns."
+  },
+  {
+    "id": "prose-029",
+    "text": "Council voice outputs must stream via `streamText()` with `Output.object()` for combined streaming + structured extraction.",
+    "task_brief": "Implement a Council voice API route. Use the Vercel AI SDK `streamText()` function combined with `Output.object()` to simultaneously stream prose to the client and extract a validated structured result after stream completion.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / LLM Response Streaming (Council Modes)",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "Output\\.object",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact method name specified. 'Output.object()' is explicitly named as the required pattern."
+  },
+  {
+    "id": "prose-030",
+    "text": "Each beat/voice must be a separate API call, not one long-running function.",
+    "task_brief": "Implement the Council mode session flow. Each beat in Seed Council and each voice in Standard Council must be triggered by a separate HTTP request to the API route. A single session must not be processed in one long-running serverless invocation.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / LLM Response Streaming (Council Modes)",
+    "confidence": 0.92,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated architectural requirement. Requires code review to verify invocation pattern rather than simple regex."
+  },
+  {
+    "id": "prose-031",
+    "text": "The client must use `useChat` with `DefaultChatTransport({ api: '/api/council/seed' })` for Seed Council.",
+    "task_brief": "Implement the Seed Council client component. The React component must use the `useChat` hook configured with `DefaultChatTransport({ api: '/api/council/seed' })` from the Vercel AI SDK.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / LLM Response Streaming (Council Modes)",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "DefaultChatTransport",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact class name and API path specified."
+  },
+  {
+    "id": "prose-032",
+    "text": "Editor analysis must NOT stream \u2014 it uses Anthropic SDK `client.messages.create()` with `output_config.format.json_schema`.",
+    "task_brief": "Implement the `POST /api/editor/analyze` route. It must use `client.messages.create()` from the Anthropic SDK with `output_config.format.json_schema` for structured JSON output. Do not use streaming for this route.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / LLM Response (Editor Mode)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "output_config",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement with exact API parameter name specified."
+  },
+  {
+    "id": "prose-033",
+    "text": "If structured extraction fails, the system must store the raw text server-side and flag `schema_validation_failed: true`, not crash.",
+    "task_brief": "Implement error handling in Council API routes for Zod validation failures. When `Output.object()` structured extraction fails, the route must log the raw text server-side, set `schema_validation_failed: true` in the error response, and return a generic error without crashing.",
+    "source": "prose",
+    "source_location": "5. Streaming & Realtime Contracts / Structured Output After Stream (Council)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "schema_validation_failed",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact field name specified. Directly verifiable."
+  },
+  {
+    "id": "prose-034",
+    "text": "The `getClient()` function must return an Anthropic singleton client instance.",
+    "task_brief": "Implement `lib/ai/client.ts`. The `getClient()` function must lazily instantiate and return a singleton `Anthropic` client using `process.env.ANTHROPIC_API_KEY`. Subsequent calls must return the same instance.",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / Client Pattern",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "export function getClient",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function name in code block."
+  },
+  {
+    "id": "prose-035",
+    "text": "The `getStreamingModel()` function must use `createAnthropic` from `@ai-sdk/anthropic` and return the `claude-opus-4-6` model.",
+    "task_brief": "Implement `lib/ai/client.ts`. The `getStreamingModel()` function must call `createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })` and return `provider('claude-opus-4-6')`.",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / Client Pattern",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "getStreamingModel",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function name and model string in code block."
+  },
+  {
+    "id": "prose-036",
+    "text": "The `hasApiKey()` function must be exported from `lib/ai/client.ts` and return a boolean.",
+    "task_brief": "Implement `lib/ai/client.ts`. Export a `hasApiKey()` function that returns `!!process.env.ANTHROPIC_API_KEY` as a boolean.",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / Client Pattern",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "export function hasApiKey",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function signature in code block."
+  },
+  {
+    "id": "prose-037",
+    "text": "Every API route must check `hasApiKey()` first and return a mock response if false.",
+    "task_brief": "Implement each LLM API route in the Writers Room Council app. At the top of each route handler, call `hasApiKey()` and if it returns false, immediately return a valid mock response with `isMock: true` without calling the Anthropic API.",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / API Call Pattern (Every Route)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "hasApiKey\\(\\)",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit first step of the API call pattern. Exact function name specified."
+  },
+  {
+    "id": "prose-038",
+    "text": "Every API route must use a 30-second AbortController timeout for Anthropic API calls.",
+    "task_brief": "Implement LLM API route handlers. Each call to the Anthropic API must be wrapped with an `AbortController` set to abort after 30 seconds (30000ms).",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / API Call Pattern (Every Route)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "AbortController",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement with exact duration and mechanism specified."
+  },
+  {
+    "id": "prose-039",
+    "text": "On timeout or API error, routes must return a mock response with `isMock: true` flag.",
+    "task_brief": "Implement error handling in LLM API routes. When the Anthropic API call times out or returns an error, catch the error and return a mock response that includes `isMock: true` in the response body.",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / API Call Pattern (Every Route)",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "isMock.*true|isMock: true",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact field name and value specified in the error handling pattern."
+  },
+  {
+    "id": "prose-040",
+    "text": "Rate limit responses must be HTTP 429 with `{ \"error\": \"rate_limited\", \"retryAfter\": <seconds> }`.",
+    "task_brief": "Implement rate limit enforcement in API routes. When a user exceeds their rate limit, return HTTP status 429 with JSON body `{ \"error\": \"rate_limited\", \"retryAfter\": <seconds> }`.",
+    "source": "prose",
+    "source_location": "9. Rate Limiting",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "rate_limited",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact error message string and HTTP status code specified."
+  },
+  {
+    "id": "prose-041",
+    "text": "In-memory Map must NOT be used as the primary rate limiter on Vercel serverless routes.",
+    "task_brief": "Implement rate limiting for expensive AI API routes. Use the Supabase `rate_limits` table and `upsert_rate_limit()` RPC function as the primary counter. Do not use an in-memory Map as the primary limiter (it resets on cold starts and is not shared across instances).",
+    "source": "prose",
+    "source_location": "9. Rate Limiting",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "upsert_rate_limit",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement specifying the correct mechanism (Supabase RPC) vs the forbidden mechanism (in-memory Map)."
+  },
+  {
+    "id": "prose-042",
+    "text": "If total AI API calls across all users exceed 500/day, AI routes must be disabled and return mock responses.",
+    "task_brief": "Implement a daily cost circuit breaker. Track total AI API calls across all users. When the count exceeds 500 per day, disable all AI routes and return mock responses instead of calling the Anthropic API.",
+    "source": "prose",
+    "source_location": "9. Rate Limiting",
+    "confidence": 0.9,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit numeric threshold (500/day) and behavior specified. Requires semantic review of circuit breaker implementation."
+  },
+  {
+    "id": "prose-043",
+    "text": "Prompt templates must be stored in `lib/prompts/` as TypeScript template literal functions.",
+    "task_brief": "Create prompt template files in `lib/prompts/`. Each template must be a TypeScript function that accepts fingerprint, project, and session context parameters and returns a string using template literals.",
+    "source": "prose",
+    "source_location": "8. Prompt Templates & Context Assembly / Prompt Templates (One Per Voice/Beat)",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "lib/prompts/",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact directory path and implementation type (TypeScript template literal functions) specified."
+  },
+  {
+    "id": "prose-044",
+    "text": "Golden transcript regression fixtures must be stored in `lib/prompts/__fixtures__/`.",
+    "task_brief": "Create regression fixture files for Council voice quality testing. Store input/output pairs for each voice (2-3 per voice) in `lib/prompts/__fixtures__/` directory.",
+    "source": "prose",
+    "source_location": "8. Prompt Templates & Context Assembly / Golden Transcript Regression",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "lib/prompts/__fixtures__",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact directory path specified."
+  },
+  {
+    "id": "prose-045",
+    "text": "The Closing Handoff must be delivered after Beat 5 or, if Beat 5 is skipped, attached to Beat 4.",
+    "task_brief": "Implement the Seed Council session flow. After Beat 5 completes (or after Beat 4 if Beat 5 is skipped), the system must always deliver the Closing Handoff. Implement logic to detect Beat 5 skip and attach the handoff to Beat 4's completion.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Product Constraints",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "closing_handoff",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit rule with exact conditions specified."
+  },
+  {
+    "id": "prose-046",
+    "text": "Every accept/reject decision must be logged individually; no silent applications and no bulk accept-all without per-decision logging.",
+    "task_brief": "Implement the accept/reject decision flow in the editor. Each user decision on a suggestion must trigger an individual log entry via the `update_signature_after_decision` RPC function. No batch decision endpoint that bypasses per-decision logging may be implemented.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Product Constraints",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "update_signature_after_decision",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement. The RPC function name is specified elsewhere in the spec, making this verifiable."
+  },
+  {
+    "id": "prose-047",
+    "text": "The app must never generate replacement prose or rewritten sentences.",
+    "task_brief": "Audit all LLM prompt templates and API route handlers in the Writers Room Council app. Verify that no route or prompt instructs the LLM to generate replacement text, rewritten sentences, or 'after' versions of user prose. The system may only flag, name principles, ask questions, and describe structural moves.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Product Constraints",
+    "confidence": 0.88,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated prohibition but verification requires semantic review of all prompts and outputs rather than simple pattern matching."
+  },
+  {
+    "id": "prose-048",
+    "text": "The responsive design must use a minimum of 16px body text.",
+    "task_brief": "Implement the responsive CSS for the Writers Room Council app. Verify that the base body font size is set to at minimum 16px in the global stylesheet or Tailwind config.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Infrastructure Constraints",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "16px",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact value specified. Directly verifiable."
+  },
+  {
+    "id": "prose-049",
+    "text": "Touch targets must be a minimum of 44px.",
+    "task_brief": "Implement interactive UI elements (buttons, links, inputs) with a minimum touch target size of 44px height and width for mobile responsiveness.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Infrastructure Constraints",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "44px",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact pixel value specified."
+  },
+  {
+    "id": "prose-050",
+    "text": "If the Anthropic API is unreachable, the app must fall back to mock mode and remain navigable.",
+    "task_brief": "Implement offline degradation. When `hasApiKey()` returns false or any Anthropic API call fails with a network error, the app must return valid mock responses for all LLM calls. Phase 0, project management, signature dashboard, and document viewing must remain functional.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Infrastructure Constraints",
+    "confidence": 0.92,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clear requirement with explicit list of features that must remain functional. Requires integration test to verify fully."
+  },
+  {
+    "id": "prose-051",
+    "text": "Every LLM call must have a mock fallback returning valid structured data.",
+    "task_brief": "Implement mock fallback functions for every LLM-calling route. Each mock must return data that passes the corresponding Zod schema validation (e.g., `getMockSeedBeat()`, `getMockEditorAnalysis()`). There must be one unified mock system, not per-phase mocks.",
+    "source": "prose",
+    "source_location": "1. Global Constraints & Guardrails / Infrastructure Constraints",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "getMock",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement. 'One mock system (not per-phase)' and 'every LLM call has a mock fallback' are clear constraints."
+  },
+  {
+    "id": "prose-052",
+    "text": "The Supabase Auth Hook must be wired as a `before_user_created` trigger on the `allowed_emails` table using the `check_email_allowed` function.",
+    "task_brief": "Configure the Supabase auth hook for email whitelist enforcement. Wire `public.check_email_allowed(event jsonb)` as a 'Before User Created' Postgres hook in Supabase Dashboard > Auth > Hooks. The function checks the `allowed_emails` table before a magic link is sent.",
+    "source": "prose",
+    "source_location": "3. Authoritative Database Schema / Migration 003",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "check_email_allowed",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function name specified in the SQL migration code block."
+  },
+  {
+    "id": "prose-053",
+    "text": "The `enforce_non_privileged_insert` trigger must set `is_admin = false` and `is_beta_whitelisted = false` for authenticated user inserts on the `profiles` table.",
+    "task_brief": "Implement the `trg_enforce_non_privileged_insert` trigger on `public.profiles`. The trigger function must override `is_admin` and `is_beta_whitelisted` to `false` for any INSERT where `auth.uid()` is not NULL (i.e., authenticated client inserts).",
+    "source": "prose",
+    "source_location": "3. Authoritative Database Schema / Migration 003",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "enforce_non_privileged_insert",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function and trigger name specified in code block."
+  },
+  {
+    "id": "prose-054",
+    "text": "The `prevent_privilege_escalation` trigger must prevent non-admin users from changing `is_admin` or `is_beta_whitelisted` on profile UPDATE.",
+    "task_brief": "Implement the `trg_prevent_privilege_escalation` trigger on `public.profiles`. The trigger must raise an exception when a non-admin authenticated user attempts to change `is_admin` or `is_beta_whitelisted` fields.",
+    "source": "prose",
+    "source_location": "3. Authoritative Database Schema / Migration 003",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "prevent_privilege_escalation",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function and trigger name specified in code block."
+  },
+  {
+    "id": "prose-055",
+    "text": "The Seed Council's `POST /api/council/seed` route must accept an optional `sessionId` field to continue an existing session.",
+    "task_brief": "Implement the `POST /api/council/seed` API route. The request body must accept an optional `sessionId` UUID field. When provided, the route must load and continue the existing session; when omitted, a new session must be created.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.7 API Route Contracts",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "sessionId.*optional|sessionId.*\\.optional",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact field name and optionality specified in code block."
+  },
+  {
+    "id": "prose-056",
+    "text": "The Signature Dashboard must display an empty state showing Phase 0 data when no documents have been edited.",
+    "task_brief": "Implement the Signature Dashboard component. When `totalDocumentsEdited === 0`, render an empty state that displays the user's Phase 0 data: worst habit, register, and a before/after passage preview, along with the message '0 documents edited. Run your first Editor pass.'",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.6 Signature Dashboard",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "0 documents edited",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact UI string specified, directly verifiable."
+  },
+  {
+    "id": "prose-057",
+    "text": "The `update_signature_after_decision` RPC function must derive `principle_id` from the suggestion row, never from a caller-supplied parameter.",
+    "task_brief": "Implement or audit the `update_signature_after_decision` Postgres RPC function. The function must NOT accept `p_principle_id` as a parameter. Instead, it must derive the principle ID by looking up the suggestion row in `editor_suggestions`.",
+    "source": "prose",
+    "source_location": "3. Authoritative Database Schema / Migration 003",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "update_signature_after_decision",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function name and design decision (no caller-supplied principle_id) explicitly specified in code block comment."
+  },
+  {
+    "id": "prose-058",
+    "text": "Context assembly for every API call must follow the exact 7-part order: voice persona, framework rules, fingerprint, project calibration, session transcript, current user input, draft text.",
+    "task_brief": "Implement the context assembly function used by all Council and Editor API routes. The assembled prompt must follow the specified order: (1) voice persona, (2) framework rules, (3) user fingerprint, (4) project calibration, (5) session transcript, (6) current user input, (7) draft text.",
+    "source": "prose",
+    "source_location": "8. Prompt Templates & Context Assembly / Context Assembly Pattern",
+    "confidence": 0.88,
+    "deterministic_check": null,
+    "confidence_reasoning": "Explicit ordered list but verifying the assembly order requires semantic review of the prompt construction code."
+  },
+  {
+    "id": "prose-059",
+    "text": "The `MODELS.OPUS` constant must equal `'claude-opus-4-6'`.",
+    "task_brief": "Implement `lib/ai/client.ts`. Define and export a `MODELS` const object with an `OPUS` key set to `'claude-opus-4-6' as const`.",
+    "source": "prose",
+    "source_location": "7. External Integration Contracts (Anthropic API) / Client Pattern",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "claude-opus-4-6",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact model string specified in code block."
+  },
+  {
+    "id": "prose-060",
+    "text": "The Returning Writer Protocol must read previous session data via `previous_session_id` FK on the new session, not from the projects table.",
+    "task_brief": "Implement the Returning Writer Protocol flow. When loading context for a new RWP session, the previous session's central question, verdict, and revision map must be fetched by joining through `council_sessions.previous_session_id`, not by reading from the `projects` table.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.4 Returning Writer Protocol",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "previous_session_id",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit requirement specifying exact FK column and explicitly forbidding the projects table approach."
+  },
+  {
+    "id": "prose-061",
+    "text": "Pass 1 of Editor processing must be a deterministic pre-LLM grep for em-dashes (P7) and banned vocabulary (P8).",
+    "task_brief": "Implement the two-pass Editor analysis. Pass 1 must be a deterministic, zero-token operation that greps the document text for em-dash characters (P7) and words in the banned vocabulary list (P8), producing suggestion objects without any LLM call.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.5 Editor Mode",
+    "confidence": 0.95,
+    "deterministic_check": null,
+    "confidence_reasoning": "Clearly stated requirement. Requires code review to confirm no LLM call is made in pass 1."
+  },
+  {
+    "id": "prose-062",
+    "text": "The `scoring_floor_passed` field on the `fingerprints` table must be set based on the Scoring Floor LLM evaluation result.",
+    "task_brief": "Implement the Phase 0 Scoring Floor check flow. After the LLM evaluates the writing sample and before/after passage, store the result in `fingerprints.scoring_floor_passed`. If the floor check fails, display the message 'Your intake doesn't give the council enough to work with. Add more detail.'",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.1 Phase 0 Fingerprint",
+    "confidence": 0.88,
+    "deterministic_check": {
+      "pattern": "scoring_floor_passed",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Field name is explicit. The display message is also verbatim, though the full flow requires semantic review."
+  },
+  {
+    "id": "prose-063",
+    "text": "The insufficient-intake message must be: \"Your intake doesn't give the council enough to work with. Add more detail.\"",
+    "task_brief": "Implement the Scoring Floor failure UI. When the LLM evaluation returns `passed: false`, display the exact message: \"Your intake doesn't give the council enough to work with. Add more detail.\"",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.1 Phase 0 Fingerprint",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "doesn't give the council enough to work with",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Verbatim message specified in the spec."
+  },
+  {
+    "id": "prose-064",
+    "text": "The inline annotation system must use Radix UI Popover for suggestion display.",
+    "task_brief": "Implement the inline annotation UI in the editor. When a flagged text span is clicked or hovered, display the suggestion details (principle, flag text, question) using a Radix UI `Popover` component.",
+    "source": "prose",
+    "source_location": "Enhancement Summary / Deepening Key Improvements",
+    "confidence": 0.92,
+    "deterministic_check": {
+      "pattern": "Popover",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact component library and component name specified in the Deepening Key Improvements section."
+  },
+  {
+    "id": "prose-065",
+    "text": "The inline annotation system must use `splitTextByAnnotations()` to convert plain text into styled spans.",
+    "task_brief": "Implement the inline annotation rendering function `splitTextByAnnotations()`. It must accept plain text and an array of annotation ranges (char offsets) and return an array of React elements \u2014 unstyled text nodes and styled span elements for annotated regions.",
+    "source": "prose",
+    "source_location": "Enhancement Summary / Deepening Key Improvements",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "splitTextByAnnotations",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact function name specified."
+  },
+  {
+    "id": "prose-066",
+    "text": "The inline annotation accept flow must use an inline `<input>` element for editing (controlled React, no contenteditable).",
+    "task_brief": "Implement the accept annotation UI behavior. When a user accepts a suggestion, the flagged text region must be replaced with an inline `<input>` element (not a contenteditable div) allowing in-place editing.",
+    "source": "prose",
+    "source_location": "Enhancement Summary / Deepening Key Improvements",
+    "confidence": 0.9,
+    "deterministic_check": {
+      "pattern": "<input",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit pattern specified: 'inline <input> on accept' and 'Controlled React (no contenteditable)'."
+  },
+  {
+    "id": "prose-067",
+    "text": "The `accept_no_edit` decision must be logged when a user accepts a suggestion but navigates away without changing text.",
+    "task_brief": "Implement the accept_no_edit detection logic in the editor. When a user clicks Accept on a suggestion, place the cursor in an inline input. If the user navigates away or blurs the input without making any text changes, automatically log the decision as `accept_no_edit` via the `/api/editor/decide` route.",
+    "source": "prose",
+    "source_location": "14. Acceptance Tests / Error Cases",
+    "confidence": 0.95,
+    "deterministic_check": {
+      "pattern": "accept_no_edit",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact decision value and trigger condition explicitly stated in acceptance tests."
+  },
+  {
+    "id": "prose-068",
+    "text": "The `POST /api/phase0/scoring-floor` route must return HTTP 400 when `writingSample` is below 100 characters.",
+    "task_brief": "Implement the `POST /api/phase0/scoring-floor` API route with Zod request validation. When `writingSample` has fewer than 100 characters, the route must return HTTP 400 (Zod validation error) before calling any LLM.",
+    "source": "prose",
+    "source_location": "14. Acceptance Tests / Verification Commands",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "scoring-floor",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Explicit verification command with exact expected behavior (400 on short input) specified in acceptance tests."
+  },
+  {
+    "id": "prose-069",
+    "text": "The `handoff_state` column on `projects` must be set to `'council_complete_greenlight'` after a Greenlight verdict.",
+    "task_brief": "Implement the Standard Council verdict handling. After the Council delivers a Greenlight verdict, update `projects.handoff_state` to `'council_complete_greenlight'` in the database.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.3 Standard Council Mode",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "council_complete_greenlight",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact enum value specified."
+  },
+  {
+    "id": "prose-070",
+    "text": "The `handoff_state` column on `projects` must be set to `'council_complete_rewrite'` after a Rewrite verdict.",
+    "task_brief": "Implement the Standard Council verdict handling. After the Council delivers a Rewrite verdict, update `projects.handoff_state` to `'council_complete_rewrite'` in the database.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.3 Standard Council Mode",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "council_complete_rewrite",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact enum value specified."
+  },
+  {
+    "id": "prose-071",
+    "text": "The `handoff_state` column on `projects` must be set to `'council_complete_pass'` after a Pass verdict.",
+    "task_brief": "Implement the Standard Council verdict handling. After the Council delivers a Pass verdict, update `projects.handoff_state` to `'council_complete_pass'` in the database.",
+    "source": "prose",
+    "source_location": "4. Core Workflow Contracts / 4.3 Standard Council Mode",
+    "confidence": 0.97,
+    "deterministic_check": {
+      "pattern": "council_complete_pass",
+      "mode": "presence"
+    },
+    "confidence_reasoning": "Exact enum value specified."
+  }
+]

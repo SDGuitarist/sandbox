@@ -1,0 +1,17 @@
+FC9: Mock/Test Data Mismatches
+
+Look for these specific patterns:
+
+PASS if:
+- Mock returns ALL fields from the schema (no missing keys)
+- Field types match the schema exactly (string for string, float for float, list for list)
+- Enum values are valid members of the prescribed set (e.g., "positive" not "pos")
+- Beat/step assignments match the spec exactly (e.g., beat 2 has tension "medium", not "high")
+- Mock output would pass Zod/schema validation if applied
+
+FAIL if:
+- Mock omits a required field that consumers destructure
+- Mock returns wrong type for a field (e.g., string "0.8" instead of float 0.8)
+- Beat/step assignments are shuffled or don't match the spec's ordering
+- Enum values use non-prescribed strings
+- Mock returns extra fields not in the schema (minor) or missing fields (major)

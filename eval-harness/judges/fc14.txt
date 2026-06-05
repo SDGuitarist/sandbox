@@ -1,0 +1,17 @@
+FC14: executescript() With Destructive DDL
+
+The ONLY thing this rule prohibits is using executescript() for destructive migrations.
+Using individual execute() calls with DROP TABLE is FINE -- the danger is executescript()'s implicit commit.
+
+PASS if:
+- Code does NOT call executescript() with destructive DDL (DROP TABLE, DELETE)
+- Uses individual cursor.execute() calls instead of executescript() -- this is correct
+- Table recreation via execute("DROP TABLE") + execute("CREATE TABLE") is ACCEPTABLE
+- ALTER TABLE RENAME COLUMN is ACCEPTABLE
+
+FAIL if:
+- Code calls conn.executescript() or cursor.executescript() with DROP TABLE or DELETE
+- Uses a single executescript() block that both drops and recreates tables
+- The specific method executescript() is used for any destructive operation
+
+DO NOT fail code that uses execute() for DROP TABLE -- only executescript() is dangerous.

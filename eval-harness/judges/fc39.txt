@@ -1,0 +1,15 @@
+FC39: App Factory Created Per Job in Worker
+
+Look for these specific patterns:
+
+PASS if:
+- create_app() is called ONCE at module level, in __main__, or at the top of the main loop
+- The app instance is reused across all job iterations
+- app.app_context() is used from the module-level app, not from a fresh create_app()
+- The processing function receives the app or uses a module-level reference
+
+FAIL if:
+- create_app() is called inside the per-job processing function
+- create_app() is called inside the polling loop body (not before the loop)
+- Each job iteration creates a new Flask app instance
+- The worker re-initializes blueprints, CSRF, rate limiter, etc. on every job

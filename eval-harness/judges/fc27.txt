@@ -1,0 +1,19 @@
+FC27: New Route Skips Patterns Present on Adjacent Routes
+
+Look for these specific patterns:
+
+PASS if:
+- New route includes ALL guard chain elements present in the existing route example
+- Auth decorator (@login_required, @require_role) matches the existing pattern
+- Rate limiting check is present if existing routes have it
+- Error response format matches existing routes (e.g., ApiError.to_response())
+- Logging/audit pattern matches existing routes
+- Cache-Control headers match existing admin routes
+
+FAIL if:
+- New route is missing @login_required or @require_role that sibling routes have
+- New route skips rate limiting that sibling routes enforce
+- New route uses jsonify({"error": ...}) when siblings use ApiError.to_response()
+- New route omits logging that all siblings include
+- New route omits Cache-Control headers that all sibling admin routes set
+- Any element of the existing guard chain is absent from the new route

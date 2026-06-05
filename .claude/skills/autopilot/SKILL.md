@@ -140,6 +140,14 @@ If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
 Run Info + Phase Status section + AGENT_STATUS table header + empty FAILURES +
 empty RUN_METRICS.
 
+### Step 1.55: Advisory Baseline Capture (non-blocking)
+
+Run `/advisory-audit baseline`
+
+This captures the git SHA and filesystem snapshot for the post-run audit.
+Best-effort -- if it fails, continue to Step 1.6. The post-run audit will
+run in degraded mode (git-diff only) if the baseline is missing.
+
 ### Step 1.6: Inject Agent Pitfalls
 
 Read `~/.claude/docs/agent-pitfalls.md`. These pitfalls MUST be injected into
@@ -467,7 +475,41 @@ swarm launched anyway). The artifact is a hard precondition for Step 10w.
    status lines. Do NOT proceed to Step 10w. This is a hard abort.
 5. If CLEARED: proceed to Step 9w.8.
 
-### Step 9w.8: Ghost-File Cleanup (MANDATORY -- SWARM ONLY)
+### Step 9w.8: Spec Eval Gate (MANDATORY -- SWARM ONLY)
+
+Test whether agents can actually follow this spec's concrete instructions.
+This gate catches specs that are structurally complete (9w.6 passed) but
+too vague for agents to implement correctly.
+
+Run the spec eval gate from the project root:
+
+1. Run: `eval-harness/.venv/bin/python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id> --cost-cap 1.0`
+2. Check exit code:
+   - Exit 0 (PASS): all HIGH-confidence claims passed. Proceed to Step 9w.9.
+   - Exit 1 (FAIL): read `docs/reports/<run-id>/spec-eval-*/spec-eval-gate.json`.
+     The `failed_details` array lists which spec instructions agents couldn't
+     follow. For each failed claim: tighten the spec instruction to be more
+     concrete (e.g., "validate email" becomes "validate email with regex
+     `^[\w.-]+@[\w.-]+\.\w+$`"). Commit:
+     `git add docs/plans/<plan-file>`
+     `git commit -m "fix: tighten vague spec instructions (spec eval gate)"`
+     Re-run Step 9w.8. Max 1 retry.
+   - Exit 1 (WARN_UNSCORABLE): too few testable claims extracted. The spec
+     may lack concrete instructions. Proceed with caution -- log the warning
+     in BUILD_TRACKING.
+   - Exit 1 (RETRY): transient API errors. Re-run once.
+   - Exit 2 (ENV_ERROR): environment misconfiguration (e.g., missing
+     ANTHROPIC_API_KEY). Do NOT retry or attempt to fix the spec. Abort with:
+     `"SPEC EVAL GATE ENV ERROR: <stderr message>"`
+3. If still FAIL after retry: abort with
+   `"SPEC EVAL GATE FAILED: <N> claims failed. See report for details."`
+
+**What this catches that other gates don't:** Spec completeness (9w.6) checks
+that sections exist. Spec eval gate checks that the instructions in those
+sections are precise enough for agents to follow. Example: "validate email"
+passes completeness but fails spec eval because it doesn't say how.
+
+### Step 9w.9: Ghost-File Cleanup (MANDATORY -- SWARM ONLY)
 
 Before launching swarm agents, check for files left over from prior builds
 in the same repo (FC48). Ghost files from prior projects silently ship with
@@ -495,12 +537,18 @@ The review caught it as P2, but it should have been caught before agents launche
 
 ### Step 10w: Parallel Swarm Work
 
-**PRECONDITION:** Before reading the agent assignment table, verify that
-`docs/reports/<run-id>/gate-verification.md` exists AND contains
-`STATUS: CLEARED`. If the file does not exist or contains `STATUS: BLOCKED`,
-abort with: `"CANNOT SPAWN: gate-verification.md missing or BLOCKED.
-Run Step 9w.7 first."` This check is non-negotiable -- it prevents the
-orchestrator from skipping the gate verification step entirely.
+**PRECONDITION:** Before reading the agent assignment table, verify BOTH:
+1. `docs/reports/<run-id>/gate-verification.md` exists AND contains
+   `STATUS: CLEARED`.
+2. `docs/reports/<run-id>/spec-eval-*/spec-eval-verification.md` exists
+   AND contains `STATUS: PASS`.
+
+If gate-verification.md is missing or BLOCKED, abort with:
+`"CANNOT SPAWN: gate-verification.md missing or BLOCKED. Run Step 9w.7 first."`
+If spec-eval-verification.md is missing, abort with:
+`"CANNOT SPAWN: spec-eval-verification.md missing. Run Step 9w.8 first."`
+These file-based checks prevent the orchestrator from skipping gates
+(the exact pattern that caused Run 054's gate bypass).
 
 Read the `## Swarm Agent Assignment` section from the plan. Before spawning
 any agents, validate ALL file paths in the assignment table:
@@ -851,6 +899,14 @@ section completeness (What Was Missed, skeptical questions, promotions),
 and run quality grading (6 scored dimensions with artifact-backed evidence).
 
 Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.
+
+### Advisory Audit (non-blocking, best-effort)
+
+Run `/advisory-audit report <run-id>`
+
+This generates the post-run advisory report comparing current state against
+the baseline captured in Step 1.55. Cannot fail the run -- if anything
+errors, it logs what it can and proceeds to Done.
 
 ### Done
 

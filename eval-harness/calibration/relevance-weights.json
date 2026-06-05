@@ -1,0 +1,364 @@
+{
+  "metadata": {
+    "total_builds": 32,
+    "swarm_builds": 20,
+    "total_agent_runs": 255,
+    "swarm_threshold": 3
+  },
+  "fc_details": {
+    "fc1": {
+      "builds_hit": 7,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.35,
+      "per_agent_rate": 0.0275,
+      "calibrated_relevance": 0.28
+    },
+    "fc10": {
+      "builds_hit": 3,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.15,
+      "per_agent_rate": 0.0118,
+      "calibrated_relevance": 0.12
+    },
+    "fc13": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc14": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc15": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc16": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc17": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc18": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc19": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc2": {
+      "builds_hit": 4,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.2,
+      "per_agent_rate": 0.0157,
+      "calibrated_relevance": 0.16
+    },
+    "fc20": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc21": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc22": {
+      "builds_hit": 2,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.1,
+      "per_agent_rate": 0.0078,
+      "calibrated_relevance": 0.08
+    },
+    "fc23": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc24": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc25": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc26": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc27": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc28": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc29": {
+      "builds_hit": 3,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.15,
+      "per_agent_rate": 0.0118,
+      "calibrated_relevance": 0.12
+    },
+    "fc3": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc30": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc31": {
+      "builds_hit": 2,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.1,
+      "per_agent_rate": 0.0078,
+      "calibrated_relevance": 0.08
+    },
+    "fc32": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc33": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc34": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc35": {
+      "builds_hit": 3,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.15,
+      "per_agent_rate": 0.0118,
+      "calibrated_relevance": 0.12
+    },
+    "fc36": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc37": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc38": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc39": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc4": {
+      "builds_hit": 9,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.45,
+      "per_agent_rate": 0.0353,
+      "calibrated_relevance": 0.36
+    },
+    "fc40": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc41": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc42": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc43": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc44": {
+      "builds_hit": 0,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.0,
+      "per_agent_rate": 0.0,
+      "calibrated_relevance": 0.0
+    },
+    "fc45": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc46": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc47": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc5": {
+      "builds_hit": 4,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.2,
+      "per_agent_rate": 0.0157,
+      "calibrated_relevance": 0.16
+    },
+    "fc6": {
+      "builds_hit": 1,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.05,
+      "per_agent_rate": 0.0039,
+      "calibrated_relevance": 0.04
+    },
+    "fc7": {
+      "builds_hit": 2,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.1,
+      "per_agent_rate": 0.0078,
+      "calibrated_relevance": 0.08
+    },
+    "fc9": {
+      "builds_hit": 2,
+      "total_swarm_builds": 20,
+      "build_relevance": 0.1,
+      "per_agent_rate": 0.0078,
+      "calibrated_relevance": 0.08
+    }
+  },
+  "calibrated_relevance": {
+    "fc1": 0.28,
+    "fc10": 0.12,
+    "fc13": 0.0,
+    "fc14": 0.0,
+    "fc15": 0.04,
+    "fc16": 0.04,
+    "fc17": 0.04,
+    "fc18": 0.04,
+    "fc19": 0.04,
+    "fc2": 0.16,
+    "fc20": 0.04,
+    "fc21": 0.0,
+    "fc22": 0.08,
+    "fc23": 0.04,
+    "fc24": 0.0,
+    "fc25": 0.0,
+    "fc26": 0.04,
+    "fc27": 0.04,
+    "fc28": 0.04,
+    "fc29": 0.12,
+    "fc3": 0.04,
+    "fc30": 0.04,
+    "fc31": 0.08,
+    "fc32": 0.0,
+    "fc33": 0.04,
+    "fc34": 0.04,
+    "fc35": 0.12,
+    "fc36": 0.04,
+    "fc37": 0.04,
+    "fc38": 0.04,
+    "fc39": 0.04,
+    "fc4": 0.36,
+    "fc40": 0.04,
+    "fc41": 0.0,
+    "fc42": 0.0,
+    "fc43": 0.04,
+    "fc44": 0.0,
+    "fc45": 0.04,
+    "fc46": 0.04,
+    "fc47": 0.04,
+    "fc5": 0.16,
+    "fc6": 0.04,
+    "fc7": 0.08,
+    "fc9": 0.08
+  }
+}

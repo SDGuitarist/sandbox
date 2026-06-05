@@ -1,400 +1,473 @@
 ---
 title: "feat: Sandbox Autonomy Hardening"
 type: feat
-status: refined
+status: approved
 date: 2026-05-13
+revised: 2026-06-01
 origin: "2026-05-13 sandbox autonomy analysis"
 build_method: manual
 swarm: false
 feed_forward:
-  risk: "Phase 0 resolved: commands and hooks are global-only and are never edited by this plan. The remaining risk is autopilot skill complexity — concentrating all enforcement in one file that is already 413 lines. If Phase 2 Path B is needed, a second skill file absorbs the duplication cost instead of inflating the autopilot skill."
+  risk: "Existing tracked .db, .csv, and .jsonl files may already contain sensitive material. The inventory phase must classify them before any git hygiene changes."
   verify_first: true
 ---
 
 # feat: Sandbox Autonomy Hardening
 
+## Purpose
+
+This plan reduces the blast radius of sandbox autopilot without reducing its power. The safety model is not "restrict the agent inside sandbox." The safety model is **"keep secrets, valuable originals, and sensitive data out of the sandbox; audit and promote manually."**
+
+`/Users/alejandroguillen/Projects/sandbox` is an **autopilot burn zone** — a workspace where agents operate at full autonomy. Safety comes from what is and is not present in the burn zone, not from limiting what agents can do inside it.
+
+## Core Constraint
+
+Sandbox autopilot must not be reduced, interrupted, or slowed down. The setting `dangerouslySkipPermissions: true` stays. No approval prompts, confirmation gates, or blocking hooks are added by this plan. Every control introduced here is either preventive (keep dangerous things out) or advisory (report what happened after).
+
+## Operating Principle: The Autopilot Burn Zone
+
+`/Users/alejandroguillen/Projects/sandbox` is designated as the autopilot burn zone. Inside this directory, agents may:
+
+- Read, write, create, and delete any file
+- Execute arbitrary shell commands
+- Spawn worktrees and parallel agents
+- Run tests, builds, and dev servers
+- Branch, commit, merge, and manage worktrees freely
+- Install dependencies and run package managers
+
+The existing sandbox operating contract in `CLAUDE.md` explicitly requires human confirmation for `git push --force` and `git reset --hard`. **New recommendation from this plan:** extend that confirmation requirement to all destructive history rewrites (e.g., `git rebase` that rewrites published commits, `git filter-repo`, `git filter-branch`, amending pushed commits). This is a proposed update to `CLAUDE.md`, not a claim that it is already covered.
+
+**Because agents have full power here, the sandbox must not contain:**
+
+- Production credentials or API keys with real billing/access
+- Irreplaceable original files (source recordings, signed contracts, client deliverables)
+- Private or client data (PII, financial records, health data)
+- High-value assets that cannot be regenerated
+- Credentials for services where exposure would cause harm
+
+Safety is achieved by controlling what enters the burn zone, not by restricting what happens inside it.
+
 ## Plan Quality Gate
 
 ### 1. What exactly is changing?
 
-Five changes, in this order:
+Seven documentation and hygiene changes:
 
-1. **Resolve control-plane scope** by documenting which autonomy controls are project-local versus user-global, based on actual Claude Code override behavior (Phase 0 — already resolved during plan review).
-2. **Add a sandbox root operating contract** so the repo has one authoritative file describing allowed autonomy classes, escalation thresholds, and required artifacts.
-3. **Harden the autopilot tail** so mandatory steps are machine-enforced and non-interactive during unattended runs.
-4. **Normalize the failure registry** so agent memory has stable IDs and cannot drift through duplicate numbering.
-5. **Add a pre-swarm spec consistency gate** that checks cross-section contradictions before worker agents launch.
+1. **Secrets policy** — define what credentials are and are not allowed in sandbox
+2. **Git hygiene controls** — expand `.gitignore` to prevent accidental tracking of sensitive file types
+3. **Data inventory requirement** — classify existing tracked/generated data files before any hygiene changes
+4. **Manual promotion rule** — formalize that autopilot results leave sandbox only through human review
+5. **Post-run advisory audit** — add a non-blocking read-only report of potentially sensitive new files after each run, requiring one narrow non-blocking addition to `.claude/skills/autopilot/SKILL.md`
+6. **Destructive git recommendation** — propose extending the `CLAUDE.md` confirmation requirement to all history rewrites, not just force-push and hard-reset
+7. **Verification commands** — provide read-only commands to check compliance
 
 ### 2. What must NOT change?
 
-- Existing product app behavior in sandbox subprojects unless a change is required to support the autonomy control plane.
-- The core compound loop itself: plan, work, review, compound, and learnings propagation remain the workflow.
-- Manual learning flows outside autopilot. `code-explainer` can remain available when explicitly requested.
-- Other repos on this machine unless a change is explicitly intended to be global and documented as such.
-- Current production-safety rules around deadline pressure, manual-review math, and DB safety in sensitive repos like `lead-scraper`.
-- Global hooks and commands — no edits to files in `~/.claude/hooks/` or `~/.claude/commands/`. All behavioral changes must be sandbox-local or via the autopilot skill.
-- Global docs (`~/.claude/docs/`) — only `agent-pitfalls.md` is edited (Phase 3), and only with additive changes (new IDs for duplicates, semantic slugs, reference table). This is intentional and documented in Phase 3's blast radius note.
+- `dangerouslySkipPermissions: true` — stays enabled
+- Autopilot execution flow — no new gates, prompts, or blockers added to the mandatory pipeline
+- `.claude/settings.local.json` — not edited by this plan
+- Existing tracked files — nothing is untracked, deleted, or moved without an explicit human-reviewed inventory and remediation plan first
+- The compound engineering workflow (brainstorm, plan, work, review, compound)
+- Global hooks, commands, or settings outside sandbox
+
+**One narrow edit is allowed:** `.claude/skills/autopilot/SKILL.md` receives two non-blocking advisory additions: (a) a baseline-capture step immediately after Step 1.5 creates BUILD_TRACKING.md (writes git SHA to BUILD_TRACKING.md and filesystem snapshot to a fixed staging path), and (b) an advisory audit step appended after the existing mandatory tail (copies the staging file into the run-id directory, generates the report). Neither step can fail the run. See [Integration point](#integration-point) and [Baseline method](#baseline-method) for details.
 
 ### 3. How will we know it worked?
 
-See [Acceptance Tests](#acceptance-tests) below for EARS-format criteria and verification commands.
+See [Verification Commands](#verification-commands) below. All verification is read-only — no command modifies state.
 
 ### 4. What is the most likely way this plan is wrong?
 
-Three risks:
+**Existing data may already be sensitive.** The inventory phase may reveal that tracked `.db`, `.csv`, or `.jsonl` files contain real user data, API responses with PII, or eval results with proprietary content. If so, this plan does not prescribe what to do with them — it only requires classification and a separate remediation plan. A follow-up decision is needed for any file classified as sensitive.
 
-1. **Over-hardening risk.** Turning reminders into blockers could make normal manual work frustrating if the gates are not limited to autopilot or work-phase contexts. Mitigation: all blocking behavior is scoped to the autopilot skill, not hooks.
-2. **Dual-source-of-truth risk.** BUILD_TRACKING.md already exists as a concept. Adding a separate manifest.json would create confusion about which is authoritative. Resolution: BUILD_TRACKING.md stays as the single tracking artifact; add a structured JSON block to it rather than creating a parallel system.
-3. **Spec gate false positives.** A pre-swarm consistency checker could block valid builds on ambiguous matches. Mitigation: the gate produces a report with explicit pass/fail items; ambiguous matches are flagged but don't block unless they match known contradiction patterns.
+**Git hygiene may be incomplete.** The `.gitignore` additions cover common patterns but may miss project-specific paths. The inventory phase should surface gaps.
+
+## Secrets Policy
+
+### Credential types covered
+
+This policy applies to all of the following:
+
+- API keys and API secret tokens (any provider — e.g., Stripe secret keys, Twilio auth tokens, SendGrid API keys, OpenAI/Anthropic keys)
+- OAuth client secrets and refresh tokens
+- Database connection strings and passwords
+- SSH private keys and keypairs
+- Cloud provider credentials (AWS access keys, GCP service account JSON, Azure client secrets)
+- Service account JSON files (e.g., Firebase Admin SDK JSON, GCP service accounts)
+- TLS/SSL certificates and private keys
+- Webhook signing secrets (e.g., Stripe webhook secrets, GitHub webhook secrets)
+- Deploy tokens and CI/CD secrets
+- Package registry tokens (npm `.npmrc` authTokens, PyPI, RubyGems)
+- Docker registry authentication (`.docker/config.json`)
+- Terraform state files and `.tfvars` with secrets
+- HashiCorp Vault tokens
+- JWT signing keys and HMAC shared secrets
+- Kubernetes kubeconfigs and cluster credentials
+- Apple `.p8` push notification keys
+- GitHub fine-grained personal access tokens
+- Supabase `service_role` keys (the `anon` key is public by design; `service_role` bypasses RLS)
+- Exported cookies or session tokens
+- Password manager exports
+
+### Allowed in sandbox
+
+- **`.env.example` files** with placeholder values documenting required variables
+- **Fake/dummy values** (e.g., `sk-test-fake-1234`, `password123`, `localhost` URLs)
+- **Dev-only credentials** with low rate limits, no billing, and no access to real data (e.g., free-tier API keys for development, Supabase dev project `anon` keys)
+
+### Not allowed in sandbox
+
+- **Production credentials** — any credential type listed above that accesses real services with real data or billing
+- **Real user data** — even for testing; use synthetic data instead
+- **Credentials shared with production** — if a key works in prod, it does not belong here
+
+### Handling real credentials when needed
+
+If a task genuinely requires a real credential (e.g., testing an API integration):
+
+1. Inject it manually into a `.env.local` file (not `.env` or `.env.example`)
+2. Verify `.env.local` is in `.gitignore` before use
+3. Remove the credential after the task completes
+4. If the credential was used in a sandbox that ran with `dangerouslySkipPermissions`, treat it as potentially exposed and rotate it if it matters
+
+### Rules for agents
+
+- Do not print, log, or echo secret values to stdout or files
+- Do not auto-edit `.env`, `.env.local`, or credential files without explicit human approval
+- Do not commit `.env.local` or files matching `.env.*.local`
+- If a task requires credentials that are not present, stop and ask — do not fabricate real-looking keys
+
+## Git Hygiene Controls
+
+### Recommended `.gitignore` additions
+
+Add the following patterns to the root `.gitignore`:
+
+```gitignore
+# Environment files with real values (NOT .env.example — those are safe)
+.env.local
+.env.*.local
+
+# Claude Code volatile/local state (skills, agents, settings.json stay tracked)
+.claude/worktrees/
+.claude/agent-memory/
+.claude/settings.local.json
+.claude/cache/
+.claude/todos/
+.claude/logs/
+
+# Dependencies and build artifacts
+node_modules/
+.next/
+__pycache__/
+*.pyc
+.venv/
+venv/
+dist/
+build/
+
+# Data files that may contain sensitive content
+*.csv
+*.jsonl
+*.db
+*.sqlite
+*.sqlite3
+
+# Key and certificate files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.p8
+
+# Service account, credential, and auth config files
+*-service-account.json
+*-credentials.json
+credentials.json
+service-account.json
+.npmrc
+.docker/config.json
+
+# Terraform state (may contain secrets in plaintext)
+*.tfstate
+*.tfstate.backup
+*.tfvars
+
+# Kubernetes config
+kubeconfig
+.kube/
+
+# Logs
+*.log
+logs/
+
+# Upload and result directories
+uploads/
+results/
+
+# Advisory audit staging file (overwritten each run)
+docs/reports/advisory-filesystem-baseline.txt
+```
+
+### What stays tracked
+
+The following `.claude/` paths are project-local control surfaces and must remain tracked:
+
+- `.claude/skills/` — autopilot and other skill definitions
+- `.claude/agents/` — agent definitions
+- `.claude/settings.json` — project-level settings (not `.local`)
+
+### Implementation rules
+
+- **This change must not affect autopilot execution.** Gitignore only affects what git tracks, not what agents can read or write.
+- **Before untracking any currently tracked file**, produce a proposed list with classification (sensitive / not sensitive / unknown) and get human approval. Do not run `git rm --cached` blindly.
+- **Do not delete files.** Untracking removes from git, not from disk. Agents can still use untracked files.
+- **Do not ignore `.env.example`** — these files document required variables with placeholder values and are safe to track.
+
+## Existing Data Inventory
+
+This is the prerequisite step. It must complete before any `.gitignore` changes or untracking.
+
+### Sequence (this exact order)
+
+1. **Inventory** — scan for all tracked and generated data files matching the patterns below. Record each file with its path, size, tracking status, and classification.
+2. **Update ignore rules** — add new `.gitignore` patterns to prevent future files from being tracked. This only affects files created after the change. Already-tracked files are not affected by `.gitignore` — their tracking status does not change.
+3. **Stop here** — do not untrack or delete any existing files at this stage. The inventory and ignore rules are complete. No further action on existing files.
+4. **If sensitive data is found** — create a separate, human-approved remediation plan that covers:
+   - Which specific files to untrack (with `git rm --cached`), listed by name
+   - Whether git history cleanup is needed (e.g., `git filter-repo`) and for which files
+   - Whether any credentials found in those files need rotation
+   - Whether the sensitive data was pushed to a remote (check with `git log --remotes --oneline -- <file>`)
+   - Who may have cloned or pulled the repo since the sensitive data was committed, and whether they need to be notified
+   - A notification/coordination plan if the data reached external parties
+   - A verification step confirming the files are removed from tracking but still on disk
+   - Human reviews and approves the remediation plan before any execution
+
+### File types to inventory
+
+| Pattern | Why it matters |
+|---------|---------------|
+| `*.db`, `*.sqlite`, `*.sqlite3` | May contain application data, user records, or eval results |
+| `*.csv` | May contain exported data, scraped results, or PII |
+| `*.jsonl` | May contain API responses, eval logs, or structured data |
+| `uploads/`, `results/` directories | May contain user-uploaded or generated content |
+| Eval reports (`eval-harness/calibration/`, `output/`) | May contain model outputs or proprietary prompts |
+| API output logs | May contain response data from external services |
+| `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.p8` | Private keys or certificates |
+| `*-service-account.json`, `credentials.json` | Cloud provider credentials |
+| `.npmrc`, `.docker/config.json` | Package/container registry auth |
+| `*.tfstate`, `*.tfvars` | Terraform state and variables |
+| `kubeconfig` | Kubernetes cluster credentials |
+
+### Inventory format
+
+For each file found, record:
+
+| File path | Tracked by git? | Size | Classification | Notes |
+|-----------|-----------------|------|----------------|-------|
+| `example.db` | Yes | 2.1 MB | Unknown — needs review | Created by habit-tracker app |
+
+### Classification categories
+
+- **Safe** — synthetic data, empty schemas, test fixtures with no real information
+- **Sensitive** — contains real user data, API responses with PII, production exports, or real credentials
+- **Unknown** — needs human review before deciding
+- **Generated** — reproducible output that can be regenerated (eval results, build artifacts)
+
+**No file is deleted, moved, or untracked based on this inventory alone.** The inventory is input for a human decision. If any file is classified as Sensitive or Unknown, a separate remediation plan is required before taking action.
+
+## Manual Promotion Rule
+
+Autopilot works inside sandbox copies and worktrees only. Valuable projects outside sandbox receive changes only through:
+
+- **Reviewed diffs** — human reads the diff before applying
+- **Pull requests** — changes go through normal PR review
+- **Manual copy after audit** — human copies specific files after inspecting them
+
+Autopilot does not push directly to repos outside `~/Projects/sandbox/`. Autopilot does not create PRs in external repos without human initiation. The sandbox is a drafting table, not a deployment pipeline.
+
+## Post-Run Advisory Audit
+
+After the mandatory autopilot pipeline completes, a best-effort advisory audit runs. Its findings are informational only — they cannot fail the run and are not checked for pass/fail status.
+
+### Integration point
+
+The audit requires two narrow, non-blocking additions to `.claude/skills/autopilot/SKILL.md`:
+
+**Addition 1 — Baseline capture (immediately after Step 1.5):**
+
+After Step 1.5 creates BUILD_TRACKING.md, before any planning or work begins, record the advisory baseline. This is the earliest reliable point because BUILD_TRACKING.md must exist as the write target for the git SHA. The filesystem snapshot is written to the fixed staging path `docs/reports/advisory-filesystem-baseline.txt` (not inside `<run-id>/`, which does not exist yet). See [Baseline method](#baseline-method) for details.
+
+**Addition 2 — Advisory audit step (after mandatory tail, before Done):**
+
+Placed after all mandatory tail steps (BUILD_TRACKING completion, solution doc, learnings propagation, HANDOFF, self-audit) and before the final `<promise>DONE</promise>` emission.
+
+Execution order:
+
+1. Step 1.5 creates BUILD_TRACKING.md
+2. Advisory baseline is captured (git SHA to BUILD_TRACKING.md, filesystem snapshot to `docs/reports/advisory-filesystem-baseline.txt`)
+3. ... all planning, work, review, and mandatory tail steps (including Step 6.1 which creates `docs/reports/<run-id>/`) ...
+4. Advisory audit copies `docs/reports/advisory-filesystem-baseline.txt` into `docs/reports/<run-id>/` for archival, then generates the report (best-effort, non-blocking)
+5. `<promise>DONE</promise>` is emitted
+
+Neither addition can fail the run. Neither addition modifies any existing mandatory step.
+
+### Audit failure handling
+
+The advisory audit is best-effort at every layer:
+
+1. **If report generation succeeds:** copy the staging baseline into `docs/reports/<run-id>/advisory-filesystem-baseline.txt` for archival, then write the report to `docs/reports/<run-id>/advisory-audit.md`.
+2. **If the baseline staging file is missing** (e.g., baseline capture was skipped or failed): generate the report without the filesystem diff — report only git-diff-based findings and note that the filesystem comparison was unavailable.
+3. **If report generation fails** (exception, timeout, scan error): try to append a one-line note to `BUILD_TRACKING.md` under a `## Advisory Audit` heading: `"Advisory audit skipped: [reason]"`.
+4. **If the BUILD_TRACKING.md append also fails:** proceed to `<promise>DONE</promise>` anyway. The audit is advisory — no failure at any layer blocks Done.
+
+There is no status check on advisory findings. The `<promise>DONE</promise>` emission happens regardless of audit outcome.
+
+### Baseline method
+
+Immediately after Step 1.5 creates BUILD_TRACKING.md — and before any planning or work begins — record two baselines:
+
+**1. Git baseline** — run `git rev-parse HEAD` and write the SHA to BUILD_TRACKING.md:
+
+```markdown
+## Advisory Baseline
+baseline_sha: abc1234def5678...
+```
+
+**2. Filesystem baseline** — run the sensitive-file scan (see below) and write the output to the fixed staging path `docs/reports/advisory-filesystem-baseline.txt`. This file is overwritten at the start of each run. It captures which sensitive-pattern files already exist on disk before the run, so the post-run audit can distinguish pre-existing files from new ones.
+
+The staging path is used because `docs/reports/<run-id>/` does not exist until Step 6.1. The advisory audit step (which runs after Step 6.1) copies the staging file into `docs/reports/<run-id>/advisory-filesystem-baseline.txt` for archival before generating the report.
+
+**Implementation note:** The baseline capture step should best-effort create `docs/reports/` (e.g., `mkdir -p docs/reports`) before writing the staging file. If the directory creation fails, skip the filesystem baseline and proceed — the audit will run in degraded mode (git-diff only, no filesystem comparison).
+
+The post-run audit uses both baselines:
+
+- **New tracked files:** `git diff --name-only --diff-filter=A <baseline_sha> HEAD`
+- **Modified tracked files:** `git diff --name-only --diff-filter=M <baseline_sha> HEAD`
+- **New untracked/ignored sensitive files:** re-run the filesystem scan and diff against `docs/reports/advisory-filesystem-baseline.txt` to find files that appeared during the run
+
+### Sensitive-file filesystem scan
+
+This scan catches files that `.gitignore` intentionally hides — exactly the category the audit needs to surface. It uses direct filesystem scanning instead of `git ls-files --others --exclude-standard`, which would miss ignored files.
+
+The canonical scan is defined in `scripts/sensitive-file-scan.sh`. Both the baseline capture (Step 1.55) and the post-run audit reference this single script to avoid duplication.
+
+```bash
+bash scripts/sensitive-file-scan.sh
+```
+
+No `-maxdepth` limit — the scan walks the full tree. Generated/dependency directories are excluded by path to keep it fast and noise-free.
+
+### What the audit reports
+
+| Check | How to detect |
+|-------|--------------|
+| **New `.env` or `.env.local` files** | Filesystem scan diff against baseline |
+| **Newly tracked data files** | `git diff --name-only --diff-filter=A <baseline_sha> HEAD` filtered to `.db`, `.csv`, `.jsonl` |
+| **New sensitive untracked/ignored files** | Filesystem scan diff against `docs/reports/advisory-filesystem-baseline.txt` |
+| **Large local databases** | Any `.db`/`.sqlite` file over 10 MB via `find` + `stat` |
+| **New API-touching code** | New/modified files containing `fetch(`, `axios.`, `requests.`, `http.get`, `urllib`, `httpx` |
+| **Outbound service config** | New entries in config files pointing to external URLs or services |
+| **New git remotes or GitHub automation** | `git remote -v` changes, new `.github/workflows/` files |
+| **Changes to `.claude/`** | Modified agent settings, skills, or autopilot configuration in the diff |
+
+### Report format
+
+```markdown
+## Post-Run Advisory Audit — [run-id]
+Git baseline: [baseline_sha from BUILD_TRACKING.md]
+Filesystem baseline: docs/reports/[run-id]/advisory-filesystem-baseline.txt
+Head: [current HEAD]
+
+### New environment files
+- (none found)
+
+### Newly tracked data files
+- eval-harness/calibration/spec-eval/results.jsonl (2.3 KB, added this run)
+
+### New sensitive untracked/ignored files
+- (none new since baseline)
+
+### Large databases
+- (none over 10 MB)
+
+### New API-touching code
+- src/api/client.ts:14 — fetch('https://api.example.com/v1/...')
+
+### Outbound service config
+- (none found)
+
+### Git remotes / GitHub automation
+- (no changes)
+
+### Claude/agent config changes
+- .claude/skills/autopilot/SKILL.md — advisory audit step added
+```
+
+### Enforcement
+
+**This audit is advisory only.** It runs after the mandatory pipeline completes. It does not gate, block, or fail any step. A human may choose to act on findings, but the audit itself is passive. There is no status check on advisory findings.
+
+If a human explicitly requests enforcement (e.g., "fail the run if new .env files appear"), that is a separate policy decision outside this plan.
 
 ## Acceptance Tests
 
 ### Happy Path
-- WHEN the autopilot skill is invoked in sandbox THEN the system SHALL complete all tail steps (learnings propagation, agent-pitfalls verification, BUILD_TRACKING update) without interactive pauses
-- WHEN a new agent enters the sandbox repo THEN the system SHALL provide a root CLAUDE.md that describes allowed autonomy classes, forbidden actions, and required artifacts
-- WHEN a swarm build spec contains a cross-section contradiction (e.g., schema field referenced but not defined) THEN the system SHALL block swarm launch with a FAIL report before Step 10w
-- WHEN agent-pitfalls.md is read THEN the system SHALL contain zero duplicate failure class IDs
+
+- WHEN autopilot runs in sandbox THEN the system SHALL complete all mandatory steps without new approval prompts or blocking gates introduced by this plan
+- WHEN `.env.local` exists in the sandbox root THEN `git check-ignore .env.local` SHALL confirm it is ignored
+- WHEN the post-run audit runs THEN it SHALL produce a report at `docs/reports/<run-id>/advisory-audit.md` comparing current state against the baseline, and then `<promise>DONE</promise>` SHALL be emitted regardless of findings
+- WHEN the advisory filesystem baseline is captured THEN it SHALL be written to `docs/reports/advisory-filesystem-baseline.txt` before any work begins, and copied into `docs/reports/<run-id>/` by the advisory audit step for archival
+- WHEN a data inventory is requested THEN it SHALL list all matching files with size, tracking status, and classification
+- WHEN the post-run audit fails to generate THEN a best-effort one-line note SHALL be appended to BUILD_TRACKING.md; if that also fails, the run SHALL proceed to Done anyway
 
 ### Error Cases
-- WHEN the autopilot tail is missing a required artifact (e.g., no learnings propagation) THEN the system SHALL fail the run with a clear error message rather than silently succeeding
-- WHEN a pre-swarm spec check encounters an ambiguous match THEN the system SHALL flag it as a warning without blocking launch
 
-### Verification Commands
+- WHEN a production credential is found in a tracked file THEN the inventory SHALL classify it as "Sensitive" for human review — it SHALL NOT auto-delete or auto-rotate
+- WHEN `.gitignore` additions would untrack a currently tracked file THEN the system SHALL produce a proposed list for human approval before any `git rm --cached`
+- WHEN the inventory classifies a file as Sensitive THEN a separate remediation plan SHALL be created before any untracking or history cleanup
+- WHEN sensitive data was pushed to a remote THEN the remediation plan SHALL include a check for who cloned/pulled and a notification plan
 
-**Phase 1 — Root contract:**
-- `head -20 /Users/alejandroguillen/Projects/sandbox/CLAUDE.md` — exists and opens with autonomy class definitions
-- `grep -c "autopilot-solo\|autopilot-swarm\|manual" /Users/alejandroguillen/Projects/sandbox/CLAUDE.md` — returns 3+ (all classes documented)
+## Verification Commands
 
-**Phase 2 — Unattended tail:**
-- `cat docs/reports/spike-update-learnings-noninteractive.md` — spike artifact exists and records the decision path chosen
-- Solo dry-run behavioral test: run a trivial autopilot build end-to-end; capture output; `grep -c "Want to run code-explainer" <output>` must return 0
-- `grep -c "FAIL\|fails the run" /Users/alejandroguillen/Projects/sandbox/.claude/skills/autopilot/SKILL.md` — confirms artifact gates exist (should be higher than current count)
+All commands are read-only. None modifies state.
 
-**Phase 3 — Failure registry integrity:**
-- `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d` — must return empty (no duplicate numeric IDs)
-- `grep -c '{#fc' ~/.claude/docs/agent-pitfalls.md` — returns 23 (every class has a semantic slug)
-- `grep -c '## Failure Class 22\|## Failure Class 23' ~/.claude/docs/agent-pitfalls.md` — returns 2 (duplicates were reassigned, not deleted)
+```bash
+# Show current working tree status
+git status --short
 
-**Phase 4 — Pre-swarm spec gate:**
-- `ls /Users/alejandroguillen/Projects/sandbox/.claude/agents/spec-consistency-checker.md` — agent definition exists
-- Seeded contradiction test: create a spec with `user_id` in schema and `userId` in route params; run the gate agent; verify output contains FAIL
+# Find tracked data files that should potentially be gitignored
+git ls-files | rg '\.(db|sqlite|sqlite3|csv|jsonl)$|(^|/)node_modules/|(^|/)\.next/'
 
-## Overview
+# Find environment files on disk (including ignored ones)
+find . -maxdepth 3 -type f \( -name '.env' -o -name '.env.local' -o -name '.env.*.local' \) -not -path '*/.git/*'
 
-Sandbox already has the right autonomy architecture:
+# Check whether sensitive patterns are gitignored
+git check-ignore -v .env.local .claude/worktrees .claude/agent-memory node_modules .next
 
-- shared-spec-first planning
-- swarm ownership boundaries
-- verification agents after assembly
-- solution docs and lessons compounding into future runs
+# Find tracked key/certificate files
+git ls-files | rg '\.(pem|key|p12|pfx|crt|p8)$'
 
-What it lacks is a fully hardened control plane. Today, some critical behaviors still depend on reminders, prose instructions, or global files whose scope is unclear. The next step is not "more powerful agents." The next step is making the autonomy layer more deterministic, inspectable, and safely scoped.
+# Find tracked credential files
+git ls-files | rg '(credentials|service-account)\.json$|\.npmrc$|\.tfstate$|\.tfvars$|kubeconfig$'
 
-## Problem Statement / Motivation
-
-The current setup can successfully run bounded autonomous builds, but it still has four structural weaknesses:
-
-1. **Mandatory steps are not always enforced.** The system has already documented repeated failures where learnings propagation or tracking artifacts were skipped because they were reminder-driven rather than gate-driven.
-2. **Control surfaces are split across scopes.** Sandbox uses project-local skills and agent memory, but also depends on user-global commands, hooks, and settings. This creates uncertainty about blast radius.
-3. **System memory is at risk of drift.** The failure registry is valuable, but duplicate numeric IDs (both FC13 and FC14 appear twice) prove it is being maintained manually without a stable identity scheme.
-4. **Cross-section spec contradictions slip through.** The spec convergence loop catches many issues but relies on human structural verification. A machine-checkable gate would catch the mechanical contradictions before humans review semantics.
-
-If the goal is higher autonomy, these weaknesses must be fixed before expanding agent authority.
-
-## Non-Goals
-
-- Rewriting the compound engineering workflow from scratch
-- Replacing solution docs, `HANDOFF.md`, or `LESSONS_LEARNED.md`
-- Moving all repo logic into global Claude configuration
-- Making production-sensitive repos fully unattended by default
-- Optimizing for speed over recoverability
-- Creating a separate JSON manifest system (BUILD_TRACKING.md is sufficient)
-- Adding safety profiles to run scripts (existing Docker isolation already handles this)
-
-## Phase 0: Control Surface Decision Record (RESOLVED)
-
-Research during plan review confirmed the following scope model. No implementation starts without this being explicit.
-
-### Repo-Local Authority Surfaces (sandbox owns these)
-
-| Surface | Path | Override mechanism |
-|---------|------|--------------------|
-| Settings | `.claude/settings.local.json` | Project-level settings supersede global |
-| Skills | `.claude/skills/autopilot/`, `.claude/skills/resolve-todos/` | Project skills invoked by name |
-| Agents | `.claude/agents/` (6 agents) | Project-scoped, used only in sandbox builds |
-| Agent memory | `.claude/agent-memory/` | Per-agent state within project |
-| Root contract | `CLAUDE.md` (to be created) | Project CLAUDE.md layers on top of global |
-
-### Global Authority Surfaces (sandbox cannot override these)
-
-| Surface | Path | Why global |
-|---------|------|-----------|
-| Commands | `~/.claude/commands/update-learnings.md` | No project-local command override mechanism in use |
-| Hooks | `~/.claude/hooks/` (8 hooks) | Hook definitions in global `settings.json`; no project-local hooks exist |
-| Permissions | `~/.claude/settings.json` (36 auto-allow patterns) | Base permission layer |
-| Agent pitfalls | `~/.claude/docs/agent-pitfalls.md` | Cross-project failure registry by design |
-| Tracking template | `~/.claude/docs/autopilot-tracking-template.md` | Template, not instance |
-
-### Scope Decisions
-
-1. **`update-learnings` stays global and unmodified.** The autopilot skill already calls it as a step. Phase 2's spike will determine whether the autopilot context naturally suppresses the `code-explainer` prompt (Path A) or whether a sandbox-local non-interactive skill is needed as a replacement (Path B). Neither path edits the global command.
-2. **`agent-pitfalls.md` stays global by design.** It is a cross-project failure registry. Sandbox references it but does not own it. When sandbox discovers new failure classes, they are appended to the global file (this is the intended update path).
-3. **Hooks stay global.** Sandbox does not need project-local hooks. The autopilot skill is the enforcement engine; hooks provide reminders for manual work across all repos.
-4. **New enforcement goes into the autopilot skill**, not into hooks or global commands. This keeps blast radius contained.
-
-### Deferred
-
-- Project-local hooks (Claude Code may support this in future; not needed now)
-- Project-local command overrides (`.claude/commands/` exists but is unused)
-
-## Phase 1: Add a Sandbox Root Operating Contract
-
-### Goal
-
-Create a root `CLAUDE.md` for sandbox that acts as the top-level contract for agents entering this repo.
-
-### Contents
-
-- allowed autonomy classes (`manual`, `autopilot-solo`, `autopilot-swarm`)
-- forbidden actions (no production DB access, no force-push, no external API calls without declaration)
-- production-safety assumptions
-- required artifacts for completed runs (BUILD_TRACKING.md, solution doc, learnings propagation)
-- escalation rules
-- review expectations
-- scope notes: "Commands, hooks, and agent-pitfalls are global. Skills, agents, and settings are project-local."
-
-### Files
-
-- **Create (repo-local):** `/Users/alejandroguillen/Projects/sandbox/CLAUDE.md`
-
-### Success criteria
-
-- A new agent can understand the sandbox operating model from one root file.
-- Repo policy is no longer spread only across skills, hooks, and old solution docs.
-
-## Phase 2: Harden the Autopilot Tail
-
-### Goal
-
-Remove interactive pauses and enforce mandatory tail steps within the autopilot skill.
-
-### Pre-Implementation Spike: update-learnings Non-Interactive Behavior
-
-The global `update-learnings` command (Step 7, line 263 of `~/.claude/commands/update-learnings.md`) explicitly says: *"Then ask: Want to run code-explainer to deepen your understanding of what was just solved?"* The autopilot skill calls `/update-learnings` at its tail step. The question is whether the autopilot skill's surrounding context ("do not stop between steps", "do not wait for user input") reliably suppresses this prompt.
-
-**Spike procedure (structural analysis):**
-
-Determine whether the autopilot context can reliably suppress the prompt by analyzing the instruction conflict structurally:
-
-1. Identify the competing instructions: the autopilot skill's "do not stop between steps" versus the update-learnings command's "Then ask: Want to run code-explainer?"
-2. Review FC11 history for evidence of non-deterministic behavior in the update-learnings step.
-3. Assess whether a single behavioral dry run would be statistically significant (it would not -- one successful suppression does not prove reliability across varying context loads).
-
-A behavioral dry run may supplement the structural analysis but is not required. The structural evidence (FC11 history showing 2/3 recent builds skipping the entire step, plus competing instructions) is sufficient to determine that the interaction is non-deterministic.
-
-**Success artifact:** A file `docs/reports/spike-update-learnings-noninteractive.md` containing:
-- The structural evidence analyzed (FC11 history, competing instructions, statistical argument)
-- Whether the interaction is deterministic (YES/NO)
-- Which implementation path was chosen (see decision gate below)
-
-**Decision gate (choose exactly one — both paths are sandbox-local):**
-
-| Spike result | Implementation path |
-|---|---|
-| Autopilot context reliably suppresses the prompt | **Path A:** No code change to any file. Add a comment in the autopilot skill documenting why this works and a regression check in the verification step. |
-| Prompt still appears despite autopilot context | **Path B:** Create a sandbox-local skill `.claude/skills/update-learnings-noninteractive/SKILL.md` that reimplements Steps 1-6 of the global `update-learnings` command without Step 7 (the code-explainer prompt). The autopilot skill calls `/update-learnings-noninteractive` instead of `/update-learnings`. This duplicates propagation logic but keeps all changes sandbox-local and avoids inflating the autopilot SKILL.md (the new skill is a separate file). The global `update-learnings` command is never modified. |
-
-**Note:** A previous version of this plan included a third path that edited the global `update-learnings.md` command. That path was removed because it contradicted the "must not change global commands" constraint. If Path B's duplication becomes a maintenance burden, the correct response is a future plan to refactor the global command — not a silent global edit from this plan.
-
-**The spike must complete before any other Phase 2 work begins.** The rest of Phase 2 applies regardless of which path is chosen.
-
-### Main changes (after spike)
-
-1. **Suppress the `code-explainer` prompt** via the path chosen in the decision gate above.
-2. **Add artifact existence checks** after the update-learnings step. The autopilot tail must verify:
-   - The "Learnings Propagated" summary table was output (proves Steps 1-6 ran)
-   - `HANDOFF.md` was updated (timestamp matches today)
-   - The agent-pitfalls Update Log has an entry for today's build
-   If any check fails, the run fails with a specific error naming the missing artifact.
-3. **Add a BUILD_TRACKING.md completeness check** before marking the run as done. Required sections: AGENT_STATUS, FAILURES, RUN_METRICS. If any section is empty or missing, the run fails.
-
-### Files
-
-- **Edit (repo-local):** `/Users/alejandroguillen/Projects/sandbox/.claude/skills/autopilot/SKILL.md` — both paths
-- **Create (repo-local, Path B only):** `/Users/alejandroguillen/Projects/sandbox/.claude/skills/update-learnings-noninteractive/SKILL.md` — sandbox-local non-interactive variant
-- **Create (repo-local):** `docs/reports/spike-update-learnings-noninteractive.md` — spike result artifact
-
-### What this does NOT change
-
-- The global `update-learnings` command (`~/.claude/commands/update-learnings.md`) — never edited by any path.
-- Global hooks — they remain reminders, not blockers.
-- Manual workflows — `code-explainer` is still available when a human calls `/update-learnings` directly.
-
-### Guardrails
-
-- Blocking behavior is scoped to the autopilot skill only.
-- The spike determines the mechanism; no implementation proceeds on an assumption.
-
-### Success criteria
-
-- The spike artifact exists and records the decision.
-- Autopilot can finish unattended without the `code-explainer` question appearing as an interactive pause.
-- Missing learnings propagation, missing HANDOFF.md update, or missing agent-pitfalls log entry fails the run.
-- Missing BUILD_TRACKING.md sections fail the run.
-
-## Phase 3: Normalize the Failure Registry
-
-### Goal
-
-Stabilize agent memory so references to past failure classes stay durable.
-
-### Current state (from plan review research)
-
-Two duplicate IDs exist:
-- **FC13** appears at line ~186 ("Testing Against Production Data") AND line ~234 ("Swarm Agents Build Components But Skip Integration Wiring")
-- **FC14** appears at line ~198 ("executescript() With Destructive DDL") AND line ~250 ("Anon RLS Policy Enables Table Enumeration")
-
-Existing solution docs reference FC1, FC3, FC4, FC5, FC6, FC11 — all from the first batch (lines 10-162), so they are not affected by the duplicates.
-
-### Migration strategy: freeze and assign
-
-**Rule: numeric IDs are frozen. No renumbering, ever.** This prevents historical references from breaking.
-
-1. **Keep FC1-FC14 (first occurrences, lines 10-198) unchanged.** These are the original definitions.
-2. **Assign new IDs to the duplicates at the end of the sequence:**
-   - Line ~234 "Swarm Agents Build Components But Skip Integration Wiring" → **FC22** (next available after current FC21)
-   - Line ~250 "Anon RLS Policy Enables Table Enumeration" → **FC23**
-3. **FC15-FC21 keep their current numbers.** They are already unique.
-4. **Add a semantic slug to every class heading** as the durable identifier going forward. Format: `## Failure Class 13: Testing Against Production Data {#fc13-testing-production-data}`. The slug is the primary reference for new solution docs; the numeric ID is a legacy index.
-5. **Add a reference table** at the top of the file mapping all IDs to names, so agents can look up a class without scanning the full document.
-
-### Why not shift IDs?
-
-Shifting FC15-FC21 down by two would make every existing reference to those classes (in solution docs, BUILD_TRACKING files, agent-pitfalls citations in SKILL.md) point to the wrong definition. The fix would be worse than the bug.
-
-### Files
-
-- **Edit (global):** `~/.claude/docs/agent-pitfalls.md` — fix duplicates (assign FC22/FC23), add semantic slugs, add reference table
-- **Edit (repo-local):** `/Users/alejandroguillen/Projects/sandbox/.claude/skills/autopilot/SKILL.md` — add uniqueness check to the "Verify Agent Pitfalls Updated" gate
-
-### Uniqueness check implementation
-
-Add to the autopilot skill's "Verify Agent Pitfalls Updated" step:
-
-```
-After confirming the Update Log entry, extract all Failure Class numbers:
-  grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d
-If this returns any output, FAIL with: "DUPLICATE FAILURE CLASS IDs DETECTED: [list]. Fix before proceeding."
+# Full sensitive-file filesystem scan (catches gitignored files)
+find . -type f \( -name '.env' -o -name '.env.*' -o -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' -o -name '*.csv' -o -name '*.jsonl' -o -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' -o -name '*.p8' -o -name '*.crt' -o -name 'credentials.json' -o -name '*-credentials.json' -o -name '*-service-account.json' -o -name '.npmrc' -o -name 'kubeconfig' -o -name '*.tfstate' -o -name '*.tfstate.backup' -o -name '*.tfvars' -o -name '.docker/config.json' \) -not -path '*/.git/*' -not -path '*/node_modules/*' -not -path '*/.venv/*' -not -path '*/venv/*' -not -path '*/.next/*' -not -path '*/dist/*' -not -path '*/build/*' -not -path '*/.claude/worktrees/*'
 ```
 
-### Blast radius note
+### Expected results after implementation
 
-Editing `agent-pitfalls.md` is a global change. This is intentional — the duplicates affect all repos. The changes are:
-- Two headings get new numbers (additive)
-- Semantic slugs added to all headings (additive)
-- Reference table added at top (additive)
-- No existing content is removed or renumbered
-
-### Success criteria
-
-- `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d` returns empty.
-- Every failure class has a numeric ID AND a semantic slug.
-- The autopilot skill's pitfalls gate catches future duplicates automatically.
-- All existing solution doc references (FC1, FC3, FC4, FC5, FC6, FC11) still point to the correct definitions.
-
-## Phase 4: Add a Pre-Swarm Spec Consistency Gate
-
-### Goal
-
-Catch mechanical contradictions in specs before swarm workers launch.
-
-### Relationship to existing spec convergence loop
-
-The spec convergence loop (Codex + NotebookLM + human) catches semantic and structural issues. This gate catches **mechanical** contradictions that are machine-checkable:
-
-- schema fields referenced but not defined
-- SQL types versus app-layer types
-- RPC parameter names versus caller argument names
-- promised route methods versus actual route table entries
-- mock/fixture outputs versus declared schemas
-
-This gate runs **after** plan deepening and **before** worker spawn — it is a final machine check, not a replacement for the human convergence loop.
-
-### Implementation
-
-Create a **new** agent, not an extension of the existing `spec-contract-checker.md`. The two agents have different jobs at different stages:
-
-| Agent | Runs when | Checks what | Input |
-|-------|-----------|-------------|-------|
-| `spec-contract-checker.md` (existing) | Step 12w, after assembly | Assembled CODE matches SPEC interfaces | Code + spec |
-| `spec-consistency-checker.md` (new) | Between Step 7 and Step 10w, before swarm launch | SPEC is internally consistent across sections | Spec only |
-
-- **Create (repo-local):** `/Users/alejandroguillen/Projects/sandbox/.claude/agents/spec-consistency-checker.md` — new pre-swarm agent
-- **Edit (repo-local):** `/Users/alejandroguillen/Projects/sandbox/.claude/skills/autopilot/SKILL.md` — add gate between plan deepening and swarm spawn (swarm path only; solo path does not need this gate)
-
-### Gate behavior
-
-- Produces a structured PASS/FAIL report
-- FAIL with unresolved contradictions blocks swarm launch
-- Ambiguous matches are flagged as warnings, not blockers
-
-### Success criteria
-
-- A seeded cross-section contradiction (e.g., spec references `user_id` but schema defines `userId`) fails before Step 10w.
-- The gate catches issues that the existing contract checker would miss because they span spec sections, not just interface boundaries.
-
-## Deferred: Safety Profiles
-
-The original plan included a Phase 6 for defining named execution profiles (`offline-safe`, `online-build`, `prod-sensitive`). This is **deferred** because:
-
-- The existing run scripts (`run-autopilot-safe.sh`, `run-autopilot.sh`, `run-autopilot-full.sh`) already implement three distinct safety levels at the Docker layer.
-- Adding a formal profile system on top would be speculative infrastructure without a current need.
-- If profiles become necessary, they should be designed after several more builds reveal what the Docker-layer isolation doesn't cover.
-
-## Recommended Execution Order
-
-1. **Phase 1:** Add root `CLAUDE.md` (sets the contract for everything else)
-2. **Phase 2:** Harden autopilot tail (highest-impact change for unattended reliability)
-3. **Phase 3:** Normalize failure registry (fixes a known data integrity issue)
-4. **Phase 4:** Add pre-swarm spec consistency gate (extends the autonomy boundary)
-
-Phase 0 is resolved — the control surface decision record is in this plan.
-
-## Verification Plan
-
-### Review verification
-
-- Phase 0 scope model is resolved and documented above.
-- All file changes are labeled repo-local or global.
-- No phase modifies global hooks (`~/.claude/hooks/`) or global commands (`~/.claude/commands/`).
-- The only global file edit is `~/.claude/docs/agent-pitfalls.md` in Phase 3. This is a doc file, not a hook or command. The edit is additive (new IDs for duplicates, semantic slugs, reference table) and documented in Phase 3's blast radius note.
-
-### Implementation verification
-
-When work starts, verify in this order:
-
-1. **Spike (before other Phase 2 work):** Complete the update-learnings spike via structural analysis. Record result in `docs/reports/spike-update-learnings-noninteractive.md`. Choose implementation path (A or B).
-2. **Root contract:** `head -20 /Users/alejandroguillen/Projects/sandbox/CLAUDE.md` — exists and describes autonomy classes.
-3. **Non-interactive tail (behavioral):** Run a solo autopilot build on a trivial app. Capture full output. Verify: (a) "Want to run code-explainer" does NOT appear as an interactive question, (b) "Learnings Propagated" summary table DOES appear, (c) BUILD_TRACKING.md has all required sections filled.
-4. **Missing artifact gate (behavioral):** Manually delete HANDOFF.md before the tail step runs. The run must fail with a specific error naming HANDOFF.md, not silently succeed.
-5. **Failure registry integrity:** `grep -o '## Failure Class [0-9]*' ~/.claude/docs/agent-pitfalls.md | sed 's/## Failure Class //' | sort -n | uniq -d` — must return empty.
-6. **Spec gate (behavioral):** Create a minimal test spec with a seeded contradiction (schema defines `user_id`, route handler references `userId`). Run the spec-consistency-checker agent. Verify output contains FAIL and names the specific field mismatch.
-7. **Scope audit — sandbox repo:** `git -C ~/Projects/sandbox diff --stat` after all changes. Confirm changes are limited to expected files (CLAUDE.md, .claude/skills/, .claude/agents/, docs/reports/).
-8. **Scope audit — global files (blast radius check):**
-   - `md5 ~/.claude/commands/update-learnings.md` — compare before and after. Must be identical (no global command was edited).
-   - `md5 ~/.claude/settings.json` — compare before and after. Must be identical (no global settings changed).
-   - `ls -lt ~/.claude/hooks/` — no hook files modified after work started.
-   - `diff ~/.claude/docs/agent-pitfalls.md.bak ~/.claude/docs/agent-pitfalls.md` — shows only expected changes: FC22/FC23 reassignment, semantic slugs, reference table. (Take the backup before Phase 3 work begins.)
-
-## Open Questions (Resolved)
-
-1. **Can sandbox override `update-learnings` locally?** No project-level command override mechanism exists. The spike determines whether the global command works as-is (Path A) or whether a sandbox-local skill replaces it for autopilot use (Path B). The global command is never edited.
-2. **Should the run manifest be a separate file?** No. BUILD_TRACKING.md is sufficient. Adding a parallel JSON manifest creates dual-source-of-truth problems.
-3. **Is `agent-pitfalls` better as sandbox-local?** No. It is a cross-project registry by design. Sandbox appends to it but does not own it.
-4. **Which hooks should block work?** None. Hooks stay as reminders. The autopilot skill is the enforcement engine.
+- `git check-ignore -v .env.local` — reports ignored by `.gitignore` rule
+- `git check-ignore -v .claude/worktrees` — reports ignored by `.gitignore` rule
+- `git check-ignore -v .claude/agent-memory` — reports ignored by `.gitignore` rule
+- `git check-ignore -v node_modules` — reports ignored by `.gitignore` rule
+- `git ls-files | rg '\.(db|sqlite|sqlite3|csv|jsonl)$'` — only files that passed human review remain tracked
+- `git ls-files | rg '\.(pem|key|p12|pfx|p8)$'` — returns empty (no private keys tracked)
+- `.claude/skills/` and `.claude/agents/` — remain tracked and visible in `git ls-files`
 
 ## Feed-Forward
 
-- **Hardest decision:** Keeping enforcement in the autopilot skill rather than adding project-local hooks or command overrides. This is correct because the skill is the only context where blocking is appropriate — but it means all hardening logic lives in one 413-line file that is already complex. Every phase of this plan adds lines to that file.
-- **Rejected alternatives:** (1) More agent autonomy without changing the control plane — rejected because the weak point is enforcement, not model capability. (2) Full global hardening first — rejected because sandbox is the right testbed and global changes increase blast radius. (3) Separate JSON manifest system — rejected because BUILD_TRACKING.md already serves this role and a parallel system creates confusion. (4) Safety profiles as a formal system — deferred because Docker-layer isolation already handles this. (5) Shifting duplicate FC IDs and renumbering subsequent classes — rejected because it invalidates historical references in solution docs.
-- **Least confident:** Autopilot skill complexity after this work. The skill is already 413 lines. This plan adds: a spike result check, artifact existence gates, a BUILD_TRACKING completeness check, a uniqueness check on agent-pitfalls, and a pre-swarm consistency gate invocation. If the skill becomes too long for an LLM to follow reliably in a single context, the enforcement it provides becomes unreliable — the very problem it's meant to solve. Mitigation: measure the skill's line count after each phase. If it exceeds ~500 lines, extract verification gates into a separate helper skill that the autopilot skill calls as a single step.
+- **Hardest decision:** Keeping autopilot fully powerful and moving all safety boundaries around the sandbox rather than inside it. This means trusting that the burn zone perimeter (what's present in the directory) is the right control surface, not agent permissions. If sensitive material enters the sandbox, no internal control will catch it in time.
+- **Rejected alternatives:** (1) Removing `dangerouslySkipPermissions` — rejected because it breaks unattended autopilot, the sandbox's core purpose. (2) Adding blocking prompts or confirmation gates — rejected because they interrupt autopilot flow and defeat the burn zone model. (3) Relying on agent reminders or prose instructions — rejected because they are non-deterministic and already proven unreliable (FC11 history). (4) Restricting agent file access within sandbox — rejected because partial restrictions create a false sense of security while breaking legitimate operations. (5) Ignoring all of `.claude/` — rejected because `.claude/skills/`, `.claude/agents/`, and `.claude/settings.json` are project-local control surfaces that must remain tracked; only volatile state (worktrees, agent-memory, settings.local.json, cache, todos, logs) should be ignored. (6) Shallow filesystem scan (`find -maxdepth 4`) — rejected because this repo has nested subprojects; full-depth scan with directory exclusions is more reliable and only marginally slower.
+- **Least confident:** Whether existing tracked `.db`, `.csv`, and `.jsonl` files contain sensitive material. The inventory phase will answer this, but until it runs, there is an unknown risk that the git history already contains data that should not have been committed. If so, the remediation (history rewriting or rotation) is a separate, more invasive plan that requires human approval, including checking whether the data reached any remote or clone.

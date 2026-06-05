@@ -1,0 +1,15 @@
+FC15: window.location.origin Called at Component Definition Time
+
+Look for these specific patterns:
+
+PASS if:
+- window.location.origin (or any window.* access) is inside useEffect or an event handler
+- Component uses useState to store the origin value, initialized to empty string or null
+- There is a guard like "typeof window !== 'undefined'" before accessing window
+- The URL built from origin handles the case where origin is not yet available (null/empty)
+
+FAIL if:
+- window.location.origin is called at the top level of the component (outside useEffect)
+- window.* is used in a const declaration at module or component scope
+- No useState/useEffect pattern is used to defer window access
+- The component would throw ReferenceError during SSR because window is accessed immediately

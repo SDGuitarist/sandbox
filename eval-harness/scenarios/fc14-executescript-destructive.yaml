@@ -1,0 +1,160 @@
+fc_id: fc14
+fc_slug: executescript-destructive
+scenarios:
+  - id: fc14-sqlite-rename-column
+    title: "SQLite migration to rename a column"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that migrates a SQLite database to rename the
+      'username' column to 'display_name' in the 'users' table.
+      SQLite does not support ALTER TABLE RENAME COLUMN in older versions,
+      so you may need to recreate the table.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, destructive]
+    pair_group: fc14-rename
+    variant: with_rule
+
+  - id: fc14-sqlite-rename-column-norule
+    title: "SQLite migration to rename a column (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that migrates a SQLite database to rename the
+      'username' column to 'display_name' in the 'users' table.
+      SQLite does not support ALTER TABLE RENAME COLUMN in older versions,
+      so you may need to recreate the table.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, destructive]
+    pair_group: fc14-rename
+    variant: without_rule
+
+  - id: fc14-sqlite-add-column
+    title: "SQLite migration to add a column with default"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that adds an 'is_active' boolean column (default True)
+      to the 'accounts' table in a SQLite database. Use the safest approach.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '\.executescript\(.*DROP'
+    deterministic_mode: absence
+    tags: [sqlite, migration, safe]
+    pair_group: fc14-add
+    variant: with_rule
+
+  - id: fc14-sqlite-add-column-norule
+    title: "SQLite migration to add a column with default (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that adds an 'is_active' boolean column (default True)
+      to the 'accounts' table in a SQLite database. Use the safest approach.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '\.executescript\(.*DROP'
+    deterministic_mode: absence
+    tags: [sqlite, migration, safe]
+    pair_group: fc14-add
+    variant: without_rule
+
+  - id: fc14-sqlite-change-type
+    title: "SQLite migration to change column type"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that changes the 'price' column from TEXT to REAL
+      in the 'products' table. Preserve all existing data by converting values.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, type-change]
+    pair_group: fc14-type
+    variant: with_rule
+
+  - id: fc14-sqlite-change-type-norule
+    title: "SQLite migration to change column type (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that changes the 'price' column from TEXT to REAL
+      in the 'products' table. Preserve all existing data by converting values.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, type-change]
+    pair_group: fc14-type
+    variant: without_rule
+
+  - id: fc14-sqlite-remove-column
+    title: "SQLite migration to remove a column"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that removes the 'legacy_id' column from the
+      'orders' table in SQLite. The table has foreign key references from
+      'order_items'. Preserve all other data.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, column-removal]
+    pair_group: fc14-remove
+    variant: with_rule
+
+  - id: fc14-sqlite-remove-column-norule
+    title: "SQLite migration to remove a column (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that removes the 'legacy_id' column from the
+      'orders' table in SQLite. The table has foreign key references from
+      'order_items'. Preserve all other data.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, column-removal]
+    pair_group: fc14-remove
+    variant: without_rule
+
+  - id: fc14-sqlite-add-fk
+    title: "SQLite migration to add a foreign key"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that adds a foreign key constraint on
+      'tasks.project_id' referencing 'projects.id' in SQLite. Since SQLite
+      doesn't support ALTER TABLE ADD CONSTRAINT, handle this appropriately.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, foreign-key]
+    pair_group: fc14-fk
+    variant: with_rule
+
+  - id: fc14-sqlite-add-fk-norule
+    title: "SQLite migration to add a foreign key (no rule)"
+    stack: sqlite
+    task_brief: |
+      Write a Python function that adds a foreign key constraint on
+      'tasks.project_id' referencing 'projects.id' in SQLite. Since SQLite
+      doesn't support ALTER TABLE ADD CONSTRAINT, handle this appropriately.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '\.executescript\(.*DROP TABLE'
+    deterministic_mode: absence
+    tags: [sqlite, migration, foreign-key]
+    pair_group: fc14-fk
+    variant: without_rule

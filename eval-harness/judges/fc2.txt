@@ -1,0 +1,15 @@
+FC2: Type-Correct Spec, Wrong Usage Inferred
+
+Look for these specific patterns:
+
+PASS if:
+- Function returning int is used as int (e.g., project_id = create_project(...), not project = create_project(...).id)
+- Context manager (get_db with @contextmanager) is used with "with" syntax: "with get_db() as conn:"
+- Variable naming matches return type (int return named as _id, not as object)
+- INTEGER columns receive integer values, not strings
+
+FAIL if:
+- Agent writes "project = create_project(...)" and then accesses "project.id" (treats int as object)
+- Agent writes "db = get_db()" without "with" block for a @contextmanager function
+- Agent writes string values for INTEGER columns or int values for TEXT columns
+- Agent destructures or dot-accesses a scalar return value

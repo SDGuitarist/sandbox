@@ -1,0 +1,202 @@
+fc_id: fc7
+fc_slug: route-prefix-doubling
+scenarios:
+  - id: fc7-flask-categories
+    title: "Flask blueprint with /categories prefix"
+    stack: flask
+    task_brief: |
+      Create a Flask blueprint named 'categories' for managing product categories.
+      The blueprint is registered with url_prefix="/categories".
+      Add routes for:
+      - Listing all categories (GET /)
+      - Viewing a single category (GET /<int:id>)
+      - Creating a category (POST /)
+    inputs:
+      blueprint_prefix: "/categories"
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '/categories/categories'
+    deterministic_mode: absence
+    tags: [flask, blueprint, routing]
+    pair_group: fc7-flask-categories
+    variant: with_rule
+
+  - id: fc7-flask-categories-norule
+    title: "Flask blueprint with /categories prefix (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask blueprint named 'categories' for managing product categories.
+      The blueprint is registered with url_prefix="/categories".
+      Add routes for:
+      - Listing all categories (GET /)
+      - Viewing a single category (GET /<int:id>)
+      - Creating a category (POST /)
+    inputs:
+      blueprint_prefix: "/categories"
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '/categories/categories'
+    deterministic_mode: absence
+    tags: [flask, blueprint, routing]
+    pair_group: fc7-flask-categories
+    variant: without_rule
+
+  - id: fc7-express-users
+    title: "Express router mounted at /api/users"
+    stack: express
+    task_brief: |
+      Create an Express router for user management.
+      The router is mounted with app.use('/api/users', router).
+      Add routes for:
+      - GET / (list users)
+      - GET /:id (get user)
+      - POST / (create user)
+      - DELETE /:id (delete user)
+    inputs:
+      router_mount: "/api/users"
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '/api/users/api/users'
+    deterministic_mode: absence
+    tags: [express, router, routing]
+    pair_group: fc7-express-users
+    variant: with_rule
+
+  - id: fc7-express-users-norule
+    title: "Express router mounted at /api/users (no rule)"
+    stack: express
+    task_brief: |
+      Create an Express router for user management.
+      The router is mounted with app.use('/api/users', router).
+      Add routes for:
+      - GET / (list users)
+      - GET /:id (get user)
+      - POST / (create user)
+      - DELETE /:id (delete user)
+    inputs:
+      router_mount: "/api/users"
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '/api/users/api/users'
+    deterministic_mode: absence
+    tags: [express, router, routing]
+    pair_group: fc7-express-users
+    variant: without_rule
+
+  - id: fc7-flask-orders-nested
+    title: "Flask blueprint with /api/v1/orders prefix"
+    stack: flask
+    task_brief: |
+      Create a Flask blueprint named 'orders' for an e-commerce API.
+      The blueprint is registered with url_prefix="/api/v1/orders".
+      Add routes for:
+      - GET / (list orders)
+      - GET /<int:order_id> (get order)
+      - POST / (create order)
+      - PATCH /<int:order_id>/status (update order status)
+    inputs:
+      blueprint_prefix: "/api/v1/orders"
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '/api/v1/orders/api'
+    deterministic_mode: absence
+    tags: [flask, blueprint, routing, nested]
+    pair_group: fc7-flask-orders
+    variant: with_rule
+
+  - id: fc7-flask-orders-nested-norule
+    title: "Flask blueprint with /api/v1/orders prefix (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask blueprint named 'orders' for an e-commerce API.
+      The blueprint is registered with url_prefix="/api/v1/orders".
+      Add routes for:
+      - GET / (list orders)
+      - GET /<int:order_id> (get order)
+      - POST / (create order)
+      - PATCH /<int:order_id>/status (update order status)
+    inputs:
+      blueprint_prefix: "/api/v1/orders"
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '/api/v1/orders/api'
+    deterministic_mode: absence
+    tags: [flask, blueprint, routing, nested]
+    pair_group: fc7-flask-orders
+    variant: without_rule
+
+  - id: fc7-flask-products-simple
+    title: "Flask blueprint with /products prefix"
+    stack: flask
+    task_brief: |
+      Create a Flask blueprint named 'products'.
+      The blueprint is registered with url_prefix="/products".
+      Add routes for listing products and viewing a single product.
+    inputs:
+      blueprint_prefix: "/products"
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '/products/products'
+    deterministic_mode: absence
+    tags: [flask, blueprint, routing]
+    pair_group: fc7-flask-products
+    variant: with_rule
+
+  - id: fc7-flask-products-simple-norule
+    title: "Flask blueprint with /products prefix (no rule)"
+    stack: flask
+    task_brief: |
+      Create a Flask blueprint named 'products'.
+      The blueprint is registered with url_prefix="/products".
+      Add routes for listing products and viewing a single product.
+    inputs:
+      blueprint_prefix: "/products"
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '/products/products'
+    deterministic_mode: absence
+    tags: [flask, blueprint, routing]
+    pair_group: fc7-flask-products
+    variant: without_rule
+
+  - id: fc7-express-posts-blog
+    title: "Express router for blog posts at /blog/posts"
+    stack: express
+    task_brief: |
+      Create an Express router for a blog application.
+      The router is mounted with app.use('/blog/posts', postsRouter).
+      Add routes for:
+      - GET / (list all posts)
+      - GET /:slug (get post by slug)
+      - POST / (create post)
+      - PUT /:slug (update post)
+    inputs:
+      router_mount: "/blog/posts"
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: '/blog/posts/blog'
+    deterministic_mode: absence
+    tags: [express, router, routing]
+    pair_group: fc7-express-posts
+    variant: with_rule
+
+  - id: fc7-express-posts-blog-norule
+    title: "Express router for blog posts at /blog/posts (no rule)"
+    stack: express
+    task_brief: |
+      Create an Express router for a blog application.
+      The router is mounted with app.use('/blog/posts', postsRouter).
+      Add routes for:
+      - GET / (list all posts)
+      - GET /:slug (get post by slug)
+      - POST / (create post)
+      - PUT /:slug (update post)
+    inputs:
+      router_mount: "/blog/posts"
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: '/blog/posts/blog'
+    deterministic_mode: absence
+    tags: [express, router, routing]
+    pair_group: fc7-express-posts
+    variant: without_rule

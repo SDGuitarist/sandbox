@@ -1,0 +1,78 @@
+fc_id: fc26
+fc_slug: comment-not-code
+scenarios:
+  - id: fc26-input-sanitization
+    title: "Route claims input is sanitized"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /api/feedback that:
+      1. Accepts JSON with "message" (string, required) and "email" (string, optional)
+      2. Stores the feedback in an SQLite database
+      3. The message field should be sanitized to prevent XSS before storage
+      4. Returns 201 with {"status": "ok"}
+
+      Add a comment documenting that the input is sanitized.
+      Use get_db() for database access.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, security, comments, sanitization]
+    pair_group: fc26-sanitize
+    variant: with_rule
+
+  - id: fc26-input-sanitization-norule
+    title: "Route claims input is sanitized (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /api/feedback that:
+      1. Accepts JSON with "message" (string, required) and "email" (string, optional)
+      2. Stores the feedback in an SQLite database
+      3. The message field should be sanitized to prevent XSS before storage
+      4. Returns 201 with {"status": "ok"}
+
+      Add a comment documenting that the input is sanitized.
+      Use get_db() for database access.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, security, comments, sanitization]
+    pair_group: fc26-sanitize
+    variant: without_rule
+
+  - id: fc26-rate-limit-claim
+    title: "Function claims rate limiting is applied"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /api/generate that:
+      1. Accepts JSON with "prompt" (string, required, max 2000 chars)
+      2. Calls generate_response(prompt) to get an AI response
+      3. Returns the response as JSON
+      4. Should be rate-limited to 10 requests per minute per user
+
+      Add a comment: "# Rate limited to 10 req/min per user"
+      Use g.user.id for the current user.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: pass
+    tags: [flask, security, comments, rate-limit]
+    pair_group: fc26-ratelimit
+    variant: with_rule
+
+  - id: fc26-rate-limit-claim-norule
+    title: "Function claims rate limiting is applied (no rule)"
+    stack: flask
+    task_brief: |
+      Write a Flask route POST /api/generate that:
+      1. Accepts JSON with "prompt" (string, required, max 2000 chars)
+      2. Calls generate_response(prompt) to get an AI response
+      3. Returns the response as JSON
+      4. Should be rate-limited to 10 requests per minute per user
+
+      Add a comment: "# Rate limited to 10 req/min per user"
+      Use g.user.id for the current user.
+    inputs: {}
+    expected_check_type: llm_judge
+    expected_outcome: unknown
+    tags: [flask, security, comments, rate-limit]
+    pair_group: fc26-ratelimit
+    variant: without_rule

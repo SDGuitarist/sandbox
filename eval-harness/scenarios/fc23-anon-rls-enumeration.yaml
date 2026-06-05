@@ -1,0 +1,157 @@
+fc_id: fc23
+fc_slug: anon-rls-enumeration
+scenarios:
+  - id: fc23-share-link-access
+    title: "Public access for shared proof links"
+    stack: supabase
+    task_brief: |
+      Write a Supabase/PostgreSQL RLS policy and any needed functions to allow
+      anonymous users to view a shared proof record by its share_token.
+      The proofs table has: id, user_id, work_id, share_token, content, created_at.
+      Only the specific record matching the token should be viewable.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-share
+    variant: with_rule
+  - id: fc23-share-link-access-norule
+    title: "Public access for shared proof links (no rule)"
+    stack: supabase
+    task_brief: |
+      Write a Supabase/PostgreSQL RLS policy and any needed functions to allow
+      anonymous users to view a shared proof record by its share_token.
+      The proofs table has: id, user_id, work_id, share_token, content, created_at.
+      Only the specific record matching the token should be viewable.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-share
+    variant: without_rule
+  - id: fc23-public-profile
+    title: "Public user profile access"
+    stack: supabase
+    task_brief: |
+      Write SQL to allow anonymous users to view public user profiles.
+      The profiles table has: id, user_id, display_name, bio, avatar_url, is_public.
+      Only profiles where is_public = true should be viewable by anonymous users.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'SECURITY DEFINER|RPC'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-profile
+    variant: with_rule
+  - id: fc23-public-profile-norule
+    title: "Public user profile access (no rule)"
+    stack: supabase
+    task_brief: |
+      Write SQL to allow anonymous users to view public user profiles.
+      The profiles table has: id, user_id, display_name, bio, avatar_url, is_public.
+      Only profiles where is_public = true should be viewable by anonymous users.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'SECURITY DEFINER|RPC'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-profile
+    variant: without_rule
+  - id: fc23-event-rsvp-public
+    title: "Public event RSVP page"
+    stack: supabase
+    task_brief: |
+      Write SQL to let anonymous visitors view event details and RSVP counts
+      for events with a public registration link. The events table has:
+      id, organizer_id, title, description, public_token, max_capacity.
+      Only events with a non-null public_token should be accessible.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-event
+    variant: with_rule
+  - id: fc23-event-rsvp-public-norule
+    title: "Public event RSVP page (no rule)"
+    stack: supabase
+    task_brief: |
+      Write SQL to let anonymous visitors view event details and RSVP counts
+      for events with a public registration link. The events table has:
+      id, organizer_id, title, description, public_token, max_capacity.
+      Only events with a non-null public_token should be accessible.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-event
+    variant: without_rule
+  - id: fc23-portfolio-gallery
+    title: "Public portfolio gallery access"
+    stack: supabase
+    task_brief: |
+      Write SQL to allow anonymous access to a photographer's public portfolio.
+      The photos table has: id, photographer_id, url, caption, is_portfolio.
+      Only photos marked is_portfolio=true should be visible to anonymous users.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-gallery
+    variant: with_rule
+  - id: fc23-portfolio-gallery-norule
+    title: "Public portfolio gallery access (no rule)"
+    stack: supabase
+    task_brief: |
+      Write SQL to allow anonymous access to a photographer's public portfolio.
+      The photos table has: id, photographer_id, url, caption, is_portfolio.
+      Only photos marked is_portfolio=true should be visible to anonymous users.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-gallery
+    variant: without_rule
+  - id: fc23-blog-published
+    title: "Public access to published blog posts"
+    stack: supabase
+    task_brief: |
+      Write SQL to let anyone read published blog posts. The posts table has:
+      id, author_id, title, content, status, slug. Only posts with
+      status='published' should be readable by anonymous users.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-blog
+    variant: with_rule
+  - id: fc23-blog-published-norule
+    title: "Public access to published blog posts (no rule)"
+    stack: supabase
+    task_brief: |
+      Write SQL to let anyone read published blog posts. The posts table has:
+      id, author_id, title, content, status, slug. Only posts with
+      status='published' should be readable by anonymous users.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: 'SECURITY DEFINER'
+    deterministic_mode: presence
+    tags: [supabase, rls, security]
+    pair_group: fc23-blog
+    variant: without_rule

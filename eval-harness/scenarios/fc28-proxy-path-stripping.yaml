@@ -1,0 +1,149 @@
+fc_id: fc28
+fc_slug: proxy-path-stripping
+scenarios:
+  - id: fc28-express-flask-proxy
+    title: "Express proxy to Flask backend at /api"
+    stack: express
+    task_brief: |
+      Configure an Express app to proxy all /api/* requests to a Flask backend
+      running on port 5000. Use http-proxy-middleware. The Flask app expects
+      the full path including /api prefix.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, routing]
+    pair_group: fc28-flask
+    variant: with_rule
+  - id: fc28-express-flask-proxy-norule
+    title: "Express proxy to Flask backend at /api (no rule)"
+    stack: express
+    task_brief: |
+      Configure an Express app to proxy all /api/* requests to a Flask backend
+      running on port 5000. Use http-proxy-middleware. The Flask app expects
+      the full path including /api prefix.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, routing]
+    pair_group: fc28-flask
+    variant: without_rule
+  - id: fc28-express-rails-proxy
+    title: "Express proxy to Rails backend at /admin"
+    stack: express
+    task_brief: |
+      Set up Express to proxy /admin/* requests to a Rails app at port 3001.
+      Use http-proxy-middleware. Rails routes expect /admin/dashboard etc.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, routing]
+    pair_group: fc28-rails
+    variant: with_rule
+  - id: fc28-express-rails-proxy-norule
+    title: "Express proxy to Rails backend at /admin (no rule)"
+    stack: express
+    task_brief: |
+      Set up Express to proxy /admin/* requests to a Rails app at port 3001.
+      Use http-proxy-middleware. Rails routes expect /admin/dashboard etc.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, routing]
+    pair_group: fc28-rails
+    variant: without_rule
+  - id: fc28-express-microservice
+    title: "Express gateway proxying to microservice"
+    stack: express
+    task_brief: |
+      Set up an Express API gateway that proxies /payments/* to a payment
+      microservice at port 4000. The payment service expects paths like
+      /payments/charge and /payments/refund.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, microservice]
+    pair_group: fc28-micro
+    variant: with_rule
+  - id: fc28-express-microservice-norule
+    title: "Express gateway proxying to microservice (no rule)"
+    stack: express
+    task_brief: |
+      Set up an Express API gateway that proxies /payments/* to a payment
+      microservice at port 4000. The payment service expects paths like
+      /payments/charge and /payments/refund.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, microservice]
+    pair_group: fc28-micro
+    variant: without_rule
+  - id: fc28-express-static-proxy
+    title: "Express proxy to static file server"
+    stack: express
+    task_brief: |
+      Configure Express to proxy /assets/* requests to an nginx static file
+      server at port 8080. Nginx expects the path to start with /assets/.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, static]
+    pair_group: fc28-static
+    variant: with_rule
+  - id: fc28-express-static-proxy-norule
+    title: "Express proxy to static file server (no rule)"
+    stack: express
+    task_brief: |
+      Configure Express to proxy /assets/* requests to an nginx static file
+      server at port 8080. Nginx expects the path to start with /assets/.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, static]
+    pair_group: fc28-static
+    variant: without_rule
+  - id: fc28-express-ws-proxy
+    title: "Express proxy for WebSocket connections"
+    stack: express
+    task_brief: |
+      Set up Express to proxy /ws/* requests to a WebSocket server at port 9000.
+      Use http-proxy-middleware with WebSocket support. The WS server expects
+      the full /ws/ prefix in the path.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: pass
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, websocket]
+    pair_group: fc28-ws
+    variant: with_rule
+  - id: fc28-express-ws-proxy-norule
+    title: "Express proxy for WebSocket connections (no rule)"
+    stack: express
+    task_brief: |
+      Set up Express to proxy /ws/* requests to a WebSocket server at port 9000.
+      Use http-proxy-middleware with WebSocket support. The WS server expects
+      the full /ws/ prefix in the path.
+    inputs: {}
+    expected_check_type: deterministic
+    expected_outcome: unknown
+    deterministic_pattern: "pathFilter|pathRewrite"
+    deterministic_mode: presence
+    tags: [express, proxy, websocket]
+    pair_group: fc28-ws
+    variant: without_rule

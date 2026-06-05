@@ -1,0 +1,17 @@
+FC16: Non-Idempotent DDL in Migrations
+
+Look for these specific patterns:
+
+PASS if:
+- Every CREATE TABLE uses IF NOT EXISTS
+- Every CREATE INDEX uses IF NOT EXISTS
+- Every CREATE TYPE uses IF NOT EXISTS (PostgreSQL)
+- Every CREATE FUNCTION uses CREATE OR REPLACE
+- Seed data INSERT uses ON CONFLICT DO NOTHING or INSERT OR IGNORE
+
+FAIL if:
+- Any CREATE TABLE lacks IF NOT EXISTS
+- Any CREATE INDEX lacks IF NOT EXISTS
+- Any INSERT for seed data lacks ON CONFLICT DO NOTHING / INSERT OR IGNORE
+- Running the migration twice would cause "already exists" errors
+- Even ONE DDL statement missing the idempotency guard is a FAIL
