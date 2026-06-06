@@ -402,6 +402,48 @@ top = top_venues(conn, 5)                      # list[Row], each Row has ['name'
 months = monthly_revenue(conn, 6)              # list[Row], each Row has ['month'], ['total_cents']
 ```
 
+### Exact Signature & Annotation Compliance (MANDATORY — no simplification)
+
+Every agent MUST reproduce the EXACT function signature and return-type
+annotation from the Export Names Table above. Concretely:
+
+- A function declared `-> list[Row]` MUST be annotated `-> list[Row]`, NOT
+  `-> list`. Add `from sqlite3 import Row` at the top of each model module so
+  the annotation is valid. Do not drop the `[Row]` type parameter.
+- A function declared `-> Row | None` MUST be annotated `-> Row | None`
+  (or `Optional[Row]`), NOT bare `-> Row` or no annotation.
+- A function declared `-> str` returns the new 8-char id string; `-> int` /
+  `-> bool` / `-> float | None` annotations must match exactly.
+- **Scalar query functions** (`count_gigs_by_venue`, `count_played_gigs`,
+  `total_revenue_cents`, `total_tips_cents`, `avg_audience_energy`,
+  `avg_energy_by_venue`, `venue_name_exists`) MUST return the scalar itself,
+  e.g. `return cur.fetchone()[0]` (an `int`/`float`/`bool`), NEVER a `Row`.
+  Wrap nullable averages: `row = cur.fetchone(); return row[0] if row else None`.
+
+These annotations are contract surface — consumers in the Wiring Table rely on
+the documented return type (FC1/FC2). Match them character-for-character.
+
+### Negative-Constraint Reaffirmation (each appears exactly as a hard rule)
+
+So there is zero ambiguity, the following prohibitions/requirements are
+restated here as a checklist; each is binding on every agent:
+
+- `CSRFProtect(app)` MUST be initialized in `create_app` (scaffold only).
+- `row_factory = sqlite3.Row` is set ONLY in `get_db()`; NEVER in a model file.
+- Model modules NEVER call `sqlite3.connect(...)` — they receive `conn`.
+- `conn.commit()` MUST NOT appear in any model or route file; all writes use
+  `with conn:` (the connection's context manager commits/rolls back).
+- Python `datetime.now()` MUST NOT appear anywhere; timestamps and
+  `updated_at` use SQL `datetime('now')` only.
+- Flash categories are EXACTLY `'error'` and `'success'` — no other strings.
+- `Markup(...)` is never used in a Jinja2 filter without
+  `from markupsafe import escape` applied to every interpolated value first.
+- NO `user_id` column on any domain table; NO ownership checks
+  (`WHERE user_id = ?`) in any route — single-user app.
+- Debrief search binds the SAME `query` string to all three `?` placeholders
+  (raw_text, key_takeaways, lessons_learned); case-insensitive `LIKE`, no FTS5.
+- Money columns are integer cents, `>= 0` (paired CHECK on pay + status).
+
 ## 5. Mandatory Spec Section 2 — Cross-Boundary Wiring Table
 
 Every cross-module call, with import path. Producer defines the function; consumer
