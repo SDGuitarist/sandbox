@@ -141,11 +141,12 @@ volatile orchestrator context and is lost on a mid-spawn context death.
 ### 3. How will we know it worked?
 
 See `## Acceptance Tests` (EARS). Item 1 is proven by a deterministic fixture harness
-covering all nine verifier cases (4 PASS: self-audit `PIPELINE_PASS` no-wire,
+covering all twelve verifier cases (5 PASS: self-audit `PIPELINE_PASS` no-wire,
 `PIPELINE_PASS_WITH_DEFERRED_RISK`, self-audit `PIPELINE_PASS` with contradicting wire,
-assembly `PASS` with contradicting wire; 5 FAIL: missing, stale, run-id mismatch,
-`PIPELINE_FAIL`, no-status-token). Item 2 is proven by a documented manual repro plus
-opportunistic confirmation on the next real swarm build.
+assembly `PASS` with contradicting wire, freshness boundary `mtime == run_start_ts`;
+7 FAIL: missing, stale, run-id mismatch, `PIPELINE_FAIL`, no-status-token, assembly
+STATUS-not-on-line-1 (fail-closed), bad CLI args). Item 2 is proven by a documented
+manual repro plus opportunistic confirmation on the next real swarm build.
 
 ### 4. What is the most likely way this plan is wrong?
 
@@ -274,6 +275,12 @@ Written in Step 10w right after the single-message parallel spawn, before the wa
   THE SYSTEM SHALL exit `1` even if the wire STATUS says PASS.
 - WHEN no recognized status token is found, THE SYSTEM SHALL exit `4` and name the
   missing status as the reason.
+- WHEN an `assembly` artifact's `STATUS:` token is NOT on line 1 (even if a later line
+  contains one), THE SYSTEM SHALL exit `4` (fail-closed — no multiline fallback).
+- WHEN the freshness boundary is exact (`mtime == run_start_ts`), THE SYSTEM SHALL exit
+  `0` (PASS) — `>=` accepts a same-instant write.
+- WHEN the CLI arguments are malformed (e.g. an invalid `--artifact-kind`),
+  THE SYSTEM SHALL exit `5` (not argparse's default 2, which would collide with MISSING).
 
 > **Intentionally NOT covered (accepted residual risk):** there is no test for a
 > *future-dated* stale artifact under a *reused* run-id (see Plan Quality Gate Q4). That
@@ -286,7 +293,7 @@ Written in Step 10w right after the single-message parallel spawn, before the wa
 ```
 # Item 1 — deterministic harness (uses os.utime for stale/fresh, no sleeps):
 python3 tests/test_verify_delegated_status.py
-# Expect: "9/9 passed" and exit 0.
+# Expect: "12/12 passed" and exit 0.
 
 # Item 1 — spot-check a fresh self-audit PASS fixture:
 python3 tools/verify_delegated_status.py --artifact <fix>/self-audit-pass.md \

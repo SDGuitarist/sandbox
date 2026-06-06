@@ -49,9 +49,10 @@ ACCEPT_SETS = {
     "assembly": {"PASS"},
 }
 
-# Anchored to line start so prose like "overall status: good" can never match,
-# and the captured token is compared whole (so PASS != BYPASS).
-_ASSEMBLY_STATUS_RE = re.compile(r"^\s*STATUS:\s*(\S+)", re.MULTILINE)
+# assembly-summary.md REQUIRES the STATUS token on LINE 1 (swarm-runner contract).
+# No MULTILINE: this is matched against the first line only, so a later "STATUS:" line
+# cannot rescue a missing/malformed line 1 (fail-closed). Token compared whole (PASS != BYPASS).
+_ASSEMBLY_STATUS_RE = re.compile(r"^\s*STATUS:\s*(\S+)")
 _SELFAUDIT_STATUS_RE = re.compile(r"^\*\*Status:\*\*\s*(\S+)", re.MULTILINE)
 _SELFAUDIT_RUNID_RE = re.compile(r"^\*\*Run ID:\*\*\s*(\S+)", re.MULTILINE)
 # assembly run-id lives in the heading, e.g. "# Assembly Summary — Run 068"
@@ -79,7 +80,9 @@ def _extract_run_id(text, kind):
 
 def _extract_status(text, kind):
     if kind == "assembly":
-        m = _ASSEMBLY_STATUS_RE.search(text)
+        # Line 1 only. A later "STATUS:" line must NOT count if line 1 is missing/malformed.
+        first_line = text.split("\n", 1)[0]
+        m = _ASSEMBLY_STATUS_RE.match(first_line)
         return m.group(1).strip() if m else None
     # self-audit: anchor to the "## Final Run Status" section so we read the
     # section's "**Status:**" line, not the header's "**Final Status:**" line.

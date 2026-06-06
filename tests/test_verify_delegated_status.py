@@ -35,6 +35,12 @@ ASSEMBLY = (
     "# Assembly Summary — Run {rid}\n\n"
     "- merge_status: all merged\n"
 )
+# Malformed: line 1 is the heading, the STATUS token appears LATER. Must fail closed.
+ASSEMBLY_NO_LINE1 = (
+    "# Assembly Summary — Run {rid}\n\n"
+    "STATUS: {status}\n\n"
+    "- merge_status: all merged\n"
+)
 
 
 def _write(body, mtime_offset_s):
@@ -94,6 +100,18 @@ def main():
         ("no status token -> 4",
          4, lambda: _run(_write("# Self-Audit Report -- Run 069\n\n**Run ID:** 069\n\nbody\n", 5),
                          "self-audit")),
+        # --- regression cases (Codex review, 2026-06-06) ---
+        ("assembly STATUS not on line 1 (later token) -> fail closed 4",
+         4, lambda: _run(_write(ASSEMBLY_NO_LINE1.format(rid=RUN_ID, status="PASS"), 5),
+                         "assembly")),
+        ("freshness boundary mtime == run_start_ts -> PASS",
+         0, lambda: _run(_write(SELF_AUDIT.format(rid=RUN_ID, status="PIPELINE_PASS"), 0),
+                         "self-audit")),
+        ("bad CLI args (invalid --artifact-kind) -> 5",
+         5, lambda: subprocess.run(
+             [sys.executable, SCRIPT, "--artifact", missing, "--artifact-kind", "bogus",
+              "--run-start-ts", str(RUN_START), "--run-id", RUN_ID],
+             capture_output=True, text=True).returncode),
     ]
 
     passed = 0

@@ -713,8 +713,10 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   `assembly-summary.md`, and a stale prior-run summary must not mask the abort). The
   run ends. (These are the two blocking failure classes — see CLAUDE.md Escalation
   Rules.)
-- Otherwise (wire `STATUS: PASS`, or wire STATUS missing/garbled), **disk-verify the
-  assembly summary as the authoritative verdict.** Run as a single Bash call:
+- **Otherwise — for ALL other outcomes** (wire `STATUS: PASS`, a non-blocking wire
+  `STATUS: FAIL`, or wire STATUS missing/garbled) — **disk-verify the assembly summary
+  as the authoritative verdict.** There is no other wire-driven abort: the only
+  pre-disk-verify aborts are the two blocking classes above. Run as a single Bash call:
   ```
   python3 tools/verify_delegated_status.py \
     --artifact docs/reports/<run-id>/assembly-summary.md --artifact-kind assembly \
@@ -725,9 +727,7 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
     reviewed by the tail.)
   - **Any non-zero exit:** abort. The script prints the reason (missing/stale/run-id
     mismatch/FAIL status). Trust the exit code; do not second-guess it from the wire
-    STATUS.
-- If the wire `STATUS: FAIL` for any non-blocking reason: read the full report at
-  `report_path` and abort.
+    STATUS, and do not abort on a non-blocking wire FAIL without disk-verifying first.
 
 The swarm-runner agent file is the single source of truth for
 assembly/verification logic. Do NOT reintroduce inline Steps 11w-16w here.
