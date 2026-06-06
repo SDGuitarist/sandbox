@@ -29,6 +29,7 @@
 | spec-eval-gate (9w.8) | BLOCKED | docs/reports/068/spec-eval-1780724609/spec-eval-verification.md |
 | spec-eval-harness-fix | DONE (gate now credible, still FAIL) | docs/reports/068/spec-eval-harness-fix.md |
 | spec-eval-gate (9w.8) | WAIVED_BY_HUMAN (2026-06-06) | docs/reports/068/spec-eval-waiver.md |
+| swarm | PASS | docs/reports/068/assembly-summary.md |
 
 **Run State:**
 - run_id: 068
@@ -38,7 +39,7 @@
 - manual_resume: true
 - resume_point: Step 9w.9 (ghost-file cleanup) → Step 10w (spawn 12 agents)
 - spec_eval_gate: WAIVED_BY_HUMAN 2026-06-06 (harness fixed commit 6e3bf80; residual FAIL is non-spec-defect; see docs/reports/068/spec-eval-waiver.md). Step 10w spec-eval precondition is satisfied-by-waiver.
-- final_status: IN_PROGRESS — resuming in a fresh context window from Step 9w.9. Pre-swarm gates (consistency, completeness) PASSED; spec-eval gate WAIVED_BY_HUMAN after harness fix.
+- final_status: ASSEMBLY_PASS — 12/12 workers merged to master, contract check PASS (1 inline fix), smoke test 54/54 PASS, dashboard fixture verified. Awaiting tail phase (review → compound).
 
 ## Spec Eval Gate Block (Step 9w.8)
 
