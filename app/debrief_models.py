@@ -23,8 +23,7 @@ CREATE TABLE IF NOT EXISTS debriefs (
 
 
 def init_debrief_schema(conn) -> None:
-    with conn:
-        conn.execute(DEBRIEF_SCHEMA)
+    conn.execute(DEBRIEF_SCHEMA)
 
 
 def create_debrief(conn, gig_id, raw_text, key_takeaways, lessons_learned) -> str:

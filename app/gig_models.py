@@ -183,8 +183,9 @@ def monthly_revenue(conn, months=6) -> list[Row]:
         FROM gigs g
         LEFT JOIN outcomes o ON o.gig_id = g.id
         WHERE g.status = 'played' AND g.payment_status = 'paid'
-          AND g.date >= date('now', '-6 months')
+          AND g.date >= date('now', ? || ' months')
         GROUP BY month ORDER BY month
-        """
+        """,
+        (f"-{months}",),
     )
     return cur.fetchall()
