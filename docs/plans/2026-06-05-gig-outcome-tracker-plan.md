@@ -263,7 +263,7 @@ ints/floats, NOT `Row` objects.
 | `init_gig_schema(conn) -> None` | function | gig_models | scaffold init_db |
 | `create_gig(conn, venue_id, date, event_type, client_name, client_email, planned_set_summary, expected_pay_cents, notes) -> str` | function | gig_models | gig_routes |
 | `get_gig(conn, gig_id) -> Row\|None` | function | gig_models | gig_routes, outcome_routes, debrief_routes, contact_routes |
-| `list_gigs(conn, status=None) -> list[Row]` (joins venue name as `venue_name`) | function | gig_models | gig_routes |
+| `list_gigs(conn, status=None) -> list[Row]` (joins venue name as `venue_name`) | function | gig_models | gig_routes, contact_routes |
 | `update_gig(conn, gig_id, date, event_type, client_name, client_email, planned_set_summary, expected_pay_cents, actual_pay_cents, payment_status, notes) -> None` | function | gig_models | gig_routes |
 | `delete_gig(conn, gig_id) -> None` (may raise sqlite3.IntegrityError) | function | gig_models | gig_routes |
 | `set_gig_status(conn, gig_id, new_status) -> None` | function | gig_models | gig_routes |
@@ -414,15 +414,34 @@ imports it.
 | gig_routes | outcome_models | `get_outcome_by_gig_id(conn, gig_id) -> Row\|None` | `from app.outcome_models import get_outcome_by_gig_id` | Outcome link/summary on gig detail |
 | gig_routes | debrief_models | `get_debrief_by_gig_id(conn, gig_id) -> Row\|None` | `from app.debrief_models import get_debrief_by_gig_id` | Debrief link on gig detail |
 | gig_routes | contact_models | `list_contacts_by_gig_id(conn, gig_id) -> list[Row]` | `from app.contact_models import list_contacts_by_gig_id` | Contacts met at this gig |
+| gig_routes | gig_models | `create_gig(conn, venue_id, date, event_type, client_name, client_email, planned_set_summary, expected_pay_cents, notes) -> str` | `from app.gig_models import create_gig` | Create gig on new form POST |
+| gig_routes | gig_models | `update_gig(conn, gig_id, date, event_type, client_name, client_email, planned_set_summary, expected_pay_cents, actual_pay_cents, payment_status, notes) -> None` | `from app.gig_models import update_gig` | Update gig on edit form POST |
+| gig_routes | gig_models | `delete_gig(conn, gig_id) -> None` | `from app.gig_models import delete_gig` | Delete gig on delete POST |
+| gig_routes | gig_models | `set_gig_status(conn, gig_id, new_status) -> None` | `from app.gig_models import set_gig_status` | Status transition on status POST |
+| gig_routes | gig_models | `list_gigs(conn, status=None) -> list[Row]` | `from app.gig_models import list_gigs` | Gig list page (optional status filter) |
 | venue_routes | gig_models | `count_gigs_by_venue(conn, venue_id) -> int` | `from app.gig_models import count_gigs_by_venue` | Gig count on venue detail |
 | venue_routes | gig_models | `list_gigs_by_venue(conn, venue_id) -> list[Row]` | `from app.gig_models import list_gigs_by_venue` | Gig history on venue detail |
 | venue_routes | outcome_models | `avg_energy_by_venue(conn, venue_id) -> float\|None` | `from app.outcome_models import avg_energy_by_venue` | Avg audience energy on venue detail |
+| venue_routes | venue_models | `get_venue(conn, venue_id) -> Row\|None` | `from app.venue_models import get_venue` | Venue detail/edit lookup |
+| venue_routes | venue_models | `list_venues(conn) -> list[Row]` | `from app.venue_models import list_venues` | Venue list page |
+| venue_routes | venue_models | `create_venue(conn, name, location, venue_type, capacity_estimate, vibe_notes, notes) -> str` | `from app.venue_models import create_venue` | Create venue on new form POST |
+| venue_routes | venue_models | `update_venue(conn, venue_id, name, location, venue_type, capacity_estimate, vibe_notes, notes) -> None` | `from app.venue_models import update_venue` | Update venue on edit form POST |
+| venue_routes | venue_models | `delete_venue(conn, venue_id) -> None` | `from app.venue_models import delete_venue` | Delete venue on delete POST |
+| venue_routes | venue_models | `venue_name_exists(conn, name, exclude_id=None) -> bool` | `from app.venue_models import venue_name_exists` | Unique-name check on create/edit |
 | outcome_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Validate gig exists before outcome create |
+| outcome_routes | outcome_models | `create_outcome(conn, gig_id, audience_energy, audience_size_estimate, song_highlights, song_struggles, audience_feedback, staff_feedback, personal_reflections, tips_cents, leads_generated, overall_rating) -> str` | `from app.outcome_models import create_outcome` | Create outcome on new form POST |
+| outcome_routes | outcome_models | `update_outcome(conn, gig_id, audience_energy, audience_size_estimate, song_highlights, song_struggles, audience_feedback, staff_feedback, personal_reflections, tips_cents, leads_generated, overall_rating) -> None` | `from app.outcome_models import update_outcome` | Update outcome on edit form POST |
 | debrief_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Validate gig exists before debrief create |
 | contact_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Gig name on contact detail; validate met_at_gig_id |
 | contact_routes | venue_models | `get_venue(conn, venue_id) -> Row\|None` | `from app.venue_models import get_venue` | Venue name on contact detail |
 | contact_routes | gig_models | `list_gigs(conn) -> list[Row]` | `from app.gig_models import list_gigs` | Gig dropdown on contact form (optional met_at_gig_id) |
 | contact_routes | venue_models | `list_venues(conn) -> list[Row]` | `from app.venue_models import list_venues` | Venue dropdown on contact form |
+| contact_routes | contact_models | `create_contact(conn, name, role, organization, phone, email, met_at_gig_id, venue_id, follow_up_needed, follow_up_date, follow_up_notes, notes) -> str` | `from app.contact_models import create_contact` | Create contact on new form POST |
+| contact_routes | contact_models | `get_contact(conn, contact_id) -> Row\|None` | `from app.contact_models import get_contact` | Contact detail/edit lookup |
+| contact_routes | contact_models | `list_contacts(conn) -> list[Row]` | `from app.contact_models import list_contacts` | Contact list page |
+| contact_routes | contact_models | `update_contact(conn, contact_id, name, role, organization, phone, email, met_at_gig_id, venue_id, follow_up_needed, follow_up_date, follow_up_notes, notes) -> None` | `from app.contact_models import update_contact` | Update contact on edit form POST |
+| contact_routes | contact_models | `delete_contact(conn, contact_id) -> None` | `from app.contact_models import delete_contact` | Delete contact on delete POST |
+| contact_routes | contact_models | `list_follow_ups(conn) -> list[Row]` | `from app.contact_models import list_follow_ups` | Follow-ups page |
 | dashboard_routes | gig_models | `count_played_gigs(conn) -> int` | `from app.gig_models import count_played_gigs` | Total gigs played |
 | dashboard_routes | gig_models | `total_revenue_cents(conn) -> int` | `from app.gig_models import total_revenue_cents` | Total revenue |
 | dashboard_routes | gig_models | `top_venues(conn, limit=5) -> list[Row]` | `from app.gig_models import top_venues` | Most-played venues |
@@ -431,6 +450,8 @@ imports it.
 | dashboard_routes | outcome_models | `avg_audience_energy(conn) -> float\|None` | `from app.outcome_models import avg_audience_energy` | Overall avg energy |
 | dashboard_routes | outcome_models | `total_tips_cents(conn) -> int` | `from app.outcome_models import total_tips_cents` | Total tips |
 | debrief_routes | debrief_models | `search_debriefs(conn, query) -> list[Row]` | `from app.debrief_models import search_debriefs` | Keyword search across debriefs |
+| debrief_routes | debrief_models | `create_debrief(conn, gig_id, raw_text, key_takeaways, lessons_learned) -> str` | `from app.debrief_models import create_debrief` | Create debrief on new form POST |
+| debrief_routes | debrief_models | `update_debrief(conn, gig_id, raw_text, key_takeaways, lessons_learned) -> None` | `from app.debrief_models import update_debrief` | Update debrief on edit form POST |
 | (all routes) | app (scaffold) | `get_db()`, `login_required` | `from app import get_db, login_required` | Request connection + auth gate |
 
 ## 6. Mandatory Spec Section 3 — Input Validation Prescriptions
@@ -1077,7 +1098,7 @@ Transaction Contracts, Authorization Matrix). The key rules every agent must fol
 - `app/templates/debriefs/detail.html`
 - `app/templates/debriefs/search.html`
 
-**Responsibility:** Implements all debrief routes (new, view, edit — no delete — and search) and their Jinja2 templates. MUST declare `/debriefs/search` BEFORE `/debriefs/<gig_id>` in source order. Imports `get_gig` from `app.gig_models`.
+**Responsibility:** Implements all debrief routes (new, view, edit — no delete — and search) and their Jinja2 templates. MUST declare `/debriefs/search` BEFORE `/debriefs/<gig_id>` in source order. Imports `get_gig` from `app.gig_models` and `create_debrief`, `get_debrief_by_gig_id`, `update_debrief`, `search_debriefs` from `app.debrief_models`.
 
 ---
 
