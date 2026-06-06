@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Debrief</h1>
+
+  <p>Gig: {{ gig['date'] }}{% if gig['client_name'] %} — {{ gig['client_name'] }}{% endif %}</p>
+
+  <h2>Debrief text</h2>
+  <p>{{ debrief['raw_text'] }}</p>
+
+  {% if debrief['key_takeaways'] %}
+    <h2>Key takeaways</h2>
+    <p>{{ debrief['key_takeaways'] }}</p>
+  {% endif %}
+
+  {% if debrief['lessons_learned'] %}
+    <h2>Lessons learned</h2>
+    <p>{{ debrief['lessons_learned'] }}</p>
+  {% endif %}
+
+  <p>
+    <a href="{{ url_for('debriefs.edit', gig_id=gig['id']) }}">Edit</a>
+    <a href="{{ url_for('gigs.detail', id=gig['id']) }}">Back to gig</a>
+  </p>
+{% endblock %}
