@@ -1,0 +1,162 @@
+{
+  "status": "FAIL",
+  "high_confidence": {
+    "total": 195,
+    "passed": 175,
+    "failed": 20,
+    "errors": 0
+  },
+  "low_confidence": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0
+  },
+  "failed_details": [
+    {
+      "claim_id": "tbl-005",
+      "claim_text": "Name '`list_venues(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "Line in code: `def list_venues(conn) -> list:`\n\nSpec requires: `list_venues(conn) -> list[Row]`\n\nThe return type annotation is `list` instead of `list[Row]`, which does not exactly match the spec instruction.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-022",
+      "claim_text": "Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "The spec requires `-> list[Row]` but the code has:\n```python\ndef recent_gigs(conn, limit=10) -> list:\n```\nThe return type annotation is `list` instead of `list[Row]`.\n\nThe function does correctly join `venue_name`:\n```sql\nv.name as venue_name\nFROM gig g\nLEFT JOIN venue v ON g.venue_id = v.id\n```\n\nFunction name and parameters match: `recent_gigs(conn, limit=10)`",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-023",
+      "claim_text": "Name '`monthly_revenue(conn, months=6) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "def monthly_revenue(conn, months=6) -> list:\n\nThe spec requires `-> list[Row]` but the code has `-> list` (missing the `[Row]` type parameter).",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-036",
+      "claim_text": "Name '`list_contacts(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_contacts(conn) -> list:` - The function uses `-> list` instead of `-> list[Row]` as specified. The spec requires the exact return type annotation `list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-044",
+      "claim_text": "Name '`get_debrief_by_gig_id(conn, gig_id) -> Row\\' (None`)",
+      "passed": false,
+      "evidence": "The code defines: `def get_debrief_by_gig_id(conn, gig_id):` - which matches the name and parameters but lacks the `-> Row` return type annotation specified in the spec's function signature `get_debrief_by_gig_id(conn, gig_id) -> Row\\`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-110",
+      "claim_text": "Route Group: /venues/*, Mode: role-only (login required), Notes: All CRUD + delete",
+      "passed": false,
+      "evidence": "Only one venue route is present:\n```python\n@app.route('/venues', methods=['GET'])\n@role_required\ndef get_venues():\n```\nThe code is cut off at `@app` with no Create (POST), Update (PUT/PATCH), or Delete (DELETE) routes implemented. The spec requires \"All CRUD + delete\" operations under /venues/*.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-111",
+      "claim_text": "Route Group: /gigs/*, Mode: role-only (login required), Notes: All CRUD + status + delete",
+      "passed": false,
+      "evidence": "No evidence found of any /gigs/* routes. The only routes defined are:\n- `@app.route('/auth/register', methods=['POST'])` \n- `@app.route('/auth/login', methods=['POST'])`\n\nThe code ends mid-function in the login route without implementing any /gigs/* endpoints. No Create, Read, Update, Delete, status, or delete routes exist for /gigs/*.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-112",
+      "claim_text": "Route Group: /outcomes/*, Mode: role-only (login required), Notes: Create, view, edit",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-113",
+      "claim_text": "Route Group: /contacts/*, Mode: role-only (login required), Notes: All CRUD + follow-ups + delete",
+      "passed": false,
+      "evidence": "Present routes:\n- `@app.route('/contacts/', methods=['GET'])` with `@login_required`\n- `@app.route('/contacts/', methods=['POST'])` with `@login_required`\n- `@app.route('/contacts/<contact_id>', methods=['GET'])` with `@login_required`\n\nMissing routes:\n- No PUT/PATCH `/contacts/<contact_id>` for update\n- No DELETE `/contacts/<contact_id>` for delete\n- No follow-up routes (e.g., `/contacts/<contact_id>/follow-ups`)\n\nCode is cut off at: `follow_ups = {k: v for k, v in` \u2014 incomplete\n\n`role_required` decorator is defined but never applied to any `/contacts/*` route.\n\n`follow_ups_db = {}` is defined but never used in any route handler.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-114",
+      "claim_text": "Route Group: /debriefs/*, Mode: role-only (login required), Notes: Create, view, edit, search",
+      "passed": false,
+      "evidence": "\nPresent:\n- `@app.route('/debriefs/', methods=['GET'])` + `@login_required` \u2014 list/search\n- `@app.route('/debriefs/create', methods=['GET', 'POST'])` + `@login_required` \u2014 create\n- `@app.route('/debriefs/<int:debrief_id>', methods=['GET'])` + `@login_required` \u2014 view\n- `search_query = request.args.get('search', '').lower()` \u2014 search logic\n\nMissing:\n- No edit route (e.g., `/debriefs/<int:debrief_id>/edit`) is present anywhere in the code.\n- Code is truncated at `can_` inside `view_debrief`, but no edit route appears before that either.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-115",
+      "claim_text": "Route Group: /dashboard/, Mode: role-only (login required), Notes: Read-only",
+      "passed": false,
+      "evidence": "\nThe dashboard routes only use `@login_required`, not `@role_required`:\n\n```python\n@app.route('/dashboard/')\n@login_required\ndef dashboard_index():\n\n@app.route('/dashboard/overview')\n@login_required\ndef dashboard_overview():\n\n@app.route('/dashboard/reports')\n@login_required\ndef dashboard_reports():\n```\n\nThe `role_required` decorator is defined but never applied to any dashboard route. The spec requires \"role-only (login required)\" mode, meaning role-based access control must be enforced, but only login checking is applied to all three dashboard routes.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-003",
+      "claim_text": "Flask-WTF `CSRFProtect` must be the only Flask-WTF feature used; forms are plain HTML, not WTForms classes.",
+      "passed": false,
+      "evidence": "In routes.py:\n```python\nfrom flask_wtf.csrf import generate_csrf\n```\nand used as:\n```python\ncsrf_token = generate_csrf()\nreturn render_template('index.html', csrf_token=csrf_token)\n```\n\nThis imports and uses `generate_csrf` from `flask_wtf.csrf`, which is an additional Flask-WTF feature beyond `CSRFProtect`. The spec states that `CSRFProtect` must be the ONLY Flask-WTF feature used.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-011",
+      "claim_text": "The outcomes table must have `gig_id TEXT NOT NULL UNIQUE REFERENCES gigs(id) ON DELETE RESTRICT`.",
+      "passed": false,
+      "evidence": "```python\ngig_id = db.Column(db.String(36), db.ForeignKey('gigs.id', ondelete='RESTRICT'), nullable=False, unique=True)\n```\n\nThe spec requires `gig_id TEXT NOT NULL UNIQUE REFERENCES gigs(id) ON DELETE RESTRICT`.\n\n- Type: `db.String(36)` generates `VARCHAR(36)` in DDL, not `TEXT` as required.\n- NOT NULL: `nullable=False` \u2705\n- UNIQUE: `unique=True` \u2705\n- REFERENCES gigs(id): `db.ForeignKey('gigs.id')` \u2705\n- ON DELETE RESTRICT: `ondelete='RESTRICT'` \u2705",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-022",
+      "claim_text": "No soft deletes; deletes are physical and governed by SQLite FK `ON DELETE RESTRICT` / `ON DELETE SET NULL`.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-050",
+      "claim_text": "The `top_venues` function must query `venues v JOIN gigs g ON g.venue_id = v.id WHERE g.status = 'played' GROUP BY v.id ORDER BY gig_count DESC LIMIT 5` and return a list of Rows with `name` and `gig_count`.",
+      "passed": false,
+      "evidence": "The code uses Claude API to generate SQL dynamically instead of directly implementing the required SQL:\n\n```python\nmessage = client.messages.create(\n    model=\"claude-3-5-sonnet-20241022\",\n    max_tokens=1024,\n    messages=[...prompt asking Claude to generate SQL...]\n)\n\nsql_query = message.content[0].text.strip()\n\ncursor.execute(sql_query)\n```\n\nThere is no hardcoded SQL matching `venues v JOIN gigs g ON g.venue_id = v.id WHERE g.status = 'played' GROUP BY v.id ORDER BY gig_count DESC LIMIT 5` in the code. The actual SQL executed is whatever Claude's API returns, which is non-deterministic.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-056",
+      "claim_text": "Every date-accepting route must use `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', value)` for date validation, and `import re` at the top of each consuming route module.",
+      "passed": false,
+      "evidence": "Lines at top of app.py:\n```python\nfrom flask import Flask, render_template, request, redirect, url_for, flash\nfrom datetime import datetime\nimport os\n```\nNo `import re` is present.\n\nDate validation in routes:\n```python\nfrom gig_routes import validate_gig_date\n...\nif not validate_gig_date(date):\n```\nInstead of using `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', value)` directly.\n\nFlash message is correct:\n```python\nflash('Valid date required (YYYY-MM-DD)', 'error')\n```",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-070",
+      "claim_text": "The `init_db` function must execute `PRAGMA foreign_keys = ON` on the connection it uses, even when opening a separate connection for initialization.",
+      "passed": false,
+      "evidence": "\n```python\nconnection = db.engine.raw_connection()\ntry:\n    # Enable foreign keys before any DDL\n    connection.execute(\"PRAGMA foreign_keys = ON\")\n    connection.commit()\n    \n    # Create tables from models\n    db.create_all()\n    connection.commit()\nfinally:\n    connection.close()\n```\n\nThe PRAGMA is executed on `connection` (a raw connection), but `db.create_all()` uses SQLAlchemy's internal connection management, which will open a different connection from the engine pool to execute the DDL. The PRAGMA is not executed on the connection that actually runs the DDL statements.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-071",
+      "claim_text": "The gig detail template must show delete button only when `gig.status == 'upcoming'` and no outcome and no debrief.",
+      "passed": false,
+      "evidence": "No evidence found. The code is truncated and cuts off before reaching any delete button or conditional rendering logic. The template ends mid-way through the info rows section with \"Date\" being the last visible content. There is no `{% if gig['status'] == 'upcoming' %}` check, no outcome check, and no debrief check anywhere in the provided code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-072",
+      "claim_text": "Every template must `{% extends \"base.html\" %}`.",
+      "passed": false,
+      "evidence": "No evidence found. The code sample only contains Python (app.py) and is cut off before showing any template files. No HTML templates with `{% extends \"base.html\" %}` are present in the provided code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-078",
+      "claim_text": "The `outcomes` table must have `overall_rating INTEGER NOT NULL CHECK(overall_rating BETWEEN 1 AND 5)`.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    }
+  ],
+  "low_warnings": [],
+  "cost_usd": 2.7662871999999994,
+  "runtime_ms": 421507,
+  "spec_path": "/Users/alejandroguillen/Projects/sandbox/docs/plans/2026-06-05-gig-outcome-tracker-plan.md",
+  "run_id": "spec-eval-1780728940"
+}

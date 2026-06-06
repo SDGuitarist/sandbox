@@ -1,0 +1,82 @@
+Table claims extracted: 115
+Prose claims extracted: 80
+Total claims after dedup: 195
+Detected stack: flask
+Scenarios generated: 195
+Warning: cost cap reached ($2.766 >= $1.0). Partial run: 195/195 scenarios.
+
+==================================================
+SPEC EVAL GATE: FAIL
+==================================================
+HIGH confidence: 175/195 passed
+LOW confidence:  0/0 passed (warnings only)
+Cost: $2.766 | Runtime: 421507ms
+Report: /Users/alejandroguillen/Projects/sandbox/docs/reports/068/spec-eval-1780728940/spec-eval-gate.json
+
+Failed claims (20):
+  FAIL: tbl-005 -- Name '`list_venues(conn) -> list[Row]`' (function)
+        Evidence: Line in code: `def list_venues(conn) -> list:`
+
+Spec requires: `list_venues(conn
+  FAIL: tbl-022 -- Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `ven
+        Evidence: The spec requires `-> list[Row]` but the code has:
+```python
+def recent_gigs(con
+  FAIL: tbl-023 -- Name '`monthly_revenue(conn, months=6) -> list[Row]`' (funct
+        Evidence: def monthly_revenue(conn, months=6) -> list:
+
+The spec requires `-> list[Row]` b
+  FAIL: tbl-036 -- Name '`list_contacts(conn) -> list[Row]`' (function)
+        Evidence: Line: `def list_contacts(conn) -> list:` - The function uses `-> list` instead o
+  FAIL: tbl-044 -- Name '`get_debrief_by_gig_id(conn, gig_id) -> Row\' (None`)
+        Evidence: The code defines: `def get_debrief_by_gig_id(conn, gig_id):` - which matches the
+  FAIL: tbl-110 -- Route Group: /venues/*, Mode: role-only (login required), No
+        Evidence: Only one venue route is present:
+```python
+@app.route('/venues', methods=['GET']
+  FAIL: tbl-111 -- Route Group: /gigs/*, Mode: role-only (login required), Note
+        Evidence: No evidence found of any /gigs/* routes. The only routes defined are:
+- `@app.ro
+  FAIL: tbl-112 -- Route Group: /outcomes/*, Mode: role-only (login required), 
+        Evidence: 
+  FAIL: tbl-113 -- Route Group: /contacts/*, Mode: role-only (login required), 
+        Evidence: Present routes:
+- `@app.route('/contacts/', methods=['GET'])` with `@login_requi
+  FAIL: tbl-114 -- Route Group: /debriefs/*, Mode: role-only (login required), 
+        Evidence: 
+Present:
+- `@app.route('/debriefs/', methods=['GET'])` + `@login_required` — li
+  FAIL: tbl-115 -- Route Group: /dashboard/, Mode: role-only (login required), 
+        Evidence: 
+The dashboard routes only use `@login_required`, not `@role_required`:
+
+```pyth
+  FAIL: prose-003 -- Flask-WTF `CSRFProtect` must be the only Flask-WTF feature u
+        Evidence: In routes.py:
+```python
+from flask_wtf.csrf import generate_csrf
+```
+and used as
+  FAIL: prose-011 -- The outcomes table must have `gig_id TEXT NOT NULL UNIQUE RE
+        Evidence: ```python
+gig_id = db.Column(db.String(36), db.ForeignKey('gigs.id', ondelete='R
+  FAIL: prose-022 -- No soft deletes; deletes are physical and governed by SQLite
+        Evidence: 
+  FAIL: prose-050 -- The `top_venues` function must query `venues v JOIN gigs g O
+        Evidence: The code uses Claude API to generate SQL dynamically instead of directly impleme
+  FAIL: prose-056 -- Every date-accepting route must use `re.match(r'^\d{4}-\d{2}
+        Evidence: Lines at top of app.py:
+```python
+from flask import Flask, render_template, requ
+  FAIL: prose-070 -- The `init_db` function must execute `PRAGMA foreign_keys = O
+        Evidence: 
+```python
+connection = db.engine.raw_connection()
+try:
+    # Enable foreign key
+  FAIL: prose-071 -- The gig detail template must show delete button only when `g
+        Evidence: No evidence found. The code is truncated and cuts off before reaching any delete
+  FAIL: prose-072 -- Every template must `{% extends "base.html" %}`.
+        Evidence: No evidence found. The code sample only contains Python (app.py) and is cut off 
+  FAIL: prose-078 -- The `outcomes` table must have `overall_rating INTEGER NOT N
+        Evidence: 

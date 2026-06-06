@@ -27,6 +27,7 @@
 | gates-consistency | PASS | docs/reports/068/spec-consistency-check.md |
 | gate-verification (9w.7) | CLEARED | docs/reports/068/gate-verification.md |
 | spec-eval-gate (9w.8) | BLOCKED | docs/reports/068/spec-eval-1780724609/spec-eval-verification.md |
+| spec-eval-harness-fix | DONE (gate now credible, still FAIL) | docs/reports/068/spec-eval-harness-fix.md |
 
 **Run State:**
 - run_id: 068

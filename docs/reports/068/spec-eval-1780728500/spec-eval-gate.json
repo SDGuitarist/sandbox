@@ -1,0 +1,225 @@
+{
+  "status": "FAIL",
+  "high_confidence": {
+    "total": 193,
+    "passed": 164,
+    "failed": 29,
+    "errors": 0
+  },
+  "low_confidence": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0
+  },
+  "failed_details": [
+    {
+      "claim_id": "tbl-005",
+      "claim_text": "Name '`list_venues(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code line `def list_venues(conn) -> list:` uses `-> list` as the return type annotation, whereas the spec requires `-> list[Row]`. The `[Row]` type parameter is missing.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-013",
+      "claim_text": "Name '`list_gigs(conn, status=None) -> list[Row]` (joins venue name as `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "\nFunction signature: `def list_gigs(conn, status=None) -> list:` - uses `list` instead of `list[Row]`\n\nThe spec requires: `list_gigs(conn, status=None) -> list[Row]`\n\nJoin evidence: `v.name as venue_name` - correctly joins venue name as `venue_name`\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-018",
+      "claim_text": "Name '`list_gigs_by_venue(conn, venue_id) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_gigs_by_venue(conn, venue_id) -> list:`\n\nThe function name `list_gigs_by_venue` and parameters `conn, venue_id` match the spec, but the return type annotation is `-> list` instead of the spec-required `-> list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-021",
+      "claim_text": "Name '`top_venues(conn, limit=5) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code has `def top_venues(conn, limit=5) -> list:` but the spec requires `-> list[Row]`. The `[Row]` type parameter is missing from the return type annotation.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-022",
+      "claim_text": "Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "The spec requires `-> list[Row]` but the code has:\n```python\ndef recent_gigs(conn, limit=10) -> list:\n```\nThe `[Row]` type parameter is missing from the return type annotation.\n\nThe venue_name join is correctly implemented:\n```python\nv.name as venue_name\n...\nLEFT JOIN venues v ON g.venue_id = v.id\n```",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-023",
+      "claim_text": "Name '`monthly_revenue(conn, months=6) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code has:\n```python\ndef monthly_revenue(conn, months=6) -> list:\n```\nThe spec requires `-> list[Row]` but the code only has `-> list`, missing the `[Row]` type parameter.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-036",
+      "claim_text": "Name '`list_contacts(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code defines: `def list_contacts(conn) -> list:` \u2014 the return type annotation is `list` instead of the required `list[Row]` as specified in the spec instruction `list_contacts(conn) -> list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-039",
+      "claim_text": "Name '`list_follow_ups(conn) -> list[Row]` (where follow_up_needed=1, ORDER BY follow_up_date)' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_follow_ups(conn) -> list:` \u2014 uses `-> list` instead of the specified `-> list[Row]`\n\nThe WHERE clause `WHERE follow_up_needed = 1` and `ORDER BY follow_up_date ASC` are correctly implemented, but the return type annotation does not match the spec's `list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-040",
+      "claim_text": "Name '`list_contacts_by_gig_id(conn, gig_id) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_contacts_by_gig_id(conn, gig_id) -> list:` \u2014 The function name and parameters match, but the return type annotation is `list` instead of the required `list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-046",
+      "claim_text": "Name '`search_debriefs(conn, query) -> list[Row]` (joins gig date + venue name)' (function)",
+      "passed": false,
+      "evidence": "1. Function name and parameters: `def search_debriefs(conn, query) -> list:` \u2014 name matches but return type annotation is `list` instead of `list[Row]`\n2. Joins gig date: `JOIN gigs g ON d.gig_id = g.id` and `g.date as gig_date`\n3. Joins venue name: `JOIN venues v ON g.venue_id = v.id` and `v.name as venue_name`\n4. Missing `Row` type in return annotation \u2014 spec requires `-> list[Row]` but code has `-> list`",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-111",
+      "claim_text": "Route Group: /gigs/*, Mode: role-only (login required), Notes: All CRUD + status + delete",
+      "passed": false,
+      "evidence": "\nRoutes present:\n- `@app.route('/gigs', methods=['GET'])` with `@auth.login_required`\n- `@app.route('/gigs/<int:gig_id>', methods=['GET'])` with `@auth.login_required`\n- `@app.route('/gigs', methods=['POST'])` with `@auth.login_required`\n- `@app.route('/gigs/<int:gig_id>', methods=['PUT'])` with `@auth.login_required`\n- `@app.route('/gigs/<int:gig_id>/status', methods=['PATCH'])` with `@auth.login_required`\n\nMissing evidence:\n- No DELETE route found anywhere in the code (e.g., no `methods=['DELETE']`)\n- Code is truncated ending at: `gig['updated_at'] = datetime.`\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-113",
+      "claim_text": "Route Group: /contacts/*, Mode: role-only (login required), Notes: All CRUD + follow-ups + delete",
+      "passed": false,
+      "evidence": "\nMissing DELETE route for contacts \u2014 no `@app.route('/contacts/<contact_id>', methods=['DELETE'])` found anywhere.\n\nMissing follow-ups routes \u2014 no routes matching `/contacts/*/follow*` pattern exist.\n\nCode is truncated mid-function: `'name': data.get('name', contact['name` \u2014 incomplete string literal showing the code is cut off.\n\nPresent routes (partial compliance):\n- `@app.route('/contacts', methods=['GET'])` with `@require_login`\n- `@app.route('/contacts', methods=['POST'])` with `@require_login`\n- `@app.route('/contacts/<contact_id>', methods=['GET'])` with `@require_login`\n- `@app.route('/contacts/<contact_id>', methods=['PUT'])` with `@require_login` (incomplete)\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-114",
+      "claim_text": "Route Group: /debriefs/*, Mode: role-only (login required), Notes: Create, view, edit, search",
+      "passed": false,
+      "evidence": "Present routes with login_required:\n- `@app.route('/debriefs/', methods=['GET'])` + `@login_required` \u2192 search/list\n- `@app.route('/debriefs/create', methods=['GET', 'POST'])` + `@login_required` \u2192 create\n- `@app.route('/debriefs/<debrief_id>', methods=['GET'])` + `@login_required` \u2192 view\n\nMissing:\n- No edit route (e.g., `/debriefs/<debrief_id>/edit`) exists anywhere in the code\n- Code is truncated mid-line: `return render_template('debrief_view.html', debrief_id=de` \u2014 the file is incomplete",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-115",
+      "claim_text": "Route Group: /dashboard/, Mode: role-only (login required), Notes: Read-only",
+      "passed": false,
+      "evidence": "The `role_required` decorator:\n```python\ndef role_required(f):\n    @wraps(f)\n    def decorated_function(*args, **kwargs):\n        if 'user_id' not in session:\n            return redirect(url_for('login'))\n        return f(*args, **kwargs)\n    return decorated_function\n```\nThis only checks if a user is logged in, NOT if they have a specific role. It's identical to `login_required`. No actual role-checking logic (e.g., checking `session.get('role')` against allowed roles) is present.\n\nDashboard routes with the decorators:\n```python\n@app.route('/dashboard/')\n@login_required\n@role_required\ndef dashboard_overview():\n```\nRoutes are under /dashboard/ and are GET-only (read-only), but role checking is not functional.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-009",
+      "claim_text": "All DDL must be idempotent using `IF NOT EXISTS`.",
+      "passed": false,
+      "evidence": "No explicit `CREATE TABLE IF NOT EXISTS` statements found anywhere in the code. The only table creation mechanism is `db.create_all()` on line:\n```python\ndb.create_all()\n```\naccompanied only by a comment `# Create all tables with IF NOT EXISTS` which is not actual DDL. All table definitions use SQLAlchemy ORM declarative syntax (`class User(db.Model)`, `class Product(db.Model)`, etc.) with no raw SQL DDL statements.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-015",
+      "claim_text": "`CSRFProtect(app)` must be initialized in `create_app` (scaffold only).",
+      "passed": false,
+      "evidence": "Line `csrf = CSRFProtect()` \u2014 initializes CSRFProtect outside `create_app` at module level (violates \"Do not initialize it anywhere else\").\nLine `csrf.init_app(app)` inside `create_app` \u2014 uses `init_app` pattern instead of required `CSRFProtect(app)` pattern.\nNo line with `CSRFProtect(app)` exists anywhere in the code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-018",
+      "claim_text": "`conn.commit()` must NOT appear in any model or route file; all writes use `with conn:`.",
+      "passed": false,
+      "evidence": "No evidence found. The agent produced only a text response: \"I don't see any existing code files to modify. Please provide the model and route files that need to be updated...\" \u2014 no actual code files were produced.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-020",
+      "claim_text": "Flash categories must be EXACTLY `'error'` and `'success'` \u2014 no other strings.",
+      "passed": false,
+      "evidence": "\nAll flash calls in auth.py:\n- `flash('Username and password are required', 'error')`\n- `flash('Login successful', 'success')`\n- `flash('Invalid username or password', 'error')`\n- `flash('All fields are required', 'error')`\n- `flash('Username already exists', 'error')`\n- `flash('Registration successful. Please log in', 'success')`\n- `flash('Registration failed. Please try again', 'error')`\n- `flash('You have been logged out', 'success')`\n\nAll flash calls in dashboard.py:\n- `flash('Settings updated successfully', 'success')`\n- `flash('Failed to update settings', 'error')`\n\nFlash calls in products.py (truncated):\n- `flash('Product name and price are required', 'error')`\n\nNote: products.py is cut off and users.py is never shown, making full verification impossible.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-023",
+      "claim_text": "Every POST form in every template must include `<input type=\"hidden\" name=\"csrf_token\" value=\"{{ csrf_token() }}\">` with parentheses on `csrf_token()`.",
+      "passed": false,
+      "evidence": "No evidence found. The agent's output contains no HTML, no templates, no POST forms, and no CSRF token inputs. The entire output is: \"I'd be happy to help, but I need you to provide the HTML templates that contain POST forms. Please share the template files you'd like me to update, and I'll add the CSRF token input to each one.\"",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-030",
+      "claim_text": "`login_required` decorator must be defined in `app/__init__.py`, check `session.get('user_id')`, and redirect to `url_for('auth.login')` for unauthenticated requests.",
+      "passed": false,
+      "evidence": "\nIn `app/__init__.py` (first code block), inside `create_app()`:\n```python\ndef login_required(f):\n    @wraps(f)\n    def decorated_function(*args, **kwargs):\n        if session.get('user_id') is None:\n            return redirect(url_for('auth.login'))\n        return f(*args, **kwargs)\n    return decorated_function\n```\n\nAll three spec requirements are present:\n1. Defined in `app/__init__.py` \u2713 (though nested inside `create_app()`)\n2. Checks `session.get('user_id')` \u2713\n3. Redirects to `url_for('auth.login')` \u2713",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-031",
+      "claim_text": "`login_required` must be applied to EVERY non-auth route, including `auth.logout`.",
+      "passed": false,
+      "evidence": "\nauth.logout has the decorator:\n```python\n@auth.route('/logout')\n@login_required\ndef logout():\n```\n\nvenues routes shown have the decorator, but code is incomplete:\n```python\n@venues.route('/')\n@login_required\ndef index():\n...\n@venues.route('/create', methods=['GET', 'POST'])\n@login_required\ndef create():\n```\n\nCode is cut off:\n```python\nvenue = db.execute('SELECT * FROM venues WHERE id = ?', (venue_id,)).\n```\n\nMissing entirely: gigs.py, outcomes.py, contacts.py, debriefs.py, dashboard.py blueprints \u2014 no evidence that `login_required` is applied to any routes in those files.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-034",
+      "claim_text": "Logout must be a POST form with CSRF hidden input pointing to `url_for('auth.logout')`.",
+      "passed": false,
+      "evidence": "\n- `<form method='post' action=\"{{ url_for('auth.logout') }}\">` \u2014 correct method and action\n- `{{ csrf_token() }}` \u2014 outputs the CSRF token VALUE only, not a hidden input element; the spec requires a \"CSRF hidden input\" (i.e., `<input type=\"hidden\" ...>`)\n- No `<input type=\"hidden\" name=\"csrf_token\" ...>` element found in the code\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-035",
+      "claim_text": "Custom Jinja2 filters that return `Markup(...)` must `from markupsafe import escape` and escape every interpolated value before wrapping.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-039",
+      "claim_text": "All transactional writes must use `with conn:` pattern. No bare `conn.execute('BEGIN')` or `conn.commit()`.",
+      "passed": false,
+      "evidence": "No evidence found. The code contains no actual database write functions (INSERT/UPDATE/DELETE), no `with conn:` blocks wrapping transactions, and no model write functions at all. The code is a meta-tool that delegates to an LLM for analysis. The `main()` function is incomplete and cut off at `from flask`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-041",
+      "claim_text": "Every date-accepting route must validate dates using `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', value)`.",
+      "passed": false,
+      "evidence": "The gigs.py file correctly uses:\n- `import re` at the top\n- `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', data['date'])` in both create_gig and edit_gig\n- `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', data['start_date'])` in both routes\n- `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', data['end_date'])` in both routes\n\nHowever, there is NO contact routes module (routes/contacts.py) present anywhere in the provided code. The scenario explicitly requires contact routes (create/edit) to also validate dates using `re.match(r'^\\d{4}-\\d{2}-\\d{2}$', value)` with `re` imported at the top of that module.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-049",
+      "claim_text": "`monthly_revenue` must execute the specified strftime query for the last 6 months, paid only, returning rows with `month` and `total_cents`.",
+      "passed": false,
+      "evidence": "The code uses Claude API to generate SQL dynamically:\n```python\nmessage = client.messages.create(\n    model=\"claude-3-5-sonnet-20241022\",\n    max_tokens=1024,\n    messages=[\n        {\n            \"role\": \"user\",\n            \"content\": f\"\"\"Generate a SQL query with these exact requirements:\n...\nReturn ONLY the SQL query, no explanation.\"\"\"\n        }\n    ]\n)\n\nsql_query = message.content[0].text.strip()\n\n# Execute the query\ncursor = conn.cursor()\ncursor.execute(sql_query)\n```\n\nThere is no hardcoded SQL query in the implementation. The spec requires executing the \"specified strftime query\" with exact elements, but the code generates the SQL dynamically via an AI API call. No evidence of the exact required SQL exists in the codebase.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-058",
+      "claim_text": "Every template must extend `base.html` using `{% extends \"base.html\" %}`.",
+      "passed": false,
+      "evidence": "Agent states: \"Since I don't have access to the file system, I'll provide you with the solution approach and example templates that follow the rule.\" \u2014 No actual files were modified.\n\n`app/templates/base.html` in the agent's output:\n```\n<!DOCTYPE html>\n<html>\n...\n```\n\u2014 No `{% extends \"base.html\" %}` present, yet it is a template under `app/templates/`.\n\n`app/templates/index.html`:\n```\n{% extends \"base.html\" %}\n```\n\u2014 Correct for non-base templates.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-060",
+      "claim_text": "The gig detail page must show status-transition buttons (upcoming\u2192played, upcoming\u2192cancelled), outcome link/add, debrief link/add, contacts-met list, and venue link.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-078",
+      "claim_text": "Route files that accept date inputs must have `import re` at the top.",
+      "passed": false,
+      "evidence": "The agent's \"code\" is:\n```python\nimport re\n# ... rest of the file\n```\nThis is a stub/placeholder, not actual file content. The agent explicitly states \"I don't have access to the actual files\" and \"I cannot see the actual content of these files.\" No complete, usable route files were produced with `import re` at the top.",
+      "is_error": false
+    }
+  ],
+  "low_warnings": [],
+  "cost_usd": 2.3598581999999984,
+  "runtime_ms": 375388,
+  "spec_path": "/Users/alejandroguillen/Projects/sandbox/docs/plans/2026-06-05-gig-outcome-tracker-plan.md",
+  "run_id": "spec-eval-1780728500"
+}
