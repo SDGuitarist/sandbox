@@ -64,6 +64,37 @@ forge that artifact. Resolution options are documented in the verification file.
 
 | # | Agent | Commit | Status |
 |---|-------|--------|--------|
+| 1 | scaffold | 8cc97a1 | COMPLETED |
+| 2 | venue_models | d7eb1a8 | COMPLETED |
+| 3 | venue_routes | 2d8bd63 | COMPLETED |
+| 4 | gig_models | a814855 | COMPLETED |
+| 5 | gig_routes | cc15518 | COMPLETED |
+| 6 | outcome_models | 80005ae | COMPLETED |
+| 7 | outcome_routes | 40dba97 | COMPLETED |
+| 8 | contact_models | 28955ae | COMPLETED |
+| 9 | contact_routes | 393b1de | COMPLETED |
+| 10 | debrief_models | b58612f | COMPLETED |
+| 11 | debrief_routes | 3ed2a67 | COMPLETED |
+| 12 | dashboard | 7a69b9c | COMPLETED |
+
+### Ownership Gate: PASS (12 agents)
+
+### Assembly Merges
+
+| # | Role | Commit | Status |
+|---|------|--------|--------|
+| 1 | scaffold | 1c035ff | PASS |
+| 2 | venue_models | fe9e4be | PASS |
+| 3 | gig_models | 4e03eb1 | PASS |
+| 4 | outcome_models | 6a59df3 | PASS |
+| 5 | contact_models | b42668b | PASS |
+| 6 | debrief_models | aa7c31e | PASS |
+| 7 | venue_routes | 50966e9 | PASS |
+| 8 | gig_routes | c3ae750 | PASS |
+| 9 | outcome_routes | 3b80820 | PASS |
+| 10 | contact_routes | d322e1b | PASS |
+| 11 | debrief_routes | e97e62b | PASS |
+| 12 | dashboard | 17c4c0c | PASS |
 
 ---
 
