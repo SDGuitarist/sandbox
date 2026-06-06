@@ -419,6 +419,7 @@ imports it.
 | gig_routes | gig_models | `delete_gig(conn, gig_id) -> None` | `from app.gig_models import delete_gig` | Delete gig on delete POST |
 | gig_routes | gig_models | `set_gig_status(conn, gig_id, new_status) -> None` | `from app.gig_models import set_gig_status` | Status transition on status POST |
 | gig_routes | gig_models | `list_gigs(conn, status=None) -> list[Row]` | `from app.gig_models import list_gigs` | Gig list page (optional status filter) |
+| gig_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Gig detail/edit/delete lookup; delete + status guards |
 | venue_routes | gig_models | `count_gigs_by_venue(conn, venue_id) -> int` | `from app.gig_models import count_gigs_by_venue` | Gig count on venue detail |
 | venue_routes | gig_models | `list_gigs_by_venue(conn, venue_id) -> list[Row]` | `from app.gig_models import list_gigs_by_venue` | Gig history on venue detail |
 | venue_routes | outcome_models | `avg_energy_by_venue(conn, venue_id) -> float\|None` | `from app.outcome_models import avg_energy_by_venue` | Avg audience energy on venue detail |
@@ -431,7 +432,9 @@ imports it.
 | outcome_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Validate gig exists before outcome create |
 | outcome_routes | outcome_models | `create_outcome(conn, gig_id, audience_energy, audience_size_estimate, song_highlights, song_struggles, audience_feedback, staff_feedback, personal_reflections, tips_cents, leads_generated, overall_rating) -> str` | `from app.outcome_models import create_outcome` | Create outcome on new form POST |
 | outcome_routes | outcome_models | `update_outcome(conn, gig_id, audience_energy, audience_size_estimate, song_highlights, song_struggles, audience_feedback, staff_feedback, personal_reflections, tips_cents, leads_generated, overall_rating) -> None` | `from app.outcome_models import update_outcome` | Update outcome on edit form POST |
+| outcome_routes | outcome_models | `get_outcome_by_gig_id(conn, gig_id) -> Row\|None` | `from app.outcome_models import get_outcome_by_gig_id` | View/edit lookup + duplicate-outcome guard on POST /outcomes/<gig_id>/new |
 | debrief_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Validate gig exists before debrief create |
+| debrief_routes | debrief_models | `get_debrief_by_gig_id(conn, gig_id) -> Row\|None` | `from app.debrief_models import get_debrief_by_gig_id` | View/edit lookup + duplicate-debrief guard on POST /debriefs/<gig_id>/new |
 | contact_routes | gig_models | `get_gig(conn, gig_id) -> Row\|None` | `from app.gig_models import get_gig` | Gig name on contact detail; validate met_at_gig_id |
 | contact_routes | venue_models | `get_venue(conn, venue_id) -> Row\|None` | `from app.venue_models import get_venue` | Venue name on contact detail |
 | contact_routes | gig_models | `list_gigs(conn) -> list[Row]` | `from app.gig_models import list_gigs` | Gig dropdown on contact form (optional met_at_gig_id) |
