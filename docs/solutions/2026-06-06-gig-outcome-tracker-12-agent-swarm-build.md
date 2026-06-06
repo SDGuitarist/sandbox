@@ -289,6 +289,53 @@ verification anchor is equally important — it makes "silently wrong" visible.
    residual failures are all artifact/truncation classes, and structural
    gates PASS. Document the waiver explicitly in spec-eval-waiver.md.
 
+## Process & Orchestration Findings
+
+These are orchestration-layer findings from the post-run retrospective. They are
+NOT review/code findings (the tail-runner's review only sees the assembled code,
+not how the orchestration itself behaved), so they are recorded here as the
+durable per-build process record. None become new agent-pitfalls failure classes
+(process/infra findings stay out of the FC registry, per its policy).
+
+1. **Verify the named artifact on disk, not just the agent's wire STATUS.** The
+   tail-runner completed all work but did not emit its required terminal Output
+   Contract (`solution_doc_path` + `STATUS`). Step 18w parses that line; a strict
+   "no STATUS line → FAIL" reading would have failed a fully successful run. The
+   run was closed out by resuming the tail-runner for its contract AND checking
+   `self-audit.md` line 1 + the solution doc on disk. *Fix candidate:* Step 18w /
+   the swarm-runner handler should disk-verify the named artifact's STATUS as the
+   authority, treating the echoed STATUS line as a hint.
+
+2. **Persist implicit orchestrator state at spawn time.** Worktrees were named
+   `worktree-agent-<agentId>`, not the `swarm-068-<role>` name passed to spawn.
+   The role→branch→commit map existed only in live orchestrator context, rebuilt
+   from 12 completion notifications, and would be unrecoverable on a mid-spawn
+   context death. *Fix candidate:* write `worker-roster.md` (role, agentId,
+   branch, worktree path) immediately after the parallel spawn, before any
+   completion arrives. (Live recurrence of the 2026-06-05 "serialize implicit
+   state" lesson.)
+
+3. **Low-precision blocking gates are net-negative.** The spec-eval gate produced
+   20/20 false positives, cost a harness-fix commit + a human waiver, and yielded
+   zero true findings — all cost, no signal. *Fix candidate:* demote Step 9w.8 to
+   advisory/non-blocking until it demonstrates precision on real specs; keep
+   running it for data. Per-run WAIVED_BY_HUMAN is the right escape valve now but
+   does not scale (every large spec trips it) and erodes trust in the gate.
+
+4. **Specs must prescribe read-path / no-record edge cases, not only POST
+   validation.** Section 6 was exhaustive on POST but silent on GET-view-without-
+   record; three agents independently invented redirect/flash fallbacks (a benign
+   FC5 instance, one of which became deferred P3 068-W1). *Fix candidate:* add a
+   7th spec-completeness surface — "Read-path / no-record edge cases" — and have
+   the spec-completeness checker validate it.
+
+5. **Meta-pattern — leverage is upstream.** 0 P1 at 12 agents is what a complete,
+   gated spec buys; the one thin spot (GET edges) is where agents diverged. Swarm
+   success scales with spec completeness, not agent count. Isolation trades
+   redundant full-spec reads (12× here) for independence — fine at 12 agents, a
+   scaling wall at 50+; pilot per-agent spec slices (agent's own rows + the full
+   Coordinated Behaviors section) for larger builds.
+
 ## Artifacts
 
 | Artifact | Path |
