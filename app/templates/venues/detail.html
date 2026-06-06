@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ venue['name'] }}</h1>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('venues.edit', id=venue['id']) }}">Edit</a>
+    <form method="post" action="{{ url_for('venues.delete', id=venue['id']) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+  </div>
+</div>
+
+<dl class="detail-list">
+  <dt>Location</dt>
+  <dd>{{ venue['location'] if venue['location'] else '—' }}</dd>
+  <dt>Type</dt>
+  <dd>{{ venue['venue_type'] if venue['venue_type'] else '—' }}</dd>
+  <dt>Capacity estimate</dt>
+  <dd>{{ venue['capacity_estimate'] if venue['capacity_estimate'] is not none else '—' }}</dd>
+  <dt>Vibe notes</dt>
+  <dd>{{ venue['vibe_notes'] if venue['vibe_notes'] else '—' }}</dd>
+  <dt>Notes</dt>
+  <dd>{{ venue['notes'] if venue['notes'] else '—' }}</dd>
+</dl>
+
+<div class="stats">
+  <div class="stat">
+    <span class="stat-label">Gigs played here</span>
+    <span class="stat-value">{{ gig_count }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Average audience energy</span>
+    <span class="stat-value">{{ '%.1f'|format(avg_energy) if avg_energy is not none else 'N/A' }}</span>
+  </div>
+</div>
+
+<h2>Gig History</h2>
+{% if gigs %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for gig in gigs %}
+    <tr>
+      <td><a href="{{ url_for('gigs.detail', id=gig['id']) }}">{{ gig['date'] }}</a></td>
+      <td>{{ gig['status'] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="empty">No gigs at this venue yet.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ 'Edit Venue' if venue and venue['id'] else 'New Venue' }}</h1>
+</div>
+
+<form method="post" action="{{ action }}" class="entity-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <label for="name">Name</label>
+  <input type="text" id="name" name="name" value="{{ venue['name'] if venue else '' }}" required>
+
+  <label for="location">Location</label>
+  <input type="text" id="location" name="location" value="{{ venue['location'] if venue else '' }}">
+
+  <label for="venue_type">Type</label>
+  <select id="venue_type" name="venue_type">
+    <option value="">—</option>
+    {% for vt in venue_types %}
+    <option value="{{ vt }}" {{ 'selected' if venue and venue['venue_type'] == vt else '' }}>{{ vt }}</option>
+    {% endfor %}
+  </select>
+
+  <label for="capacity_estimate">Capacity estimate</label>
+  <input type="number" id="capacity_estimate" name="capacity_estimate" min="0" value="{{ venue['capacity_estimate'] if venue and venue['capacity_estimate'] is not none else '' }}">
+
+  <label for="vibe_notes">Vibe notes</label>
+  <textarea id="vibe_notes" name="vibe_notes">{{ venue['vibe_notes'] if venue else '' }}</textarea>
+
+  <label for="notes">Notes</label>
+  <textarea id="notes" name="notes">{{ venue['notes'] if venue else '' }}</textarea>
+
+  <div class="form-actions">
+    <button type="submit" class="btn">Save</button>
+    <a class="btn btn-secondary" href="{{ url_for('venues.list') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
