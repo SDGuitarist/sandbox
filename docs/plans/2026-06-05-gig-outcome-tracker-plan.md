@@ -250,7 +250,7 @@ ints/floats, NOT `Row` objects.
 | `init_venue_schema(conn) -> None` | function | venue_models | scaffold init_db |
 | `create_venue(conn, name, location, venue_type, capacity_estimate, vibe_notes, notes) -> str` (returns new id) | function | venue_models | venue_routes |
 | `get_venue(conn, venue_id) -> Row\|None` | function | venue_models | venue_routes, gig_routes, contact_routes |
-| `list_venues(conn) -> list[Row]` | function | venue_models | venue_routes, gig_routes (venue select) |
+| `list_venues(conn) -> list[Row]` | function | venue_models | venue_routes, gig_routes, contact_routes (venue select) |
 | `update_venue(conn, venue_id, name, location, venue_type, capacity_estimate, vibe_notes, notes) -> None` | function | venue_models | venue_routes |
 | `delete_venue(conn, venue_id) -> None` (may raise sqlite3.IntegrityError) | function | venue_models | venue_routes |
 | `venue_name_exists(conn, name, exclude_id=None) -> bool` | function | venue_models | venue_routes (unique-name check) |

@@ -22,6 +22,8 @@
 | gates-consistency | FAIL | docs/reports/068/spec-consistency-check.md |
 | gates-completeness | FAIL | docs/reports/068/spec-completeness-check.md |
 | gates-consistency (re-run f24bcec) | FAIL | docs/reports/068/spec-consistency-check.md |
+| gates-consistency (re-run b30f7e3) | FAIL | docs/reports/068/spec-consistency-check.md |
+| gates-completeness | PASS | docs/reports/068/spec-completeness-check.md |
 
 **Run State:**
 - run_id: 068
