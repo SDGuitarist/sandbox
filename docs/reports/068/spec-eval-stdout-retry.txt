@@ -1,0 +1,85 @@
+Warning: cost cap reached ($1.200 >= $1.0). Partial run: 188/188 scenarios.
+
+==================================================
+SPEC EVAL GATE: FAIL
+==================================================
+HIGH confidence: 160/188 passed
+LOW confidence:  0/0 passed (warnings only)
+Cost: $1.200 | Runtime: 299300ms
+Report: /Users/alejandroguillen/Projects/sandbox/docs/reports/068/spec-eval-1780724609/spec-eval-gate.json
+
+Failed claims (28):
+  FAIL: tbl-005 -- Name '`list_venues(conn) -> list[Row]`' (function)
+        Evidence: The code defines: `def list_venues(conn) -> list:` 
+The spec requires: `list_ven
+  FAIL: tbl-013 -- Name '`list_gigs(conn, status=None) -> list[Row]` (joins ven
+        Evidence: 
+Spec requires: `list_gigs(conn, status=None) -> list[Row]`
+
+Code has:
+Line: `de
+  FAIL: tbl-018 -- Name '`list_gigs_by_venue(conn, venue_id) -> list[Row]`' (fu
+        Evidence: The code has `def list_gigs_by_venue(conn, venue_id) -> list:` — the return type
+  FAIL: tbl-021 -- Name '`top_venues(conn, limit=5) -> list[Row]`' (function)
+        Evidence: The function is defined as:
+```python
+def top_venues(conn, limit=5) -> list:
+```
+  FAIL: tbl-022 -- Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `ven
+        Evidence: The function signature in the code is:
+`def recent_gigs(conn, limit=10) -> list:
+  FAIL: tbl-023 -- Name '`monthly_revenue(conn, months=6) -> list[Row]`' (funct
+        Evidence: The code defines: `def monthly_revenue(conn, months: int = 6) -> list:` — the re
+  FAIL: tbl-036 -- Name '`list_contacts(conn) -> list[Row]`' (function)
+        Evidence: The code has: `def list_contacts(conn) -> list:` — the return type annotation is
+  FAIL: tbl-039 -- Name '`list_follow_ups(conn) -> list[Row]` (where follow_up_
+        Evidence: Line: `def list_follow_ups(conn) -> list:` - return type is `list` instead of th
+  FAIL: tbl-040 -- Name '`list_contacts_by_gig_id(conn, gig_id) -> list[Row]`' 
+        Evidence: Line: `def list_contacts_by_gig_id(conn, gig_id) -> list:` — The function name a
+  FAIL: tbl-106 -- Function '`init_<entity>_schema`': Function: `init_<entity>_
+        Evidence: The code defines `def init_entity_schema(conn)` with `CREATE TABLE IF NOT EXISTS
+  FAIL: tbl-109 -- Route Group: POST /auth/logout, Mode: role-only (login requi
+        Evidence: 
+  FAIL: tbl-110 -- Route Group: /venues/*, Mode: role-only (login required), No
+        Evidence: The delete function is cut off mid-implementation:
+```go
+func deleteVenue(w http
+  FAIL: tbl-111 -- Route Group: /gigs/*, Mode: role-only (login required), Note
+        Evidence: 
+  FAIL: tbl-112 -- Route Group: /outcomes/*, Mode: role-only (login required), 
+        Evidence: 
+  FAIL: tbl-113 -- Route Group: /contacts/*, Mode: role-only (login required), 
+        Evidence: 1. Role checking - ABSENT: The `authMiddleware` only checks token presence, neve
+  FAIL: tbl-115 -- Route Group: /dashboard/, Mode: role-only (login required), 
+        Evidence: 
+The code checks for session existence:
+```typescript
+const {
+  data: { session 
+  FAIL: prose-009 -- All timestamps are `TEXT DEFAULT (datetime('now'))`.
+        Evidence: Required pattern not found: TEXT DEFAULT \(datetime\('now'\)\)
+  FAIL: prose-017 -- `CSRFProtect(app)` MUST be initialized in `create_app` (scaf
+        Evidence: Required pattern not found: CSRFProtect\(app\)
+  FAIL: prose-019 -- Model modules MUST NEVER call `sqlite3.connect(...)` — they 
+        Evidence: Found violation pattern: sqlite3.connect
+  FAIL: prose-020 -- `conn.commit()` MUST NOT appear in any model or route file; 
+        Evidence: Found violation pattern: conn.commit()
+  FAIL: prose-021 -- Python `datetime.now()` MUST NOT appear anywhere; timestamps
+        Evidence: Found violation pattern: datetime.now()
+  FAIL: prose-022 -- Flash categories are EXACTLY `'error'` and `'success'` — no 
+        Evidence: Found violation pattern: flash() calls with any category
+            # Matches: 
+  FAIL: prose-035 -- Custom Jinja2 filters that return `Markup(...)` MUST `from m
+        Evidence: Found violation pattern: Markup()."""
+    
+    # Find all Python files in the cu
+  FAIL: prose-041 -- All routes except `auth.login` and `auth.register` require l
+        Evidence: Found violation pattern: WHERE user_id
+  FAIL: prose-043 -- Every POST form in every template includes the CSRF hidden i
+        Evidence: Required pattern not found: name="csrf_token"
+  FAIL: prose-048 -- The `top_venues` function must execute the specified SQL sel
+        Evidence: Required pattern not found: ORDER BY gig_count DESC LIMIT
+  FAIL: prose-071 -- The `recent_gigs` dashboard query must select `g.*, v.name a
+        Evidence: Required pattern not found: ORDER BY g\.date DESC LIMIT 10
+  FAIL: prose-073 -- No domain table may have a `user_id` column.
+        Evidence: Found violation pattern: user_id

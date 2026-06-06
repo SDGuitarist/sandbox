@@ -1,0 +1,218 @@
+{
+  "status": "FAIL",
+  "high_confidence": {
+    "total": 210,
+    "passed": 182,
+    "failed": 28,
+    "errors": 0
+  },
+  "low_confidence": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0
+  },
+  "failed_details": [
+    {
+      "claim_id": "tbl-005",
+      "claim_text": "Name '`list_venues(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code defines: `def list_venues(conn) -> list:` \nThe spec requires: `list_venues(conn) -> list[Row]`\nThe return type annotation is `list` instead of `list[Row]` - the `Row` type parameter is missing.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-013",
+      "claim_text": "Name '`list_gigs(conn, status=None) -> list[Row]` (joins venue name as `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_gigs(conn, status=None) -> list:` \u2014 return type is `list` instead of the required `list[Row]`\n\nThe spec requires: `list_gigs(conn, status=None) -> list[Row]`",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-018",
+      "claim_text": "Name '`list_gigs_by_venue(conn, venue_id) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_gigs_by_venue(conn, venue_id) -> list:` \u2014 The function name and parameters match, but the return type annotation is `list` instead of the required `list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-021",
+      "claim_text": "Name '`top_venues(conn, limit=5) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code has: `def top_venues(conn, limit=5) -> list:` \u2014 the return type is `list` instead of `list[Row]` as specified in the spec instruction.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-022",
+      "claim_text": "Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "Spec requires: `recent_gigs(conn, limit=10) -> list[Row]`\nCode has: `def recent_gigs(conn, limit=10) -> list:`\n\nThe return type annotation is `list` instead of `list[Row]`. The `Row` type is missing from the annotation.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-023",
+      "claim_text": "Name '`monthly_revenue(conn, months=6) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The function is defined as:\n```python\ndef monthly_revenue(conn, months: int = 6) -> list:\n```\nThe spec requires: `monthly_revenue(conn, months=6) -> list[Row]`\n\nThe return type annotation is `list` instead of `list[Row]`. The `Row` type is never imported or defined anywhere in the code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-026",
+      "claim_text": "Name '`create_outcome(conn, gig_id, audience_energy, audience_size_estimate, song_highlights, song_struggles, audience_feedback, staff_feedback, personal_reflections, tips_cents, leads_generated, overall_rating) -> str`' (function)",
+      "passed": false,
+      "evidence": "The function signature matches:\n```python\ndef create_outcome(\n    conn,\n    gig_id: str,\n    audience_energy: str,\n    audience_size_estimate: int,\n    song_highlights: str,\n    song_struggles: str,\n    audience_feedback: str,\n    staff_feedback: str,\n    personal_reflections: str,\n    tips_cents: int,\n    leads_generated: int,\n    overall_rating: float,\n) -> str:\n```\n\nHowever, the function body ends with:\n```python\n    conn.commit()\n```\nThere is no `return` statement, so the function returns `None` implicitly, not a `str`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-027",
+      "claim_text": "Name '`get_outcome_by_gig_id(conn, gig_id) -> Row\\' (None`)",
+      "passed": false,
+      "evidence": "The code defines: `def get_outcome_by_gig_id(conn, gig_id) -> dict:` \n\nThe spec requires the return type to be `Row` (from `-> Row\\`), but the code uses `-> dict` as the return type annotation. The function name and parameters match, but the return type does not align with the spec requirement.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-036",
+      "claim_text": "Name '`list_contacts(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code defines: `def list_contacts(conn) -> list:` \u2014 the return type annotation is `list`, not `list[Row]` as specified in the spec instruction.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-040",
+      "claim_text": "Name '`list_contacts_by_gig_id(conn, gig_id) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code defines: `def list_contacts_by_gig_id(conn, gig_id) -> list:` \u2014 the return type is `list` instead of the required `list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-046",
+      "claim_text": "Name '`search_debriefs(conn, query) -> list[Row]` (joins gig date + venue name)' (function)",
+      "passed": false,
+      "evidence": "Line: `def search_debriefs(conn, query) -> list:` \n- Function name `search_debriefs` matches \u2713\n- Parameters `conn, query` match \u2713\n- Return type is `list` instead of `list[Row]` as specified \u2717\n\nSQL joins evidence: `JOIN gigs g ON d.gig_id = g.gig_id` and `JOIN venues v ON g.venue_id = v.venue_id` with `SELECT d.*, g.gig_date, v.venue_name` - joins gig date and venue name \u2713",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-106",
+      "claim_text": "Function '`init_<entity>_schema`': Function: `init_<entity>_schema`, Writes: CREATE TABLE IF NOT EXISTS, Pattern: called inside scaffold's single `with conn:` in `init_db`, Error Handling: idempotent; no special handling",
+      "passed": false,
+      "evidence": "The function definition is present:\n```python\ndef init_entity_schema(conn):\n    conn.execute(\"\"\"\n        CREATE TABLE IF NOT EXISTS entity (\n```\n\nHowever, there is NO `init_db` function defined in the code, and NO `with conn:` block is shown. The spec requires the function to be \"called inside scaffold's single `with conn:` in `init_db`\", but this calling pattern is entirely absent from the code sample.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-109",
+      "claim_text": "Route Group: POST /auth/logout, Mode: role-only (login required), Notes: Session teardown",
+      "passed": false,
+      "evidence": "1. POST /auth/logout: `if r.Method != http.MethodPost { http.Error(w, \"Method not allowed\", http.StatusMethodNotAllowed); return }` in `LogoutHandler`\n2. Login required: `AuthMiddleware` checks `Authorization` header with Bearer token and validates session: `session, exists := sessions[token]; if !exists { http.Error(w, \"Invalid or expired token\", http.StatusUnauthorized); return }`\n3. Session teardown: `delete(sessions, session.Token)` \u2014 explicitly removes the session from the store.\n4. The handler retrieves the session from context: `session, ok := r.Context().Value(\"session\").(*Session)` \u2014 this depends on `AuthMiddleware` setting it, confirming the middleware is meant to be applied.\n5. Code is truncated \u2014 route registration (e.g., `http.HandleFunc(\"/auth/logout\", AuthMiddleware(LogoutHandler))`) is not visible.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-110",
+      "claim_text": "Route Group: /venues/*, Mode: role-only (login required), Notes: All CRUD + delete",
+      "passed": false,
+      "evidence": "Role checking (only checks Bearer token presence, no role verification):\n```go\nfunc isAuthenticated(r *http.Request) bool {\n    token := r.Header.Get(\"Authorization\")\n    return strings.HasPrefix(token, \"Bearer \")\n}\n```\n\nMissing operations (switch statement only has GET and POST, no PUT or DELETE):\n```go\nswitch r.Method {\ncase \"GET\":\n    // ...\ncase \"POST\":\n    // ...\n    // Code truncates here, no PUT or DELETE cases visible\n```\n\nNo route registration found in the visible code (no `http.HandleFunc` or similar for `/venues/`).",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-111",
+      "claim_text": "Route Group: /gigs/*, Mode: role-only (login required), Notes: All CRUD + status + delete",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-112",
+      "claim_text": "Route Group: /outcomes/*, Mode: role-only (login required), Notes: Create, view, edit",
+      "passed": false,
+      "evidence": "The code does NOT register any actual HTTP routes under /outcomes/*. The route spec is only in a string variable:\n\n```go\nrouteSpec := `\nRoute Group: /outcomes/*\nMode: role-only (login required)\n...\n`\n```\n\nThe main function only calls the Claude API and prints strings. No HTTP mux or router is configured. The `generateImplementation()` only returns a string, never executed code:\n\n```go\ncode := generateImplementation()\nfmt.Println(code)  // Just prints the code as text\n```\n\nThe `AuthMiddleware` and partially defined `RoleMiddleware` are never applied to any routes. The code is also truncated/incomplete:\n\n```go\nfunc RoleMiddleware(requiredRole string) func(http.Handler) http.Handler {\n\treturn func(next http.Handler) http.Handler {\n\t\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n\t\t\t// Extract role from request context or headers\n\t\t\trole := r.Header.Get(\"X-User-Role\")\n\t\t\tif role == \"\" {\n\t\t\t\thttp.Error(w,\n```\n(code cuts off here)",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-113",
+      "claim_text": "Route Group: /contacts/*, Mode: role-only (login required), Notes: All CRUD + follow-ups + delete",
+      "passed": false,
+      "evidence": "\n1. `requireLogin` is defined but never shown to be applied to `/contacts/*`:\n```go\nfunc requireLogin(next http.HandlerFunc) http.HandlerFunc {\n    return func(w http.ResponseWriter, r *http.Request) {\n        token := r.Header.Get(\"Authorization\")\n        if token == \"\" {\n            http.Error(w, \"Unauthorized: Login required\", http.StatusUnauthorized)\n            return\n        }\n        next(w, r)\n    }\n}\n```\n\n2. The code is truncated at:\n```go\nfunc updateContact(w\n```\n\u2014 missing `updateContact`, `deleteContact`, `createFollowUp`, `getContactFollowUps`, `deleteFollowUp` implementations, and the main function/route registration.\n\n3. No route registration (e.g., `http.HandleFunc(\"/contacts/\", requireLogin(handleContacts))`) is visible anywhere in the code.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-115",
+      "claim_text": "Route Group: /dashboard/, Mode: role-only (login required), Notes: Read-only",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-026",
+      "claim_text": "Flask-WTF `CSRFProtect(app)` must be initialized in `create_app`.",
+      "passed": false,
+      "evidence": "Required pattern not found: CSRFProtect\\(app\\)",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-032",
+      "claim_text": "`row_factory = sqlite3.Row` must be set ONLY in `get_db()` and NEVER inside any model file.",
+      "passed": false,
+      "evidence": "Found violation pattern: row_factory",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-035",
+      "claim_text": "All `updated_at` column updates in UPDATE statements must use `updated_at = datetime('now')` in SQL, never Python `datetime.now()`.",
+      "passed": false,
+      "evidence": "Required pattern not found: updated_at = datetime\\('now'\\)",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-036",
+      "claim_text": "Python `datetime.now()` must NEVER appear anywhere in the codebase.",
+      "passed": false,
+      "evidence": "Found violation pattern: datetime.now()",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-039",
+      "claim_text": "Flash messages must use exactly two categories: `'error'` and `'success'`. No other category strings are permitted.",
+      "passed": false,
+      "evidence": "No evidence found. The agent produced no code whatsoever \u2014 only a plain text message: \"I'll help you ensure all flash messages use only 'error' and 'success' categories. However, I don't see any route files provided in your message.\"",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-045",
+      "claim_text": "`Markup()` must NEVER be used in a filter without escaping interpolated inputs first.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-050",
+      "claim_text": "`conn.commit()` must NEVER appear in any model or route file.",
+      "passed": false,
+      "evidence": "Found violation pattern: conn.commit()",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-052",
+      "claim_text": "There must be NO `user_id` columns on any domain table and NO ownership checks in any route.",
+      "passed": false,
+      "evidence": "Found violation pattern: user_id",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-054",
+      "claim_text": "The debrief search query must bind the same `query` string to all three `?` placeholders for `raw_text`, `key_takeaways`, and `lessons_learned`.",
+      "passed": false,
+      "evidence": "```python\nsearch_pattern = f\"%{query}%\"\ncursor.execute(sql, (search_pattern, search_pattern, search_pattern))\n```\n\nThe spec requires `(query, query, query)` but the code passes `(search_pattern, search_pattern, search_pattern)` where `search_pattern = f\"%{query}%\"` \u2014 a modified version of `query` with `%` wildcards prepended and appended.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-078",
+      "claim_text": "The `top_venues` query must return venues ordered by played gig count descending, limited to 5, with columns `name` and `gig_count`.",
+      "passed": false,
+      "evidence": "Required pattern not found: ORDER BY gig_count DESC LIMIT",
+      "is_error": false
+    }
+  ],
+  "low_warnings": [],
+  "cost_usd": 1.372005,
+  "runtime_ms": 343907,
+  "spec_path": "/Users/alejandroguillen/Projects/sandbox/docs/plans/2026-06-05-gig-outcome-tracker-plan.md",
+  "run_id": "spec-eval-1780724147"
+}

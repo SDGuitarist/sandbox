@@ -1,0 +1,87 @@
+Warning: cost cap reached ($1.372 >= $1.0). Partial run: 210/210 scenarios.
+
+==================================================
+SPEC EVAL GATE: FAIL
+==================================================
+HIGH confidence: 182/210 passed
+LOW confidence:  0/0 passed (warnings only)
+Cost: $1.372 | Runtime: 343907ms
+Report: /Users/alejandroguillen/Projects/sandbox/docs/reports/068/spec-eval-1780724147/spec-eval-gate.json
+
+Failed claims (28):
+  FAIL: tbl-005 -- Name '`list_venues(conn) -> list[Row]`' (function)
+        Evidence: The code defines: `def list_venues(conn) -> list:` 
+The spec requires: `list_ven
+  FAIL: tbl-013 -- Name '`list_gigs(conn, status=None) -> list[Row]` (joins ven
+        Evidence: Line: `def list_gigs(conn, status=None) -> list:` — return type is `list` instea
+  FAIL: tbl-018 -- Name '`list_gigs_by_venue(conn, venue_id) -> list[Row]`' (fu
+        Evidence: Line: `def list_gigs_by_venue(conn, venue_id) -> list:` — The function name and 
+  FAIL: tbl-021 -- Name '`top_venues(conn, limit=5) -> list[Row]`' (function)
+        Evidence: The code has: `def top_venues(conn, limit=5) -> list:` — the return type is `lis
+  FAIL: tbl-022 -- Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `ven
+        Evidence: Spec requires: `recent_gigs(conn, limit=10) -> list[Row]`
+Code has: `def recent_
+  FAIL: tbl-023 -- Name '`monthly_revenue(conn, months=6) -> list[Row]`' (funct
+        Evidence: The function is defined as:
+```python
+def monthly_revenue(conn, months: int = 6)
+  FAIL: tbl-026 -- Name '`create_outcome(conn, gig_id, audience_energy, audienc
+        Evidence: The function signature matches:
+```python
+def create_outcome(
+    conn,
+    gig_
+  FAIL: tbl-027 -- Name '`get_outcome_by_gig_id(conn, gig_id) -> Row\' (None`)
+        Evidence: The code defines: `def get_outcome_by_gig_id(conn, gig_id) -> dict:` 
+
+The spec 
+  FAIL: tbl-036 -- Name '`list_contacts(conn) -> list[Row]`' (function)
+        Evidence: The code defines: `def list_contacts(conn) -> list:` — the return type annotatio
+  FAIL: tbl-040 -- Name '`list_contacts_by_gig_id(conn, gig_id) -> list[Row]`' 
+        Evidence: The code defines: `def list_contacts_by_gig_id(conn, gig_id) -> list:` — the ret
+  FAIL: tbl-046 -- Name '`search_debriefs(conn, query) -> list[Row]` (joins gig
+        Evidence: Line: `def search_debriefs(conn, query) -> list:` 
+- Function name `search_debri
+  FAIL: tbl-106 -- Function '`init_<entity>_schema`': Function: `init_<entity>_
+        Evidence: The function definition is present:
+```python
+def init_entity_schema(conn):
+    
+  FAIL: tbl-109 -- Route Group: POST /auth/logout, Mode: role-only (login requi
+        Evidence: 1. POST /auth/logout: `if r.Method != http.MethodPost { http.Error(w, "Method no
+  FAIL: tbl-110 -- Route Group: /venues/*, Mode: role-only (login required), No
+        Evidence: Role checking (only checks Bearer token presence, no role verification):
+```go
+f
+  FAIL: tbl-111 -- Route Group: /gigs/*, Mode: role-only (login required), Note
+        Evidence: 
+  FAIL: tbl-112 -- Route Group: /outcomes/*, Mode: role-only (login required), 
+        Evidence: The code does NOT register any actual HTTP routes under /outcomes/*. The route s
+  FAIL: tbl-113 -- Route Group: /contacts/*, Mode: role-only (login required), 
+        Evidence: 
+1. `requireLogin` is defined but never shown to be applied to `/contacts/*`:
+``
+  FAIL: tbl-115 -- Route Group: /dashboard/, Mode: role-only (login required), 
+        Evidence: 
+  FAIL: prose-026 -- Flask-WTF `CSRFProtect(app)` must be initialized in `create_
+        Evidence: Required pattern not found: CSRFProtect\(app\)
+  FAIL: prose-032 -- `row_factory = sqlite3.Row` must be set ONLY in `get_db()` a
+        Evidence: Found violation pattern: row_factory
+  FAIL: prose-035 -- All `updated_at` column updates in UPDATE statements must us
+        Evidence: Required pattern not found: updated_at = datetime\('now'\)
+  FAIL: prose-036 -- Python `datetime.now()` must NEVER appear anywhere in the co
+        Evidence: Found violation pattern: datetime.now()
+  FAIL: prose-039 -- Flash messages must use exactly two categories: `'error'` an
+        Evidence: No evidence found. The agent produced no code whatsoever — only a plain text mes
+  FAIL: prose-045 -- `Markup()` must NEVER be used in a filter without escaping i
+        Evidence: 
+  FAIL: prose-050 -- `conn.commit()` must NEVER appear in any model or route file
+        Evidence: Found violation pattern: conn.commit()
+  FAIL: prose-052 -- There must be NO `user_id` columns on any domain table and N
+        Evidence: Found violation pattern: user_id
+  FAIL: prose-054 -- The debrief search query must bind the same `query` string t
+        Evidence: ```python
+search_pattern = f"%{query}%"
+cursor.execute(sql, (search_pattern, sea
+  FAIL: prose-078 -- The `top_venues` query must return venues ordered by played 
+        Evidence: Required pattern not found: ORDER BY gig_count DESC LIMIT

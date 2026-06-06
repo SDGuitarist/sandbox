@@ -1,0 +1,218 @@
+{
+  "status": "FAIL",
+  "high_confidence": {
+    "total": 188,
+    "passed": 160,
+    "failed": 28,
+    "errors": 0
+  },
+  "low_confidence": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0
+  },
+  "failed_details": [
+    {
+      "claim_id": "tbl-005",
+      "claim_text": "Name '`list_venues(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code defines: `def list_venues(conn) -> list:` \nThe spec requires: `list_venues(conn) -> list[Row]`\nThe return type annotation is `list` instead of `list[Row]` as specified.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-013",
+      "claim_text": "Name '`list_gigs(conn, status=None) -> list[Row]` (joins venue name as `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "\nSpec requires: `list_gigs(conn, status=None) -> list[Row]`\n\nCode has:\nLine: `def list_gigs(conn, status=None) -> list:`\n- Function name matches: `list_gigs` \u2713\n- Parameters match: `(conn, status=None)` \u2713\n- Return type MISMATCH: `-> list` vs required `-> list[Row]` \u2717\n\nVenue name join (matches spec):\nLine: `v.name as venue_name` \u2713\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-018",
+      "claim_text": "Name '`list_gigs_by_venue(conn, venue_id) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code has `def list_gigs_by_venue(conn, venue_id) -> list:` \u2014 the return type annotation is `list` instead of the required `list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-021",
+      "claim_text": "Name '`top_venues(conn, limit=5) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The function is defined as:\n```python\ndef top_venues(conn, limit=5) -> list:\n```\nThe return type annotation is `list` instead of the required `list[Row]` as specified in the spec instruction `top_venues(conn, limit=5) -> list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-022",
+      "claim_text": "Name '`recent_gigs(conn, limit=10) -> list[Row]` (joins `venue_name`)' (function)",
+      "passed": false,
+      "evidence": "The function signature in the code is:\n`def recent_gigs(conn, limit=10) -> list:`\n\nThe spec requires:\n`recent_gigs(conn, limit=10) -> list[Row]`\n\nThe return type annotation is `-> list` instead of `-> list[Row]`. The venue_name join is correctly implemented with `LEFT JOIN venues v ON g.venue_id = v.id` and `v.name as venue_name` in the SELECT clause.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-023",
+      "claim_text": "Name '`monthly_revenue(conn, months=6) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code defines: `def monthly_revenue(conn, months: int = 6) -> list:` \u2014 the return type annotation is `list` instead of the required `list[Row]`. The `Row` type is not imported or referenced anywhere in the code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-036",
+      "claim_text": "Name '`list_contacts(conn) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "The code has: `def list_contacts(conn) -> list:` \u2014 the return type annotation is `list`, not `list[Row]` as required by the spec. The spec explicitly requires `list[Row]` as the return type.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-039",
+      "claim_text": "Name '`list_follow_ups(conn) -> list[Row]` (where follow_up_needed=1, ORDER BY follow_up_date)' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_follow_ups(conn) -> list:` - return type is `list` instead of the specified `list[Row]`\nLine: `WHERE follow_up_needed = 1` - correctly implements the filter\nLine: `ORDER BY follow_up_date` - correctly implements the ordering\nDocstring mentions `list[Row]` but the actual annotation is just `list`",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-040",
+      "claim_text": "Name '`list_contacts_by_gig_id(conn, gig_id) -> list[Row]`' (function)",
+      "passed": false,
+      "evidence": "Line: `def list_contacts_by_gig_id(conn, gig_id) -> list:` \u2014 The function name and parameters match the spec, but the return type annotation is `-> list` instead of the required `-> list[Row]`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-106",
+      "claim_text": "Function '`init_<entity>_schema`': Function: `init_<entity>_schema`, Writes: CREATE TABLE IF NOT EXISTS, Pattern: called inside scaffold's single `with conn:` in `init_db`, Error Handling: idempotent; no special handling",
+      "passed": false,
+      "evidence": "The code defines `def init_entity_schema(conn)` with `CREATE TABLE IF NOT EXISTS entity (...)` inside it, satisfying the naming pattern and SQL requirement. However, there is no `init_db` function and no `with conn:` block shown that calls `init_entity_schema`, which is explicitly required by the spec: \"called inside scaffold's single `with conn:` in `init_db`\". No evidence found for this critical requirement.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-109",
+      "claim_text": "Route Group: POST /auth/logout, Mode: role-only (login required), Notes: Session teardown",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-110",
+      "claim_text": "Route Group: /venues/*, Mode: role-only (login required), Notes: All CRUD + delete",
+      "passed": false,
+      "evidence": "The delete function is cut off mid-implementation:\n```go\nfunc deleteVenue(w http.ResponseWriter, id string) {\n\tif _, exists := venues[id];\n```\nThe function is incomplete - the body is truncated and never completes the delete operation. All other CRUD operations are present but Delete is not fully implemented.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-111",
+      "claim_text": "Route Group: /gigs/*, Mode: role-only (login required), Notes: All CRUD + status + delete",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-112",
+      "claim_text": "Route Group: /outcomes/*, Mode: role-only (login required), Notes: Create, view, edit",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-113",
+      "claim_text": "Route Group: /contacts/*, Mode: role-only (login required), Notes: All CRUD + follow-ups + delete",
+      "passed": false,
+      "evidence": "1. Role checking - ABSENT: The `authMiddleware` only checks token presence, never checks role:\n```go\nfunc authMiddleware(next http.Handler) http.Handler {\n    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {\n        token := r.Header.Get(\"Authorization\")\n        if token == \"\" {\n            http.Error(w, \"Unauthorized\", http.StatusUnauthorized)\n            return\n        }\n        userID := strings.TrimPrefix(token, \"Bearer \")\n        if userID == \"\" {\n            http.Error(w, \"Invalid token\", http.StatusUnauthorized)\n            return\n        }\n        ctx := context.WithValue(r.Context(), \"user_id\", userID)\n        next.ServeHTTP(w, r.WithContext(ctx))\n    })\n}\n```\nNo role check exists anywhere.\n\n2. Delete handler - ABSENT: No `deleteContact` or equivalent function is defined anywhere in the code.\n\n3. Follow-ups handler - ABSENT: Only a struct field exists (`FollowUps []string`), but no HTTP handler for follow-up operations (e.g., POST /contacts/{id}/follow-ups).\n\n4. Code is truncated at `updateContact`, ending with `json` mid-statement \u2014 no `main()` or route registration is shown.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-115",
+      "claim_text": "Route Group: /dashboard/, Mode: role-only (login required), Notes: Read-only",
+      "passed": false,
+      "evidence": "\nThe code checks for session existence:\n```typescript\nconst {\n  data: { session },\n} = await supabase.auth.getSession()\n\n// If no session exists, redirect to login\nif (!session) {\n  const loginUrl = new URL('/login', request.url)\n  loginUrl.searchParams.set('redirectedFrom', pathname)\n  return NextResponse.redirect(loginUrl)\n}\n```\n\nAfter the session check, there is NO role verification code. The code simply proceeds to return a response with headers:\n```typescript\nconst responseWithHeader = NextResponse.next()\nresponseWithHeader.headers.set('X-Route-Mode', 'read-only')\nresponseWithHeader.headers.set('X-Auth-Required', 'true')\nreturn responseWithHeader\n```\n\nNo evidence of role checking (e.g., `session.user.role`, fetching roles from database, checking user metadata for specific roles, etc.) exists anywhere in the code.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-009",
+      "claim_text": "All timestamps are `TEXT DEFAULT (datetime('now'))`.",
+      "passed": false,
+      "evidence": "Required pattern not found: TEXT DEFAULT \\(datetime\\('now'\\)\\)",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-017",
+      "claim_text": "`CSRFProtect(app)` MUST be initialized in `create_app` (scaffold only).",
+      "passed": false,
+      "evidence": "Required pattern not found: CSRFProtect\\(app\\)",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-019",
+      "claim_text": "Model modules MUST NEVER call `sqlite3.connect(...)` \u2014 they receive `conn` as a parameter.",
+      "passed": false,
+      "evidence": "Found violation pattern: sqlite3.connect",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-020",
+      "claim_text": "`conn.commit()` MUST NOT appear in any model or route file; all writes use `with conn:`.",
+      "passed": false,
+      "evidence": "Found violation pattern: conn.commit()",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-021",
+      "claim_text": "Python `datetime.now()` MUST NOT appear anywhere; timestamps use SQL `datetime('now')` only.",
+      "passed": false,
+      "evidence": "Found violation pattern: datetime.now()",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-022",
+      "claim_text": "Flash categories are EXACTLY `'error'` and `'success'` \u2014 no other strings.",
+      "passed": false,
+      "evidence": "Found violation pattern: flash() calls with any category\n            # Matches: flash('message', '",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-035",
+      "claim_text": "Custom Jinja2 filters that return `Markup(...)` MUST `from markupsafe import escape` and escape every interpolated value before wrapping.",
+      "passed": false,
+      "evidence": "Found violation pattern: Markup().\"\"\"\n    \n    # Find all Python files in the current directory and subdirectories\n    python_files = list(Path('.').rglob('*.py'))\n    \n    for file_path in python_files:\n        try:\n            with open(file_path, 'r', encoding='utf-8') as f:\n                content = f.read()\n        except (UnicodeDecodeError, IOError):\n            continue\n        \n        # Check if file contains Markup usage\n        if 'Markup(' not in content:\n            continue\n        \n        # Check if this looks like a Jinja2 filter file\n        if 'jinja' not in content.lower() and 'filter' not in content.lower():\n            continue\n        \n        lines = content.split('\\n')\n        modified = False\n        new_lines = []\n        has_escape_import = False\n        has_markupsafe_import = False\n        markup_import_line = -1\n        \n        # First pass: check for existing imports\n        for i, line in enumerate(lines):\n            if 'from markupsafe import' in line:\n                has_markupsafe_import = True\n                if 'escape' in line:\n                    has_escape_import = True\n                markup_import_line = i\n            elif 'from markupsafe import Markup' in line:\n                markup_import_line = i\n        \n        # Check for Markup() usage in function definitions\n        in_function = False\n        function_has_markup = False\n        function_start_line = -1\n        \n        for i, line in enumerate(lines):\n            # Detect function definitions\n            if re.match(r'^\\s*def\\s+\\w+', line):\n                in_function = True\n                function_start_line = i\n                function_has_markup = False\n            \n            # Check if function contains Markup()\n            if in_function and 'Markup(' in line:\n                function_has_markup = True\n                \n                # Check if escape is being used\n                if 'escape(' not in line:\n                    # Find all variable interpolations in the Markup string\n                    # Look for patterns like {variable} or f-string patterns\n                    markup_match = re.search(r'Markup\\((.*?)\\)', line, re.DOTALL)\n                    if markup_match:\n                        markup_content = markup_match.group(1)\n                        \n                        # Check for f-strings or format strings with variables\n                        if '{' in markup_content and '}' in markup_content:\n                            # Extract variables from the string\n                            var_pattern = r'\\{([^}]+)\\}'\n                            variables = re.findall(var_pattern, markup_content)\n                            \n                            # Check if any variable is not already escaped\n                            needs_escaping = False\n                            for var in variables:\n                                var_clean = var.strip()\n                                # Check if it's already wrapped in escape()\n                                if not var_clean.startswith('escape('):\n                                    needs_escaping = True\n                                    break\n                            \n                            if needs_escaping and has_escape_import:\n                                # Replace unescaped variables with escaped versions\n                                new_line = line\n                                for var in variables:\n                                    var_clean = var.strip()\n                                    if not var_clean.startswith('escape('):\n                                        # Replace {var} with {escape(var)}\n                                        new_line = new_line.replace('{' + var + '}', '{escape(' + var_clean + ')}')\n                                \n                                new_lines.append(new_line)\n                                modified = True\n                                continue\n        \n        # If we found Markup usage but no escape import, add it\n        if function_has_markup and not has_escape_import:\n            # Add escape to the markupsafe import\n            if has_markupsafe_import and markup_import_line >= 0:\n                # Modify existing import\n                old_import = lines[markup_",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-041",
+      "claim_text": "All routes except `auth.login` and `auth.register` require login. There are no `user_id` columns and no ownership checks (`WHERE user_id = ?`).",
+      "passed": false,
+      "evidence": "Found violation pattern: WHERE user_id",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-043",
+      "claim_text": "Every POST form in every template includes the CSRF hidden input.",
+      "passed": false,
+      "evidence": "Required pattern not found: name=\"csrf_token\"",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-048",
+      "claim_text": "The `top_venues` function must execute the specified SQL selecting top 5 venues by played gig count using JOIN, GROUP BY, ORDER BY gig_count DESC LIMIT 5.",
+      "passed": false,
+      "evidence": "Required pattern not found: ORDER BY gig_count DESC LIMIT",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-071",
+      "claim_text": "The `recent_gigs` dashboard query must select `g.*, v.name as venue_name` joining gigs to venues, ordered by `g.date DESC LIMIT 10`.",
+      "passed": false,
+      "evidence": "Required pattern not found: ORDER BY g\\.date DESC LIMIT 10",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-073",
+      "claim_text": "No domain table may have a `user_id` column.",
+      "passed": false,
+      "evidence": "Found violation pattern: user_id",
+      "is_error": false
+    }
+  ],
+  "low_warnings": [],
+  "cost_usd": 1.2004656000000005,
+  "runtime_ms": 299300,
+  "spec_path": "/Users/alejandroguillen/Projects/sandbox/docs/plans/2026-06-05-gig-outcome-tracker-plan.md",
+  "run_id": "spec-eval-1780724609"
+}
