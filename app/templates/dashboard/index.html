@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<section class="dashboard-stats">
+  <div class="stat-card">
+    <h2>Gigs Played</h2>
+    <p class="stat-value">{{ played_count }}</p>
+  </div>
+
+  <div class="stat-card">
+    <h2>Total Revenue</h2>
+    <p class="stat-value">${{ '%.2f'|format(total_revenue_cents / 100) }}</p>
+  </div>
+
+  <div class="stat-card">
+    <h2>Average Audience Energy</h2>
+    <p class="stat-value">
+      {% if avg_audience_energy is none %}
+        N/A
+      {% else %}
+        {{ '%.1f'|format(avg_audience_energy) }}
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="stat-card">
+    <h2>Total Tips</h2>
+    <p class="stat-value">${{ '%.2f'|format(total_tips_cents / 100) }}</p>
+  </div>
+</section>
+
+<section class="dashboard-top-venues">
+  <h2>Top Venues</h2>
+  {% if top_venues %}
+    <ol>
+      {% for v in top_venues %}
+        <li>{{ v['name'] }} ({{ v['gig_count'] }})</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p>No played gigs yet.</p>
+  {% endif %}
+</section>
+
+<section class="dashboard-recent-gigs">
+  <h2>Recent Gigs</h2>
+  {% if recent_gigs %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Venue</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in recent_gigs %}
+          <tr>
+            <td><a href="{{ url_for('gigs.detail', id=g['id']) }}">{{ g['date'] }}</a></td>
+            <td>{{ g['venue_name'] }}</td>
+            <td>{{ g['status'] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No gigs yet.</p>
+  {% endif %}
+</section>
+
+<section class="dashboard-monthly-revenue">
+  <h2>Monthly Revenue Trend</h2>
+  {% if monthly_revenue %}
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in monthly_revenue %}
+          <tr>
+            <td>{{ m['month'] }}</td>
+            <td>${{ '%.2f'|format(m['total_cents'] / 100) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No revenue yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
