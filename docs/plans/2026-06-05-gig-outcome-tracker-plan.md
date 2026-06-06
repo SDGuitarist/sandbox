@@ -938,55 +938,160 @@ top venues Grand Ballroom (2) then Sunset Lounge (1).
 
 ## 15. Swarm Agent Assignment
 
-| # | Agent | Owns | Blueprint |
-|---|-------|------|-----------|
-| 1 | scaffold | App factory, auth (register/login/logout), base templates, navbar, static CSS, get_db(), login_required, init_db, users table DDL | auth |
-| 2 | venue_models | venues table DDL, venue CRUD functions, venue analytics functions | — |
-| 3 | venue_routes | Venue create/list/detail/edit/delete routes + templates | venues |
-| 4 | gig_models | gigs table DDL, gig CRUD functions, status transitions, revenue/analytics queries | — |
-| 5 | gig_routes | Gig create/list/detail/edit/delete/status routes + templates | gigs |
-| 6 | outcome_models | outcomes table DDL, outcome CRUD functions, energy analytics | — |
-| 7 | outcome_routes | Outcome create/edit/view routes + templates (linked from gig detail) | outcomes |
-| 8 | contact_models | contacts table DDL, contact CRUD functions, follow-up queries | — |
-| 9 | contact_routes | Contact create/list/detail/edit/delete routes + templates, follow-up list | contacts |
-| 10 | debrief_models | debriefs table DDL, debrief CRUD functions, keyword search | — |
-| 11 | debrief_routes | Debrief create/edit/view routes + templates, search route | debriefs |
-| 12 | dashboard | Dashboard aggregation route + template | dashboard |
+**Total agents:** 12
+**Total files:** 33
+**Validation:** No file appears in multiple assignments. Every file in the directory tree is owned by exactly one agent. Paths are relative to project root; no absolute paths, no `..`.
 
-### File Assignment Boundaries
+### Shared Interface Spec
 
-Every path is relative to project root. No absolute paths, no `..`. Each file is
-owned by exactly one agent.
+All agents implement against Sections 4–9 of this plan (Export Names Table,
+Cross-Boundary Wiring Table, Input Validation Prescriptions, Coordinated Behaviors,
+Transaction Contracts, Authorization Matrix). The key rules every agent must follow:
 
-- **Agent 1 (scaffold):** `app/__init__.py`, `run.py`, `app/static/style.css`,
-  `app/templates/base.html`, `app/templates/auth/login.html`,
-  `app/templates/auth/register.html`. (Owns the `users` table DDL and auth routes
-  inline in `app/__init__.py`.)
-- **Agent 2 (venue_models):** `app/venue_models.py`.
-- **Agent 3 (venue_routes):** `app/venue_routes.py`, `app/templates/venues/list.html`,
-  `app/templates/venues/detail.html`, `app/templates/venues/form.html`.
-- **Agent 4 (gig_models):** `app/gig_models.py`.
-- **Agent 5 (gig_routes):** `app/gig_routes.py`, `app/templates/gigs/list.html`,
-  `app/templates/gigs/detail.html`, `app/templates/gigs/form.html`.
-- **Agent 6 (outcome_models):** `app/outcome_models.py`.
-- **Agent 7 (outcome_routes):** `app/outcome_routes.py`,
-  `app/templates/outcomes/form.html`, `app/templates/outcomes/detail.html`.
-- **Agent 8 (contact_models):** `app/contact_models.py`.
-- **Agent 9 (contact_routes):** `app/contact_routes.py`,
-  `app/templates/contacts/list.html`, `app/templates/contacts/follow_ups.html`,
-  `app/templates/contacts/detail.html`, `app/templates/contacts/form.html`.
-- **Agent 10 (debrief_models):** `app/debrief_models.py`.
-- **Agent 11 (debrief_routes):** `app/debrief_routes.py`,
-  `app/templates/debriefs/form.html`, `app/templates/debriefs/detail.html`,
-  `app/templates/debriefs/search.html`.
-- **Agent 12 (dashboard):** `app/dashboard_routes.py`,
-  `app/templates/dashboard/index.html`.
+- Import `get_db` and `login_required` from `app` (`from app import get_db, login_required`).
+- Apply `@login_required` to every non-auth route view function.
+- Every POST form template must include `<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">`.
+- Flash categories are exactly `'error'` and `'success'` — no other strings.
+- Write transactions use `with conn:` only. No `conn.commit()`, no bare `BEGIN`.
+- Catch `sqlite3.IntegrityError` specifically — never bare `except`.
+- IDs are `uuid4().hex[:8]`, generated inside the model `create_*` function.
+- Timestamps: `datetime('now')` in SQL only. Never Python `datetime.now()`.
+- Models receive `conn` as a parameter. Models never open connections or set `row_factory`.
+- Route decorators are relative to the blueprint prefix — never doubled.
+- Blueprint variable names and `name=` args must match the Export Names Table exactly.
 
-Shared/no-owner contract: `app/__init__.py` registers all seven blueprints and calls
-each `init_<entity>_schema` — this file is owned solely by Agent 1, which imports the
-blueprint vars and schema-init functions from the route/model modules using the exact
-names in Section 1. (The swarm-planner validates/refines this assignment; this is the
-complete first-pass.)
+---
+
+### Agent: scaffold
+**Blueprint:** `auth` (url_prefix `/auth`)
+**Files:**
+- `run.py`
+- `app/__init__.py`
+- `app/static/style.css`
+- `app/templates/base.html`
+- `app/templates/auth/login.html`
+- `app/templates/auth/register.html`
+
+**Responsibility:** Implements `create_app()`, `get_db()`, `login_required`, `init_db()`, the `users` table DDL, and the `auth` blueprint (register/login/logout routes + templates), plus `base.html` with navbar and flash rendering, and global CSS.
+
+---
+
+### Agent: venue_models
+**Blueprint:** none
+**Files:**
+- `app/venue_models.py`
+
+**Responsibility:** Implements the `venues` table DDL (`VENUE_SCHEMA`, `init_venue_schema`), all venue CRUD functions (`create_venue`, `get_venue`, `list_venues`, `update_venue`, `delete_venue`, `venue_name_exists`), and the venue analytics function (`avg_energy_by_venue` is in outcome_models — see Export Names Table; venue_models owns only venue-table operations).
+
+---
+
+### Agent: venue_routes
+**Blueprint:** `venues_bp` (name `venues`, url_prefix `/venues`)
+**Files:**
+- `app/venue_routes.py`
+- `app/templates/venues/list.html`
+- `app/templates/venues/detail.html`
+- `app/templates/venues/form.html`
+
+**Responsibility:** Implements all venue routes (list, new, detail, edit, delete) and their Jinja2 templates; imports `count_gigs_by_venue`, `list_gigs_by_venue` from `app.gig_models` and `avg_energy_by_venue` from `app.outcome_models`.
+
+---
+
+### Agent: gig_models
+**Blueprint:** none
+**Files:**
+- `app/gig_models.py`
+
+**Responsibility:** Implements the `gigs` table DDL (`GIG_SCHEMA`, `init_gig_schema`), all gig CRUD functions (`create_gig`, `get_gig`, `list_gigs`, `update_gig`, `delete_gig`, `set_gig_status`), venue-scoped queries (`count_gigs_by_venue`, `list_gigs_by_venue`), and dashboard analytics queries (`count_played_gigs`, `total_revenue_cents`, `top_venues`, `recent_gigs`, `monthly_revenue`).
+
+---
+
+### Agent: gig_routes
+**Blueprint:** `gigs_bp` (name `gigs`, url_prefix `/gigs`)
+**Files:**
+- `app/gig_routes.py`
+- `app/templates/gigs/list.html`
+- `app/templates/gigs/detail.html`
+- `app/templates/gigs/form.html`
+
+**Responsibility:** Implements all gig routes (list, new, detail, edit, delete, status transition) and their Jinja2 templates; imports `get_venue`, `list_venues` from `app.venue_models`, `get_outcome_by_gig_id` from `app.outcome_models`, `get_debrief_by_gig_id` from `app.debrief_models`, and `list_contacts_by_gig_id` from `app.contact_models`.
+
+---
+
+### Agent: outcome_models
+**Blueprint:** none
+**Files:**
+- `app/outcome_models.py`
+
+**Responsibility:** Implements the `outcomes` table DDL (`OUTCOME_SCHEMA`, `init_outcome_schema`), all outcome CRUD functions (`create_outcome`, `get_outcome_by_gig_id`, `update_outcome`), and analytics functions (`avg_energy_by_venue`, `avg_audience_energy`, `total_tips_cents`).
+
+---
+
+### Agent: outcome_routes
+**Blueprint:** `outcomes_bp` (name `outcomes`, url_prefix `/outcomes`)
+**Files:**
+- `app/outcome_routes.py`
+- `app/templates/outcomes/form.html`
+- `app/templates/outcomes/detail.html`
+
+**Responsibility:** Implements outcome routes (new, view, edit — no delete) and their Jinja2 templates; imports `get_gig` from `app.gig_models`.
+
+---
+
+### Agent: contact_models
+**Blueprint:** none
+**Files:**
+- `app/contact_models.py`
+
+**Responsibility:** Implements the `contacts` table DDL (`CONTACT_SCHEMA`, `init_contact_schema`), all contact CRUD functions (`create_contact`, `get_contact`, `list_contacts`, `update_contact`, `delete_contact`), and query functions (`list_follow_ups`, `list_contacts_by_gig_id`).
+
+---
+
+### Agent: contact_routes
+**Blueprint:** `contacts_bp` (name `contacts`, url_prefix `/contacts`)
+**Files:**
+- `app/contact_routes.py`
+- `app/templates/contacts/list.html`
+- `app/templates/contacts/follow_ups.html`
+- `app/templates/contacts/detail.html`
+- `app/templates/contacts/form.html`
+
+**Responsibility:** Implements all contact routes (list, follow-ups, new, detail, edit, delete) and their Jinja2 templates. MUST declare `/contacts/follow-ups` and `/contacts/new` BEFORE `/contacts/<id>` in source order to prevent Flask routing shadowing. Imports `get_gig`, `list_gigs` from `app.gig_models` and `get_venue`, `list_venues` from `app.venue_models`.
+
+---
+
+### Agent: debrief_models
+**Blueprint:** none
+**Files:**
+- `app/debrief_models.py`
+
+**Responsibility:** Implements the `debriefs` table DDL (`DEBRIEF_SCHEMA`, `init_debrief_schema`), all debrief CRUD functions (`create_debrief`, `get_debrief_by_gig_id`, `update_debrief`), and keyword search (`search_debriefs` — case-insensitive LIKE across raw_text, key_takeaways, lessons_learned, joined with gig date and venue name).
+
+---
+
+### Agent: debrief_routes
+**Blueprint:** `debriefs_bp` (name `debriefs`, url_prefix `/debriefs`)
+**Files:**
+- `app/debrief_routes.py`
+- `app/templates/debriefs/form.html`
+- `app/templates/debriefs/detail.html`
+- `app/templates/debriefs/search.html`
+
+**Responsibility:** Implements all debrief routes (new, view, edit — no delete — and search) and their Jinja2 templates. MUST declare `/debriefs/search` BEFORE `/debriefs/<gig_id>` in source order. Imports `get_gig` from `app.gig_models`.
+
+---
+
+### Agent: dashboard
+**Blueprint:** `dashboard_bp` (name `dashboard`, url_prefix `/dashboard`)
+**Files:**
+- `app/dashboard_routes.py`
+- `app/templates/dashboard/index.html`
+
+**Responsibility:** Implements the single dashboard route (`GET /dashboard/`) and its Jinja2 template, pulling all aggregation data from `app.gig_models` (`count_played_gigs`, `total_revenue_cents`, `top_venues`, `recent_gigs`, `monthly_revenue`) and `app.outcome_models` (`avg_audience_energy`, `total_tips_cents`).
+
+---
+
+STATUS: PASS
 
 ## 16. Known Pitfalls Applied
 
