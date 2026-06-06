@@ -97,17 +97,57 @@ forge that artifact. Resolution options are documented in the verification file.
 | 11 | debrief_routes | e97e62b | PASS |
 | 12 | dashboard | 17c4c0c | PASS |
 
+### Review: 0 P1, 2 P2 | Fix commits: 89c2148 (both P2s resolved)
+
 ---
 
 ## FAILURES
 
-<!-- Filled after review -->
+| Severity | Detail | Resolution | Failure Class |
+|----------|--------|------------|---------------|
+| P2 | `monthly_revenue(conn, months=6)` ignores `months` parameter — query hardcodes `'-6 months'` regardless of argument | Fixed in commit 89c2148: SQL now binds `f"-{months}"` as parameter | FC4 (validation/parameter gap) |
+| P2 | `init_debrief_schema` wraps DDL in nested `with conn:` inside `init_db`'s outer `with conn:` — inconsistent with all other `init_*_schema` functions | Fixed in commit 89c2148: removed inner `with conn:`, now calls `conn.execute(DEBRIEF_SCHEMA)` directly | FC14 (executescript/transaction context) |
+| P3 | `outcome_routes` view GET flashes `'error'` for "no outcome yet" — informational state, not an error | Deferred — low priority, no user impact for single-user app | — |
+| P3 | `list_contacts` has no ORDER BY clause — non-deterministic contact list order | Deferred — cosmetic for single-user app | — |
 
 ---
 
 ## RUN_METRICS
 
-<!-- Filled after review -->
+### Final Build Metrics
+
+| Metric | Value |
+|--------|-------|
+| Agent count | 12 |
+| FC37 rate | 0% (0/12 agents failed to commit) |
+| Merge conflicts | 0 |
+| File count | 33 |
+| LOC estimate | ~3076 |
+| Smoke test results | 54/54 PASS |
+| Review P1 findings | 0 |
+| Review P2 findings | 2 (both fixed, commit 89c2148) |
+| Review P3 findings | 2 (deferred) |
+| Contract check inline fixes | 1 (contact_models executescript→execute) |
+| Spec-eval gate | WAIVED_BY_HUMAN (2026-06-06) |
+| Structural gates | 2/2 PASS (completeness + consistency) |
+| Dashboard fixture | VERIFIED (88000 cents, 4.5 avg, 8000 tips, venue order correct) |
+
+### Agent Performance Summary
+
+| Agent | Role | Status | Notes |
+|-------|------|--------|-------|
+| scaffold | App factory, auth, base templates | COMPLETED | 0 issues |
+| venue_models | Venues DDL + CRUD | COMPLETED | 0 issues |
+| venue_routes | Venue routes + templates | COMPLETED | 0 issues |
+| gig_models | Gigs DDL + CRUD + dashboard queries | COMPLETED | 0 issues |
+| gig_routes | Gig routes + templates | COMPLETED | 0 issues |
+| outcome_models | Outcomes DDL + CRUD + analytics | COMPLETED | 0 issues |
+| outcome_routes | Outcome routes + templates | COMPLETED | P3 informational flash category |
+| contact_models | Contacts DDL + CRUD | COMPLETED | inline fix: executescript→execute |
+| contact_routes | Contact routes + templates | COMPLETED | P3 missing ORDER BY |
+| debrief_models | Debriefs DDL + CRUD + search | COMPLETED | P2 nested with conn: (fixed) |
+| debrief_routes | Debrief routes + templates | COMPLETED | 0 issues |
+| dashboard | Dashboard route + template | COMPLETED | P2 months param ignored (fixed) |
 
 ## Advisory Baseline
 baseline_sha: 0a9f09fccce8409351e51dc5b1c254183ca9064a

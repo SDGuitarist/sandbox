@@ -1,32 +1,33 @@
 ---
 review_agents:
   - learnings-researcher
-  - architecture-strategist
-  - pattern-recognition-specialist
+  - security-sentinel
+  - performance-oracle
+  - flow-trace-reviewer
 ---
 
-# Review Context — Sandbox (Autopilot Context-Death Solution)
+# Review Context — Sandbox (Gig Outcome Tracker, Run 068)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Reduced swarm-runner scope (11w-16w only) may not save enough context for 20+ agent builds; BUILD_TRACKING YAML frontmatter fragility under repeated agent edits"
+**Brainstorm risk:** Dashboard aggregation query correctness — paid-only revenue / GROUP BY / COALESCE logic. No prior solution doc covers it. The deterministic fixture (3 played, $880, 4.5 avg energy, 8000 tips) is the verification anchor.
 
-**Plan mitigation:** Dropped YAML frontmatter entirely (zero precedent). Replaced with markdown Phase Status table. Reduced swarm-runner scope acknowledged as architectural limitation. Three-stage layered defense: no-read + deepen-merge + swarm-runner.
+**Plan mitigation:** Section 12 prescribed the exact SQL for all dashboard queries (COALESCE, LEFT JOIN, payment_status filter). Deterministic fixture included in Acceptance Tests (Section 14) as a smoke test anchor.
 
-**Work risk (from Feed-Forward):** "Whether the reduced swarm-runner scope saves enough context for 20+ agent builds. Worker spawn (Steps 7w-10.5w) remains inline."
+**Work risk (from Feed-Forward):** Whether the dashboard agent would implement the LEFT JOIN correctly (so paid gigs without outcomes still count their pay), apply payment_status='paid' filter (so Gig 3's unpaid $450 is excluded), and average energy over outcome rows (2) not gig rows (3).
 
-**Review resolution:** 2 P1 + 3 P2 from 2 review rounds (Codex + Claude Code). All fixed. P1-1: worker_status serialization gap. P1-2: 20+ agent claim documented as limitation. P2s: STATUS normalization, auto-checkpoint, prerequisite gap. 9/9 invariant checks PASS.
+**Review resolution:** 0 P1, 2 P2 from 1 review round. Dashboard aggregation verified correct — risk did NOT materialize. Prescriptive SQL in spec was the load-bearing mitigation. P2-1: monthly_revenue months parameter ignored (hardcoded -6). P2-2: init_debrief_schema nested with conn: inconsistency. Both fixed in commit 89c2148. 2 P3s deferred (informational flash category, list_contacts missing ORDER BY).
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| .claude/skills/autopilot/SKILL.md | Steps 5.5, 6-6.08, 9w.5-9w.7, 10w-17w rewritten | Step reference consistency, solo/swarm path divergence |
-| .claude/agents/swarm-runner.md | New — assembly + verification delegation | Circuit breaker behavior, inline conflict resolution |
-| .claude/agents/deepen-merge-runner.md | New — merge delegation (swarm-only) | Corrections format parsing, anchor-failure recovery |
-| .claude/agents/spec-completeness-checker.md | Output contract added | Contract compliance on existing behavior |
-| .claude/agents/spec-consistency-checker.md | Output contract added | Contract compliance on existing behavior |
+| app/gig_models.py | monthly_revenue: parameterize months in SQL | Parameter contract correctness |
+| app/debrief_models.py | init_debrief_schema: remove nested with conn: | Transaction consistency with other init_*_schema functions |
+| app/dashboard_routes.py | New — dashboard aggregation | COALESCE + LEFT JOIN + payment filter correctness |
+| app/__init__.py | New — scaffold, get_db, init_db, auth blueprint | PRAGMA foreign_keys, row_factory placement, SECRET_KEY fail-close |
+| app/contact_models.py | Assembly inline fix: executescript → execute | Transaction isolation during init_db |
 
 ## Plan Reference
 
-`docs/plans/2026-06-03-autopilot-context-death-solution-plan.md`
+`docs/plans/2026-06-05-gig-outcome-tracker-plan.md`
