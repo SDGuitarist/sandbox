@@ -28,6 +28,7 @@
 | gate-verification (9w.7) | CLEARED | docs/reports/068/gate-verification.md |
 | spec-eval-gate (9w.8) | BLOCKED | docs/reports/068/spec-eval-1780724609/spec-eval-verification.md |
 | spec-eval-harness-fix | DONE (gate now credible, still FAIL) | docs/reports/068/spec-eval-harness-fix.md |
+| spec-eval-gate (9w.8) | WAIVED_BY_HUMAN (2026-06-06) | docs/reports/068/spec-eval-waiver.md |
 
 **Run State:**
 - run_id: 068
@@ -35,7 +36,9 @@
 - branch: master
 - context_proxy_chars: 0
 - manual_resume: true
-- final_status: BLOCKED_AT_SPEC_EVAL_GATE (9w.8) — gate returned FAIL twice; all 28 failures dispositioned as harness artifacts (cross-language scenario generation + negative-constraint token-grep), NOT spec defects. Orchestrator declined to fabricate a PASS or self-authorize a mandatory-gate override. Spec PASSED consistency + completeness gates + 3 deepening reviews. Human waiver or harness fix required to resume from Step 9w.9.
+- resume_point: Step 9w.9 (ghost-file cleanup) → Step 10w (spawn 12 agents)
+- spec_eval_gate: WAIVED_BY_HUMAN 2026-06-06 (harness fixed commit 6e3bf80; residual FAIL is non-spec-defect; see docs/reports/068/spec-eval-waiver.md). Step 10w spec-eval precondition is satisfied-by-waiver.
+- final_status: IN_PROGRESS — resuming in a fresh context window from Step 9w.9. Pre-swarm gates (consistency, completeness) PASSED; spec-eval gate WAIVED_BY_HUMAN after harness fix.
 
 ## Spec Eval Gate Block (Step 9w.8)
 

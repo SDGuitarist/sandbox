@@ -1,14 +1,18 @@
 # HANDOFF -- Sandbox
 
-**Date:** 2026-06-05
+**Date:** 2026-06-06
 **Branch:** master
-**Phase:** Compound COMPLETE → ready for next build
+**Phase:** Autopilot run 068 (Gig Outcome Tracker) IN PROGRESS — paused pre-swarm, resume in a fresh chat from Step 9w.9
 
-## Current State
+## Current State — RESUME RUN 068
 
-Autopilot context-death solution is fully compounded. Three-stage delegation architecture implemented (no-read discipline + deepen-merge-runner + swarm-runner), reviewed (2 P1 + 3 P2, all fixed), solution doc written, and learnings propagated. The architecture is ready for its first real swarm build validation.
+First real 12-agent swarm build validating the 3-stage context-death delegation architecture. Paused before swarm spawn to resume with a full context window.
 
-Prior completed: Spec eval gate (9w.8), tail delegation, prompting dashboard engine (run 064), film PM (run 063).
+**Resume instructions + paste-ready prompt:** `docs/reports/068/RESUME-run-068.md`
+
+DONE & committed on master: compound-start, brainstorm (+refinement), plan, deepen (3 reviews), deepen-merge-runner (PASS), swarm-planner (PASS, 33 files/12 agents), **spec-consistency gate PASS**, **spec-completeness gate PASS**, gate-verification CLEARED. Spec-eval gate (9w.8) **WAIVED_BY_HUMAN 2026-06-06** after the eval harness was found broken and FIXED (commit 6e3bf80; see `docs/reports/068/spec-eval-waiver.md` and `spec-eval-harness-fix.md`). Resume point: **Step 9w.9 → 10w**. Plan: `docs/plans/2026-06-05-gig-outcome-tracker-plan.md`.
+
+Prior completed builds: autopilot context-death solution (compounded), spec eval gate (9w.8), tail delegation, prompting dashboard engine (run 064), film PM (run 063).
 
 ## Key Artifacts
 
