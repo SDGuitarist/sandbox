@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Search Debriefs</h1>
+
+  <form method="get" action="{{ url_for('debriefs.search') }}">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search debriefs">
+    <button type="submit">Search</button>
+  </form>
+
+  {% if query %}
+    {% if results %}
+      <ul>
+        {% for debrief in results %}
+          <li>
+            <a href="{{ url_for('debriefs.view', gig_id=debrief['gig_id']) }}">
+              {{ debrief['gig_date'] }} — {{ debrief['venue_name'] }}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No debriefs found.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}
