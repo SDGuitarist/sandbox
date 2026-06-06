@@ -95,6 +95,7 @@ eval-harness/calibration/spec-eval/spec-eval-*/
 eval-harness/reports/spec-eval-*/
 
 # Runtime session state
+.content-pipeline-agent
 .content-pipeline-agent/
 
 # Nested repos (separate projects, not submodules)

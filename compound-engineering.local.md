@@ -1,23 +1,32 @@
-# Review Context — Film Production PM Tool
+---
+review_agents:
+  - learnings-researcher
+  - architecture-strategist
+  - pattern-recognition-specialist
+---
+
+# Review Context — Sandbox (Autopilot Context-Death Solution)
 
 ## Risk Chain
 
-**Brainstorm risk:** "Call sheet Cross-Boundary Wiring — 6 cross-module imports is the densest coupling surface attempted. A single name mismatch or wrong return type crashes the call sheet page."
+**Brainstorm risk:** "Reduced swarm-runner scope (11w-16w only) may not save enough context for 20+ agent builds; BUILD_TRACKING YAML frontmatter fragility under repeated agent edits"
 
-**Plan mitigation:** Cross-Boundary Wiring Table included all 6 import paths with return types. Pre-swarm contract checker given ground truth to validate against. Flow-trace-reviewer assigned to the callsheet+schedule+reports surface.
+**Plan mitigation:** Dropped YAML frontmatter entirely (zero precedent). Replaced with markdown Phase Status table. Reduced swarm-runner scope acknowledged as architectural limitation. Three-stage layered defense: no-read + deepen-merge + swarm-runner.
 
-**Work risk (from Feed-Forward):** "Call sheet cross-boundary wiring — 6 cross-module imports including 4 into callsheet_models from 4 different model modules."
+**Work risk (from Feed-Forward):** "Whether the reduced swarm-runner scope saves enough context for 20+ agent builds. Worker spawn (Steps 7w-10.5w) remains inline."
 
-**Review resolution:** 5 findings (1 P1, 3 P2, 1 P3). Feed-Forward risk RESOLVED — all 6 imports verified correct by flow-trace-reviewer. Contract checker caught and fixed all mismatches before tail. Top finding: missing date validation on callsheets.generate (P1, mirrors pattern from personal-finance-tracker Run). All P1+P2 fixed in commit b783e3a. P3 (hospital/weather_note column mismatch) deferred to todo 060.
+**Review resolution:** 2 P1 + 3 P2 from 2 review rounds (Codex + Claude Code). All fixed. P1-1: worker_status serialization gap. P1-2: 20+ agent claim documented as limitation. P2s: STATUS normalization, auto-checkpoint, prerequisite gap. 9/9 invariant checks PASS.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/blueprints/callsheets/routes.py | Added `import re` + YYYY-MM-DD date validation to `generate()` | Input validation completeness |
-| app/__init__.py | SESSION_COOKIE_SECURE now conditional on FLASK_ENV=production | Auth behavior in dev vs prod |
-| app/models/callsheet_models.py | generate_call_sheet multi-table transaction (4 cross-module reads) | Cross-boundary wiring, DOOD computation |
+| .claude/skills/autopilot/SKILL.md | Steps 5.5, 6-6.08, 9w.5-9w.7, 10w-17w rewritten | Step reference consistency, solo/swarm path divergence |
+| .claude/agents/swarm-runner.md | New — assembly + verification delegation | Circuit breaker behavior, inline conflict resolution |
+| .claude/agents/deepen-merge-runner.md | New — merge delegation (swarm-only) | Corrections format parsing, anchor-failure recovery |
+| .claude/agents/spec-completeness-checker.md | Output contract added | Contract compliance on existing behavior |
+| .claude/agents/spec-consistency-checker.md | Output contract added | Contract compliance on existing behavior |
 
 ## Plan Reference
 
-`docs/plans/film-production-pm-plan.md`
+`docs/plans/2026-06-03-autopilot-context-death-solution-plan.md`

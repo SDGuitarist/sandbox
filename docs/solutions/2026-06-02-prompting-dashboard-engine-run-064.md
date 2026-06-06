@@ -66,6 +66,20 @@ Listing every encrypted column explicitly prevented ad-hoc encryption decisions 
 ### Ghost-file cleanup gate (Step 9w.8)
 Second consecutive build where this gate caught prior-project artifacts. Worth keeping permanent.
 
+## Process Improvements Identified
+
+### 1. Log assembly-phase rewrites in BUILD_TRACKING FAILURES
+The wizard agent required a full rewrite during assembly (hardcoded components → DB-backed). This was an FC2 instance but never got a FAILURES row because FAILURES only tracks review-phase findings. Assembly rewrites are significant events that should be logged with failure class attribution. Update the autopilot tracking template to include assembly-phase entries.
+
+### 2. Spec-conformance spot-check at assembly
+The ownership gate checks whether agents wrote to correct file paths. It does not check whether the code matches the spec's prescribed data model. For the wizard agent, a grep like "does component_models.py query component_definitions table?" would have caught the divergence before a full rewrite. Consider adding a lightweight content check per agent branch at merge time.
+
+### 3. Pin transaction syntax in spec template
+Prescribe `with conn:` directly in the spec template instead of allowing agents to choose between `with conn:`, explicit `BEGIN`/`commit()`, or other patterns. The spec already prescribes transaction boundaries — it should also prescribe the exact syntax. This prevents Python-version-dependent behavior surprises.
+
+### 4. Separate deepening from swarm launch session
+Pre-swarm density (15 deepening fixes + 3 consistency rounds + 2 doc reviews in Run 064) consumed significant context before agents launched. Consider: deepen in one session, commit the deepened plan, launch the swarm in a fresh session. The plan is a file — it survives session boundaries. This trades one extra session start for lower context death risk.
+
 ## Metrics
 
 | Metric | Value |
