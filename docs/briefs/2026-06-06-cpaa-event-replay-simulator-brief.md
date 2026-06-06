@@ -1,5 +1,5 @@
 # Autopilot Brief — CPAA Shadow Lab Event-Replay Simulator (Advanced / 12-layer)
-**2026-06-06 · autopilot-swarm (`swarm: true`) · 20–25 agents · Canonical brief for Codex review → plan phase**
+**2026-06-06 · autopilot-swarm (`swarm: true`) · 20–25 agents · Two-stage: attended plan/spec-convergence + human verify → unattended build (see Layer 12)**
 
 ## [Your Reality / The Fuel]
 **1. Role:** Act as the Lead Agentic Swarm Orchestrator and Senior Systems Architect.
@@ -21,11 +21,11 @@
 </implementation_rules>
 
 **Pinned gap decisions (FROZEN 2026-06-06 by human — authoritative; the spec must implement these verbatim):**
-1. **Dedup logic** — every event carries an `idempotency_key` with a UNIQUE constraint; append via `INSERT … ON CONFLICT IGNORE` inside `BEGIN IMMEDIATE`. Re-running a replay cannot create duplicates; concurrent appends are serialized by the immediate transaction.
-2. **Determinism contract** — "same event sequence → identical projection," verified by hashing the canonically-serialized projection after a full replay; deterministic iff hashes match across two runs. On mismatch, emit a field-level diff for diagnostics.
-3. **Shadow isolation** — replay writes to a SEPARATE SQLite file (`shadow.db`), never the live DB; the replay engine never opens a live-DB handle. (No row-level tagging.)
-4. **Ordering** — apply strictly by monotonic `event_id` (append order). Logical timestamp is data, not apply-order; equal timestamps tie-break on `event_id`.
-5. **Payload semantics** — PATCH semantics (per-key change tracking); the projection upsert merges patch keys.
+1. **Dedup logic** — every event carries an `idempotency_key` that is GLOBALLY UNIQUE (UNIQUE constraint). Append via `INSERT OR IGNORE` (valid SQLite) inside `BEGIN IMMEDIATE`; FIRST WRITE WINS. A duplicate key is silently ignored (no error) and counted; the same key arriving with a DIFFERENT payload is also ignored and logged as an anomaly (never overwrites). Re-running a replay cannot create duplicates; concurrent appends are serialized by the immediate transaction.
+2. **Determinism contract** — "same event sequence → identical projection," verified by hashing the canonically-serialized projection after a full replay; deterministic iff hashes match across two runs. Canonical serialization (spec MUST pin exactly): all projection tables included, rows ordered by primary key, JSON object keys sorted, floats and timestamps normalized to fixed precision/format. On mismatch, emit a field-level diff (spec defines the diff schema).
+3. **Shadow isolation** — two separate SQLite files: `live.db` (source telemetry, treated as READ-ONLY) and `shadow.db` (all replay writes). The replay engine opens ONLY `shadow.db` for writing and never a writable `live.db` handle. The validator MAY open `live.db` READ-ONLY to assert it is unchanged. No row-level tagging. ("Live state unchanged" = `live.db` content hash identical pre- vs post-replay.)
+4. **Ordering** — apply strictly by monotonic `event_id`, assigned at append/ingest time (so out-of-order batch arrival still yields canonical order). Logical timestamp is data, not apply-order; equal timestamps tie-break on `event_id`. Point-in-time replay query: `WHERE logical_ts <= :t ORDER BY event_id`.
+5. **Payload semantics** — PATCH semantics (per-key change tracking); the projection upsert merges patch keys. Null rule: an explicit `null` in a payload CLEARS that key (sets it null); a key ABSENT from the payload is left unchanged. Unknown keys and per-event-type merge rules (incl. additive counters) are pinned in the spec's Coordinated Behaviors section.
 **8. Tone:** Hyper-precise, literal, strictly typed, architecture-focused, rigorously documented.
 **9. Avoid:** Do NOT touch the production DB (local SQLite only). Do NOT make undeclared external calls. Do NOT implement clock-speed/rewind time-travel beyond point-in-time read (deferred). Do NOT allow overlapping file ownership across the 6 clusters (overlap = gate fail).
 
@@ -34,12 +34,12 @@
 
 *(a) EARS acceptance — 100%:*
 - A valid batch replayed twice produces identical projections.
-- `get_projection_at_time(t)` applies ONLY events where ts ≤ t.
-- App start returns 200 on all routes (100% smoke pass).
+- `get_projection_at_time(t)` applies ONLY events where `logical_ts` ≤ t.
+- App start succeeds and every route returns its EXPECTED status per the spec's route smoke table (e.g. GET 200, redirects 302, POST/validation errors their declared 4xx) — 100% pass against that table.
 - Duplicate idempotency keys are deduplicated per the pinned strategy.
 - Events that arrive out of order in a batch are applied by monotonic `event_id` (canonical append order), not by batch/arrival order.
 - Replay on shadow leaves live state completely unchanged.
-- The tail-runner finishes review and compound within the timeout.
+- The tail-runner completes review + compound within its 30-minute timeout; on timeout it writes `CHECKPOINT.md` and the run is marked NEEDS-RESUME (never silently passed).
 
 *(b) Mandatory tail artifacts — run FAILS if any is missing (operating contract):*
 - `BUILD_TRACKING.md` with filled AGENT_STATUS, FAILURES, RUN_METRICS.
@@ -51,11 +51,19 @@
 Note: >~70% `context_proxy_chars` saturation before Step 17w is a recorded post-run architectural FINDING (logged in the telemetry log + self-audit). It is NOT a runtime action and NOT a build failure; it feeds a follow-up planning decision on whether to start the Orchestration Hardening plan.
 
 **11. Format — produce:**
-- Finalized spec document resolving the 5 mandatory gaps + clearing all 6 swarm-gate surfaces.
-- Swarm execution plan detailing disjoint file ownership across the 20–25 agents.
+- Finalized **plan** file in `docs/plans/` starting with YAML frontmatter that includes `swarm: true` (required to trigger the swarm path) and the `feed_forward:` block.
+- Finalized **spec** document resolving the 5 mandatory gaps + clearing all 6 swarm-gate surfaces, including a **route smoke table** (route, method, payload, expected status) and the canonical-serialization + PATCH merge rules.
+- **Per-agent file-ownership matrix** (produced BEFORE Step 10w worker spawn): agent ID → exclusive files, declared owner for any shared file, and merge order. Overlap = ownership-gate fail.
 - Working code repository.
-- Architectural telemetry log of `context_proxy_chars` at each phase boundary.
+- **Architectural telemetry log** at `docs/reports/<run-id>/context-telemetry.md`: one row per phase boundary (columns: phase/step boundary, `context_proxy_chars`, % of budget, timestamp), covering at minimum Steps 6, 9w.6, 10w, 11w–16w, 17w, 18w.
+- `/workflows:review` output plus a Feed-Forward section whose "least confident" item names the inline-phase context risk.
 - The mandatory tail artifacts from Layer 10(b).
 
-**12. Process (human gate is PRE-LAUNCH, not runtime):**
-This is an UNATTENDED autopilot-swarm run — there is no human to answer questions mid-run. Therefore the 5 mandatory gaps are ALREADY frozen by the human in "Pinned gap decisions" (Layer 7); the plan / spec-convergence phase must implement them verbatim and must NOT re-open or re-infer them. They are enforced through the 6 spec sections (Layer 7), not a separate gate, and the human structural-verification step confirms each is carried into the spec before launch. The plan must also produce a complete Data Ownership table (one writer per table) covering: event log, shadow projection, live projection (read-only during replay), validation results, replay metadata/checkpoints, and API/report tables. Do NOT defer gap-pinning or ownership assignment to runtime. Before planning, re-resolve and verify references (paths may live in `sandbox-autopilot-delegation/docs/solutions/`): event-sourced-audit-log, autopilot-swarm-orchestration, spec-completeness-checker-pre-swarm-gate, sandbox-autonomy-hardening, chain-reaction-inter-service-contracts.
+**12. Process — execution model (human gate is PRE-LAUNCH, never runtime):**
+This runs in TWO stages.
+- **Stage 1 (attended, pre-launch):** humans + Claude + Codex run the plan / spec-convergence loop and the human structural-verification gate to produce a FROZEN, committed, verified spec. Convergence criterion: Codex clean AND human finds zero P0s. This stage MAY involve human questions and review.
+- **Stage 2 (unattended):** the autopilot-swarm run is launched against that frozen spec; the build proceeds with NO human in the loop. NOTHING in Stage 2 waits on a human — every gate in Stage 2 is automated (spec-completeness + consistency checkers, ownership gate, contract check, smoke, tests, self-audit).
+
+The 5 mandatory gaps are ALREADY frozen in "Pinned gap decisions" (Layer 7); Stage 1 must implement them verbatim and must NOT re-open or re-infer them — enforced through the 6 spec sections (Layer 7), not a separate gate. Stage 1 must also produce a complete Data Ownership table (one writer per table) covering: event log, shadow projection, validation results, replay metadata/checkpoints, and API/report tables (plus the READ-ONLY `live.db`). Do NOT defer gap-pinning or ownership assignment to Stage 2.
+
+References (read in Stage 1 IF PRESENT; treat as NON-BLOCKING if absent — re-resolve, do not stall): event-sourced-audit-log, autopilot-swarm-orchestration, spec-completeness-checker-pre-swarm-gate, sandbox-autonomy-hardening, chain-reaction-inter-service-contracts — likely under `docs/solutions/` here or in a sibling `sandbox-autopilot-delegation/` checkout.
