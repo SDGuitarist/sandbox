@@ -713,10 +713,17 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   `assembly-summary.md`, and a stale prior-run summary must not mask the abort). The
   run ends. (These are the two blocking failure classes — see CLAUDE.md Escalation
   Rules.)
-- **Otherwise — for ALL other outcomes** (wire `STATUS: PASS`, a non-blocking wire
-  `STATUS: FAIL`, or wire STATUS missing/garbled) — **disk-verify the assembly summary
-  as the authoritative verdict.** There is no other wire-driven abort: the only
-  pre-disk-verify aborts are the two blocking classes above. Run as a single Bash call:
+- **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
+  The blocking classes above are the ONLY wire-driven aborts in this handler. All of
+  the following wire outcomes route identically to the disk-verify below — none of them
+  aborts the run by itself:
+  - wire `STATUS: PASS` → disk-verify (no abort here)
+  - a non-blocking wire `STATUS: FAIL` (any reason other than the two blocking classes)
+    → disk-verify (no abort here)
+  - wire STATUS missing, truncated, or garbled → disk-verify (no abort here)
+
+  **Disk-verify the assembly summary as the authoritative verdict.** Run as a single
+  Bash call:
   ```
   python3 tools/verify_delegated_status.py \
     --artifact docs/reports/<run-id>/assembly-summary.md --artifact-kind assembly \
@@ -725,9 +732,10 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   - **Exit 0:** the merge genuinely completed → proceed to Step 17w. DO NOT read the
     full report. (Smoke/test failures, if any, are noted in `assembly-summary.md` and
     reviewed by the tail.)
-  - **Any non-zero exit:** abort. The script prints the reason (missing/stale/run-id
-    mismatch/FAIL status). Trust the exit code; do not second-guess it from the wire
-    STATUS, and do not abort on a non-blocking wire FAIL without disk-verifying first.
+  - **Any non-zero exit → the run fails.** This abort is driven by the SCRIPT's exit
+    code (the DISK verdict: missing/stale/run-id mismatch/FAIL status), NOT by the wire
+    STATUS. Output the script's printed reason. Trust the exit code; do not re-decide
+    from the wire STATUS.
 
 The swarm-runner agent file is the single source of truth for
 assembly/verification logic. Do NOT reintroduce inline Steps 11w-16w here.
