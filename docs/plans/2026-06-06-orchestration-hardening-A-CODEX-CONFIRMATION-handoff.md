@@ -1,24 +1,37 @@
 # Codex Handoff — Confirmation Pass (Plan A terminal-gate fixes)
 
+**PR:** #10 — https://github.com/SDGuitarist/sandbox/pull/10
 **Branch:** `feat/orchestration-hardening-A-reliability`
-**Fix commit:** `5cf36b6`
+**HEAD:** `d8a8c97` (review THIS state — not a local checkout)
+**Fix commits:** `5cf36b6` (review fixes), `d8a8c97` (Step 11w wording hardening)
 **Created:** 2026-06-06
 **Type:** confirmation pass — verify the prior review findings are resolved, no regressions
+
+> IMPORTANT: a prior confirmation pass produced a FALSE NEGATIVE by reviewing a stale
+> local state. Review the PR's current diff, not a cached checkout. First run
+> `git fetch origin && git rev-parse origin/feat/orchestration-hardening-A-reliability`
+> and confirm it equals `d8a8c97` before judging.
 
 ---
 
 ## Copy-paste prompt for Codex
 
 ```
-Confirmation pass on branch feat/orchestration-hardening-A-reliability.
+Confirmation pass on PR #10 (https://github.com/SDGuitarist/sandbox/pull/10),
+branch feat/orchestration-hardening-A-reliability, HEAD d8a8c97.
+
+FIRST: git fetch origin, then confirm
+  git rev-parse origin/feat/orchestration-hardening-A-reliability  == d8a8c97
+Review THAT state. A previous pass produced a false negative from a stale checkout, so
+do not judge any local working copy — judge the PR's current head.
 
 You previously reviewed this branch (the terminal pass/fail gate change) and raised
-findings. They were addressed in commit 5cf36b6. Verify each is genuinely resolved and
-that nothing regressed. Do NOT re-review the whole diff from scratch — focus on the four
-fixes below.
+findings. They were addressed in 5cf36b6, with a clarity-only wording hardening in
+d8a8c97. Verify each is genuinely resolved and that nothing regressed. Do NOT re-review
+the whole diff from scratch — focus on the four items below.
 
-See the fix commit:           git show 5cf36b6
-See the full branch diff:      git diff master...feat/orchestration-hardening-A-reliability
+See the PR diff:               gh pr diff 10        (or: git diff master...origin/feat/orchestration-hardening-A-reliability)
+See the fix commits:           git show 5cf36b6 ; git show d8a8c97
 Plan:                          docs/plans/2026-06-06-autopilot-orchestration-hardening-A-reliability-plan.md
 
 Confirm each:
