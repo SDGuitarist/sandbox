@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 
 def init_contact_schema(conn) -> None:
     """Create the contacts table if it does not exist (idempotent)."""
-    conn.executescript(CONTACT_SCHEMA)
+    conn.execute(CONTACT_SCHEMA)
 
 
 def create_contact(
