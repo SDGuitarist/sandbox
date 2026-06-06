@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Outcome</h1>
+<p>
+  <a href="{{ url_for('gigs.detail', id=gig['id']) }}">Back to gig</a>
+  &middot;
+  <a href="{{ url_for('outcomes.edit', gig_id=gig['id']) }}">Edit outcome</a>
+</p>
+
+<dl>
+  <dt>Audience energy</dt>
+  <dd>{{ outcome['audience_energy'] }} / 5</dd>
+
+  <dt>Overall rating</dt>
+  <dd>{{ outcome['overall_rating'] }} / 5</dd>
+
+  <dt>Audience size estimate</dt>
+  <dd>{{ outcome['audience_size_estimate'] if outcome['audience_size_estimate'] is not none else '—' }}</dd>
+
+  <dt>Tips (cents)</dt>
+  <dd>{{ outcome['tips_cents'] }}</dd>
+
+  <dt>Leads generated</dt>
+  <dd>{{ outcome['leads_generated'] }}</dd>
+
+  <dt>Song highlights</dt>
+  <dd>{{ outcome['song_highlights'] if outcome['song_highlights'] is not none else '—' }}</dd>
+
+  <dt>Song struggles</dt>
+  <dd>{{ outcome['song_struggles'] if outcome['song_struggles'] is not none else '—' }}</dd>
+
+  <dt>Audience feedback</dt>
+  <dd>{{ outcome['audience_feedback'] if outcome['audience_feedback'] is not none else '—' }}</dd>
+
+  <dt>Staff feedback</dt>
+  <dd>{{ outcome['staff_feedback'] if outcome['staff_feedback'] is not none else '—' }}</dd>
+
+  <dt>Personal reflections</dt>
+  <dd>{{ outcome['personal_reflections'] if outcome['personal_reflections'] is not none else '—' }}</dd>
+
+  <dt>Recorded</dt>
+  <dd>{{ outcome['created_at'] }}</dd>
+
+  <dt>Last updated</dt>
+  <dd>{{ outcome['updated_at'] }}</dd>
+</dl>
+{% endblock %}
