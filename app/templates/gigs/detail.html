@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Gig — {{ gig['date'] }}</h1>
+
+<section>
+  <h2>Details</h2>
+  <p><strong>Status:</strong> {{ gig['status'] }}</p>
+  <p>
+    <strong>Venue:</strong>
+    {% if venue %}
+      <a href="{{ url_for('venues.detail', id=venue['id']) }}">{{ venue['name'] }}</a>
+    {% else %}
+      —
+    {% endif %}
+  </p>
+  <p><strong>Event Type:</strong> {{ gig['event_type'] or '—' }}</p>
+  <p><strong>Client:</strong> {{ gig['client_name'] or '—' }}</p>
+  <p><strong>Client Email:</strong> {{ gig['client_email'] or '—' }}</p>
+  <p><strong>Planned Set:</strong> {{ gig['planned_set_summary'] or '—' }}</p>
+  <p><strong>Expected Pay (cents):</strong> {{ gig['expected_pay_cents'] if gig['expected_pay_cents'] is not none else '—' }}</p>
+  <p><strong>Actual Pay (cents):</strong> {{ gig['actual_pay_cents'] if gig['actual_pay_cents'] is not none else '—' }}</p>
+  <p><strong>Payment Status:</strong> {{ gig['payment_status'] or '—' }}</p>
+  <p><strong>Notes:</strong> {{ gig['notes'] or '—' }}</p>
+</section>
+
+<section>
+  <h2>Actions</h2>
+  <p>
+    <a href="{{ url_for('gigs.edit', id=gig['id']) }}">Edit Gig</a>
+  </p>
+
+  {% if gig['status'] == 'upcoming' %}
+  <form method="post" action="{{ url_for('gigs.status', id=gig['id']) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="new_status" value="played">
+    <button type="submit">Mark Played</button>
+  </form>
+  <form method="post" action="{{ url_for('gigs.status', id=gig['id']) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="new_status" value="cancelled">
+    <button type="submit">Mark Cancelled</button>
+  </form>
+  {% endif %}
+
+  {% if can_delete %}
+  <form method="post" action="{{ url_for('gigs.delete', id=gig['id']) }}" style="display:inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit">Delete Gig</button>
+  </form>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Outcome</h2>
+  {% if outcome %}
+    <p>
+      <a href="{{ url_for('outcomes.view', gig_id=gig['id']) }}">View Outcome</a>
+      &middot;
+      <a href="{{ url_for('outcomes.edit', gig_id=gig['id']) }}">Edit Outcome</a>
+    </p>
+  {% else %}
+    <p><a href="{{ url_for('outcomes.new', gig_id=gig['id']) }}">Add Outcome</a></p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Debrief</h2>
+  {% if debrief %}
+    <p>
+      <a href="{{ url_for('debriefs.view', gig_id=gig['id']) }}">View Debrief</a>
+      &middot;
+      <a href="{{ url_for('debriefs.edit', gig_id=gig['id']) }}">Edit Debrief</a>
+    </p>
+  {% else %}
+    <p><a href="{{ url_for('debriefs.new', gig_id=gig['id']) }}">Add Debrief</a></p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Contacts Met</h2>
+  {% if contacts %}
+  <ul>
+    {% for contact in contacts %}
+    <li>
+      <a href="{{ url_for('contacts.detail', id=contact['id']) }}">{{ contact['name'] }}</a>
+      {% if contact['organization'] %} — {{ contact['organization'] }}{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No contacts recorded for this gig.</p>
+  {% endif %}
+  <p><a href="{{ url_for('contacts.new') }}">Add Contact</a></p>
+</section>
+
+<p><a href="{{ url_for('gigs.list') }}">Back to Gigs</a></p>
+{% endblock %}

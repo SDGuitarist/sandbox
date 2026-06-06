@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{% if mode == 'edit' %}Edit Gig{% else %}New Gig{% endif %}</h1>
+
+{% if mode == 'edit' %}
+<form method="post" action="{{ url_for('gigs.edit', id=gig['id']) }}">
+{% else %}
+<form method="post" action="{{ url_for('gigs.new') }}">
+{% endif %}
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <p>
+    <label for="venue_id">Venue</label>
+    {% if mode == 'edit' %}
+      {% for venue in venues %}
+        {% if venue['id'] == gig['venue_id'] %}{{ venue['name'] }}{% endif %}
+      {% endfor %}
+    {% else %}
+    <select name="venue_id" id="venue_id" required>
+      <option value="">— Select a venue —</option>
+      {% for venue in venues %}
+      <option value="{{ venue['id'] }}" {% if gig and gig['venue_id'] == venue['id'] %}selected{% endif %}>{{ venue['name'] }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </p>
+
+  <p>
+    <label for="date">Date (YYYY-MM-DD)</label>
+    <input type="text" name="date" id="date" value="{{ gig['date'] if gig else '' }}" required>
+  </p>
+
+  <p>
+    <label for="event_type">Event Type</label>
+    <select name="event_type" id="event_type">
+      <option value="">— None —</option>
+      {% for et in ['wedding','corporate','restaurant','private_party','festival','public','other'] %}
+      <option value="{{ et }}" {% if gig and gig['event_type'] == et %}selected{% endif %}>{{ et }}</option>
+      {% endfor %}
+    </select>
+  </p>
+
+  <p>
+    <label for="client_name">Client Name</label>
+    <input type="text" name="client_name" id="client_name" value="{{ gig['client_name'] if gig and gig['client_name'] else '' }}">
+  </p>
+
+  <p>
+    <label for="client_email">Client Email</label>
+    <input type="text" name="client_email" id="client_email" value="{{ gig['client_email'] if gig and gig['client_email'] else '' }}">
+  </p>
+
+  <p>
+    <label for="planned_set_summary">Planned Set Summary</label>
+    <textarea name="planned_set_summary" id="planned_set_summary">{{ gig['planned_set_summary'] if gig and gig['planned_set_summary'] else '' }}</textarea>
+  </p>
+
+  <p>
+    <label for="expected_pay_cents">Expected Pay (cents)</label>
+    <input type="text" name="expected_pay_cents" id="expected_pay_cents" value="{{ gig['expected_pay_cents'] if gig and gig['expected_pay_cents'] is not none else '' }}">
+  </p>
+
+  {% if mode == 'edit' %}
+  <p>
+    <label for="actual_pay_cents">Actual Pay (cents)</label>
+    <input type="text" name="actual_pay_cents" id="actual_pay_cents" value="{{ gig['actual_pay_cents'] if gig['actual_pay_cents'] is not none else '' }}">
+  </p>
+
+  <p>
+    <label for="payment_status">Payment Status</label>
+    <select name="payment_status" id="payment_status">
+      <option value="">— None —</option>
+      {% for ps in ['unpaid','pending','paid'] %}
+      <option value="{{ ps }}" {% if gig['payment_status'] == ps %}selected{% endif %}>{{ ps }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  {% endif %}
+
+  <p>
+    <label for="notes">Notes</label>
+    <textarea name="notes" id="notes">{{ gig['notes'] if gig and gig['notes'] else '' }}</textarea>
+  </p>
+
+  <p><button type="submit">Save</button></p>
+</form>
+
+<p>
+  {% if mode == 'edit' %}
+    <a href="{{ url_for('gigs.detail', id=gig['id']) }}">Cancel</a>
+  {% else %}
+    <a href="{{ url_for('gigs.list') }}">Cancel</a>
+  {% endif %}
+</p>
+{% endblock %}
