@@ -28,7 +28,7 @@ from extractor import deduplicate_claims, extract_prose_claims, parse_tables, st
 from models import Claim, ClaimResult, EvalResult, GateStatus, Scenario, CONFIDENCE_THRESHOLD
 from runner import run_scenario
 from spec_judge import evaluate_spec
-from spec_scenario_gen import claims_to_scenarios
+from spec_scenario_gen import claims_to_scenarios, detect_stack
 from spec_scorer import GateConfig, score_gate
 
 
@@ -267,8 +267,12 @@ async def _run_gate(
 
         return 0
 
-    # Phase 3: Generate scenarios
-    scenarios_and_rules = claims_to_scenarios(all_claims, run_id)
+    # Phase 3: Generate scenarios (primed with the spec's real stack so the
+    # scenario agent writes code in the right language, not "generic")
+    stack = detect_stack(spec_text)
+    if verbose:
+        click.echo(f"Detected stack: {stack}")
+    scenarios_and_rules = claims_to_scenarios(all_claims, run_id, stack)
 
     # Build scenario_id -> claim_id lookup for result mapping
     scenario_to_claim: dict[str, str] = {}

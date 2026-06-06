@@ -29,6 +29,15 @@ def build_prompt(
         system += "Complete the task below. Follow the rules provided."
     else:
         system += "Complete the task below."
+    # Force self-contained output. Without this, the agent sometimes refuses
+    # with "please provide the existing files", producing empty output that
+    # the judge scores as a spec failure (a scenario artifact, not a spec
+    # defect). Write the code from scratch; never ask for files.
+    system += (
+        "\nWrite complete, self-contained code from scratch. Do NOT ask for "
+        "existing files or additional context; if something is needed, create "
+        "it yourself. Always emit code, never a request for more information."
+    )
 
     user_parts = []
 
