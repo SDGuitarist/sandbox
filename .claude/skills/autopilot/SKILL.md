@@ -126,15 +126,16 @@ skip. The template is at `~/.claude/docs/autopilot-tracking-template.md`.
 
    **Run State:**
    - run_id: [TBD]
+   - run_start_ts: [TBD]
    - plan_path: [TBD]
    - branch: [TBD]
    - context_proxy_chars: 0
    - manual_resume: false
    - final_status: null
    ```
-7. Fill the Run State fields where known (plan_path, branch). Leave `run_id`
-   as `[TBD]` -- it is populated later in Step 5.5. Phase agents append rows to
-   the Phase Status table as they complete.
+7. Fill the Run State fields where known (plan_path, branch). Leave `run_id` and
+   `run_start_ts` as `[TBD]` -- both are populated later in Step 5.5. Phase agents
+   append rows to the Phase Status table as they complete.
 
 If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
 Run Info + Phase Status section + AGENT_STATUS table header + empty FAILURES +
@@ -244,6 +245,13 @@ the duplicate generation in Steps 7s.0 and 8w/9w is removed.
 
 After creating the directory, update BUILD_TRACKING.md Run State: replace
 `- run_id: [TBD]` with `- run_id: <run-id>` (Edit tool).
+
+Then capture the run-start timestamp: run `date +%s` and replace
+`- run_start_ts: [TBD]` with `- run_start_ts: <epoch-seconds>` (Edit tool). This
+is the freshness reference the terminal-gate disk-verify uses in Steps 11w-16w and
+18w (a delegated artifact with `mtime < run_start_ts` is a stale leftover from a
+prior aborted run at the same reused run-id, not this run's output). Save the value
+as `run_start_ts` for those steps.
 
 ### Step 6: Deepen Plan (INLINE)
 
@@ -585,8 +593,27 @@ For each agent in the assignment table:
    - `name: "swarm-[run-id]-[role-name]"` (e.g., `swarm-022-routes`)
    - `mode: "bypassPermissions"`
 
-Spawn ALL agents in a single message (parallel launch). Then wait for all
-agents to complete. You will be notified as each finishes.
+Spawn ALL agents in a single message (parallel launch).
+
+**Write the worker roster (write-only insurance) — BEFORE waiting for any
+completion.** Immediately after the parallel spawn returns the agent ids/branches,
+use the Write tool to create `docs/reports/<run-id>/worker-roster.md` mapping each
+spawned worker. Worktree branches are named `worktree-agent-<agentId>`, not by role,
+so this role→agentId→branch mapping otherwise lives only in volatile orchestrator
+context and is lost on a mid-spawn context death. Format:
+
+```markdown
+# Worker Roster — run <run-id>
+| Role | Agent ID | Branch | Worktree Path |
+|------|----------|--------|---------------|
+| <role> | <agentId> | worktree-agent-<agentId> | <worktree-path> |
+```
+
+One row per spawned agent. This is write-only insurance — no step consumes it in
+the current pipeline; it exists so a human can reconstruct swarm state after a
+mid-spawn context death. Do NOT wait for completions before writing it.
+
+Then wait for all agents to complete. You will be notified as each finishes.
 
 **Timeout:** If any agent has not completed after 10 minutes, report it as
 a failure and proceed with the agents that did complete. Do not wait
@@ -675,17 +702,40 @@ Spawn the **swarm-runner** agent with `mode: "bypassPermissions"`. Pass:
 - `agent_pitfalls`: the pitfalls text captured in Step 1.6
 
 Wait for the result. Search backward in the agent's output for a line starting
-with `STATUS:`.
-- If `STATUS: PASS`: proceed to Step 17w. DO NOT read the full report.
-  (Smoke/test failures, if any, are noted in `assembly-summary.md` and reviewed
-  by the tail.)
+with `STATUS:` — this **wire STATUS is a hint, not the verdict.** The verdict comes
+from disk-verifying the artifact (below), so a swarm-runner that completed the merge
+but was cut off before echoing its STATUS does not fail a genuinely good run.
+
 - If `STATUS: FAIL` and the reason starts with `contract-check:` or
   `merge-conflict:`: the swarm-runner has already aborted (no merge to main, no
   cleanup) and set `final_status` in BUILD_TRACKING.md Run State. Do NOT proceed
-  to Step 17w. The run ends. (These are the two blocking failure classes — see
-  CLAUDE.md Escalation Rules.)
-- If `STATUS: FAIL` for any other reason: read the full report at `report_path`
-  and abort.
+  to Step 17w, and do NOT disk-verify (these blocking classes abort BEFORE writing
+  `assembly-summary.md`, and a stale prior-run summary must not mask the abort). The
+  run ends. (These are the two blocking failure classes — see CLAUDE.md Escalation
+  Rules.)
+- **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
+  The blocking classes above are the ONLY wire-driven aborts in this handler. All of
+  the following wire outcomes route identically to the disk-verify below — none of them
+  aborts the run by itself:
+  - wire `STATUS: PASS` → disk-verify (no abort here)
+  - a non-blocking wire `STATUS: FAIL` (any reason other than the two blocking classes)
+    → disk-verify (no abort here)
+  - wire STATUS missing, truncated, or garbled → disk-verify (no abort here)
+
+  **Disk-verify the assembly summary as the authoritative verdict.** Run as a single
+  Bash call:
+  ```
+  python3 tools/verify_delegated_status.py \
+    --artifact docs/reports/<run-id>/assembly-summary.md --artifact-kind assembly \
+    --run-start-ts <run_start_ts> --run-id <run-id> --wire-status "<wire status or 'none'>"
+  ```
+  - **Exit 0:** the merge genuinely completed → proceed to Step 17w. DO NOT read the
+    full report. (Smoke/test failures, if any, are noted in `assembly-summary.md` and
+    reviewed by the tail.)
+  - **Any non-zero exit → the run fails.** This abort is driven by the SCRIPT's exit
+    code (the DISK verdict: missing/stale/run-id mismatch/FAIL status), NOT by the wire
+    STATUS. Output the script's printed reason. Trust the exit code; do not re-decide
+    from the wire STATUS.
 
 The swarm-runner agent file is the single source of truth for
 assembly/verification logic. Do NOT reintroduce inline Steps 11w-16w here.
@@ -716,23 +766,34 @@ A blocking failure (`contract-check:` or `merge-conflict:`) means the
 swarm-runner aborted WITHOUT merging to main. In that case the orchestrator
 already ended the run at the Steps 11w-16w handler and never reaches Step 17w.
 
-Wait for the agent to complete. Read its output and check for the
-terminal STATUS line (PASS or FAIL).
+Wait for the agent to complete. Read its output and note its terminal STATUS line
+if present — but treat it as a **hint, not the verdict.**
 
 ### Step 18w: Verify Tail Result (SWARM ONLY — MANDATORY GATE)
 
-After the tail-runner agent returns, parse its terminal STATUS line.
+The verdict is the **on-disk `self-audit.md`**, not the tail-runner's echoed wire
+STATUS. The tail-runner finishes its work and writes `self-audit.md` (via
+`/verify-self-audit`) but can be cut off before echoing its Output Contract; a
+"no STATUS line → FAIL" reading would fail a genuinely complete run. So disk-verify
+the artifact. Run as a single Bash call:
 
-- If `STATUS: FAIL`: the run fails immediately. Output the agent's error.
-- If `STATUS: PASS`: output `<promise>DONE</promise>` and stop.
+```
+python3 tools/verify_delegated_status.py \
+  --artifact docs/reports/<run-id>/self-audit.md --artifact-kind self-audit \
+  --run-start-ts <run_start_ts> --run-id <run-id> --wire-status "<wire status or 'none'>"
+```
 
-The tail-runner already verifies all 5 artifacts internally (learnings,
-BUILD_TRACKING, self-audit via `/verify-self-audit`, HANDOFF.md). This is
-consistent with how the orchestrator trusts STATUS lines from all other
-agents (spec-completeness-checker, swarm-runner, self-audit-reviewer).
+- **Exit 0:** the tail genuinely completed → output `<promise>DONE</promise>` and stop.
+- **Any non-zero exit:** the run fails. The script prints the specific reason
+  (missing/unreadable artifact, stale leftover from a prior aborted run at this reused
+  run-id, run-id mismatch, or a `PIPELINE_FAIL` status). Output that reason. Trust the
+  exit code; do NOT second-guess it from the wire STATUS, and do NOT fail merely because
+  the wire STATUS line was absent.
 
-If the agent crashes without emitting a STATUS line: FAIL with
-"TAIL AGENT INCOMPLETE: no STATUS line in output."
+The script confirms only existence + freshness + run-id + non-FAIL terminal status.
+Deferred-risk adjudication stays owned by `/verify-self-audit` (already run inside the
+tail-runner); `PIPELINE_PASS_WITH_DEFERRED_RISK` is a pass and the script treats it as
+such — do not re-adjudicate WARN dispositions here.
 
 ---
 
@@ -742,8 +803,14 @@ If the agent crashes without emitting a STATUS line: FAIL with
 Step 17w (Delegate Shared Tail) which spawns the tail-runner agent.
 The steps below only run inline for solo builds.
 
-<!-- TAIL_SYNC_POINT: This logic is duplicated in .claude/agents/tail-runner.md
-(swarm path). Changes here MUST be mirrored there, and vice versa. -->
+<!-- TAIL_SYNC_POINT: The Shared Tail STEPS below (review/compound/learnings) are
+duplicated in .claude/agents/tail-runner.md (swarm path). Changes to those steps MUST
+be mirrored there, and vice versa.
+NOTE (Plan A, 2026-06-06): terminal-gate VERIFICATION authority now differs by path and
+is intentionally NOT symmetric. The SWARM tail is verified by disk-verifying self-audit.md
+(Step 18w, via tools/verify_delegated_status.py). The SOLO tail below runs inline and
+produces self-audit.md itself, so there is no delegated wire STATUS to verify — solo
+verification is unchanged. Do not "sync" the disk-verify into the solo path. -->
 
 ### Review
 

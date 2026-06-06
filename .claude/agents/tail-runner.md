@@ -46,8 +46,15 @@ variable content. See CLAUDE.md Bash Command Rules for the full list.
 
 ## Steps
 
-<!-- TAIL_SYNC_POINT: This logic is duplicated in SKILL.md Shared Tail
-(solo path). Changes here MUST be mirrored there, and vice versa. -->
+<!-- TAIL_SYNC_POINT: These tail STEPS (review/compound/learnings) are duplicated in
+SKILL.md Shared Tail (solo path). Changes to those steps MUST be mirrored there, and
+vice versa.
+NOTE (Plan A, 2026-06-06): terminal-gate VERIFICATION authority is intentionally NOT
+symmetric across paths. This SWARM tail's result is verified by the orchestrator
+disk-verifying self-audit.md (SKILL.md Step 18w, via tools/verify_delegated_status.py).
+The SOLO tail produces self-audit.md inline with no delegated wire STATUS to verify, so
+it is unchanged. Do not mirror the disk-verify into the solo path. -->
+
 
 ### Step 1: Review
 
@@ -91,10 +98,12 @@ If the compound workflow doesn't produce this section, add it before
 proceeding.
 
 After compound completes, save the exact path to the solution doc as
-`solution_doc_path`. This is critical — the orchestrator uses this path
-for exact file verification in Step 18w. If the compound workflow output
-does not explicitly state the path, use Glob to find the most recently
-modified file in `docs/solutions/` and use that as `solution_doc_path`.
+`solution_doc_path`. Emit it in your output (it is logged for reference and
+confirms the solution doc was written). Note: Step 18w's PASS/FAIL verdict is the
+disk-verify of `self-audit.md` (not this path), but you must still produce the
+solution doc — its absence will surface via the learnings/self-audit checks. If the
+compound workflow output does not explicitly state the path, use Glob to find the
+most recently modified file in `docs/solutions/` and use that as `solution_doc_path`.
 
 ### Step 4: Update Learnings
 
@@ -205,11 +214,19 @@ The agent MUST produce all of these artifacts or the run fails:
 | BUILD_TRACKING.md | FAILURES and RUN_METRICS sections filled |
 | Learnings propagated | `~/.claude/docs/agent-pitfalls.md` updated |
 
-The agent MUST end with parseable output:
+The agent SHOULD still end with parseable output:
 - `solution_doc_path: <exact path to solution doc written>`
 - `STATUS: PASS — all tail artifacts written`
   OR
 - `STATUS: FAIL — <specific reason>`
 
-The orchestrator parses `solution_doc_path` for exact file verification
-in Step 18w (no same-day glob). The STATUS line determines pass/fail.
+**Authority note (Plan A, 2026-06-06):** this echoed wire STATUS is a HINT, not the
+verdict. Step 18w decides PASS/FAIL by disk-verifying the on-disk `self-audit.md`
+(via `tools/verify_delegated_status.py`: existence + freshness + run-id +
+non-FAIL `**Status:**`), NOT by parsing this line. So if this agent completes all
+work and writes `self-audit.md` but is cut off before echoing the line above, the run
+still PASSES. Conversely, a wire `STATUS: PASS` cannot rescue a missing/stale/FAIL
+`self-audit.md`. Always still emit the line when you can — it is logged for context —
+but the durable artifact is the source of truth. Deferred-risk adjudication remains
+owned by `/verify-self-audit` (Step 9); a `PIPELINE_PASS_WITH_DEFERRED_RISK` self-audit
+status is a pass.
