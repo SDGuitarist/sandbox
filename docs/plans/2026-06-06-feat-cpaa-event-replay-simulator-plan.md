@@ -134,11 +134,18 @@ cpaa-replay/
   `run_models.reap_stale_runs(conn)` sets `status='ABORTED'` for any `RUNNING` row with
   `finished_at IS NULL AND started_at < datetime('now','-15 minutes')`. Prevents a crashed run from
   bricking the lock forever. `started_at` is `NOT NULL` for RUNNING rows.
+  **Runtime-budget assumption (explicit):** a full replay is the entire 1,595-event corpus applied in one
+  T2 transaction against local SQLite — sub-second in practice (well under 1s). The 15-minute threshold is
+  therefore a ~1000× safety margin: no legitimate run approaches it, so the reaper cannot abort a live run.
+  This is a single-writer, single-host, synchronous design (no concurrent runs by construction — the run
+  lock guarantees it), so no heartbeat mechanism is needed. If a future change makes replays long-running,
+  this threshold (or a heartbeat signal) must be revisited.
 - **C. Clean-room reset + 3-transaction sequence.** (T1) lock-acquire commits (so the 409 path can read
   the RUNNING row from another connection). (T2) one `BEGIN IMMEDIATE`: call each owner's `reset_*(conn)`
   (clears all 4 projection tables) → apply all events → `write_snapshot` → compute `projection_hash` →
-  `mark_complete_pass`. (T3) any exception in T2 → `mark_aborted(run_id)` handler. The `events` log is
-  append-only (never truncated).
+  `mark_complete_pass` (also sets `reset_done=1` — T2 always resets, so a COMPLETE_PASS always carries
+  `reset_done=1`; `mark_complete_pass` is the SOLE writer of `reset_done`, satisfying §14's assertion).
+  (T3) any exception in T2 → `mark_aborted(run_id)` handler. The `events` log is append-only (never truncated).
 - **D. Empty-projection canonical hash.** Zero rows across all projection tables yields a defined,
   stable hash (per the framed recipe §8.8, each table contributes `name\x1f0`). Empty log →
   `COMPLETE_PASS`, `events_applied=0`, hash == committed `EMPTY_PROJECTION_HASH` constant.
@@ -286,7 +293,7 @@ rows are `sqlite3.Row`. Producing agent must match these character-for-character
 | `record_anomaly(conn, run_id: str \| None, kind: str, idempotency_key: str \| None, detail: str \| None) -> None` | fn | anomaly_models.py | ingest, event_models, proj_* (unknown_key/malformed), replay_engine, validator |
 | `start_run(conn) -> tuple[str, bool]` `# (run_id, acquired) — guarded lock` | fn | run_models.py | replay_engine |
 | `active_run(conn) -> str \| None` `# run_id of the RUNNING row, else None` | fn | run_models.py | replay_engine, ingest_routes |
-| `mark_complete_pass(conn, run_id, *, events_applied, projection_hash, live_hash_pre, live_hash_post) -> None` / `mark_aborted(conn, run_id) -> None` / `reap_stale_runs(conn) -> int` | fn | run_models.py | replay_engine, ingest_routes (reap) |
+| `mark_complete_pass(conn, run_id, *, events_applied, projection_hash, live_hash_pre, live_hash_post) -> None` `# also sets status='COMPLETE_PASS', reset_done=1` / `mark_aborted(conn, run_id) -> None` / `reap_stale_runs(conn) -> int` | fn | run_models.py | replay_engine, ingest_routes (reap) |
 | `write_snapshot(conn, run_id) -> None` | fn | snapshot_models.py | replay_engine |
 | `read_snapshot(conn, run_id) -> dict[str, dict[str, dict]]` `# {table: {pk: row_dict}}` | fn | snapshot_models.py | validator |
 | `apply_station(conn, row) -> None` / `reset_station(conn) -> None` | fn | proj_station.py | replay_engine.py |
@@ -437,7 +444,8 @@ converters for domain formats; reject before any DB write.
 | `reset_*` (proj_* owners, called by replay_engine) | own projection table (DELETE) | first statements of T2 | — |
 | `build_projection_at` | none (pure, in-memory) | read-only; no transaction | invalid t → 400 at route |
 | `write_snapshot` | projection_snapshots | inside T2 | — |
-| `mark_complete_pass`/`mark_aborted` | replay_runs | end of T2 / T3 handler | — |
+| `mark_complete_pass` | replay_runs (status='COMPLETE_PASS', events_applied, projection_hash, live_hash_pre, live_hash_post, **reset_done=1**) | end of T2 (after reset+apply, so reset_done is always 1) | — |
+| `mark_aborted` | replay_runs (status='ABORTED', finished_at) | T3 handler | — |
 | `record_anomaly` | anomalies | participates in caller's transaction | never raises |
 | `record_determinism` | determinism_results, determinism_diffs | BEGIN IMMEDIATE | — |
 
