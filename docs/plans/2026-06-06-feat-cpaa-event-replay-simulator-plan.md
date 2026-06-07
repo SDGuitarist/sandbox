@@ -70,7 +70,7 @@ cpaa-replay/
     __init__.py          # create_app(), login_required, auth_bp (/auth/login,/auth/logout), blueprint registration, error handlers, CSRF, SECRET_KEY/APP_PASSWORD/env fail-closed, MAX_CONTENT_LENGTH
     config.py            # env config: LIVE_DB, SHADOW_DB, SECRET_KEY (all required, fail-closed)
     db.py                # get_db(immediate=False) shadow ctx mgr (WAL, foreign_keys, BEGIN IMMEDIATE); open_live_ro() read-only
-    constants.py         # TS_FORMAT, TS_RE, RUN_STATES, ANOMALY_KINDS, _PROJECTION_TABLES, DISPATCH (event-type prefix -> module), EMPTY_PROJECTION_HASH
+    constants.py         # TS_FORMAT, TS_RE, RUN_STATES, ANOMALY_KINDS, _PROJECTION_TABLES, DISPATCH (exact event_type -> handler module), EMPTY_PROJECTION_HASH
     serialization.py     # canonical_hash(conn) + canonical row serialization (RFC 8785-aligned)
     payload.py           # parse_json, parse_patch(payload, allowed) -> dict (present keys only; null->None), event_type/payload validation
     event_models.py      # append_event (INSERT OR IGNORE + classify), get_events, events_at_time; dedup_counters writer
@@ -82,7 +82,7 @@ cpaa-replay/
     ingest_routes.py     # bp: ingest
     replay_engine.py     # run lifecycle orchestration, reset, dispatch via DISPATCH, snapshot+hash, live pre/post hash
     proj_station.py      # apply_station + station_state (owner)
-    proj_financial.py    # apply_financial + financial_state (owner)
+    proj_auction.py      # apply_auction + auction_state (owner; bids)
     proj_environmental.py# apply_environmental + environmental_state (owner)
     proj_system.py       # apply_system + system_state (owner)
     replay_routes.py     # bp: replay
@@ -181,11 +181,11 @@ CREATE TABLE replay_runs (
   CHECK (status != 'RUNNING' OR started_at IS NOT NULL));
 CREATE INDEX idx_runs_status ON replay_runs(status);
 
--- projection tables (clean-room truncated each run; one owner each)
-CREATE TABLE station_state (station_id TEXT PRIMARY KEY, temp_c REAL, weight_g REAL, status TEXT, last_heartbeat TEXT);
-CREATE TABLE financial_state (lot_id TEXT PRIMARY KEY, txn_total_cents INTEGER NOT NULL DEFAULT 0, bid_high_cents INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE environmental_state (k TEXT PRIMARY KEY, v TEXT);
-CREATE TABLE system_state (k TEXT PRIMARY KEY, v TEXT);
+-- projection tables (clean-room truncated each run; one owner each) — model matches the real corpus
+CREATE TABLE station_state (station_id TEXT PRIMARY KEY, weight_kg REAL, temp_c REAL, status TEXT, last_heartbeat TEXT, sales_total_cents INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE auction_state (lot_id TEXT PRIMARY KEY, bid_high_cents INTEGER NOT NULL DEFAULT 0, bid_count INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE environmental_state (id INTEGER PRIMARY KEY CHECK (id = 1), temperature_c REAL, humidity_pct REAL, wind_speed_kmh REAL);  -- single-row latest weather
+CREATE TABLE system_state (k TEXT PRIMARY KEY, v TEXT);  -- notes (k='note:'+event_id) + alerts (k=alert_type:source)
 
 -- per-run projection snapshot (enables field-level diff between two completed runs)
 CREATE TABLE projection_snapshots (
@@ -214,9 +214,10 @@ CREATE TABLE determinism_diffs (
 
 ### 4.3 Seed strategy
 `tools/generate_source.py` forks `cpaa-shadow-lab/generate_scenario.py` (keeps `seed=42`, the 4 failure
-injections, the 1,595-event taxonomy) and additionally: stamps a unique `idempotency_key`; writes
+injections, and the exact event types/payloads — §4.4 is modeled FROM this generator, so NO payload
+remapping is needed). The fork ONLY: stamps a unique `idempotency_key` per event; writes
 `live.db.source_events`; emits a deliberate out-of-order batch (a slice whose `seq` order ≠ `logical_ts`
-order); finishes in `journal_mode=DELETE`.
+order); finishes in `journal_mode=DELETE`. (Minimal surgery — the corpus stays authentic.)
 
 ```mermaid
 erDiagram
@@ -235,17 +236,22 @@ top-level prefix — so heartbeat updates `station_state` without violating one-
 generator (A4) MUST emit exactly these types/keys; projection handlers (C2-C5) MUST apply exactly these
 rules; tests (F1/F2) assert against them.
 
-| event_type | ~count | Handler / Table (PK) | Required payload keys | Apply rule |
-|---|---|---|---|---|
-| `system.heartbeat` | 1347 | proj_station / station_state (`station_id`) | `station_id` | upsert: `status='online'`, `last_heartbeat=logical_ts` |
-| `telemetry.culinary.weight` | 88 | proj_station / station_state | `station_id`, `weight_g` (num\|null) | set `weight_g` (null clears) |
-| `telemetry.culinary.temperature` | 45 | proj_station / station_state | `station_id`, `temp_c` (num\|null) | set `temp_c` (null clears) |
-| `telemetry.financial.transaction` | 69 | proj_financial / financial_state (`lot_id`) | `lot_id`, `amount_cents` (int) | `txn_total_cents += amount_cents` (null → no-op) |
-| `telemetry.financial.bid` | 20 | proj_financial / financial_state | `lot_id`, `amount_cents` (int) | `bid_high_cents = MAX(bid_high_cents, amount_cents)` (null → no-op) |
-| `telemetry.environmental.weather` | 21 | proj_environmental / environmental_state (`k`) | `metric`, `value` | upsert `k=metric, v=value` (null clears v) |
-| `system.operator_note` | 3 | proj_system / system_state (`k`) | `note_id`, `text` | upsert `k='note:'+note_id, v=text` |
-| `system.alert.raised` | 1 | proj_system / system_state | `alert_id` | upsert `k='alert:'+alert_id, v='raised'` |
-| `system.alert.resolved` | 1 | proj_system / system_state | `alert_id` | upsert `k='alert:'+alert_id, v='resolved'` |
+Payloads/keys below are taken from the REAL corpus (`cpaa-shadow-lab/generate_scenario.py`). "Required"
+= must be present (else `malformed_payload`, skip). "Ignored extras" = descriptive keys present in the
+corpus that handlers accept and do NOT apply (NOT `unknown_key` anomalies). Any key outside
+required∪data∪ignored → `unknown_key` at apply-time.
+
+| event_type | ~count | Handler / Table (PK) | Required | Data keys | Ignored extras | Apply rule |
+|---|---|---|---|---|---|---|
+| `system.heartbeat` | 1347 | proj_station / station_state (`station_id`) | `station_id` | — | `sensor_id` | upsert `status='online'`, `last_heartbeat=logical_ts` |
+| `telemetry.culinary.weight` | 88 | proj_station / station_state | `station_id` | `weight_kg` (num\|null) | — | set `weight_kg` (null clears) |
+| `telemetry.culinary.temperature` | 45 | proj_station / station_state | `station_id` | `temp_c` (num\|null) | — | set `temp_c` (null clears) |
+| `telemetry.financial.transaction` | 69 | proj_station / station_state | `station_id` | `amount_cents` (int) | `item` | `sales_total_cents += amount_cents` (null → no-op) |
+| `telemetry.financial.bid` | 20 | proj_auction / auction_state (`lot_id`) | `lot_id` | `amount_cents` (int) | `bid_number` | `bid_high_cents = MAX(bid_high_cents, amount_cents)`, `bid_count += 1` (null amount → no-op) |
+| `telemetry.environmental.weather` | 21 | proj_environmental / environmental_state (`id=1`) | — | `temperature_c`, `humidity_pct`, `wind_speed_kmh` (num\|null) | — | upsert row `id=1`, set the 3 columns (null clears each) |
+| `system.operator_note` | 3 | proj_system / system_state (`k`) | `note` | — | — | upsert `k='note:'+event_id`, `v=note` |
+| `system.alert.raised` | 1 | proj_system / system_state | `alert_type`, `source` | — | `message`, `severity` | upsert `k=alert_type+':'+source`, `v='raised'` |
+| `system.alert.resolved` | 1 | proj_system / system_state | `alert_key` | — | `reason` | upsert `k=alert_key`, `v='resolved'` (alert_key == alert_type:source) |
 
 **Two distinct validation stages (no overlap):**
 - **Ingest-time (payload.py/ingest, §7):** structural checks on each source event BEFORE it is appended —
@@ -273,7 +279,7 @@ rows are `sqlite3.Row`. Producing agent must match these character-for-character
 | `TS_FORMAT` / `TS_RE` / `RUN_STATES` / `ANOMALY_KINDS` / `_PROJECTION_TABLES` / `DISPATCH` / `EMPTY_PROJECTION_HASH` | constants | constants.py | serialization, payload, replay_engine, routes |
 | `canonical_hash(conn) -> str` `# 64-char lowercase hex` | fn | serialization.py | replay_engine, validator |
 | `parse_json(raw: str) -> dict \| None` | fn | payload.py | ingest, payload callers |
-| `parse_patch(payload: dict, allowed: tuple) -> dict[str, object \| None]` `# PRESENT keys only; explicit null -> None; absent key omitted` | fn | payload.py | proj_station/financial/environmental/system, replay_engine |
+| `parse_patch(payload: dict, allowed: tuple) -> dict[str, object \| None]` `# PRESENT keys only; explicit null -> None; absent key omitted` | fn | payload.py | proj_station/auction/environmental/system, replay_engine |
 | `append_event(conn, idempotency_key, logical_ts, event_type, payload_canonical, source) -> int` `# usage: eid = append_event(...)` | fn → int (event_id, all paths) | event_models.py | ingest.py |
 | `get_events(conn) -> list[sqlite3.Row]` | fn (full scan, ORDER BY event_id) | event_models.py | replay_engine.py |
 | `events_at_time(conn, t: str) -> list[sqlite3.Row]` | fn (ORDER BY event_id) | event_models.py | replay_routes.py, replay_engine.py (in build_projection_at) |
@@ -284,7 +290,7 @@ rows are `sqlite3.Row`. Producing agent must match these character-for-character
 | `write_snapshot(conn, run_id) -> None` | fn | snapshot_models.py | replay_engine |
 | `read_snapshot(conn, run_id) -> dict[str, dict[str, dict]]` `# {table: {pk: row_dict}}` | fn | snapshot_models.py | validator |
 | `apply_station(conn, row) -> None` / `reset_station(conn) -> None` | fn | proj_station.py | replay_engine.py |
-| `apply_financial(conn, row) -> None` / `reset_financial(conn) -> None` | fn | proj_financial.py | replay_engine.py |
+| `apply_auction(conn, row) -> None` / `reset_auction(conn) -> None` | fn | proj_auction.py | replay_engine.py |
 | `apply_environmental(conn, row) -> None` / `reset_environmental(conn) -> None` | fn | proj_environmental.py | replay_engine.py |
 | `apply_system(conn, row) -> None` / `reset_system(conn) -> None` | fn | proj_system.py | replay_engine.py |
 | `build_projection_at(conn, t: str) -> dict[str, dict[str, dict]]` `# SINGLE apply impl: opens a throwaway in-memory sqlite (projection schema), calls the SAME proj_*.apply_*/reset_* on it for events_at_time(t), reads result into dict; NEVER writes shadow.db` | fn | replay_engine.py | replay_routes.py |
@@ -325,7 +331,7 @@ via `POST /auth/login` then reuse the session cookie + a CSRF token fetched from
 | replay_routes.py | replay_engine.py | `build_projection_at(conn, t) -> dict` | `from app.replay_engine import build_projection_at` | point-in-time projection (read-only, no DB write) |
 | replay_engine.py | run_models.py | `start_run`, `mark_*`, `reap_stale_runs` | `from app.run_models import start_run, mark_complete_pass, mark_aborted, reap_stale_runs` | lifecycle+lock |
 | ingest_routes.py | run_models.py | `reap_stale_runs(conn)`, `active_run(conn) -> str\|None` | `from app.run_models import reap_stale_runs, active_run` | reap + 409-if-RUNNING (ingest creates no run) |
-| replay_engine.py | proj_station/financial/environmental/system | `apply_*(conn, row)` AND `reset_*(conn)` | `from app.proj_station import apply_station, reset_station` (×4) | dispatch + clean-room reset |
+| replay_engine.py | proj_station/auction/environmental/system | `apply_*(conn, row)` AND `reset_*(conn)` | `from app.proj_station import apply_station, reset_station` (×4) | dispatch + clean-room reset |
 | proj_* (×4), replay_engine | payload.py | `parse_patch(payload, allowed) -> dict` | `from app.payload import parse_patch` | PATCH null/absent (present-keys-only) |
 | proj_* (×4) | anomaly_models.py | `record_anomaly(conn, run_id, 'unknown_key'\|'malformed_payload', ...)` | `from app.anomaly_models import record_anomaly` | per-handler unknown/malformed |
 | replay_engine.py | serialization.py / snapshot_models / live_guard | `canonical_hash`, `write_snapshot`, `live_content_hash` | respective imports | hash+snapshot+live |
@@ -373,17 +379,17 @@ converters for domain formats; reject before any DB write.
    sentinel). Handlers build the upsert `SET` clause from that dict's keys: present key with value →
    set; present key with `None` → set column NULL; omitted key → unchanged. Use SQL upsert `INSERT INTO
    t(...) VALUES(...) ON CONFLICT(pk) DO UPDATE SET col=excluded.col` (no Python read-modify-write).
-   Additive counters (`txn_total_cents` `+=`, `bid_high_cents` `MAX`) treat present-`None` as a **no-op**
+   Additive counters (`sales_total_cents` `+=`, `bid_high_cents` `MAX`, `bid_count` `+=`) treat present-`None` as a **no-op**
    (NOT a clear — those columns are NOT NULL). Keys not in the event type's `allowed` set (§4.4) →
    `record_anomaly('unknown_key')`, canonical columns untouched.
 8. **Canonical serialization (frozen #2, pinned D/E; RFC 8785-aligned), sole owner serialization.py:**
-   iterate `_PROJECTION_TABLES = ("station_state","financial_state","environmental_state","system_state")`
+   iterate `_PROJECTION_TABLES = ("station_state","auction_state","environmental_state","system_state")`
    in that order. Per table: `SELECT * ... ORDER BY <pk> COLLATE BINARY ASC`; build the block as
    `header = b"<table>\x1f<rowcount>"`; if zero rows the block is just `header`; else
    `header + b"\x00" + b"\x00".join(row_jsons)`. Join table blocks by `b"\x1e"`; encode UTF-8;
    SHA-256 the bytes. Each row → `json.dumps(row_dict, sort_keys=True, separators=(",",":"),
    ensure_ascii=False, allow_nan=False)`. SQL `NULL` → JSON `null` (no sentinel). REAL columns
-   (`temp_c`,`weight_g`) use shortest-round-trip `repr` via json.dumps (NO `round`); INTEGER/TEXT native.
+   (`weight_kg`,`temp_c` in station_state; `temperature_c`,`humidity_pct`,`wind_speed_kmh` in environmental_state) use shortest-round-trip `repr` via json.dumps (NO `round`); INTEGER/TEXT native.
    `last_heartbeat` emitted verbatim (never re-parsed). **MUST NOT** include `replay_runs`, `events`,
    `anomalies`, `projection_snapshots`, or any `*_at` column. Empty projection → `EMPTY_PROJECTION_HASH`.
    **Golden anchors:** `EMPTY_PROJECTION_HASH` and the golden-corpus `projection_hash` are computed once
@@ -398,7 +404,7 @@ converters for domain formats; reject before any DB write.
    is order-insensitive.
 10. **Run lifecycle/lock** per pinned A/B/B′/C, owned by replay_engine + run_models. **Reset preserves
     one-writer-per-table:** replay_engine performs the clean-room reset by calling each owner's
-    `reset_<domain>(conn)` (proj_station/financial/environmental/system), NOT raw `DELETE` on tables it
+    `reset_<domain>(conn)` (proj_station/auction/environmental/system), NOT raw `DELETE` on tables it
     doesn't own. `replay_engine` captures `live_hash_pre` (via live_guard) before reset and
     `live_hash_post` after apply, and stores both through `mark_complete_pass`. The validator only READS
     them. The point-in-time route uses `build_projection_at` (pure, no DB writes, no lock) — a public GET
@@ -441,10 +447,10 @@ converters for domain formats; reject before any DB write.
 | `live.db.source_events` | generator only (app RO) | ingest, live_guard |
 | `events` | event_models | replay_engine, replay_routes |
 | `dedup_counters` | event_models | dashboard |
-| `station_state` | proj_station | serialization, snapshot, dashboard |
-| `financial_state` | proj_financial | serialization, snapshot, dashboard |
-| `environmental_state` | proj_environmental | serialization, snapshot, dashboard |
-| `system_state` | proj_system | serialization, snapshot, dashboard |
+| `station_state` | proj_station (heartbeat, weight, temp, sales) | serialization, snapshot, dashboard |
+| `auction_state` | proj_auction (bids) | serialization, snapshot, dashboard |
+| `environmental_state` | proj_environmental (weather) | serialization, snapshot, dashboard |
+| `system_state` | proj_system (notes, alerts) | serialization, snapshot, dashboard |
 | `replay_runs` | run_models (write fns called by replay_engine; `reap_stale_runs` also by ingest_routes) | replay_routes, ingest_routes (active_run), dashboard, validator |
 | `projection_snapshots` | snapshot_models (called by replay_engine) | validator |
 | `anomalies` | anomaly_models | dashboard |
@@ -550,10 +556,10 @@ contract.
 | 9 | A9-run-models | core | app/run_models.py | db(A2), constants(A5) | 2 |
 | 10 | A10-snapshot-models | core | app/snapshot_models.py | db(A2), constants(A5) | 2 |
 | 11 | B1-payload | parser | app/payload.py | constants(A5) | 2 |
-| 12 | B2-ingest | parser | app/ingest.py | event_models(A7), anomaly(A8), payload(B1), db(A2) | 3 |
-| 13 | B3-ingest-routes | parser | app/ingest_routes.py | ingest(B2), run_models(A9) | 4 |
+| 12 | B2-ingest | parser | app/ingest.py | event_models(A7), anomaly(A8), payload(B1), db(A2) | 4 |
+| 13 | B3-ingest-routes | parser | app/ingest_routes.py | ingest(B2), run_models(A9) | 5 |
 | 14 | C2-proj-station | replay | app/proj_station.py | payload(B1), db(A2), constants(A5), anomaly(A8) | 3 |
-| 15 | C3-proj-financial | replay | app/proj_financial.py | payload(B1), db(A2), constants(A5), anomaly(A8) | 3 |
+| 15 | C3-proj-auction | replay | app/proj_auction.py | payload(B1), db(A2), constants(A5), anomaly(A8) | 3 |
 | 16 | C4-proj-environmental | replay | app/proj_environmental.py | payload(B1), db(A2), constants(A5), anomaly(A8) | 3 |
 | 17 | C5-proj-system | replay | app/proj_system.py | payload(B1), db(A2), constants(A5), anomaly(A8) | 3 |
 | 18 | C1-replay-engine | replay | app/replay_engine.py | run_models(A9), event_models(A7), snapshot(A10), serialization(A6), live_guard(A2), proj_*(C2-C5), constants(A5) | 4 |
