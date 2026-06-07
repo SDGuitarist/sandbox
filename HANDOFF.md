@@ -1,52 +1,66 @@
 # HANDOFF -- Sandbox
 
 **Date:** 2026-06-06
-**Branch:** master
-**Phase:** Run 068 (Gig Outcome Tracker) COMPLETE — all tail artifacts written, self-audit PASS
+**Branch:** feat/cpaa-event-replay-simulator (pushed to origin)
+**Phase:** CPAA simulator — Stage 1 (plan) CONVERGED + human-verified. Pre-launch prereq check PENDING.
 
 ## Current State
 
-Run 068 is the first real 12-agent swarm build validating the 3-stage context-death delegation architecture. All 12 agents merged with zero conflicts, smoke test 54/54 PASS, dashboard aggregation fixture verified. Review found 0 P1 and 2 P2 findings (both fixed in commit 89c2148). Tail-runner agent is completing the compound phase. Solution doc written at `docs/solutions/2026-06-06-gig-outcome-tracker-12-agent-swarm-build.md`.
+CPAA Shadow Lab Event-Replay Simulator is the next autopilot BUILD target (24-agent swarm — the test of
+whether the 3-stage delegation architecture survives ~2x the validated 12-agent ceiling, Run 068).
 
-The spec-eval gate (Step 9w.8) was WAIVED_BY_HUMAN on 2026-06-06 after the harness was fixed and residual failures were classified as single-shot-agent artifacts. Both binding structural gates PASSED.
+The Stage-1 spec is launch-ready pending the prerequisite check below. It went:
+brief → `/deepen-plan` (11 agents) → Codex convergence (7 `codex exec` rounds) → human `grill-me` pass.
+
+**The human gate caught a real P0 that automated Codex missed:** §4.4's event taxonomy was authored from
+event *counts* and diverged from the real corpus (`cpaa-shadow-lab/generate_scenario.py`) in 6 of 9
+event types, including a structurally broken financial model. Reconciled: `station_state` gains
+`sales_total_cents` (POS transactions); `auction_state(lot_id)` for bids; flat weather columns;
+alerts keyed `alert_type:source`. The generator fork is now minimal (no payload remapping — the corpus
+stays authentic). Codex re-verified the reconciliation: CONVERGED.
+
+This is a **manual** Stage 1; the unattended swarm BUILD has not started.
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Brainstorm | docs/brainstorms/2026-06-05-gig-outcome-tracker.md |
-| Plan | docs/plans/2026-06-05-gig-outcome-tracker-plan.md |
-| Spec eval waiver | docs/reports/068/spec-eval-waiver.md |
-| Assembly summary | docs/reports/068/assembly-summary.md |
-| Smoke test | docs/reports/068/smoke-test.md |
-| Solution | docs/solutions/2026-06-06-gig-outcome-tracker-12-agent-swarm-build.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
+| Brief (READY-TO-LAUNCH) | docs/briefs/2026-06-06-cpaa-event-replay-simulator-brief.md |
+| Plan + shared spec (CONVERGED, swarm:true, 24 agents) | docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md |
+| Spec-consistency report | docs/reports/069/spec-consistency-check.md |
+| Corpus (reuse) | cpaa-shadow-lab/instance/shadow_lab.db (1,595 events), cpaa-shadow-lab/generate_scenario.py, config.py |
 
-## Review Fixes Pending (P3 deferred)
+Commits on branch: brief hardening, deepened plan (640e48a), converged (e08c030), corpus reconciliation (8833f80).
 
-- [068-W1] `outcome_routes` view GET flashes 'error' for "no outcome yet" — informational, not error
-- [068-W2] `list_contacts` has no ORDER BY — non-deterministic contact list order
+## Next Session: Pre-Launch Prerequisite Check (then GO/launch)
 
-## Deferred Items
+1. **Launch prerequisites (verify/seed):**
+   - `.claude/settings.local.json` has `dangerouslySkipPermissions: true`.
+   - `BUILD_TRACKING.md` seeded from `~/.claude/docs/autopilot-tracking-template.md` at run root.
+   - Autopilot skill injects agent-pitfalls into worker briefs (per ~/.claude/CLAUDE.md).
+   - Confirm worktree strategy for the swarm.
+2. **Binding review = MANUAL Codex** (human-driven handoff prompt), NOT headless `codex exec` — Alex's
+   call: headless may use a weaker model AND it isn't truly independent since Claude orchestrates it.
+   See memory `feedback_codex_manual_review`.
+3. **Optional:** run the spec through NotebookLM for the external-data cross-ref step of the convergence loop.
+4. **Then explicit human GO** → launch autopilot-swarm against the plan.
 
-- CPAA Shadow Lab Event Replay Simulator: next build target (20-25 agents) to test inline-phase context limits of the 3-stage architecture
-- Spec-eval gate in multi-shot mode: would require harness rewrite, deferred indefinitely
-- P3 outcome flash category fix: low priority, no user impact for single-user app
+## Deferred / Carried Forward
 
-## Three Questions
-
-1. **Hardest decision?** Whether the spec-eval FAIL warranted stopping the build or proceeding with a human-authorized waiver. Chose waiver because (1) harness was fixed and credible, (2) all residual failures were classified as single-shot-agent artifacts, (3) both binding structural gates PASSED.
-2. **What was rejected?** Running the spec-eval gate in multi-shot mode (would require rewriting the harness); accepting the FAIL without waiver documentation (would silently lower the gate's apparent value).
-3. **Least confident about?** Whether the 3-stage architecture survives 20+ agent builds. The 12-agent case passed, but deepening + worker spawn are still inline. The next validation step is the CPAA shadow lab event-replay simulator (20-25 agents).
+- **Plan A** (orchestration hardening) COMPLETE + merged (PR #10); solution doc now on master (f90aed8).
+  Plan B (spec-eval gate demotion + 7th read-path completeness surface) still un-started — separate track.
+- **[068-W1]** outcome_routes flash category (P3); **[068-W2]** list_contacts ORDER BY (P3).
+- Meta-goal bet (accepted): inline deepening + worker spawn surviving 24 agents; instrument
+  `context_proxy_chars`; >~70% before Step 17w = finding → triggers Orchestration Hardening plan.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is the sandbox project.
-Run 068 (Gig Outcome Tracker, 12-agent swarm) is COMPLETE on master.
-The 3-stage context-death delegation architecture has been validated at 12 agents.
-Next build: CPAA Shadow Lab Event Replay Simulator (20-25 agents) to test whether
-the architecture survives a larger swarm with inline deepening + worker spawn.
-See docs/brainstorms/2026-06-05-gig-outcome-tracker.md... actually
-use the CPAA brainstorm at the top of MEMORY.md.
+Read HANDOFF.md. This is the sandbox project, branch feat/cpaa-event-replay-simulator.
+The CPAA event-replay simulator Stage-1 plan is CONVERGED + human-verified
+(docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md, swarm:true, 24 agents).
+Run the pre-launch prerequisite check: settings.local.json dangerouslySkipPermissions,
+seed BUILD_TRACKING.md, confirm pitfalls injection + worktree strategy. Do NOT launch.
+Then prep the autopilot launch command and a MANUAL Codex handoff prompt for the final
+binding review (not headless codex exec). Stop for explicit human GO before launching.
 ```
