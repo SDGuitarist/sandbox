@@ -328,6 +328,7 @@ via `POST /auth/login` then reuse the session cookie + a CSRF token fetched from
 | Consumer | Producer | Signature | Import Path | Purpose |
 |---|---|---|---|---|
 | all model/engine/route files | db.py | `get_db(immediate=False)` / `open_live_ro(path)` | `from app.db import get_db, open_live_ro` | DB access |
+| ingest_routes.py, replay_routes.py, validator_routes.py (all mutating routes) | __init__.py (A1) | `login_required(view)` decorator | `from app import login_required` | auth guard on every mutating route (redirects anon to `auth.login`) |
 | serialization, payload, replay_engine, routes | constants.py | constants | `from app.constants import TS_RE, DISPATCH, _PROJECTION_TABLES, EMPTY_PROJECTION_HASH, RUN_STATES` | shared vocab |
 | ingest.py | event_models.py | `append_event(...) -> int` | `from app.event_models import append_event` | dedup append |
 | ingest.py | payload.py | `parse_json`, validation | `from app.payload import parse_json` | parse/validate |
@@ -352,6 +353,7 @@ across point-in-time and full replay.
 | Route | Input | Validation | Error Response |
 |---|---|---|---|
 | `POST /auth/login` | `password` (form) + CSRF | non-empty; matches `APP_PASSWORD` | 401 (re-render with flash) |
+| `POST /auth/logout` | CSRF (no body) | CSRF token present + valid (clears `session['user']`) | 403 (CSRF fail); else 302 redirect to `auth.login` |
 | `POST /ingest/run` | login+CSRF | `reap_stale_runs`; no RUNNING row | 409 `{error,run_id}` |
 | `POST /replay/run` | login+CSRF | `reap_stale_runs`; guarded lock (pinned B) | 409 `{error,run_id}` |
 | `GET /replay/projection/at` | `t` (query) | matches `TS_RE` (`YYYY-MM-DD HH:MM:SS`) | 400 `{error:"invalid t; expected YYYY-MM-DD HH:MM:SS"}` |
