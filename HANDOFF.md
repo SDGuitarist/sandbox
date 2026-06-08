@@ -22,22 +22,27 @@ The orchestration-hardening plan's implementation (Phases 0–3) is **done and c
 backtest fixtures FAIL/N/A/PASS as designed; solo path (≤354) untouched; `original_branch`
 merge-back (swarm-runner Step 7) byte-for-byte untouched.
 
-**Phase 4 — Codex binding review:**
-- **Round 1 verdict:** Track B **GO**, Track C **GO**, Track A **NO-GO** → **FIXED** in `1f4c5bd`.
+**Phase 4 — Codex binding review: COMPLETE (GO ×3).**
+- **Round 1:** Track B **GO**, Track C **GO**, Track A **NO-GO** → **FIXED** in `1f4c5bd`.
   - Track A bug: detached-HEAD pre-flight (`git rev-parse --abbrev-ref <branch>`) was dead code —
     a branch name never resolves to `HEAD`, and the runtime contract has no worktree paths.
     Fix: removed the unfireable check; kept the merge-commit pre-flight; detached-HEAD workers
     manifest as a recorded "empty delta" no-op; first-class handling deferred (`git worktree
     list --porcelain`). Tracks B/C unchanged.
-- **Round 2 (NEXT):** re-review the Track A fix (`1f4c5bd`) to confirm NO-GO cleared. Focused
-  re-review prompt is in this session's output.
+- **Round 2:** Track A **GO**. Confirmed dead check removed, merge-commit pre-flight intact,
+  residual bounded to the empty-delta path, O3 invariant / uniform cherry-pick /
+  `assembly-ownership-conflict:` / `original_branch` merge-back / solo path all undisturbed.
+  **All three tracks clear to merge, pending validate-on-real-build.**
 
-**Phase 4 remaining steps:**
-1. **Codex round 2** — confirm Track A fix; then merge.
-2. **Validate-on-real-build:** the next real feature-branch swarm must exercise all three tracks
-   in ONE run; complete ONLY if its reports contain the 9w.6 PASS, the advisory spec-eval log,
-   AND a per-worker cherry-pick base in `assembly-summary.md`. A 9w.6 false-FAIL that aborts
-   before Track A = validation incomplete, not pass.
+**Phase 4 remaining step — Validate-on-real-build:**
+- The next real feature-branch swarm must exercise all three tracks in ONE run; complete ONLY
+  if its reports contain the 9w.6 PASS, the advisory spec-eval log, AND a per-worker cherry-pick
+  base in `assembly-summary.md`. A 9w.6 false-FAIL that aborts before Track A = validation
+  incomplete, not pass.
+- **Open decisions for the operator:** (a) push `feat/cpaa-event-replay-simulator`? (b) merge to
+  `master` now, or hold the branch until validate-on-real-build? (c) run the compound phase
+  (`/update-learnings`) — notable lessons to propagate: the detached-HEAD branch-ref dead-check,
+  the strategy-(i) decision grounded in 069 evidence, and the spec-eval 0-precision demotion.
 
 **Known cosmetic deferral:** the intro parenthetical at `SKILL.md:40` still says swarm-runner
 "inlines ... merge-conflict resolution" (now inaccurate after Track A). Left as-is because it is
