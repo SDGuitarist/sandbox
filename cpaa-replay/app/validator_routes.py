@@ -72,6 +72,7 @@ def run():
 
 
 @validate_bp.route("/<int:result_id>", methods=["GET"])
+@login_required
 def detail(result_id: int):
     with get_db() as conn:
         result = conn.execute(
