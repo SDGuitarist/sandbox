@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-08
 **Branch:** feat/film-production-pm  (checked out; 1 commit `dd02ae0` on top of the frozen hardening branch)
-**Phase:** **Spec convergence in progress** for Film Production PM — the vehicle for the orchestration-hardening **validate-on-real-build** gate.
+**Phase:** **Spec convergence COMPLETE — ready to launch run 070.** Film Production PM is the vehicle for the orchestration-hardening **validate-on-real-build** gate. Codex round folded + human structural-verification gate **PASSED (zero P0s)**. Blocked only on launch environment (see below).
 
 ## Current State
 
@@ -34,14 +34,17 @@ Catch ledger + dispositions: `docs/reports/film-production-pm/convergence-catche
 | Codex review handoff | docs/handoffs/film-production-pm-codex-spec-review.md |
 | Unattended roadmap | docs/roadmap-to-fully-unattended.md |
 
+## Convergence: DONE (commits dd02ae0, 00049dd, 60ad283)
+
+- Codex round (5 cross-section findings) folded.
+- Human gate: 4 angle-sliced verification agents, **zero P0s**; 2 P1 + load-bearing P2s fixed (decorator-stacking-order 500, idempotent call-sheet generation, created_by pin, department_id parse guard, get_departments annotation). Full ledger: `docs/reports/film-production-pm/convergence-catches.md`.
+- Watch-item (not a blocker): GET `<int:>` routes aren't in Input Validation, but RestaurantOps/GigSheet passed 9w.6 with the identical structure — if 9w.6 false-FAILs on these, that's a checker bug to log, not a spec defect.
+
 ## Next Steps (in order)
 
-1. **Codex review** — handoff at `docs/handoffs/film-production-pm-codex-spec-review.md` (already copied to clipboard once). Paste into Codex, fresh context.
-2. **Fold findings** back into the spec; resolve F-H6 with Codex's proposed ownership code.
-3. **Human structural verification** — cross-section field/type matching (non-optional per CLAUDE.md). Convergence criterion: Codex clean AND human finds zero P0s.
-4. **Launch swarm (run 070)** from `feat/film-production-pm`.
-5. **Confirm validate-on-real-build** — the run's reports MUST contain: the **9w.6 PASS**, the **advisory spec-eval log**, AND a **per-worker cherry-pick base in `assembly-summary.md`**. A 9w.6 false-FAIL that aborts before Track A = validation incomplete.
-6. **Then** decide the hardening branch merge (held until validate passes).
+1. **LAUNCH BLOCKED ON ENVIRONMENT.** Autopilot needs `dangerouslySkipPermissions: true` in `.claude/settings.local.json` AND the session started from `~/Projects/sandbox`. This session does NOT have it. In a properly-configured session: `cd ~/Projects/sandbox`, checkout `feat/film-production-pm`, then run `/autopilot` (reads `swarm: true` from the plan → 16-agent swarm path).
+2. **Confirm validate-on-real-build** in the run's reports: the **9w.6 PASS**, the **advisory spec-eval log**, AND a **per-worker cherry-pick base in `assembly-summary.md`**. A 9w.6 false-FAIL that aborts before Track A = validation INCOMPLETE (re-run, don't call it done).
+3. **Then** decide the hardening branch (`feat/cpaa-event-replay-simulator`) merge — held until validate passes.
 
 ## Open Operator Decisions
 
