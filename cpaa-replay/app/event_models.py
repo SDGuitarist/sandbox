@@ -1,4 +1,25 @@
+import json
+
 from app.anomaly_models import record_anomaly
+
+
+def _canonicalize(payload: str) -> str:
+    """Re-serialise a JSON payload with sorted keys and compact separators.
+
+    Idempotent: already-canonical payloads round-trip unchanged. Called in the
+    dedup comparison path so the order-insensitivity guarantee holds even if the
+    caller has not pre-canonicalized (§8.9 spec requirement).
+    """
+    try:
+        return json.dumps(
+            json.loads(payload),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+    except (ValueError, TypeError):
+        return payload
 
 
 def append_event(conn, idempotency_key, logical_ts, event_type, payload_canonical, source):
@@ -22,7 +43,7 @@ def append_event(conn, idempotency_key, logical_ts, event_type, payload_canonica
         {"idempotency_key": idempotency_key},
     ).fetchone()
 
-    if existing["payload"] == payload_canonical:
+    if _canonicalize(existing["payload"]) == _canonicalize(payload_canonical):
         conn.execute(
             "INSERT INTO dedup_counters (kind, count) VALUES ('dup_exact', 1) "
             "ON CONFLICT(kind) DO UPDATE SET count = count + 1"

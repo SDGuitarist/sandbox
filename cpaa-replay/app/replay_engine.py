@@ -15,7 +15,8 @@ handlers (the single apply implementation) and writes NOTHING to shadow/live.
 
 import sqlite3
 
-from app.config import LIVE_DB
+from flask import current_app
+
 from app.constants import DISPATCH, _PROJECTION_TABLES
 from app.db import get_db, open_live_ro
 from app.event_models import events_at_time, get_events
@@ -105,9 +106,10 @@ def run_replay():
         return run_id, False
 
     # --- T2: one BEGIN IMMEDIATE for reset + apply-all + snapshot + hash. ---
+    live_db_path = current_app.config['LIVE_DB']
     try:
         with get_db(immediate=True) as conn:
-            live_conn = open_live_ro(LIVE_DB)
+            live_conn = open_live_ro(live_db_path)
             try:
                 live_hash_pre = live_content_hash(live_conn)
             finally:
@@ -122,7 +124,7 @@ def run_replay():
             write_snapshot(conn, run_id)
             projection_hash = canonical_hash(conn)
 
-            live_conn = open_live_ro(LIVE_DB)
+            live_conn = open_live_ro(live_db_path)
             try:
                 live_hash_post = live_content_hash(live_conn)
             finally:

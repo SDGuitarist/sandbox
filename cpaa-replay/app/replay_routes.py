@@ -17,8 +17,7 @@ _RUN_ID_RE = re.compile(r"^[0-9a-f]{8}$")
 @login_required
 def start():
     try:
-        with get_db(immediate=True) as conn:
-            run_id, acquired = run_replay(conn)
+        run_id, acquired = run_replay()
     except sqlite3.Error:
         return jsonify({"error": "internal error"}), 503
     if not acquired:
