@@ -407,8 +407,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
     content='', contentless_delete=1
 );
 
--- FTS5 sync triggers use BEFORE (not AFTER) to prevent silent index corruption
--- Triggers are created by the search agent on: scenes, cast_members, crew_members, locations
+-- FTS5 index is maintained by EXACTLY ONE writer: explicit index_entity()/remove_entity()
+-- calls from the scenes/cast/crew/locations routes (see Search Index Wiring). There are
+-- NO database triggers on the source tables (FC52 single-writer). Two writers (triggers +
+-- explicit calls) would double-index this contentless table. The database agent does NOT
+-- create FTS triggers; the search agent does NOT touch schema.sql.
 
 -- ============================================================
 -- SEED DATA (database agent inserts these in init_db)
@@ -790,8 +793,13 @@ def update_line_item(conn, line_item_id, estimated_cents=None, actual_cents=None
 ### expense_models.py
 
 ```python
-# Returns: int (expense_id) -- commits internally (BEGIN IMMEDIATE + spent_cents update)
-def create_expense(conn, project_id, department_id, amount_cents, vendor, description, expense_date, category_id, created_by) -> int: ...
+# Returns: int (expense_id) or None if it would exceed the department allocation
+#   -- commits internally (BEGIN IMMEDIATE + spent_cents update).
+#   Inside the lock: re-read department_budgets.spent_cents/allocated_cents; if
+#   spent_cents + amount_cents > allocated_cents, ROLLBACK and return None (do NOT
+#   rely on the CHECK constraint raising — that path is a 500). Route flashes the
+#   remaining amount on None. Mirrors create_schedule_entry -> int | None.
+def create_expense(conn, project_id, department_id, amount_cents, vendor, description, expense_date, category_id, created_by) -> int | None: ...
 
 # Returns: bool -- commits internally (BEGIN IMMEDIATE + spent_cents rollback)
 def delete_expense(conn, expense_id) -> bool: ...
@@ -826,6 +834,46 @@ def get_dood_grid(conn, project_id) -> list: ...
 # Returns: dict -- production progress stats
 def get_production_progress(conn, project_id) -> dict: ...
 ```
+
+---
+
+## Transition Maps (FC54 — referenced constants must be defined)
+
+Both transition validators in Input Validation reference `VALID_TRANSITIONS[current]`.
+These maps are defined here, each owned by exactly one agent and imported only within
+that agent's own routes (no cross-boundary import). A target phase/status is valid iff
+it appears in the list for the current value. Same-value (no-op) and any value not in
+the list are rejected with the prescribed flash.
+
+```python
+# app/models/project_models.py (projects agent owns this constant)
+# Phases are forward-only and linear; 'distribution' is terminal.
+VALID_PHASE_TRANSITIONS = {
+    'development':     ['pre_production'],
+    'pre_production':  ['production'],
+    'production':      ['post_production'],
+    'post_production': ['distribution'],
+    'distribution':    [],
+}
+# Used by: transition_project_phase() and POST /projects/<id>/phase
+```
+
+```python
+# app/models/scene_models.py (scenes agent owns this constant)
+VALID_SCENE_TRANSITIONS = {
+    'not_started': ['in_prep', 'on_hold'],
+    'in_prep':     ['ready', 'on_hold'],
+    'ready':       ['shooting', 'on_hold'],
+    'shooting':    ['wrapped', 'on_hold'],
+    'on_hold':     ['in_prep', 'ready', 'shooting'],
+    'wrapped':     [],   # terminal
+}
+# Used by: transition_scene_status() and POST /scenes/<pid>/<sid>/status
+```
+
+The route validates `new_value in VALID_*_TRANSITIONS.get(current, [])`; the model
+function re-checks the same inside its BEGIN IMMEDIATE lock (TOCTOU fence) and returns
+False if invalid.
 
 ---
 
@@ -1102,8 +1150,8 @@ fetch(url, {
 
 ## Export Names Table
 
-| Name | Type | Defined By | Used By |
-|------|------|------------|---------|
+| Name | Type | Defined By | Used By | Full Signature |
+|------|------|------------|---------|----------------|
 | `get_db` | function | app/database.py | ALL agents |
 | `init_db` | function | app/database.py | app factory |
 | `login_required` | decorator | auth routes | ALL route agents |
@@ -1195,6 +1243,26 @@ fetch(url, {
 | `expenses` | blueprint | expenses routes | app/__init__.py |
 | `reports` | blueprint | reports routes | app/__init__.py |
 | `search` | blueprint | search routes | app/__init__.py |
+
+### Orchestration Entrypoints (FC50 — cross-boundary calls pinned with full signatures)
+
+These are the cross-boundary consumption points where a wrong import name, arity, or
+return type crashes the consumer (the Run-069 B3/C1/C6 failure mode). The call sheet
+surface is the densest (6 imports). Signatures here are AUTHORITATIVE — producers and
+consumers must match character-for-character.
+
+| Name | Type | Defined By | Used By | Full Signature |
+|------|------|------------|---------|----------------|
+| `get_schedule_entries` | orchestration entrypoint | schedule_models | callsheet_models, reports routes | `get_schedule_entries(conn, project_id, shoot_date) -> list[dict]` (keys: id, scene_id, scene_number, location_id, location_name, shoot_date, sort_order, int_ext, day_night, page_count_eighths, strip_color_class) |
+| `get_cast_for_scenes` | orchestration entrypoint | cast_models | callsheet_models | `get_cast_for_scenes(conn, scene_ids) -> list[dict]` (keys: id, name, character_name, cast_id_number) |
+| `get_scenes_by_ids` | orchestration entrypoint | scene_models | callsheet_models | `get_scenes_by_ids(conn, scene_ids) -> list[dict]` (keys: id, scene_number, description, int_ext, day_night, page_count_eighths) |
+| `get_location` | orchestration entrypoint | location_models | callsheet_models | `get_location(conn, location_id) -> dict \| None` (keys: id, name, address, contact_name, contact_phone, permit_status, nearest_hospital) |
+| `get_crew_by_department` | orchestration entrypoint | crew_models | callsheets routes | `get_crew_by_department(conn, project_id) -> list[dict]` (shape: [{department_name, members: [{id, name, role_title, phone}]}]) |
+| `get_departments` | orchestration entrypoint | department_models | callsheets routes, crew routes | `get_departments(conn, project_id) -> list[dict]` (keys: id, name, head_id, head_name) |
+| `login_required` | orchestration entrypoint | auth routes | ALL route agents | `login_required(f) -> Callable` (sets g.user; redirects to auth.login if no session) |
+| `require_project_member` | orchestration entrypoint | auth routes | ALL project-scoped route agents | `require_project_member(f) -> Callable` (sets g.project, g.member; 404/403) |
+| `require_role` | orchestration entrypoint | auth routes | ALL project-scoped route agents | `require_role(*roles) -> Callable` (checks g.member['role'] in roles AFTER require_project_member) |
+| `get_db` | orchestration entrypoint | app/database.py | ALL route agents | `get_db() -> sqlite3.Connection` (row_factory=Row; PRAGMAs set; NOT a context manager) |
 
 ---
 
@@ -1312,15 +1380,23 @@ fetch(url, {
 | POST /call-sheets/\<pid\>/\<csid\>/publish | -- | call_sheet must exist, cs.project_id == pid, cs.status == 'draft' | Flash "Already published", redirect |
 | GET /search/\<pid\>?q= | q (query param) | strip, sanitize FTS5 operators, wrap in quotes | Empty results if empty |
 
-**Money parsing pattern (ALL budget/expense routes):**
+**Money unit convention (FC55 — single units rule):**
+- **Forms submit DOLLARS** in fields named WITHOUT a `_cents` suffix: `amount`,
+  `estimated`, `actual`, `total_budget`. Templates use these exact field names.
+- **Routes parse dollars → integer cents** via the pattern below before calling any
+  model function. **Model functions ALWAYS receive and store integer `*_cents`.**
+- The `amount_cents` references in the Input Validation table above denote the *parsed*
+  value passed to the model — NOT the form field name.
+
 ```python
+# Generic money parse — `field` is the dollars form field ('amount', 'estimated', ...)
 try:
-    amount_cents = int(round(float(request.form['amount']) * 100))
-except (ValueError, TypeError):
+    cents = int(round(float(request.form[field]) * 100))
+except (ValueError, TypeError, KeyError):
     flash('Invalid amount', 'error')
     return redirect(...)
-if amount_cents <= 0:
-    flash('Amount must be positive', 'error')
+if cents < 0:                      # use `<= 0` for expense amount (must be positive)
+    flash('Amount must be non-negative', 'error')
     return redirect(...)
 ```
 
@@ -1408,7 +1484,7 @@ if amount_cents <= 0:
 | `allocate_budget` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (SUM check inside lock) |
 | `create_line_item` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
 | `update_line_item` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
-| `create_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (spent_cents update in same txn) |
+| `create_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK; returns None (not raise) on overspend — re-check spent+amount<=allocated inside lock, spent_cents update in same txn |
 | `delete_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (spent_cents rollback in same txn) |
 | `approve_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
 | `index_entity` | none | NO | caller commits (fire-and-forget, no transaction needed for FTS5 insert) |
@@ -1537,7 +1613,7 @@ if scene['project_id'] != project_id:
 10. Do NOT use `{{ csrf_token }}` (no parens) — always `{{ csrf_token() }}`
 11. Do NOT add routes that duplicate the blueprint url_prefix — paths are RELATIVE to prefix
 12. Do NOT use `Markup()` without `escape()` on interpolated variables
-13. Do NOT use AFTER triggers for FTS5 sync — use BEFORE DELETE and BEFORE UPDATE
+13. Do NOT create ANY database triggers for FTS5 sync — the index has a single writer: explicit `index_entity()`/`remove_entity()` calls from routes (FC52). Routes MUST call them in the same transaction as the source-row write.
 14. Do NOT pass unsanitized user input to FTS5 MATCH — strip operators, wrap in quotes
 15. Do NOT use `session['logged_in']` — use `session['user_id']` (integer, not boolean)
 
@@ -1950,22 +2026,22 @@ else:
 
 | # | Agent Name | Branch | Files (relative to project root) |
 |---|-----------|--------|------|
-| 1 | scaffold | swarm-063-scaffold | app/__init__.py, app/templates/base.html, app/static/css/style.css, app/static/js/app.js, run.py, requirements.txt, .gitignore |
-| 2 | auth | swarm-063-auth | app/blueprints/auth/__init__.py, app/blueprints/auth/routes.py, app/models/auth_models.py, app/templates/auth/login.html, app/templates/auth/register.html |
-| 3 | projects | swarm-063-projects | app/blueprints/projects/__init__.py, app/blueprints/projects/routes.py, app/models/project_models.py, app/templates/projects/dashboard.html, app/templates/projects/new.html, app/templates/projects/edit.html |
-| 4 | scenes | swarm-063-scenes | app/blueprints/scenes/__init__.py, app/blueprints/scenes/routes.py, app/models/scene_models.py, app/templates/scenes/list.html, app/templates/scenes/new.html, app/templates/scenes/detail.html, app/templates/scenes/edit.html |
-| 5 | cast | swarm-063-cast | app/blueprints/cast/__init__.py, app/blueprints/cast/routes.py, app/models/cast_models.py, app/templates/cast/list.html, app/templates/cast/new.html, app/templates/cast/detail.html |
-| 6 | crew | swarm-063-crew | app/blueprints/crew/__init__.py, app/blueprints/crew/routes.py, app/models/crew_models.py, app/templates/crew/list.html, app/templates/crew/new.html, app/templates/crew/detail.html |
-| 7 | departments | swarm-063-departments | app/blueprints/departments/__init__.py, app/blueprints/departments/routes.py, app/models/department_models.py, app/templates/departments/list.html, app/templates/departments/detail.html |
-| 8 | locations | swarm-063-locations | app/blueprints/locations/__init__.py, app/blueprints/locations/routes.py, app/models/location_models.py, app/templates/locations/list.html, app/templates/locations/new.html, app/templates/locations/detail.html |
-| 9 | schedule | swarm-063-schedule | app/blueprints/schedule/__init__.py, app/blueprints/schedule/routes.py, app/models/schedule_models.py, app/templates/schedule/index.html, app/templates/schedule/day.html, app/templates/schedule/new.html, app/static/js/schedule.js |
-| 10 | callsheets | swarm-063-callsheets | app/blueprints/callsheets/__init__.py, app/blueprints/callsheets/routes.py, app/models/callsheet_models.py, app/templates/callsheets/list.html, app/templates/callsheets/detail.html |
-| 11 | budget | swarm-063-budget | app/blueprints/budget/__init__.py, app/blueprints/budget/routes.py, app/models/budget_models.py, app/templates/budget/index.html, app/templates/budget/top_sheet.html, app/templates/budget/new_line_item.html |
-| 12 | expenses | swarm-063-expenses | app/blueprints/expenses/__init__.py, app/blueprints/expenses/routes.py, app/models/expense_models.py, app/templates/expenses/list.html, app/templates/expenses/new.html |
-| 13 | reports | swarm-063-reports | app/blueprints/reports/__init__.py, app/blueprints/reports/routes.py, app/models/report_models.py, app/templates/reports/index.html, app/templates/reports/budget_summary.html, app/templates/reports/dood.html, app/templates/reports/progress.html |
-| 14 | search | swarm-063-search | app/blueprints/search/__init__.py, app/blueprints/search/routes.py, app/models/search_models.py, app/templates/search/results.html |
-| 15 | database | swarm-063-database | schema.sql, app/database.py, app/models/__init__.py |
-| 16 | tests | swarm-063-tests | test_smoke.py, tests/__init__.py, tests/test_critical_flows.py, tests/conftest.py |
+| 1 | scaffold | swarm-070-scaffold | app/__init__.py, app/templates/base.html, app/static/css/style.css, app/static/js/app.js, run.py, requirements.txt, .gitignore |
+| 2 | auth | swarm-070-auth | app/blueprints/auth/__init__.py, app/blueprints/auth/routes.py, app/models/auth_models.py, app/templates/auth/login.html, app/templates/auth/register.html |
+| 3 | projects | swarm-070-projects | app/blueprints/projects/__init__.py, app/blueprints/projects/routes.py, app/models/project_models.py, app/templates/projects/dashboard.html, app/templates/projects/new.html, app/templates/projects/edit.html |
+| 4 | scenes | swarm-070-scenes | app/blueprints/scenes/__init__.py, app/blueprints/scenes/routes.py, app/models/scene_models.py, app/templates/scenes/list.html, app/templates/scenes/new.html, app/templates/scenes/detail.html, app/templates/scenes/edit.html |
+| 5 | cast | swarm-070-cast | app/blueprints/cast/__init__.py, app/blueprints/cast/routes.py, app/models/cast_models.py, app/templates/cast/list.html, app/templates/cast/new.html, app/templates/cast/detail.html |
+| 6 | crew | swarm-070-crew | app/blueprints/crew/__init__.py, app/blueprints/crew/routes.py, app/models/crew_models.py, app/templates/crew/list.html, app/templates/crew/new.html, app/templates/crew/detail.html |
+| 7 | departments | swarm-070-departments | app/blueprints/departments/__init__.py, app/blueprints/departments/routes.py, app/models/department_models.py, app/templates/departments/list.html, app/templates/departments/detail.html |
+| 8 | locations | swarm-070-locations | app/blueprints/locations/__init__.py, app/blueprints/locations/routes.py, app/models/location_models.py, app/templates/locations/list.html, app/templates/locations/new.html, app/templates/locations/detail.html |
+| 9 | schedule | swarm-070-schedule | app/blueprints/schedule/__init__.py, app/blueprints/schedule/routes.py, app/models/schedule_models.py, app/templates/schedule/index.html, app/templates/schedule/day.html, app/templates/schedule/new.html, app/static/js/schedule.js |
+| 10 | callsheets | swarm-070-callsheets | app/blueprints/callsheets/__init__.py, app/blueprints/callsheets/routes.py, app/models/callsheet_models.py, app/templates/callsheets/list.html, app/templates/callsheets/detail.html |
+| 11 | budget | swarm-070-budget | app/blueprints/budget/__init__.py, app/blueprints/budget/routes.py, app/models/budget_models.py, app/templates/budget/index.html, app/templates/budget/top_sheet.html, app/templates/budget/new_line_item.html |
+| 12 | expenses | swarm-070-expenses | app/blueprints/expenses/__init__.py, app/blueprints/expenses/routes.py, app/models/expense_models.py, app/templates/expenses/list.html, app/templates/expenses/new.html |
+| 13 | reports | swarm-070-reports | app/blueprints/reports/__init__.py, app/blueprints/reports/routes.py, app/models/report_models.py, app/templates/reports/index.html, app/templates/reports/budget_summary.html, app/templates/reports/dood.html, app/templates/reports/progress.html |
+| 14 | search | swarm-070-search | app/blueprints/search/__init__.py, app/blueprints/search/routes.py, app/models/search_models.py, app/templates/search/results.html |
+| 15 | database | swarm-070-database | schema.sql, app/database.py, app/models/__init__.py |
+| 16 | tests | swarm-070-tests | test_smoke.py, tests/__init__.py, tests/test_critical_flows.py, tests/conftest.py |
 
 ---
 
