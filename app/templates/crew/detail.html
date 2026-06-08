@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}{{ crew.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ crew.name }}</h1>
+  <a href="{{ url_for('crew.list', project_id=crew.project_id) }}"
+     class="btn btn-outline-secondary">Back to Crew</a>
+</div>
+
+<div class="row">
+  <div class="col-lg-6 mb-4">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">Details</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Role / Title</dt>
+          <dd class="col-sm-8">{{ crew.role_title }}</dd>
+
+          <dt class="col-sm-4">Department</dt>
+          <dd class="col-sm-8">{{ crew.department_name }}</dd>
+
+          <dt class="col-sm-4">Phone</dt>
+          <dd class="col-sm-8">{{ crew.phone or '—' }}</dd>
+
+          <dt class="col-sm-4">Email</dt>
+          <dd class="col-sm-8">{{ crew.email or '—' }}</dd>
+
+          <dt class="col-sm-4">Daily Rate</dt>
+          <dd class="col-sm-8">{{ crew.daily_rate_cents | dollars }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  {% if g.member.role in ['producer', 'ad', 'department_head'] %}
+  <div class="col-lg-6 mb-4">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">Edit</div>
+      <div class="card-body">
+        <form method="post"
+              action="{{ url_for('crew.update', project_id=crew.project_id, crew_member_id=crew.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="department_id" value="{{ crew.department_id }}">
+
+          <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="name" name="name"
+                   value="{{ crew.name }}" maxlength="200" required>
+          </div>
+
+          <div class="mb-3">
+            <label for="role_title" class="form-label">Role / Title</label>
+            <input type="text" class="form-control" id="role_title" name="role_title"
+                   value="{{ crew.role_title }}" maxlength="200" required>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="phone" class="form-label">Phone</label>
+              <input type="text" class="form-control" id="phone" name="phone"
+                     value="{{ crew.phone or '' }}" maxlength="50">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="email" name="email"
+                     value="{{ crew.email or '' }}" maxlength="200">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="daily_rate" class="form-label">Daily Rate (USD)</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" step="0.01" min="0" class="form-control"
+                     id="daily_rate" name="daily_rate"
+                     value="{{ '%.2f' | format(crew.daily_rate_cents / 100) }}">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
