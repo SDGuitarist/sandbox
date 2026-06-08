@@ -1,35 +1,33 @@
 ---
 review_agents:
   - learnings-researcher
+  - architecture-strategist
+  - code-simplicity-reviewer
   - security-sentinel
-  - performance-oracle
-  - flow-trace-reviewer
 ---
 
-# Review Context — Sandbox (CPAA Event-Replay Simulator, Run 069)
+# Review Context — Sandbox (Autopilot Orchestration Hardening, post-069)
 
 ## Risk Chain
 
-**Brainstorm risk:** Context saturation at 24-agent inline spawn (unproven above 12) PLUS the cross-section P0 class (canonical-hash byte recipe, run-lock atomicity + reaper, NON_DETERMINISTIC as result-not-status, live-hash writer) that single-section review misses.
+**Plan risk (Feed-Forward):** Track A (worktree base) is the highest-blast-radius edit — it touches the assembly path of a pipeline that just ran a clean 24-agent build. The residual unknown: is `git merge-base(original_branch, branch)` always the worker's true fork point, and does cherry-picking the per-worker delta reproduce the working merge path across empty/multi-commit workers?
 
-**Plan mitigation:** Feed-Forward risk baked into spec with Feed-Forward section + verify_first: true. Plan §8.8 froze the canonical hash byte recipe. §3.2 froze the run-lock guarded INSERT pattern and the 3-transaction T1/T2/T3 sequence. Plan deepening (11 agents) caught the NON_DETERMINISTIC status contradiction and rewrote it as a comparison result.
+**Spike mitigation (Phase 0):** Throwaway-repo spike (16/16 + 1 + 5 assertions PASS) resolved it BEFORE any SKILL.md edit. merge-base IS the true fork point; cherry-pick replays all N commits; `<branch>^` drops commits (forbidden); zero-commit = no-op; conflict → clean abort + branches preserved. Strategy (i) uniform cherry-pick chosen (reproduces merge tree; matches 069's clean run).
 
-**Work risk (from Feed-Forward):** Whether 24 agents would diverge on unpinned cross-cluster entrypoints (the spec's §5 exhaustively pinned model exports but not route→orchestration calls).
+**Work risk:** demoting a gate (spec-eval) whose own design-time doc argues to keep it hard; and propagating the blocking-class change (`merge-conflict:` → `assembly-ownership-conflict:`) across swarm-runner + orchestrator without breaking the wire-abort handler.
 
-**Review resolution:** 4 P1, 2 P2, 1 P3. All P1+P2 fixed. P3 deferred (golden corpus hash — compute_golden.py CSRF bug). P1s: ingest import mismatch (B2↔B3), replay arity mismatch (C1↔C6), LIVE_DB bare module import (C1), EMPTY_PROJECTION_HASH placeholder, dedup both-sides canonicalization. P2s: test assertion false (index SCAN vs query planner), validator detail endpoint missing login_required. All P0 risk areas (canonical hash, run-lock, NON_DETERMINISTIC verdict, live-hash isolation) verified CORRECT in the spec and implementation. The risk that fired was UNPINNED ENTRYPOINTS — not what the plan was tracking.
+**Review resolution (Codex binding, GO x3):** Round 1 — Track B GO, Track C GO, Track A NO-GO (detached-HEAD pre-flight was dead code: a branch name never resolves to HEAD, runtime has no worktree path). Fixed in `1f4c5bd` (removed; manifests as empty-delta no-op). Round 2 — Track A GO. Constraints confirmed: solo path ≤354 untouched, `original_branch` merge-back untouched, O3 invariant holds, class bookkeeping complete.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| cpaa-replay/app/ingest_routes.py | Fixed: ingest → ingest_source + LIVE_DB config arg | B2↔B3 cross-cluster wiring |
-| cpaa-replay/app/replay_engine.py | Fixed: LIVE_DB bare import → current_app.config + run_replay(conn) → run_replay() | C1↔C6 cross-cluster wiring |
-| cpaa-replay/app/replay_routes.py | Fixed: dropped outer get_db wrapper on run path | Transaction ownership |
-| cpaa-replay/app/constants.py | Fixed: EMPTY_PROJECTION_HASH placeholder → computed value | Canonical hash correctness |
-| cpaa-replay/app/event_models.py | Fixed: both-sides canonicalization in dedup compare + _canonicalize helper | Dedup order-insensitivity |
-| cpaa-replay/app/validator_routes.py | Fixed: login_required added to GET /validate/<id> | Auth coverage |
-| cpaa-replay/tests/test_determinism.py | Fixed: false query-plan assertion → DDL existence check | Test correctness |
+| .claude/skills/autopilot/SKILL.md | 9w.8 advisory; 10w precondition removed; ownership base main→original_branch; wire-abort class | swarm-path gates + assembly entry (all below :354) |
+| .claude/agents/swarm-runner.md | per-worker merge → cherry-pick; `assembly-ownership-conflict:` class; pre-flight; Step 7 merge-back untouched | assembly correctness, blocking-class propagation |
+| .claude/agents/spec-completeness-checker.md | Check 1b orchestration-entrypoint presence guard | pre-swarm coverage (FC50) |
+| docs/templates/shared-spec-flask.md, CLAUDE.md | entrypoint row-class + Full Signature column / item 1 | spec authoring contract |
+| docs/reports/orchestration-hardening/spike-*.{sh,md} | Phase-0 spike + report | Track A gate evidence |
 
 ## Plan Reference
 
-`docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md`
+`docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md`
