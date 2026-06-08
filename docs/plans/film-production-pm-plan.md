@@ -1023,10 +1023,10 @@ def handler(project_id, ...):
 | Method | Path | Handler | Auth | Template |
 |--------|------|---------|------|----------|
 | GET | /\<int:project_id\> | crew.list | login+member | crew/list.html |
-| GET | /\<int:project_id\>/new | crew.new | login+member+producer/ad/dept_head | crew/new.html |
-| POST | /\<int:project_id\> | crew.create | login+member+producer/ad/dept_head | redirect |
+| GET | /\<int:project_id\>/new | crew.new | login+member+producer/ad/department_head | crew/new.html |
+| POST | /\<int:project_id\> | crew.create | login+member+producer/ad/department_head | redirect |
 | GET | /\<int:project_id\>/\<int:crew_member_id\> | crew.detail | login+member | crew/detail.html |
-| POST | /\<int:project_id\>/\<int:crew_member_id\>/edit | crew.update | login+member+producer/ad/dept_head | redirect |
+| POST | /\<int:project_id\>/\<int:crew_member_id\>/edit | crew.update | login+member+producer/ad/department_head | redirect |
 
 ### departments (url_prefix=/departments)
 
@@ -1081,10 +1081,10 @@ def handler(project_id, ...):
 
 | Method | Path | Handler | Auth | Template |
 |--------|------|---------|------|----------|
-| GET | /\<int:project_id\> | expenses.list | login+member+producer/dept_head | expenses/list.html |
-| GET | /\<int:project_id\>/new | expenses.new | login+member+producer/dept_head | expenses/new.html |
-| POST | /\<int:project_id\> | expenses.create | login+member+producer/dept_head | redirect |
-| POST | /\<int:project_id\>/\<int:expense_id\>/delete | expenses.delete | login+member+producer/dept_head | redirect |
+| GET | /\<int:project_id\> | expenses.list | login+member+producer/department_head | expenses/list.html |
+| GET | /\<int:project_id\>/new | expenses.new | login+member+producer/department_head | expenses/new.html |
+| POST | /\<int:project_id\> | expenses.create | login+member+producer/department_head | redirect |
+| POST | /\<int:project_id\>/\<int:expense_id\>/delete | expenses.delete | login+member+producer/department_head | redirect |
 | POST | /\<int:project_id\>/\<int:expense_id\>/approve | expenses.approve | login+member+producer | redirect |
 
 ### reports (url_prefix=/reports)
@@ -1251,7 +1251,7 @@ fetch(url, {
 | `schedule.index` | endpoint | schedule routes | navbar |
 | `callsheets.list` | endpoint | callsheets routes | navbar |
 | `budget.index` | endpoint | budget routes | navbar (producer only) |
-| `expenses.list` | endpoint | expenses routes | navbar (producer/dept_head) |
+| `expenses.list` | endpoint | expenses routes | navbar (producer/department_head) |
 | `reports.index` | endpoint | reports routes | navbar |
 | `search.search_page` | endpoint | search routes | navbar search form |
 | `scaffold` | blueprint | app/__init__.py | -- |
@@ -1411,8 +1411,10 @@ consumers must match character-for-character.
   `estimated`, `actual`, `total_budget`. Templates use these exact field names.
 - **Routes parse dollars → integer cents** via the pattern below before calling any
   model function. **Model functions ALWAYS receive and store integer `*_cents`.**
-- The `amount_cents` references in the Input Validation table above denote the *parsed*
-  value passed to the model — NOT the form field name.
+- Every `*_cents` reference in the Input Validation table above (`amount_cents`,
+  `total_budget_cents`, `estimated_cents`, `actual_cents`) denotes the *parsed* integer
+  value passed to the model — NOT the form field name. The corresponding form fields are
+  the suffix-free names (`amount`, `total_budget`, `estimated`, `actual`) per the rule above.
 
 ```python
 # Generic money parse — `field` is the dollars form field ('amount', 'estimated', ...)
@@ -1444,7 +1446,7 @@ if cents < 0:                      # use `<= 0` for expense amount (must be posi
 | Page count display | `{{ eighths \| page_count }}` — renders "1 4/8" | scenes, schedule template agents |
 | Date format | Display dates as `{{ date }}` (YYYY-MM-DD stored, displayed as-is in Phase 1) | ALL template agents |
 | Timestamps | All timestamps use SQL `datetime('now')`, NEVER Python `datetime.now()` | ALL model agents |
-| Navbar links | Ordered: Dashboard, Scenes, Cast, Crew, Departments, Locations, Schedule, Call Sheets, Budget*, Expenses*, Reports, Search. *Budget/Expenses only for producer/dept_head | scaffold agent (base.html) |
+| Navbar links | Ordered: Dashboard, Scenes, Cast, Crew, Departments, Locations, Schedule, Call Sheets, Budget*, Expenses*, Reports, Search. *Budget/Expenses only for producer/department_head | scaffold agent (base.html) |
 | Navbar role check | `{% if session.get('user_id') %}` for logged-in items. Budget: check g.member.role via context processor | scaffold agent |
 | Strip colors | CSS classes: `strip-day-ext` (yellow), `strip-day-int` (white), `strip-night-int` (blue), `strip-night-ext` (green). NEVER use Bootstrap `bg-*` | scaffold agent (CSS), schedule agent (templates) |
 | Status badges | Use `escape()` before `Markup()` per FC47 | ALL agents using status display |
@@ -1570,8 +1572,8 @@ def some_write_function(conn, ...):
 | POST /cast/\<pid\> | role-only | producer, ad | `require_role('producer','ad')` |
 | POST /cast/\<pid\>/\<cid\>/edit | role-only | producer, ad | `require_role` + cast.project_id == pid |
 | GET /crew/\<pid\> | role-only | all members | `require_project_member` |
-| POST /crew/\<pid\> | role-only | producer, ad, department_head | `require_role` + dept_head: own dept only |
-| POST /crew/\<pid\>/\<cid\>/edit | role-only | producer, ad, department_head | `require_role` + crew.project_id == pid + dept_head: own dept only |
+| POST /crew/\<pid\> | role-only | producer, ad, department_head | `require_role` + department_head: own dept only |
+| POST /crew/\<pid\>/\<cid\>/edit | role-only | producer, ad, department_head | `require_role` + crew.project_id == pid + department_head: own dept only |
 | GET /departments/\<pid\> | role-only | all members | `require_project_member` |
 | GET /departments/\<pid\>/\<did\> | role-only | all members | `require_project_member` + dept.project_id == pid |
 | POST /departments/\<pid\>/\<did\>/head | role-only | producer | `require_role('producer')` + dept.project_id == pid |
@@ -1591,9 +1593,9 @@ def some_write_function(conn, ...):
 | POST /budget/\<pid\>/allocate | role-only | producer | `require_role('producer')` |
 | POST /budget/\<pid\>/line-items | role-only | producer | `require_role('producer')` |
 | POST /budget/\<pid\>/line-items/\<iid\>/edit | role-only | producer | `require_role('producer')` + item.project_id == pid |
-| GET /expenses/\<pid\> | role+ownership | producer, department_head | producer: all; dept_head: own dept (dept.head_id == g.user['id']) |
-| POST /expenses/\<pid\> | role+ownership | producer, department_head | producer: any dept; dept_head: own dept only |
-| POST /expenses/\<pid\>/\<eid\>/delete | role+ownership | producer, department_head | producer: any; dept_head: own dept + created_by == g.user['id'] |
+| GET /expenses/\<pid\> | role+ownership | producer, department_head | producer: all; department_head: own dept (dept.head_id == g.user['id']) |
+| POST /expenses/\<pid\> | role+ownership | producer, department_head | producer: any dept; department_head: own dept only |
+| POST /expenses/\<pid\>/\<eid\>/delete | role+ownership | producer, department_head | producer: any; department_head: own dept + created_by == g.user['id'] |
 | POST /expenses/\<pid\>/\<eid\>/approve | role-only | producer | `require_role('producer')` |
 | GET /reports/\<pid\> | role-only | all members | `require_project_member` |
 | GET /reports/\<pid\>/budget-summary | role-only | producer | `require_role('producer')` |
@@ -1604,14 +1606,14 @@ def some_write_function(conn, ...):
 | GET /scenes/\<pid\>/\<sid\>/edit | role-only | producer, ad | `require_role` + scene.project_id == pid |
 | GET /cast/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
 | GET /cast/\<pid\>/\<cid\> | role-only | all members | `require_project_member` + cast.project_id == pid |
-| GET /crew/\<pid\>/new | role-only | producer, ad, department_head | `require_role` + dept_head: own dept |
+| GET /crew/\<pid\>/new | role-only | producer, ad, department_head | `require_role` + department_head: own dept |
 | GET /crew/\<pid\>/\<cid\> | role-only | all members | `require_project_member` + crew.project_id == pid |
 | GET /locations/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
 | GET /locations/\<pid\>/\<lid\> | role-only | all members | `require_project_member` + loc.project_id == pid |
 | GET /schedule/\<pid\>/day/\<date\> | role-only | all members | `require_project_member` |
 | GET /schedule/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
 | GET /budget/\<pid\>/line-items/new | role-only | producer | `require_role('producer')` |
-| GET /expenses/\<pid\>/new | role+ownership | producer, department_head | producer: any; dept_head: own dept |
+| GET /expenses/\<pid\>/new | role+ownership | producer, department_head | producer: any; department_head: own dept |
 
 **IDOR Prevention Pattern (FC35):**
 After every database lookup on a detail/edit/delete route, verify the resource belongs to the current project:
@@ -1949,7 +1951,7 @@ The tests agent MUST implement all 10 test cases from the brief. These go in `te
 # Create expense -> verify spent_cents incremented -> delete expense -> verify spent_cents restored
 
 # Test 5: Department-head IDOR
-# Log in as dept_head for Camera -> attempt to create expense for Sound -> verify 403
+# Log in as department_head for Camera -> attempt to create expense for Sound -> verify 403
 
 # Test 6: Crew-member budget IDOR
 # Log in as crew member -> attempt GET /budget/<pid> -> verify 403
@@ -2185,7 +2187,7 @@ else:
 |------|---------|
 | app/blueprints/expenses/__init__.py | empty |
 | app/blueprints/expenses/routes.py | Expense CRUD, approval |
-| app/models/expense_models.py | create_expense, delete_expense, approve_expense, get_expenses |
+| app/models/expense_models.py | create_expense, delete_expense, approve_expense, get_expenses, get_expense (ownership/IDOR check) |
 | app/templates/expenses/list.html | Expense list with filters |
 | app/templates/expenses/new.html | New expense form |
 
