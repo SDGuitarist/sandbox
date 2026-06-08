@@ -35,6 +35,7 @@
 | ghost-file cleanup (9w.9) | DONE — removed 28 non-prescribed run-068 ghosts; kept 5 prescribed-path overlap files for clean worker overwrite (FC48) | commit 5094324 |
 | swarm work (10w) | 16/16 COMPLETED, 0 FC37 commit failures | docs/reports/070/worker-roster.md |
 | ownership gate (10.5w) | PASS — 16/16 disjoint | docs/reports/070/ownership-gate.md |
+| swarm | PASS | docs/reports/070/assembly-summary.md |
 
 **Run State:**
 - run_id: 070
@@ -45,7 +46,7 @@
 - total_agents: 16
 - context_proxy_chars: 0
 - manual_resume: false
-- final_status: null
+- final_status: PASS — assembly complete, 16/16 workers, contract PASS, smoke 18/18, tests 10/10
 
 ---
 
@@ -69,6 +70,23 @@
 | 14 | reports | 1753ae5 | COMPLETED |
 | 15 | search | 8e24747 | COMPLETED |
 | 16 | tests | e445a79 | COMPLETED |
+
+| 1 | scaffold | 6655b25 | PASS |
+| 2 | database | 30eea47 | PASS |
+| 3 | auth | fa095ee | PASS |
+| 4 | projects | 2db778a | PASS |
+| 5 | scenes | 4eecc4b | PASS |
+| 6 | cast | 5b05eb2 | PASS |
+| 7 | crew | 45989ff | PASS |
+| 8 | departments | 301f169 | PASS |
+| 9 | locations | 920b92a | PASS |
+| 10 | schedule | f703e60 | PASS |
+| 11 | callsheets | 3546c2c | PASS |
+| 12 | budget | 0fabcb5 | PASS |
+| 13 | expenses | cd4c80b | PASS |
+| 14 | reports | af00e66 | PASS |
+| 15 | search | e46c0c1 | PASS |
+| 16 | tests | 49fc1d5 | PASS |
 
 ### Ownership Gate: PASS (16 agents) — each worker commit touched only assigned files (docs/reports/070/ownership-gate.md). Disjoint ownership → FC51 cherry-pick clean. Worktrees rooted on f90aed8 (now ancestor of feat → merge-base == worktree-root, O3 invariant).
 
