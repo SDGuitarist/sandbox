@@ -93,7 +93,9 @@ Per the proven tail-delegation pattern (`docs/solutions/2026-06-01-tail-delegati
 1. **Is `git merge-base(<original_branch>, <branch>)` always the worker's true fork point**, and does `git cherry-pick merge-base..branch` replay **all N** of a worker's commits (test 1-commit AND 3-commit workers; confirm `<branch>^` would have dropped commits)? Does a **zero-commit** worker degrade to a clean no-op (not an error)? **This decides strategy and forces the merge-base range over `<branch>^`.**
 2. **Assembly routing test (two cases):** a disjoint divergent worker → clean cherry-pick; two workers touching the **same file** on a divergent base → deterministic conflict → `assembly-ownership-conflict:` abort with `--abort` + clean tree + **branches preserved**. If pursuing strategy (i), also confirm uniform cherry-pick reproduces the `merge --no-ff` tree for an is-ancestor (mergeable) worker incl. an empty-commit worker.
 
-**Exit criterion:** both answered with evidence; strategy (i vs ii) chosen; the ownership-base and cherry-pick-base confirmed identical.
+**Out of scope (Codex watch item, accepted):** merge-commit and detached-HEAD worker branches are NOT first-class states — the harness produces linear, single-author worker branches. If the spike or a real build encounters either, the assembly **pre-flight aborts loudly** (`git rev-parse --abbrev-ref HEAD` == `HEAD` → detached; `git rev-list --merges <merge-base>..<branch>` non-empty → merge commit) rather than mis-attributing or silently dropping changes. The spike confirms the pre-flight fires; it does not attempt to *handle* these states.
+
+**Exit criterion:** both answered with evidence; strategy (i vs ii) chosen; the ownership-base and cherry-pick-base confirmed identical; the merge-commit/detached-HEAD pre-flight verified to abort.
 
 ## Implementation Phases
 
