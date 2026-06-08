@@ -146,6 +146,16 @@ List anything that:
 - Appeared in the plan's Feed-Forward "least confident" but was not addressed
   in the solution doc's Risk Resolution section
 
+**Use the Run Health Instruments (M34) as a search heuristic.** BUILD_TRACKING's
+RUN_METRICS now carries a "Run Health Instruments" block (tools-per-assigned-file,
+spec-eval pass-RATE, judgment-call count). Any worker that is a tools-per-file
+OUTLIER (well above the pack median) or the run's high judgment-call source hit a
+real spec gap while improvising — start your "What Was Missed" search at those
+workers' reports. A clean all-green run with a high judgment-call count is the
+canonical "structural completeness masked implementation gaps" miss; if the
+solution doc reads as routine while the instruments show outliers, that gap is a
+finding.
+
 If nothing was missed, write: "First summary was complete -- no omissions
 found." But be skeptical. Something is almost always missed.
 

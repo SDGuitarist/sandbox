@@ -21,12 +21,12 @@ draining them into their owning artifacts (triage). The top 4 are DONE; ~31 rema
 - **M4** → fixture-validation proposal doc.
 - **M36** → latent-risks-and-mitigations.md inverse registry + process change (meta-analysis as a budgeted phase).
 
-## PARKED — drain these (recommended order: instruments first = nearly free, then planning, then governance, then small)
+## DONE — Bucket 1 (Instruments / observability), committed this session
+- **M29** → SKILL **Step 1.52 Orchestrator Context Instrumentation** (wires `context_proxy_chars` updates at every phase boundary + a `context-telemetry.md` log) and a pre-delegation hook in **Step 17w** (>70% warning as a recorded, non-blocking finding). Framed observability-only per the context-death plan's "not a gate" rule.
+- **M34** → tail-runner **Step 6 RUN_METRICS** "Run Health Instruments" block (tools-per-assigned-file outliers, spec-eval pass-RATE, judgment-call count) + self-audit "What Was Missed" now uses those outliers as its search heuristic.
+- **M23** → tail-runner **Step 6 RUN_METRICS** retires "0 merge conflicts" as a quality signal; replaced with an **Integration Health** row (contract-check + import-resolution at boot). If a conflict count is kept it must be labeled tautological. (Historical run reports left untouched per CLAUDE.md; swarm-planner's "zero merge conflicts" objective line left as-is — it describes the planner's design goal, not a reported run-quality claim.)
 
-### Bucket 1 — Instruments / observability (cheapest, data already exists)
-- **M29** — Instrument the orchestrator's own context (context_proxy_chars is a never-filled placeholder; the orchestrator is the only actor that can die and the only un-instrumented one). Wire a real proxy at each phase boundary; warn >~70% before Step 17w.
-- **M34** — Surface three continuous instruments already in the telemetry: (a) tools-per-assigned-file as a spec-gap early-warning (070: search 9.5, tests 10 vs median ~3-5 = the two that hit real spec issues); (b) spec-eval pass-RATE as a spec-quality gradient (not just the binary verdict); (c) judgment-call count as an incompleteness metric. Likely a self-audit / BUILD_TRACKING addition.
-- **M23** — Retire "0 merge conflicts" as a reported quality signal (tautology under disjoint ownership); replace with an integration-health metric (contract-check + import-resolution at boot). Edit wherever runs report "0 conflicts" as success.
+## PARKED — drain these (recommended order: planning, then governance, then small)
 
 ### Bucket 2 — Spec-template / planning
 - **M20/M21** — Coupling-aware decomposition: swarm-planner should read the Cross-Boundary Wiring density and choose cut-points that minimize cross-agent edges; "16 verticals" should be an OUTPUT, not a fixed template input. (swarm-planner agent + planning docs.)

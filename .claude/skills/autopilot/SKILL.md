@@ -141,6 +141,46 @@ If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
 Run Info + Phase Status section + AGENT_STATUS table header + empty FAILURES +
 empty RUN_METRICS.
 
+### Step 1.52: Orchestrator Context Instrumentation (MANDATORY — observability)
+
+**Why (M29):** Delegates run in fresh contexts — they cannot die and they each
+report their own tokens/duration. The orchestrator is the ONLY actor that
+accumulates context across every phase + all 16 workers, and the ONLY one that
+can suffer context death. Yet it is the only un-instrumented actor:
+`context_proxy_chars` ships as `0` and, before this step, was never updated — a
+never-filled placeholder. We were instrumenting the safe actors and flying blind
+on the fragile one. This step wires the proxy so a near-death orchestrator is
+visible after the fact instead of silent.
+
+**Protocol — update `context_proxy_chars` at every phase boundary.** A phase
+boundary is each of: end of Step 6 (deepen), Step 9w.6 (gates done), Step 10w
+(all workers returned), each Steps 11w-16w return, and immediately before Step
+17w (tail delegation). At each boundary:
+1. Read BUILD_TRACKING.md. Find the line starting with `- context_proxy_chars:`.
+2. Add a rough tally of every Read body + Agent return the orchestrator ingested
+   since the previous boundary (character count; an estimate is fine — the metric
+   is a comparative proxy, not a gate).
+3. Use Edit with `old_string` = the exact current line and `new_string` = the new
+   cumulative value. Do not hardcode the prior value.
+4. Append one row to `docs/reports/<run-id>/context-telemetry.md` (create on first
+   write; columns: `phase boundary | context_proxy_chars | % of ~200K-char proxy
+   budget | note`).
+
+**Known gaps (do not over-trust the number):** the tally misses system prompts,
+tool schemas, and compaction effects. It is useful for comparing runs and
+spotting a saturation trend, NOT for absolute pass/fail thresholds. It is
+observability only — never a gate.
+
+**>70% warning (M29 — recorded finding, NOT a runtime action).** If
+`context_proxy_chars` exceeds ~140K (~70% of the ~200K-char proxy budget) at the
+pre-17w boundary, write a `WARN: orchestrator context proxy >70% before tail
+delegation` line into `context-telemetry.md` and the BUILD_TRACKING FAILURES
+section. This does NOT block — the tail is delegated to a fresh context anyway
+(that is the whole point of Step 17w). It is a post-run signal that the
+orchestrator nearly saturated before it could hand off, which feeds the
+context-death-architecture follow-up decision. The self-audit picks it up as a
+WARN like any other.
+
 ### Step 1.55: Advisory Baseline Capture (non-blocking)
 
 Run `/advisory-audit baseline`
@@ -827,6 +867,12 @@ The swarm-runner agent file is the single source of truth for
 assembly/verification logic. Do NOT reintroduce inline Steps 11w-16w here.
 
 ### Step 17w: Delegate Shared Tail (SWARM ONLY)
+
+**Pre-delegation instrumentation (M29):** Before spawning the tail-runner,
+perform the final `context_proxy_chars` boundary update from Step 1.52 and apply
+the >70% warning check. This is the last boundary the orchestrator records before
+handing off, so it is the one that reveals whether the orchestrator nearly
+saturated. Non-blocking — record the WARN if tripped, then proceed.
 
 Use the **tail-runner** agent to execute the entire Shared Tail in a
 fresh context window.

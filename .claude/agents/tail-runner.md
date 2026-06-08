@@ -144,9 +144,43 @@ Read all report files in the reports directory to compile failure data.
    failure class). If no failures, replace with "None".
 
 2. Use Edit tool to replace `<!-- Filled after review -->` under `## RUN_METRICS`
-   with the Final Build Metrics table: agent count, FC37 rate, merge conflicts,
-   file count, LOC estimate, smoke test results, review finding counts, plus
-   Agent Performance Summary table.
+   with the Final Build Metrics table: agent count, FC37 rate, integration health
+   (see M23 below), file count, LOC estimate, smoke test results, review finding
+   counts, plus the Agent Performance Summary table and the Run Health Instruments
+   block (M34 below).
+
+   **Integration health, not "0 merge conflicts" (M23).** Do NOT report "0 merge
+   conflicts" as a quality signal. Under disjoint per-agent file ownership, zero
+   conflicts is guaranteed by construction — it measures the ownership gate, not
+   integration health. The real integration risk (semantic import mismatch) also
+   produces 0 conflicts and surfaces at runtime (run 069: 0 conflicts + 4
+   integration P1s). Replace the "merge conflicts" row with an **Integration
+   Health** row sourced from the assembly artifacts already on disk:
+   `contract-check: PASS/FAIL` + `import-resolution at boot: PASS/FAIL`
+   (from `assembly-summary.md` / `spec-contract-check.md` / smoke-test boot). If
+   you still want the conflict count, label it `merge conflicts (tautological
+   under disjoint ownership — not a quality signal)` so no reader mistakes it for
+   integration evidence.
+
+   **Run Health Instruments (M34) — append this block to RUN_METRICS.** Three
+   continuous signals already present in the run data, none needing a new agent:
+
+   ```markdown
+   ### Run Health Instruments (M34)
+
+   | Instrument | Value | Reading |
+   |------------|-------|---------|
+   | Tools-per-assigned-file (per worker; flag outliers) | e.g. search 9.5, tests 10 vs pack median 3-5 | High outliers are a spec-gap early-warning — the worker hit a real spec issue while improvising a fill |
+   | Spec-eval pass-RATE (not just the binary verdict) | e.g. 262/277 = 94.6% (5.4% fail) | A spec-quality gradient; a falling rate across runs flags spec erosion even when the gate verdict stays PASS/advisory |
+   | Judgment-call count (worker SPEC_ISSUES / gap-fills) | e.g. ~8 | The true incompleteness measure (M8) — high count means structural completeness (9w.6 PASS) masked real implementation gaps |
+   ```
+
+   Compute each from artifacts already on disk: tools-per-file from per-worker
+   AGENT_STATUS / worker reports; pass-RATE from the Step 9w.8 spec-eval report;
+   judgment-call count from worker summaries / `SPEC_ISSUES:` fields. These are
+   observability, not gates — but a worker that is a tools-per-file outlier OR a
+   high judgment-call count is exactly where a self-audit "What Was Missed" pass
+   should look first.
 
 ### Step 7: Verify BUILD_TRACKING Completeness
 
