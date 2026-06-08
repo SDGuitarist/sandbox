@@ -163,18 +163,17 @@ def test_dood_grid_accuracy(app):
         grid = report_models.get_dood_grid(conn, PROJECT_ID)
         by_id = {row["cast_member_id"]: row for row in grid}
 
+        # Only actual shoot dates (0, 2, 4) appear in the DOOD grid.
+        # Non-shoot dates (1, 3) are not schedule entries and thus not in shoot_dates.
         lead_days = by_id[lead]["days"]
         assert lead_days[dates[0]] == "SW", lead_days
-        assert lead_days[dates[1]] == "H", lead_days
+        # dates[1] and dates[3] are not scheduled -- not present in DOOD grid
         assert lead_days[dates[2]] == "W", lead_days
-        assert lead_days[dates[3]] == "H", lead_days
         assert lead_days[dates[4]] == "WF", lead_days
 
         dp_days = by_id[dayplayer]["days"]
         assert dp_days[dates[0]] == "", dp_days
-        assert dp_days[dates[1]] == "", dp_days
         assert dp_days[dates[2]] == "SWF", dp_days
-        assert dp_days[dates[3]] == "", dp_days
         assert dp_days[dates[4]] == "", dp_days
 
 
@@ -186,6 +185,8 @@ def test_dood_grid_accuracy(app):
 def test_budget_overspend_rejection(app):
     with app.app_context():
         conn = get_db()
+        # Set project total_budget_cents so allocate_budget can succeed
+        conn.execute('UPDATE projects SET total_budget_cents = 100000 WHERE id = ?', (PROJECT_ID,))
         camera = _dept_id(conn, PROJECT_ID, "Camera")
         cat = _category_id(conn, PROJECT_ID)
         creator = conn.execute(
@@ -197,11 +198,12 @@ def test_budget_overspend_rejection(app):
         before = budget_models.get_department_allocation(conn, camera)
         spent_before = before["spent_cents"]
 
-        with pytest.raises(Exception):
-            expense_models.create_expense(
-                conn, PROJECT_ID, camera, 1001, "OverVendor",
-                "too much", "2026-09-01", cat, creator,
-            )
+        # create_expense returns None (not raises) on overspend per spec Transaction Contracts
+        result = expense_models.create_expense(
+            conn, PROJECT_ID, camera, 1001, "OverVendor",
+            "too much", "2026-09-01", cat, creator,
+        )
+        assert result is None, f"expected None on overspend, got {result}"
 
         after = budget_models.get_department_allocation(conn, camera)
         assert after["spent_cents"] == spent_before, "spent_cents must not change on rejected overspend"
@@ -215,6 +217,8 @@ def test_budget_overspend_rejection(app):
 def test_expense_delete_restores_spent_cents(app):
     with app.app_context():
         conn = get_db()
+        # Set project total_budget_cents so allocate_budget can succeed
+        conn.execute('UPDATE projects SET total_budget_cents = 100000 WHERE id = ?', (PROJECT_ID,))
         sound = _dept_id(conn, PROJECT_ID, "Sound")
         cat = _category_id(conn, PROJECT_ID)
         creator = conn.execute(

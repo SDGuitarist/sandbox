@@ -7,34 +7,45 @@ from werkzeug.security import generate_password_hash
 DATABASE = 'filmpm.db'
 
 
+def _make_conn(db_path):
+    """Create a configured SQLite connection."""
+    conn = sqlite3.connect(db_path, autocommit=True, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA foreign_keys=ON')
+    conn.execute('PRAGMA busy_timeout=5000')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    return conn
+
+
 def get_db():
-    """Get database connection. Sets PRAGMAs on every connection (FC40)."""
+    """Get database connection. Sets PRAGMAs on every connection (FC40).
+    For :memory: databases, returns the app-level shared connection to avoid
+    data loss across request contexts."""
     if 'db' not in g:
         db_path = current_app.config.get('DATABASE', DATABASE)
-        g.db = sqlite3.connect(db_path, autocommit=True)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute('PRAGMA journal_mode=WAL')
-        g.db.execute('PRAGMA foreign_keys=ON')
-        g.db.execute('PRAGMA busy_timeout=5000')
-        g.db.execute('PRAGMA synchronous=NORMAL')
+        if db_path == ':memory:':
+            # Reuse the shared in-memory connection stored in app.config
+            g.db = current_app.config['_MEMORY_DB']
+            g._db_is_shared = True
+        else:
+            g.db = _make_conn(db_path)
+            g._db_is_shared = False
     return g.db
 
 
 def close_db(e=None):
+    is_shared = g.pop('_db_is_shared', False)
     db = g.pop('db', None)
-    if db is not None:
+    # Never close the shared in-memory connection; it belongs to the app object.
+    if db is not None and not is_shared:
         db.close()
 
 
 def init_db():
     """Create tables from schema.sql and seed default data."""
     db_path = os.environ.get('DATABASE', DATABASE)
-    conn = sqlite3.connect(db_path, autocommit=True)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL')
-    conn.execute('PRAGMA foreign_keys=ON')
-    conn.execute('PRAGMA busy_timeout=5000')
-    conn.execute('PRAGMA synchronous=NORMAL')
+    conn = _make_conn(db_path)
     with open(os.path.join(os.path.dirname(__file__), '..', 'schema.sql')) as f:
         conn.executescript(f.read())
     seed_data(conn)
@@ -133,6 +144,16 @@ def seed_data(conn):
 
 def init_app(app):
     app.teardown_appcontext(close_db)
-    if not os.path.exists(app.config.get('DATABASE', DATABASE)):
+    db_path = app.config.get('DATABASE', DATABASE)
+    if db_path == ':memory:':
+        # For in-memory databases, create ONE persistent connection shared across
+        # all request contexts (stored in app.config). Each get_db() returns
+        # this same connection so schema and seed data survive request boundaries.
+        shared = _make_conn(':memory:')
+        app.config['_MEMORY_DB'] = shared
+        with open(os.path.join(os.path.dirname(__file__), '..', 'schema.sql')) as f:
+            shared.executescript(f.read())
+        seed_data(shared)
+    elif not os.path.exists(db_path):
         with app.app_context():
             init_db()
