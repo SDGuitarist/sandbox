@@ -29,6 +29,7 @@
 | gate-verification (9w.7) | CLEARED | docs/reports/069/gate-verification.md |
 | spec-eval (9w.8) | WAIVED_BY_HUMAN (44 single-shot artifacts; structural gates PASS) | docs/reports/069/spec-eval-waiver.md |
 | swarm-planner (7w) | PASS (24 agents, 37 files, 0 overlap) | (inline) |
+| swarm | PASS | docs/reports/069/assembly-summary.md |
 
 **Run State:**
 - run_id: 069
@@ -38,7 +39,7 @@
 - swarm: true
 - total_agents: 24
 - context_proxy_chars: 0 (instrument at each phase boundary; meta-goal measurement — flag if >~70% before Step 17w)
-- final_status: RUNNING (Stage-2 launched 2026-06-07 after explicit human GO)
+- final_status: PASS (assembly complete; 24/24 cherry-picks; 3 known integration defects noted — non-blocking)
 
 ---
 
