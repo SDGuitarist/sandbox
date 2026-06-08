@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run.run_id }} — CPAA Replay{% endblock %}
+{% block content %}
+<h1>Run <code>{{ run.run_id }}</code></h1>
+
+<div class="card">
+  <h2>Status</h2>
+  <table>
+    <tbody>
+      <tr><th>Status</th><td>{{ run.status }}</td></tr>
+      <tr><th>Events Applied</th><td>{{ run.events_applied }}</td></tr>
+      <tr><th>Reset Done</th><td>{{ run.reset_done }}</td></tr>
+      <tr><th>Started</th><td>{{ run.started_at if run.started_at is not none else '—' }}</td></tr>
+      <tr><th>Finished</th><td>{{ run.finished_at if run.finished_at is not none else '—' }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Hashes</h2>
+  <table>
+    <tbody>
+      <tr><th>Projection Hash</th><td>{% if run.projection_hash %}<code>{{ run.projection_hash }}</code>{% else %}—{% endif %}</td></tr>
+      <tr><th>Live Hash (pre)</th><td>{% if run.live_hash_pre %}<code>{{ run.live_hash_pre }}</code>{% else %}—{% endif %}</td></tr>
+      <tr><th>Live Hash (post)</th><td>{% if run.live_hash_post %}<code>{{ run.live_hash_post }}</code>{% else %}—{% endif %}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Anomalies</h2>
+  {% if anomalies %}
+  <table>
+    <thead>
+      <tr><th>Kind</th><th>Idempotency Key</th><th>Detail</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+      {% for anomaly in anomalies %}
+      <tr>
+        <td>{{ anomaly.kind }}</td>
+        <td>{% if anomaly.idempotency_key %}<code>{{ anomaly.idempotency_key }}</code>{% else %}—{% endif %}</td>
+        <td>{{ anomaly.detail if anomaly.detail is not none else '—' }}</td>
+        <td>{{ anomaly.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No anomalies recorded for this run.</p>
+  {% endif %}
+</div>
+{% endblock %}
