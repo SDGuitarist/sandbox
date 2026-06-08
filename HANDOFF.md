@@ -2,46 +2,85 @@
 
 **Date:** 2026-06-07
 **Branch:** feat/cpaa-event-replay-simulator
-**Phase:** Run 069 (CPAA Event-Replay Simulator) — COMPLETE. All tail artifacts written.
+**Phase:** Run 069 COMPLETE. **NEXT: Work phase on the CONVERGED orchestration-hardening plan
+(launch from a FRESH context window).**
 
-## Current State
+## ⏭️ Next Session: Work Phase — Autopilot Orchestration Hardening
 
-CPAA Shadow Lab Event-Replay Simulator is built and fully functional. Run 069 validated the 3-stage delegation architecture at 24 agents (2× the prior 12-agent ceiling from Run 068) with no context death and no manual resume. Smoke 12/12 PASS, tests 30/30 PASS (1 expected skip). All 4 P1 and 2 P2 review findings are fixed. The app is on `feat/cpaa-event-replay-simulator`.
+A post-Run-069 analysis produced a **converged, Codex-reviewed plan** to harden the autopilot
+pipeline. It is plan→deepen→self-review→Codex-GO complete and committed. Start the WORK phase.
 
-## Key Artifacts
+**Plan:** `docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md`
+(type: refactor, manual autonomy class, `verify_first: true`). Three tracks:
+- **A** (FC51): base-divergence-aware swarm assembly — one-token ownership-gate fix
+  (`main`→`original_branch`) + codified per-worker cherry-pick + `assembly-ownership-conflict:` class.
+- **B** (FC50): orchestration-entrypoint **signature-presence guard** in the 9w.6 completeness gate
+  (NOT a call-site classifier). *(Subsumes deferred item [069-D3].)*
+- **C**: demote spec-eval gate (9w.8) to advisory + remove the Step-10w precondition.
 
-| Phase | Location |
-|-------|----------|
-| Plan (FROZEN, swarm: true, 24 agents) | docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md |
-| Binding review verdict | docs/reports/069/binding-review-verdict.md |
-| Assembly summary | docs/reports/069/assembly-summary.md |
-| Spec-eval waiver | docs/reports/069/spec-eval-waiver.md |
-| Known integration defects (pre-diagnosed) | docs/reports/069/known-integration-defects.md |
-| BUILD_TRACKING | BUILD_TRACKING.md |
-| Solution doc | docs/solutions/2026-06-07-cpaa-event-replay-simulator-24-agent-swarm-build.md |
+**Status:** Codex binding review returned **GO ×3, no fixes** (watch item folded). Plan passes the
+4-question gate, has EARS criteria + verification commands, Feed-Forward, and a rollback note.
+
+**Work sequence (lowest blast radius first; Track A spike-gated and last):**
+1. **Phase 1 — Track C** (smallest: two `SKILL.md` edits + S4 regression-grep). Correct the 069
+   narrative first (harness writes `spec-eval-verification.md` on PASS; FAIL-waive was hand-authored).
+2. **Phase 2 — Track B** (template + CLAUDE.md item 1 + presence-guard check; backtest vs CPAA 069 plan = PASS, unpinned fixture = FAIL).
+3. **Phase 0 — Track A spike** (MANDATORY before any Track A edit): `docs/reports/orchestration-hardening/`.
+   Resolve: is `merge-base(original_branch, branch)` the true fork point across empty/multi-commit workers?
+   uniform-cherry-pick (i) vs keep-merge-fork (ii)? conflict-abort routing? merge-commit/detached-HEAD pre-flight aborts?
+4. **Phase 3 — Track A** implementation (`SKILL.md:647` one token + `swarm-runner.md`). Do NOT touch the
+   `original_branch` merge-back.
+5. **Phase 4** — Codex review (2–3 rounds) before merge, then validate on the next real feature-branch swarm.
+
+**Critical guards:** every edit stays below the solo/swarm branch point (`SKILL.md:354`); the working
+mergeable path and `original_branch` merge-back must not regress. Commit each track separately (clean
+per-track rollback).
+
+---
+
+## Run 069 — COMPLETE (record)
+
+CPAA Shadow Lab Event-Replay Simulator is built and fully functional. Run 069 validated the 3-stage
+delegation architecture at 24 agents (2× the prior 12-agent ceiling from Run 068) with no context death
+and no manual resume. Smoke 12/12 PASS, tests 30/30 PASS (1 expected skip). All 4 P1 and 2 P2 review
+findings fixed. App on `feat/cpaa-event-replay-simulator`.
+**Caveat (now recorded in the solution doc):** "validated at 24" ran on a 1M window — headroom is not yet
+separable from window size; the 48-agent test must control for it.
+
+### Key Artifacts
+| Item | Location |
+|------|----------|
+| CPAA plan (FROZEN, swarm:true, 24 agents) | docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md |
+| Orchestration-hardening plan (CONVERGED, this session) | docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md |
+| Binding-review verdict (CPAA) | docs/reports/069/binding-review-verdict.md |
+| Spec-eval waiver (CPAA) | docs/reports/069/spec-eval-waiver.md |
+| Assembly summary (cherry-pick / Base-Divergence Note) | docs/reports/069/assembly-summary.md |
+| Solution doc (CPAA, incl. 1M caveat) | docs/solutions/2026-06-07-cpaa-event-replay-simulator-24-agent-swarm-build.md |
 | Self-audit | docs/reports/069/self-audit.md |
 
-## Deferred Items
+### Deferred Items
+- **[069-D1][069-W3] GOLDEN_PROJECTION_HASH not frozen.** `compute_golden.py` has a CSRF token-reuse bug;
+  `F1::test_golden_corpus_projection_hash_anchor` SKIPS gracefully. Fix: get session token from the test
+  client's session (not the HTML form), run the tool, freeze the hash in `constants.py`. *(This is the one
+  loose end that touches the app's core determinism proof.)*
+- **[069-D2] F2 worker worktree may remain.** Manual cleanup if needed: `git worktree list` / `git worktree remove --force <path>`.
+- **[069-D3] Spec §5 "Orchestration Entrypoints" row-class** — **NOW SUBSUMED by Track B** of the
+  orchestration-hardening plan above.
+- **[Run 068]** outcome_routes flash category (P3); list_contacts ORDER BY (P3).
 
-- **[069-D1][069-W3] GOLDEN_PROJECTION_HASH not frozen.** `compute_golden.py` has a CSRF token reuse bug preventing the golden corpus hash from being computed. `F1::test_golden_corpus_projection_hash_anchor` SKIPS gracefully (not FAIL). Fix: repair CSRF token handling in compute_golden.py (get session token from test client's session, not from HTML form), then run the tool and freeze the hash in constants.py.
-- **[069-D2] F2 worker worktree may remain.** Assembly note: one F2 worktree+branch could not be cleaned up while its spawning session was active. Manual cleanup if needed: `git worktree list` and `git worktree remove --force <path>`.
-- **[069-D3] Spec §5 "Orchestration Entrypoints" row-class.** Carry-forward for next build's spec template: pin route→orchestration and tool→constants entrypoints (name + full signature), not just model-layer exports. At 24-agent scale: 2/2 unpinned diverged, 0/N pinned held.
-- **[Run 068] outcome_routes flash category (P3); list_contacts ORDER BY (P3)** — carry-forward from Run 068, not this build.
+### Learnings propagated (this session, post-analysis)
+- agent-pitfalls: **FC50** (orchestration entrypoints), **FC51** (worktree base divergence).
+- spec-eval-gate-behavior memory: 069 confirms the 2-for-2 demote case.
+- Solution doc: 1M-window measurement caveat.
 
-## Three Questions
-
-1. **Hardest decision?** Deciding that NON_DETERMINISTIC is a comparison *result* (determinism_results.match) and not a run *status* — this change in the deepening phase prevented a validator-writes-replay_runs ownership contradiction that would have been a P0.
-2. **What was rejected?** Making the spec-eval gate a blocking FAIL (it produced 44 artifact/truncation failures with no true findings — would have blocked the build for no reason). Instead: structural gates (completeness, consistency) are the authoritative signal; spec-eval is advisory until precision is proven.
-3. **Least confident about?** Whether the orchestrator's inline-spawn headroom can continue scaling beyond 24 agents, or if the next doubling (48 agents) will require splitting deepening into a separate session before the swarm launches.
-
-## Prompt for Next Session
+## Prompt for Next Session (FRESH WINDOW)
 
 ```
-Read HANDOFF.md. Sandbox project, branch feat/cpaa-event-replay-simulator.
-Run 069 (CPAA Event-Replay Simulator, 24-agent swarm) is COMPLETE. All tail
-artifacts written, smoke 12/12, tests 30/30 (1 skip). Key carry-forward:
-spec §5 must add "Orchestration Entrypoints" row-class for route→module calls.
-One deferred item: GOLDEN_PROJECTION_HASH not frozen (compute_golden.py has a
-CSRF bug; F1 golden test skips gracefully). Next action: start a new project,
-OR fix the compute_golden.py CSRF bug and freeze the golden hash.
+Read HANDOFF.md. Sandbox project, branch feat/cpaa-event-replay-simulator. Run 069 is COMPLETE.
+Start the WORK phase on the CONVERGED, Codex-GO orchestration-hardening plan:
+docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md (manual, refactor, 3 tracks).
+Sequence: Phase 1 Track C (spec-eval demote) -> Phase 2 Track B (verb presence-guard) -> Phase 0 Track A
+spike (MANDATORY, docs/reports/orchestration-hardening/) -> Phase 3 Track A. Commit each track separately.
+Critical: keep every edit below SKILL.md:354 (solo/swarm branch point); do NOT touch the original_branch
+merge-back; do NOT regress the working mergeable assembly path. Use /workflows:work.
 ```
