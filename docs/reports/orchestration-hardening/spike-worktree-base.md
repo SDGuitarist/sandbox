@@ -57,17 +57,22 @@ mask the violation. It aborts and records `assembly-ownership-conflict:`.
 
 **Untouched:** the final assembly→`original_branch` merge-back stays `git merge --no-ff` (required by the plan's "must NOT change" guard). Because the assembly branch is `feat` + disjoint cherry-picks, `feat` is an ancestor of it, so the merge-back cannot conflict.
 
-### Blocking-class bookkeeping (to finalize in Phase 3 against the real file)
+### Blocking-class bookkeeping — FINALIZED in Phase 3
 
 Strategy (i) removes the **per-worker** merge, so the per-worker `merge-conflict:`
-trigger is replaced by `assembly-ownership-conflict:`. **Open detail for Phase 3:**
-the merge-back step still calls `merge --no-ff`; before deleting `merge-conflict:`
-entirely, Phase 3 must read `swarm-runner.md:131` and decide whether to RETAIN
-`merge-conflict:` solely for the (untouched) merge-back path. Bias: **retain it for
-the merge-back** (honors "do not touch the merge-back" + lowest blast radius) →
-likely **3 classes** total (`contract-check:`, `merge-conflict:` [merge-back only],
-`assembly-ownership-conflict:` [per-worker]). Verified separately: no hardcoded
-enum in self-audit WARN handling rejects an added class.
+trigger is replaced by `assembly-ownership-conflict:`. **Phase-3 finding (verified
+against the real file):** `merge-conflict:` was ONLY ever raised in the per-worker
+merge (swarm-runner Step 3, old lines 89–93). The merge-back (Step 7,
+`swarm-runner.md:131`) calls `git merge --no-ff <assembly_branch>` but has **no
+conflict handler today** and cannot conflict anyway (the assembly branch is
+`original_branch` + disjoint cherry-picks, so `original_branch` is its ancestor →
+fast-forwardable). So `merge-conflict:` is **fully retired and replaced** by
+`assembly-ownership-conflict:` — **count stays 2** (`contract-check:` +
+`assembly-ownership-conflict:`), exactly the plan's strategy-(i) prescription. The
+merge-back keeps its status-quo behavior (no named class, fails via disk-verify if
+it ever broke) — NOT a regression. Propagated to: swarm-runner Rule 2 + Output
+Contract, and the orchestrator's wire-abort handler (`SKILL.md` ~723, ~779).
+Verified: no hardcoded enum in self-audit WARN handling rejects the changed set.
 
 ## Out-of-scope states — pre-flight aborts loudly (VERIFIED)
 

@@ -655,10 +655,18 @@ assignments used below come from the swarm-planner output. If Step 7w
 FAILed, this step is never reached (7w FAIL aborts the pipeline).
 
 Before merging any worktree branch, validate that each agent only touched its
-assigned files. For each worktree branch, run these as SEPARATE Bash calls
-(one per branch -- do NOT use a for-loop):
+assigned files. First capture `original_branch`: run
+`git -C <project-root> branch --show-current` (the orchestrator's current
+feature branch). Worker worktrees are rooted on the repo default branch, NOT on
+`original_branch` (verified Run 069), so the diff base MUST be `original_branch`
+-- a hardcoded `main` would mis-attribute every file the feature branch has added
+since it forked. The three-dot operator diffs against
+`merge-base(original_branch, branch)` -- the worker's true fork point, and the
+SAME base the swarm-runner cherry-pick uses (the O3 invariant). For each worktree
+branch, run these as SEPARATE Bash calls (one per branch -- do NOT use a
+for-loop):
 
-1. Run: `git -C <project-root> diff --name-only main...<branch-name>`
+1. Run: `git -C <project-root> diff --name-only <original_branch>...<branch-name>`
 2. Compare the output against the agent's assigned files using Read tool.
 3. If ANY file in the diff is NOT in the agent's assignment, **abort the merge
    for that branch**. Use Write tool to create `docs/reports/<run-id>/ownership-violation.md`:
@@ -721,12 +729,12 @@ from disk-verifying the artifact (below), so a swarm-runner that completed the m
 but was cut off before echoing its STATUS does not fail a genuinely good run.
 
 - If `STATUS: FAIL` and the reason starts with `contract-check:` or
-  `merge-conflict:`: the swarm-runner has already aborted (no merge to main, no
-  cleanup) and set `final_status` in BUILD_TRACKING.md Run State. Do NOT proceed
-  to Step 17w, and do NOT disk-verify (these blocking classes abort BEFORE writing
-  `assembly-summary.md`, and a stale prior-run summary must not mask the abort). The
-  run ends. (These are the two blocking failure classes — see CLAUDE.md Escalation
-  Rules.)
+  `assembly-ownership-conflict:`: the swarm-runner has already aborted (no merge to
+  main, no cleanup, worker branches preserved) and set `final_status` in
+  BUILD_TRACKING.md Run State. Do NOT proceed to Step 17w, and do NOT disk-verify
+  (these blocking classes abort BEFORE writing `assembly-summary.md`, and a stale
+  prior-run summary must not mask the abort). The run ends. (These are the two
+  blocking failure classes — see CLAUDE.md Escalation Rules.)
 - **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
   The blocking classes above are the ONLY wire-driven aborts in this handler. All of
   the following wire outcomes route identically to the disk-verify below — none of them
@@ -776,7 +784,7 @@ the tail-runner reviews the merged code on the main branch. Any worker branches
 the swarm-runner preserved (TIMED_OUT/FAILED workers) exist only for manual
 inspection and are NOT the review target.
 
-A blocking failure (`contract-check:` or `merge-conflict:`) means the
+A blocking failure (`contract-check:` or `assembly-ownership-conflict:`) means the
 swarm-runner aborted WITHOUT merging to main. In that case the orchestrator
 already ended the run at the Steps 11w-16w handler and never reaches Step 17w.
 
