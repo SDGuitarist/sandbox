@@ -23,7 +23,7 @@ CPAA Shadow Lab Event-Replay Simulator is built and fully functional. Run 069 va
 
 ## Deferred Items
 
-- **[069-D1] GOLDEN_PROJECTION_HASH not frozen.** `compute_golden.py` has a CSRF token reuse bug preventing the golden corpus hash from being computed. `F1::test_golden_corpus_projection_hash_anchor` SKIPS gracefully (not FAIL). Fix: repair CSRF token handling in compute_golden.py (get session token from test client's session, not from HTML form), then run the tool and freeze the hash in constants.py.
+- **[069-D1][069-W3] GOLDEN_PROJECTION_HASH not frozen.** `compute_golden.py` has a CSRF token reuse bug preventing the golden corpus hash from being computed. `F1::test_golden_corpus_projection_hash_anchor` SKIPS gracefully (not FAIL). Fix: repair CSRF token handling in compute_golden.py (get session token from test client's session, not from HTML form), then run the tool and freeze the hash in constants.py.
 - **[069-D2] F2 worker worktree may remain.** Assembly note: one F2 worktree+branch could not be cleaned up while its spawning session was active. Manual cleanup if needed: `git worktree list` and `git worktree remove --force <path>`.
 - **[069-D3] Spec §5 "Orchestration Entrypoints" row-class.** Carry-forward for next build's spec template: pin route→orchestration and tool→constants entrypoints (name + full signature), not just model-layer exports. At 24-agent scale: 2/2 unpinned diverged, 0/N pinned held.
 - **[Run 068] outcome_routes flash category (P3); list_contacts ORDER BY (P3)** — carry-forward from Run 068, not this build.
