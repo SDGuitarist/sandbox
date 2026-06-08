@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-08
 **Branch:** feat/film-production-pm
-**Phase:** Run 070 COMPLETE — tail running (review done, compound done, learnings in progress)
+**Phase:** Run 070 COMPLETE — all tail artifacts written (review, compound, learnings, self-audit verified)
 
 ## Current State
 
@@ -32,7 +32,7 @@ Run 070 (Film Production PM Tool, 16-agent swarm) is complete. All three orchest
 
 ## Deferred Items
 
-1. **Todo #070 (P2):** Double `get_schedule_entries` in callsheets.generate. Fix: pass pre-fetched entries as optional parameter to `generate_call_sheet` to avoid double SQL query.
+1. **[070-W4] Todo #070 (P2, LOW):** Double `get_schedule_entries` in callsheets.generate. Fix: pass pre-fetched entries as optional parameter to `generate_call_sheet` to avoid double SQL query.
 2. **Orchestration-hardening merge decision:** `feat/cpaa-event-replay-simulator` validated by Run 070. Operator decision: push + PR to merge to master.
 3. **FC51 orchestrator fix:** Ensure converged spec is present at worktree base before spawning workers. Options: (A) cherry-pick spec-update commit into each worktree, (B) inject sections + log titles in orchestration notes.
 
