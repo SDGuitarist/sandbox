@@ -93,13 +93,21 @@ as SEPARATE Bash calls (one at a time, no for-loop):
 2. **Pre-flight — abort loudly on out-of-scope states** (the harness produces
    linear, single-author worker branches; anything else must not be
    mis-attributed):
-   - `git rev-parse --abbrev-ref <branch>` — if it resolves to `HEAD` (detached),
-     take the ownership-conflict abort (reason: `pre-flight: detached HEAD <branch>`).
    - `git rev-list --merges <base>..<branch>` — if non-empty (a merge commit on
      the worker branch), take the ownership-conflict abort (reason:
      `pre-flight: merge commit on <branch>`).
+   - **Detached-HEAD is NOT checkable here** and is out of scope: you receive
+     branch *names*, not worktree paths, and `git rev-parse --abbrev-ref <branch>`
+     resolves a ref name (never `HEAD`), so it cannot observe a detached worker
+     checkout. A worker that committed in a detached HEAD never advances its named
+     branch, so its `<base>..<branch>` range is empty and it falls through to the
+     zero-commit no-op below — recorded as "empty delta" in the summary
+     (Step 9), which is the visibility backstop. (If detached-HEAD ever needs
+     first-class handling, detect it via `git worktree list --porcelain`, which
+     also reports worktree paths — a follow-up, not this change.)
 3. **Zero-commit no-op:** if `git rev-list --count <base>..<branch>` is `0`, the
-   worker did no work — skip it (no cherry-pick), note "empty delta" in the
+   worker did no work (or its commits never reached the named branch — see the
+   detached-HEAD note above) — skip it (no cherry-pick), note "empty delta" in the
    summary. This is NOT an error.
 4. **Cherry-pick the full fork-point range:** `git cherry-pick <base>..<branch>`.
    This replays ALL N of the worker's commits. The `<branch>^` form is

@@ -74,23 +74,39 @@ it ever broke) — NOT a regression. Propagated to: swarm-runner Rule 2 + Output
 Contract, and the orchestrator's wire-abort handler (`SKILL.md` ~723, ~779).
 Verified: no hardcoded enum in self-audit WARN handling rejects the changed set.
 
-## Out-of-scope states — pre-flight aborts loudly (VERIFIED)
+## Out-of-scope states — pre-flight (VERIFIED, with a runtime caveat)
 
-| State | Detection | Evidence |
-|-------|-----------|----------|
-| detached HEAD | `git rev-parse --abbrev-ref HEAD` == `HEAD` | detected |
-| merge-commit worker | `git rev-list --merges <merge-base>..<branch>` non-empty | detected (count 1) |
+| State | Detection | Spike evidence | Runtime wiring |
+|-------|-----------|----------------|----------------|
+| merge-commit worker | `git rev-list --merges <merge-base>..<branch>` non-empty | detected (count 1) | **works on a branch ref** → retained as a swarm-runner pre-flight abort |
+| detached HEAD | `git rev-parse --abbrev-ref HEAD` == `HEAD` (run *inside a checkout*) | detected | **NOT wireable at assembly time** — see below |
 
 The harness produces linear, single-author worker branches; these states are not
-first-class. The assembly pre-flight aborts on them rather than mis-attributing or
-silently dropping changes. The spike confirms detection fires; it does not handle them.
+first-class. The merge-commit pre-flight works on a branch ref and is kept.
+
+**Codex finding (Phase-4 binding review) — detached-HEAD caveat:** the spike's
+detached check runs `rev-parse --abbrev-ref HEAD` *inside a worktree checkout*,
+which is the correct mechanism. But the swarm-runner runtime contract receives
+branch **names** only (no worktree paths), and `rev-parse --abbrev-ref <branch>`
+resolves a ref name (never `HEAD`) — so it cannot observe a detached worker
+checkout. Detachment is a property of a working tree, not of a branch ref. A
+worker that committed in a detached HEAD never advances its named branch, so its
+`merge-base..branch` range is empty → it falls through to the **zero-commit
+no-op**, recorded as "empty delta" in `assembly-summary.md` (the visibility
+backstop). The broken `rev-parse --abbrev-ref <branch>` pre-flight was therefore
+**removed** from swarm-runner; first-class detached-HEAD handling (via
+`git worktree list --porcelain`, which also yields worktree paths) is a deferred
+follow-up, not part of this change.
 
 ## Exit criterion — MET
 
 - [x] Both questions answered with evidence (16/16 comprehensive assertions).
 - [x] Strategy chosen: **(i) uniform cherry-pick** (proven to reproduce the merge tree + matches 069's clean run).
 - [x] Ownership-base == cherry-pick-base confirmed identical (O3 invariant).
-- [x] merge-commit / detached-HEAD pre-flight verified to abort.
+- [x] merge-commit pre-flight verified to abort (works on a branch ref, retained).
+- [x] detached-HEAD: mechanism verified in-checkout, but NOT wireable into the
+  branch-ref-only runtime contract (Codex finding) → removed from swarm-runner;
+  manifests as a recorded "empty delta" no-op; first-class handling deferred.
 
 **Track A is unblocked.** Phase 3 may edit `SKILL.md:647` (one token) and
 `swarm-runner.md` (cherry-pick recipe + `assembly-ownership-conflict:` class +
