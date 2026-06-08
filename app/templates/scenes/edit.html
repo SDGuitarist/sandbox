@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Edit Scene {{ scene.scene_number }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Edit Scene {{ scene.scene_number }}</h1>
+
+<form method="POST"
+      action="{{ url_for('scenes.update', project_id=project.id, scene_id=scene.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="card bg-dark border-secondary mb-3">
+    <div class="card-header">Details</div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label" for="scene_number">Scene Number</label>
+        <input class="form-control" type="text" id="scene_number" name="scene_number"
+               value="{{ scene.scene_number }}" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="description">Description</label>
+        <textarea class="form-control" id="description" name="description" rows="2">{{ scene.description or '' }}</textarea>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="int_ext">INT/EXT</label>
+          <select class="form-select" id="int_ext" name="int_ext" required>
+            {% for v in int_ext_values %}
+            <option value="{{ v }}" {% if v == scene.int_ext %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="day_night">Day/Night</label>
+          <select class="form-select" id="day_night" name="day_night" required>
+            {% for v in day_night_values %}
+            <option value="{{ v }}" {% if v == scene.day_night %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label" for="page_count_eighths">Page Count (eighths)</label>
+          <input class="form-control" type="number" min="1" step="1"
+                 id="page_count_eighths" name="page_count_eighths"
+                 value="{{ scene.page_count_eighths }}" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="location_id">Location</label>
+        <select class="form-select" id="location_id" name="location_id">
+          <option value="">— None —</option>
+          {% for loc in locations %}
+          <option value="{{ loc.id }}" {% if loc.id == scene.location_id %}selected{% endif %}>{{ loc.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label" for="notes">Notes</label>
+        <textarea class="form-control" id="notes" name="notes" rows="2">{{ scene.notes or '' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-dark border-secondary mb-3">
+    <div class="card-header">Cast</div>
+    <div class="card-body">
+      {% if all_cast %}
+      {% for c in all_cast %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="cast_ids"
+               value="{{ c.id }}" id="cast-{{ c.id }}"
+               {% if c.id in assigned_cast_ids %}checked{% endif %}>
+        <label class="form-check-label" for="cast-{{ c.id }}">
+          #{{ c.cast_id_number }} — {{ c.name }} as {{ c.character_name }}
+        </label>
+      </div>
+      {% endfor %}
+      {% else %}
+      <p class="text-muted mb-0">No cast members in this project yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card bg-dark border-secondary mb-3">
+    <div class="card-header">Elements</div>
+    <div class="card-body">
+      {% if elements %}
+      <div class="mb-3">
+        {% for el in elements %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="remove_element_ids"
+                 value="{{ el.id }}" id="rmel-{{ el.id }}">
+          <label class="form-check-label" for="rmel-{{ el.id }}">
+            Remove: <span class="badge bg-secondary">{{ el.element_type }}</span> {{ el.description }}
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted">No elements tagged yet.</p>
+      {% endif %}
+
+      <div class="row align-items-end">
+        <div class="col-md-4 mb-2">
+          <label class="form-label" for="element_type">Add Element Type</label>
+          <select class="form-select" id="element_type" name="element_type">
+            <option value="">— None —</option>
+            {% for t in element_types %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-8 mb-2">
+          <label class="form-label" for="element_description">Element Description</label>
+          <input class="form-control" type="text" id="element_description" name="element_description">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+    <a class="btn btn-outline-secondary"
+       href="{{ url_for('scenes.detail', project_id=project.id, scene_id=scene.id) }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}
