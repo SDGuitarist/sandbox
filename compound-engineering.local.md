@@ -6,28 +6,30 @@ review_agents:
   - flow-trace-reviewer
 ---
 
-# Review Context — Sandbox (Gig Outcome Tracker, Run 068)
+# Review Context — Sandbox (CPAA Event-Replay Simulator, Run 069)
 
 ## Risk Chain
 
-**Brainstorm risk:** Dashboard aggregation query correctness — paid-only revenue / GROUP BY / COALESCE logic. No prior solution doc covers it. The deterministic fixture (3 played, $880, 4.5 avg energy, 8000 tips) is the verification anchor.
+**Brainstorm risk:** Context saturation at 24-agent inline spawn (unproven above 12) PLUS the cross-section P0 class (canonical-hash byte recipe, run-lock atomicity + reaper, NON_DETERMINISTIC as result-not-status, live-hash writer) that single-section review misses.
 
-**Plan mitigation:** Section 12 prescribed the exact SQL for all dashboard queries (COALESCE, LEFT JOIN, payment_status filter). Deterministic fixture included in Acceptance Tests (Section 14) as a smoke test anchor.
+**Plan mitigation:** Feed-Forward risk baked into spec with Feed-Forward section + verify_first: true. Plan §8.8 froze the canonical hash byte recipe. §3.2 froze the run-lock guarded INSERT pattern and the 3-transaction T1/T2/T3 sequence. Plan deepening (11 agents) caught the NON_DETERMINISTIC status contradiction and rewrote it as a comparison result.
 
-**Work risk (from Feed-Forward):** Whether the dashboard agent would implement the LEFT JOIN correctly (so paid gigs without outcomes still count their pay), apply payment_status='paid' filter (so Gig 3's unpaid $450 is excluded), and average energy over outcome rows (2) not gig rows (3).
+**Work risk (from Feed-Forward):** Whether 24 agents would diverge on unpinned cross-cluster entrypoints (the spec's §5 exhaustively pinned model exports but not route→orchestration calls).
 
-**Review resolution:** 0 P1, 2 P2 from 1 review round. Dashboard aggregation verified correct — risk did NOT materialize. Prescriptive SQL in spec was the load-bearing mitigation. P2-1: monthly_revenue months parameter ignored (hardcoded -6). P2-2: init_debrief_schema nested with conn: inconsistency. Both fixed in commit 89c2148. 2 P3s deferred (informational flash category, list_contacts missing ORDER BY).
+**Review resolution:** 4 P1, 2 P2, 1 P3. All P1+P2 fixed. P3 deferred (golden corpus hash — compute_golden.py CSRF bug). P1s: ingest import mismatch (B2↔B3), replay arity mismatch (C1↔C6), LIVE_DB bare module import (C1), EMPTY_PROJECTION_HASH placeholder, dedup both-sides canonicalization. P2s: test assertion false (index SCAN vs query planner), validator detail endpoint missing login_required. All P0 risk areas (canonical hash, run-lock, NON_DETERMINISTIC verdict, live-hash isolation) verified CORRECT in the spec and implementation. The risk that fired was UNPINNED ENTRYPOINTS — not what the plan was tracking.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/gig_models.py | monthly_revenue: parameterize months in SQL | Parameter contract correctness |
-| app/debrief_models.py | init_debrief_schema: remove nested with conn: | Transaction consistency with other init_*_schema functions |
-| app/dashboard_routes.py | New — dashboard aggregation | COALESCE + LEFT JOIN + payment filter correctness |
-| app/__init__.py | New — scaffold, get_db, init_db, auth blueprint | PRAGMA foreign_keys, row_factory placement, SECRET_KEY fail-close |
-| app/contact_models.py | Assembly inline fix: executescript → execute | Transaction isolation during init_db |
+| cpaa-replay/app/ingest_routes.py | Fixed: ingest → ingest_source + LIVE_DB config arg | B2↔B3 cross-cluster wiring |
+| cpaa-replay/app/replay_engine.py | Fixed: LIVE_DB bare import → current_app.config + run_replay(conn) → run_replay() | C1↔C6 cross-cluster wiring |
+| cpaa-replay/app/replay_routes.py | Fixed: dropped outer get_db wrapper on run path | Transaction ownership |
+| cpaa-replay/app/constants.py | Fixed: EMPTY_PROJECTION_HASH placeholder → computed value | Canonical hash correctness |
+| cpaa-replay/app/event_models.py | Fixed: both-sides canonicalization in dedup compare + _canonicalize helper | Dedup order-insensitivity |
+| cpaa-replay/app/validator_routes.py | Fixed: login_required added to GET /validate/<id> | Auth coverage |
+| cpaa-replay/tests/test_determinism.py | Fixed: false query-plan assertion → DDL existence check | Test correctness |
 
 ## Plan Reference
 
-`docs/plans/2026-06-05-gig-outcome-tracker-plan.md`
+`docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md`

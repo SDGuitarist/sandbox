@@ -2,106 +2,46 @@
 
 **Date:** 2026-06-07
 **Branch:** feat/cpaa-event-replay-simulator
-**Phase:** CPAA simulator — Stage 1 COMPLETE (plan CONVERGED + binding-reviewed + human-verified).
-**LAUNCH-READY. Stage 2 (unattended swarm build) must be launched FROM A FRESH CONTEXT WINDOW.**
+**Phase:** Run 069 (CPAA Event-Replay Simulator) — COMPLETE. All tail artifacts written.
 
 ## Current State
 
-CPAA Shadow Lab Event-Replay Simulator is the next autopilot BUILD target (24-agent swarm — the test of
-whether the 3-stage delegation architecture survives ~2× the validated 12-agent ceiling, Run 068).
-
-**Stage 1 is DONE and the spec is FROZEN + committed.** It went:
-brief → `/deepen-plan` (11 agents) → Codex convergence (7 rounds) → human `grill-me` pass →
-final MANUAL Codex binding review (2 rounds, both GO) → P1/P2 fixes committed.
-
-**Convergence criterion MET** (Codex clean AND human zero-P0):
-- Stage-1 human gate caught the one real P0 automated Codex missed — §4.4 event taxonomy diverged from the
-  real corpus in 6 of 9 event types. Reconciled (commit 8833f80); generator fork stays minimal.
-- Binding review (round 1) returned **GO** with one P1 + one P2; both FIXED (commit 9228983):
-  - **P1:** `reset_done` now has a single named writer — `mark_complete_pass` (stated in §5/§9/§3.2 C).
-    T2 always resets before it, so every COMPLETE_PASS carries `reset_done=1`, no new param/branch.
-  - **P2:** §3.2 B′ now states the 15-min reaper's runtime budget explicitly (replay is sub-second;
-    ~1000× margin; single-writer/single-host/synchronous, no heartbeat needed).
-- Binding review (round 2, delta re-confirm) returned **GO** — both findings closed, no new contradiction.
-- Full verdict + audit trail: `docs/reports/069/binding-review-verdict.md`.
-
-**The unattended swarm BUILD has NOT started.** Do NOT launch it from the session that finished Stage 1
-(context already partly consumed — would eat the inline-spawn headroom and dirty the `context_proxy_chars`
-baseline). Launch from a fresh window.
-
-## Pre-Launch Prerequisites — ALL ✅ (verified 2026-06-07)
-
-- ✅ `.claude/settings.local.json` → `dangerouslySkipPermissions: true`.
-- ✅ `BUILD_TRACKING.md` seeded for **Run 069** (24 agents, branch, `final_status: NOT_STARTED`,
-  `context_proxy_chars: 0`). Run 068 tracking archived → `docs/reports/068/BUILD_TRACKING-final.md`.
-- ✅ Agent-pitfalls injection — autopilot **Step 1.6** injects `~/.claude/docs/agent-pitfalls.md` into
-  every worker brief; plan §16 also bakes applied pitfalls in.
-- ✅ Worktree strategy — autopilot **Step 10w** spawns each of the 24 workers in its own isolated worktree
-  (branch `worktree-agent-<agentId>`, disjoint file ownership → zero merge conflicts by design);
-  **Step 10.5w** ownership gate validates each branch's diff; **swarm-runner** does assembly/merge/cleanup
-  in fresh context. Orchestrator runs on `feat/cpaa-event-replay-simulator`; no stale worktrees.
-- ✅ run-id math: 68 solution docs + 1 = **069** (matches tracking; `docs/reports/069/` exists).
+CPAA Shadow Lab Event-Replay Simulator is built and fully functional. Run 069 validated the 3-stage delegation architecture at 24 agents (2× the prior 12-agent ceiling from Run 068) with no context death and no manual resume. Smoke 12/12 PASS, tests 30/30 PASS (1 expected skip). All 4 P1 and 2 P2 review findings are fixed. The app is on `feat/cpaa-event-replay-simulator`.
 
 ## Key Artifacts
 
-| Item | Location |
-|------|----------|
-| Plan + shared spec (CONVERGED, swarm:true, 24 agents, status:ready) | docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md |
-| Binding-review verdict (PASS, both rounds GO) | docs/reports/069/binding-review-verdict.md |
-| Binding-review handoff prompt (manual Codex) | docs/reports/069/codex-binding-review-handoff.md |
-| BUILD_TRACKING (seeded for 069) | BUILD_TRACKING.md |
-| Brief | docs/briefs/2026-06-06-cpaa-event-replay-simulator-brief.md |
-| Corpus (reuse) | cpaa-shadow-lab/instance/shadow_lab.db (1,595 events), cpaa-shadow-lab/generate_scenario.py |
+| Phase | Location |
+|-------|----------|
+| Plan (FROZEN, swarm: true, 24 agents) | docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md |
+| Binding review verdict | docs/reports/069/binding-review-verdict.md |
+| Assembly summary | docs/reports/069/assembly-summary.md |
+| Spec-eval waiver | docs/reports/069/spec-eval-waiver.md |
+| Known integration defects (pre-diagnosed) | docs/reports/069/known-integration-defects.md |
+| BUILD_TRACKING | BUILD_TRACKING.md |
+| Solution doc | docs/solutions/2026-06-07-cpaa-event-replay-simulator-24-agent-swarm-build.md |
+| Self-audit | docs/reports/069/self-audit.md |
 
-Branch commits: deepened plan (640e48a), converged (e08c030), corpus reconciliation (8833f80),
-BUILD_TRACKING reseed (97b7afa), binding-review P1/P2 fixes (9228983), launch-ready handoff (this commit).
+## Deferred Items
 
-## Next Session (FRESH WINDOW): Launch Stage 2 — after explicit human GO
+- **[069-D1] GOLDEN_PROJECTION_HASH not frozen.** `compute_golden.py` has a CSRF token reuse bug preventing the golden corpus hash from being computed. `F1::test_golden_corpus_projection_hash_anchor` SKIPS gracefully (not FAIL). Fix: repair CSRF token handling in compute_golden.py (get session token from test client's session, not from HTML form), then run the tool and freeze the hash in constants.py.
+- **[069-D2] F2 worker worktree may remain.** Assembly note: one F2 worktree+branch could not be cleaned up while its spawning session was active. Manual cleanup if needed: `git worktree list` and `git worktree remove --force <path>`.
+- **[069-D3] Spec §5 "Orchestration Entrypoints" row-class.** Carry-forward for next build's spec template: pin route→orchestration and tool→constants entrypoints (name + full signature), not just model-layer exports. At 24-agent scale: 2/2 unpinned diverged, 0/N pinned held.
+- **[Run 068] outcome_routes flash category (P3); list_contacts ORDER BY (P3)** — carry-forward from Run 068, not this build.
 
-This is a **Stage-2 entry**, NOT a from-scratch autopilot run. The autopilot skill is written for the full
-loop (Steps 1–6 = compound-start → brief → brainstorm → refinement → plan → deepen). Those are ALL DONE.
-The launch command below **overrides** the skill to skip them and build against the frozen plan.
+## Three Questions
 
-⚠️ **The single critical risk:** if autopilot heads into PLANNING instead of gates+spawn, it will overwrite
-the converged spec. The orchestrator MUST enter at Step 5.5 and build against the existing plan path. If it
-shows any sign of re-planning, STOP immediately.
+1. **Hardest decision?** Deciding that NON_DETERMINISTIC is a comparison *result* (determinism_results.match) and not a run *status* — this change in the deepening phase prevented a validator-writes-replay_runs ownership contradiction that would have been a P0.
+2. **What was rejected?** Making the spec-eval gate a blocking FAIL (it produced 44 artifact/truncation failures with no true findings — would have blocked the build for no reason). Instead: structural gates (completeness, consistency) are the authoritative signal; spec-eval is advisory until precision is proven.
+3. **Least confident about?** Whether the orchestrator's inline-spawn headroom can continue scaling beyond 24 agents, or if the next doubling (48 agents) will require splitting deepening into a separate session before the swarm launches.
 
-**Launch command (run only after explicit human GO + confirmed zero-P0):**
-
-```
-/autopilot Stage 2 (unattended) build against the already-CONVERGED, human-verified, binding-reviewed plan:
-docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md  (swarm:true, 24 agents, Run 069).
-
-Stage 1 (brainstorm → plan → deepen → Codex convergence → human verification → binding review) is COMPLETE
-and FROZEN (see docs/reports/069/binding-review-verdict.md). DO NOT re-run Steps 1–6 (compound-start, brief,
-brainstorm, brainstorm-refinement, plan, deepen) and DO NOT overwrite the plan. Enter at Step 5.5 (run_id
-computes to 069; docs/reports/069/ and BUILD_TRACKING.md are already seeded for Run 069). Then run the
-pre-swarm gates in order — 9w.5 spec-consistency, 9w.6 spec-completeness, 9w.7 gate-verification, 9w.8
-spec-eval — against the frozen spec, then spawn the 24 workers in worktrees per Step 10w. Inject
-agent-pitfalls (Step 1.6). Branch: feat/cpaa-event-replay-simulator. All spawned agents use
-mode: bypassPermissions.
-```
-
-**During the run — meta-goal instrumentation:** watch `context_proxy_chars` at each phase boundary. The
-inline phases (spawn + ownership gate, Steps 7w–10.5w) can't be delegated and are the unproven part at 24
-agents. **>~70% before Step 17w = a finding** → triggers the Orchestration Hardening plan (don't just push
-through; record it).
-
-## Deferred / Carried Forward
-
-- **Plan A** (orchestration hardening) COMPLETE + merged (PR #10); solution doc on master (f90aed8).
-  Plan B (spec-eval gate demotion + 7th read-path completeness surface) still un-started — separate track.
-- **[068-W1]** outcome_routes flash category (P3); **[068-W2]** list_contacts ORDER BY (P3).
-- Optional pre-launch: run the spec through NotebookLM for the external-data cross-ref step (already
-  reconciled once; the §4.4 corpus P0 was caught and fixed).
-
-## Prompt for Next Session (FRESH WINDOW)
+## Prompt for Next Session
 
 ```
-Read HANDOFF.md. Sandbox project, branch feat/cpaa-event-replay-simulator. The CPAA event-replay
-simulator is LAUNCH-READY: Stage-1 plan CONVERGED + binding-reviewed (Codex GO ×2) + human zero-P0,
-all prereqs ✅, changes committed. This is a STAGE-2 launch (build against the frozen plan — do NOT
-re-plan or overwrite it). Confirm prereqs are still green, then present the exact Stage-2 launch
-command from HANDOFF.md and WAIT for explicit human GO. On GO, launch autopilot-swarm with the
-skip-Steps-1–6 override, watch context_proxy_chars, and STOP if it heads into planning.
+Read HANDOFF.md. Sandbox project, branch feat/cpaa-event-replay-simulator.
+Run 069 (CPAA Event-Replay Simulator, 24-agent swarm) is COMPLETE. All tail
+artifacts written, smoke 12/12, tests 30/30 (1 skip). Key carry-forward:
+spec §5 must add "Orchestration Entrypoints" row-class for route→module calls.
+One deferred item: GOLDEN_PROJECTION_HASH not frozen (compute_golden.py has a
+CSRF bug; F1 golden test skips gracefully). Next action: start a new project,
+OR fix the compute_golden.py CSRF bug and freeze the golden hash.
 ```
