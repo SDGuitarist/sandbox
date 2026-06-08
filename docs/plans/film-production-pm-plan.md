@@ -340,7 +340,10 @@ CREATE TABLE IF NOT EXISTS call_sheet_cast (
     pickup_time TEXT,
     makeup_time TEXT,
     on_set_time TEXT,
-    status TEXT NOT NULL DEFAULT 'W' CHECK (status IN ('W','SW','WF','SWF','H')),
+    -- Call sheets list ONLY cast working that day. Status is the Start/Work/Finish
+    -- marker for THIS shoot date: SWF (only working day), SW (first), WF (last), W (mid).
+    -- 'H' (hold) is DOOD-grid-only, never a call_sheet_cast value.
+    status TEXT NOT NULL DEFAULT 'W' CHECK (status IN ('W','SW','WF','SWF')),
     remarks TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cs_cast_sheet ON call_sheet_cast(call_sheet_id);
@@ -587,7 +590,7 @@ def init_app(app):
 | budget_categories | budget_models | expenses, reports |
 | budget_line_items | budget_models | reports |
 | department_budgets | budget_models | expenses, reports |
-| expenses | expense_models | budget (via triggers), reports |
+| expenses | expense_models | budget (via spent_cents updates in expense_models), reports |
 | search_index | search_models | search |
 
 ---
@@ -645,9 +648,9 @@ def create_scene(conn, project_id, scene_number, description, int_ext, day_night
 # Returns: list[dict] with keys: id, scene_number, description, int_ext, day_night, page_count_eighths, location_name, status
 def get_scenes(conn, project_id) -> list: ...
 
-# Returns: list[dict] -- subset by scene IDs
+# Returns: list[dict] with keys: id, scene_number, description, int_ext, day_night, page_count_eighths
 # Usage: scenes = get_scenes_by_ids(conn, scene_ids)
-def get_scenes_by_ids(conn, scene_ids) -> list: ...
+def get_scenes_by_ids(conn, scene_ids) -> list[dict]: ...
 
 # Returns: dict or None
 def get_scene(conn, scene_id) -> dict | None: ...
@@ -673,7 +676,7 @@ def get_cast_member(conn, cast_member_id) -> dict | None: ...
 
 # Returns: list[dict] with keys: id, name, character_name, cast_id_number
 # Usage: cast = get_cast_for_scenes(conn, scene_ids)
-def get_cast_for_scenes(conn, scene_ids) -> list: ...
+def get_cast_for_scenes(conn, scene_ids) -> list[dict]: ...
 
 # Returns: None -- does NOT commit
 def add_cast_to_scene(conn, scene_id, cast_member_id) -> None: ...
@@ -696,9 +699,9 @@ def get_crew_members(conn, project_id) -> list: ...
 
 # Returns: list[dict] grouped by department: [{department_name, members: [{id, name, role_title, phone}]}]
 # Usage: grouped = get_crew_by_department(conn, project_id)
-def get_crew_by_department(conn, project_id) -> list: ...
+def get_crew_by_department(conn, project_id) -> list[dict]: ...
 
-# Returns: dict or None
+# Returns: dict or None with keys: id, project_id, name, role_title, department_id, department_name, phone, email, daily_rate_cents
 def get_crew_member(conn, crew_member_id) -> dict | None: ...
 ```
 
@@ -737,7 +740,7 @@ def create_schedule_entry(conn, project_id, scene_id, location_id, shoot_date, s
 
 # Returns: list[dict] with keys: id, scene_id, scene_number, location_id, location_name, shoot_date, sort_order, int_ext, day_night, page_count_eighths, strip_color_class
 # Usage: entries = get_schedule_entries(conn, project_id, shoot_date)
-def get_schedule_entries(conn, project_id, shoot_date) -> list: ...
+def get_schedule_entries(conn, project_id, shoot_date) -> list[dict]: ...
 
 # Returns: list[str] -- distinct shoot dates in order
 def get_shoot_dates(conn, project_id) -> list: ...
@@ -809,6 +812,10 @@ def approve_expense(conn, expense_id, approved_by) -> bool: ...
 
 # Returns: list[dict]
 def get_expenses(conn, project_id, department_id=None) -> list: ...
+
+# Returns: dict or None with keys: id, project_id, department_id, created_by, approved_by, amount_cents, expense_date, vendor, description, category_id
+# Usage: expense = get_expense(conn, expense_id) -- used by expenses routes for ownership/IDOR checks
+def get_expense(conn, expense_id) -> dict | None: ...
 ```
 
 ### search_models.py
@@ -839,7 +846,7 @@ def get_production_progress(conn, project_id) -> dict: ...
 
 ## Transition Maps (FC54 — referenced constants must be defined)
 
-Both transition validators in Input Validation reference `VALID_TRANSITIONS[current]`.
+Both transition validators in Input Validation reference these maps (`VALID_PHASE_TRANSITIONS[current_phase]` and `VALID_SCENE_TRANSITIONS[current_status]`).
 These maps are defined here, each owned by exactly one agent and imported only within
 that agent's own routes (no cross-boundary import). A target phase/status is valid iff
 it appears in the list for the current value. Same-value (no-op) and any value not in
@@ -1182,7 +1189,7 @@ fetch(url, {
 | `get_crew_members` | model fn | crew_models | crew routes |
 | `get_crew_by_department` | model fn | crew_models | callsheets routes |
 | `get_crew_member` | model fn | crew_models | crew routes |
-| `get_departments` | model fn | department_models | departments routes, callsheets routes, crew routes |
+| `get_departments` | model fn | department_models | departments routes, callsheets routes, crew routes, expenses routes |
 | `get_department` | model fn | department_models | departments routes |
 | `assign_department_head` | model fn | department_models | departments routes |
 | `create_location` | model fn | location_models | locations routes |
@@ -1208,6 +1215,7 @@ fetch(url, {
 | `delete_expense` | model fn | expense_models | expenses routes |
 | `approve_expense` | model fn | expense_models | expenses routes |
 | `get_expenses` | model fn | expense_models | expenses routes, reports routes |
+| `get_expense` | model fn | expense_models | expenses routes (ownership/IDOR checks) |
 | `search` | model fn | search_models | search routes |
 | `index_entity` | model fn | search_models | scenes, cast, crew, locations routes |
 | `remove_entity` | model fn | search_models | scenes, cast, crew, locations routes |
@@ -1258,7 +1266,7 @@ consumers must match character-for-character.
 | `get_scenes_by_ids` | orchestration entrypoint | scene_models | callsheet_models | `get_scenes_by_ids(conn, scene_ids) -> list[dict]` (keys: id, scene_number, description, int_ext, day_night, page_count_eighths) |
 | `get_location` | orchestration entrypoint | location_models | callsheet_models | `get_location(conn, location_id) -> dict \| None` (keys: id, name, address, contact_name, contact_phone, permit_status, nearest_hospital) |
 | `get_crew_by_department` | orchestration entrypoint | crew_models | callsheets routes | `get_crew_by_department(conn, project_id) -> list[dict]` (shape: [{department_name, members: [{id, name, role_title, phone}]}]) |
-| `get_departments` | orchestration entrypoint | department_models | callsheets routes, crew routes | `get_departments(conn, project_id) -> list[dict]` (keys: id, name, head_id, head_name) |
+| `get_departments` | orchestration entrypoint | department_models | callsheets routes, crew routes, expenses routes | `get_departments(conn, project_id) -> list[dict]` (keys: id, name, head_id, head_name) |
 | `login_required` | orchestration entrypoint | auth routes | ALL route agents | `login_required(f) -> Callable` (sets g.user; redirects to auth.login if no session) |
 | `require_project_member` | orchestration entrypoint | auth routes | ALL project-scoped route agents | `require_project_member(f) -> Callable` (sets g.project, g.member; 404/403) |
 | `require_role` | orchestration entrypoint | auth routes | ALL project-scoped route agents | `require_role(*roles) -> Callable` (checks g.member['role'] in roles AFTER require_project_member) |
@@ -1293,6 +1301,7 @@ consumers must match character-for-character.
 | Producer | Consumer | Import Path |
 |----------|----------|-------------|
 | app/models/budget_models.py | app/blueprints/expenses/routes.py | `from app.models.budget_models import get_department_allocation` |
+| app/models/department_models.py | app/blueprints/expenses/routes.py | `from app.models.department_models import get_departments` |
 | app/models/expense_models.py | app/blueprints/reports/routes.py | `from app.models.expense_models import get_expenses` |
 | app/models/budget_models.py | app/blueprints/reports/routes.py | `from app.models.budget_models import get_budget_summary` |
 
@@ -1356,9 +1365,9 @@ consumers must match character-for-character.
 | POST /auth/register | username, password, display_name | username 3-50 chars, password 8+ chars, display_name 1-100 | Flash specific error, redirect |
 | POST /projects | title | required, strip, 1-200 chars | Flash "Title is required", redirect |
 | POST /projects/\<id\>/edit | title, description, total_budget_cents | title required 1-200, budget int() try/except >= 0 | Flash error, redirect |
-| POST /projects/\<id\>/phase | new_phase | must be in VALID_TRANSITIONS[current] | Flash "Invalid transition", redirect |
+| POST /projects/\<id\>/phase | new_phase | must be in VALID_PHASE_TRANSITIONS[current_phase] | Flash "Invalid transition", redirect |
 | POST /scenes/\<pid\> | scene_number, int_ext, day_night, page_count_eighths | scene_number required unique-per-project, int_ext in set, day_night in set, page_count int > 0 | Flash specific, redirect |
-| POST /scenes/\<pid\>/\<sid\>/status | new_status | must be in VALID_TRANSITIONS[current] | Flash "Invalid transition", redirect |
+| POST /scenes/\<pid\>/\<sid\>/status | new_status | must be in VALID_SCENE_TRANSITIONS[current_status] | Flash "Invalid transition", redirect |
 | POST /cast/\<pid\> | name, character_name, cast_id_number | name required, character required, cast_id int 1-99 unique-per-project | Flash specific, redirect |
 | POST /crew/\<pid\> | name, role_title, department_id | name required, role_title required, department_id must exist in project | Flash specific, redirect |
 | POST /locations/\<pid\> | name | required 1-200 chars | Flash "Name is required", redirect |
@@ -1597,6 +1606,92 @@ if scene['project_id'] != project_id:
     abort(404)  # Use 404 not 403 to avoid info leak
 ```
 
+### Department-Head Ownership Enforcement (F-H6 — exact code, not prose)
+
+`require_role(...)` only checks the role string. The `department_head` scope ("own dept
+only") MUST be enforced in the route body with the code below. **Producer and AD are
+unrestricted** — these checks apply ONLY when `g.member['role'] == 'department_head'`.
+A head owns a department iff `departments.head_id == g.user['id']`.
+
+```python
+# Shared helpers (crew routes + expenses routes)
+def _allowed_dept_ids(conn, project_id):
+    """Set of department ids this user heads. Empty for non-heads."""
+    return {d['id'] for d in get_departments(conn, project_id)
+            if d['head_id'] == g.user['id']}
+
+def _is_head():
+    return g.member['role'] == 'department_head'
+```
+
+**Crew — `GET /crew/<pid>/new` and `POST /crew/<pid>`:**
+```python
+allowed = _allowed_dept_ids(conn, project_id)
+if _is_head() and not allowed:
+    abort(403)                                   # head of nothing
+# GET /new: if _is_head(), pass only [d for d in get_departments(...) if d['id'] in allowed]
+#           to the form dropdown; otherwise pass all departments.
+# POST: target department must be permitted for a head
+if _is_head() and int(request.form['department_id']) not in allowed:
+    abort(403)
+```
+
+**Crew — `POST /crew/<pid>/<cid>/edit`:**
+```python
+crew = get_crew_member(conn, cid)
+if crew is None or crew['project_id'] != project_id:
+    abort(404)
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if not allowed:
+        abort(403)
+    if crew['department_id'] not in allowed:                 # existing dept must be owned
+        abort(404)
+    if int(request.form['department_id']) not in allowed:    # target dept must be owned
+        abort(403)
+```
+
+**Expenses — `GET /expenses/<pid>` (list):**
+```python
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if not allowed:
+        abort(403)
+    expenses = [e for d in allowed for e in get_expenses(conn, project_id, department_id=d)]
+else:                                                        # producer: all
+    expenses = get_expenses(conn, project_id)
+```
+
+**Expenses — `GET /expenses/<pid>/new`:**
+```python
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if not allowed:
+        abort(403)
+    departments = [d for d in get_departments(conn, project_id) if d['id'] in allowed]
+else:
+    departments = get_departments(conn, project_id)
+```
+
+**Expenses — `POST /expenses/<pid>` (create):**
+```python
+dept_id = int(request.form['department_id'])
+if _is_head() and dept_id not in _allowed_dept_ids(conn, project_id):
+    abort(403)
+# ...then the money parse + create_expense(...) -> None on overspend -> flash remaining.
+```
+
+**Expenses — `POST /expenses/<pid>/<eid>/delete`:**
+```python
+expense = get_expense(conn, eid)
+if expense is None or expense['project_id'] != project_id:
+    abort(404)
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if expense['department_id'] not in allowed or expense['created_by'] != g.user['id']:
+        abort(403)                          # head: own dept AND own expense
+```
+
 ---
 
 ## Negative Constraints (Do NOT Rules)
@@ -1642,6 +1737,82 @@ def _strip_color(int_ext, day_night):
         return 'strip-night-ext' if int_ext == 'EXT' else 'strip-night-int'
     return 'strip-day-ext' if int_ext == 'EXT' else 'strip-day-int'
 ```
+
+---
+
+## Call Sheet Generation Algorithm
+
+Prescribed exactly. The callsheets agent MUST implement `generate_call_sheet` per this
+algorithm. **A call sheet lists ONLY cast working on `shoot_date`** (no held cast — `H` is
+DOOD-only). Each listed cast member's `status` is the Start/Work/Finish marker for that
+date, computed over their distinct scheduled shoot dates across the whole project.
+
+```python
+def generate_call_sheet(conn, project_id, shoot_date):
+    """Returns call_sheet_id. Commits internally (BEGIN IMMEDIATE, multi-table:
+    call_sheets + call_sheet_scenes + call_sheet_cast)."""
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+
+        # 1. Scenes scheduled that day, in schedule order
+        entries = conn.execute('''
+            SELECT scene_id, sort_order FROM schedule_entries
+            WHERE project_id = ? AND shoot_date = ? ORDER BY sort_order
+        ''', (project_id, shoot_date)).fetchall()
+        # (caller/route already validated entries is non-empty -> "No scenes scheduled")
+        scene_ids = [r['scene_id'] for r in entries]
+
+        # 2. Header row (sheet_number = next per project)
+        n = conn.execute('SELECT COALESCE(MAX(sheet_number),0)+1 AS n FROM call_sheets WHERE project_id = ?',
+                         (project_id,)).fetchone()['n']
+        cs_id = conn.execute('''INSERT INTO call_sheets (project_id, sheet_number, shoot_date)
+                                VALUES (?, ?, ?)''', (project_id, n, shoot_date)).lastrowid
+
+        # 3. Scene rows
+        for r in entries:
+            conn.execute('''INSERT INTO call_sheet_scenes (call_sheet_id, scene_id, sort_order)
+                            VALUES (?, ?, ?)''', (cs_id, r['scene_id'], r['sort_order']))
+
+        # 4. Working cast = cast assigned to any scene scheduled that day
+        working_cast = conn.execute('''
+            SELECT DISTINCT sc.cast_member_id
+            FROM scene_cast sc
+            JOIN schedule_entries se ON se.scene_id = sc.scene_id
+            WHERE se.project_id = ? AND se.shoot_date = ?
+        ''', (project_id, shoot_date)).fetchall()
+
+        # 5. Per-member Start/Work/Finish status for THIS date
+        for row in working_cast:
+            cm_id = row['cast_member_id']
+            dates = [d['shoot_date'] for d in conn.execute('''
+                SELECT DISTINCT se.shoot_date
+                FROM schedule_entries se
+                JOIN scene_cast sc ON sc.scene_id = se.scene_id
+                WHERE se.project_id = ? AND sc.cast_member_id = ?
+                ORDER BY se.shoot_date
+            ''', (project_id, cm_id)).fetchall()]
+            first, last = dates[0], dates[-1]
+            if first == last:
+                status = 'SWF'
+            elif shoot_date == first:
+                status = 'SW'
+            elif shoot_date == last:
+                status = 'WF'
+            else:
+                status = 'W'
+            conn.execute('''INSERT INTO call_sheet_cast (call_sheet_id, cast_member_id, status)
+                            VALUES (?, ?, ?)''', (cs_id, cm_id, status))
+
+        conn.execute('COMMIT')
+        return cs_id
+    except Exception:
+        conn.execute('ROLLBACK')
+        raise
+```
+
+`get_call_sheet_cast(conn, call_sheet_id)` returns these rows joined to cast_members
+(keys: cast_member_id, name, character_name, cast_id_number, status, pickup_time,
+makeup_time, on_set_time, remarks). All statuses are in {W, SW, WF, SWF}.
 
 ---
 
@@ -2052,7 +2223,7 @@ else:
 - WHEN a producer creates a scene and adds cast members THE SYSTEM SHALL display them in the scene detail view
 - WHEN a producer schedules scenes to a shoot day THE SYSTEM SHALL display them in the stripboard with correct strip colors
 - WHEN a producer drags to reorder schedule entries THE SYSTEM SHALL persist the new order via JSON POST
-- WHEN a producer generates a call sheet for a shoot day THE SYSTEM SHALL include all scheduled scenes, assigned cast with DOOD statuses, and the location
+- WHEN a producer generates a call sheet for a shoot day THE SYSTEM SHALL include all scheduled scenes, only the cast working that day each with a call status in {W, SW, WF, SWF}, and the location
 - WHEN a producer views the DOOD grid THE SYSTEM SHALL show correct W/SW/WF/SWF/H statuses per the derivation algorithm
 - WHEN a producer allocates budget and logs an expense THE SYSTEM SHALL update spent_cents atomically
 

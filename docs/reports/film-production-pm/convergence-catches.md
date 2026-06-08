@@ -56,6 +56,18 @@ These four are candidates to become deterministic pre-swarm gates (the A1 cross-
 | F-H3 | **FIXED** | Added "Transition Maps" section defining VALID_PHASE_TRANSITIONS (project_models, projects agent) + VALID_SCENE_TRANSITIONS (scene_models, scenes agent), both single-agent-internal. |
 | F-H4 | **FIXED** | Standardized: forms submit DOLLARS (fields without `_cents`), routes parse to integer cents, models store `*_cents`. Money pattern generalized + convention stated. |
 | F-H5 | **FIXED** | `create_expense -> int \| None`; overspend re-checked inside lock returns None (not CHECK-raise); route flashes remaining. Transaction Contracts row updated. |
-| F-H6 | **OPEN — deferred to Codex round** | Ownership-check code for crew + expenses dept_head still prose. Flagged for Codex to propose exact code (or confirm the generic IDOR pattern + route note suffices). |
+| F-H6 | **FIXED (Codex round)** | Added "Department-Head Ownership Enforcement" section with exact per-route code for all 7 crew/expense routes; strengthened get_crew_member contract (now returns project_id+department_id) and added get_expense(); wired get_departments into expenses routes. |
+
+## Codex review round (2026-06-08)
+
+Fresh-context Codex review returned 4 pre-launch + 1 cleanup finding — all cross-section, all consistent with the convergence pass. Applied directly:
+
+1. **Call-sheet cast status** (P1, cross-section: schema enum vs acceptance text vs unspecified algorithm) — Option A: call sheets list only working cast; dropped `H` from `call_sheet_cast` enum (DOOD-only); added prescribed `generate_call_sheet` algorithm (Start/Work/Finish over the member's scheduled dates); fixed EARS text.
+2. **F-H6 ownership** (P2→resolved) — exact code, see disposition above.
+3. **FC50 producer-side alignment** (P1) — the 4 shared model signatures were `-> list` while the Orchestration Entrypoints table said `-> list[dict]`; aligned to `-> list[dict]` with matching key lists. *(Note: this is a same-contract-two-places drift the 9w.5 consistency gate might catch by type, but not the key-list mismatch — another gate-blind cross-section catch.)*
+4. **Stale `(via triggers)`** (cleanup) — Data Ownership expenses row now says spent_cents updates via model functions.
+5. **Stale `VALID_TRANSITIONS[current]`** (cleanup) — replaced with concrete `VALID_PHASE_TRANSITIONS[current_phase]` / `VALID_SCENE_TRANSITIONS[current_status]`.
+
+All verified absent via grep. Convergence criterion (Codex clean + human zero-P0) pending the final human structural-verification gate.
 | F-L4 | **FIXED** | Branch names swarm-063-* → swarm-070-* (next run). |
 | F-L1,L2,L3,L5 | OPEN (accepted) | Single-agent-internal or acceptable defaults; noted for Codex round, not blocking. |
