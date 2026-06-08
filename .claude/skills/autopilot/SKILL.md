@@ -484,39 +484,54 @@ swarm launched anyway). The artifact is a hard precondition for Step 10w.
    status lines. Do NOT proceed to Step 10w. This is a hard abort.
 5. If CLEARED: proceed to Step 9w.8.
 
-### Step 9w.8: Spec Eval Gate (MANDATORY -- SWARM ONLY)
+### Step 9w.8: Spec Eval Gate (ADVISORY -- SWARM ONLY)
 
 Test whether agents can actually follow this spec's concrete instructions.
 This gate catches specs that are structurally complete (9w.6 passed) but
 too vague for agents to implement correctly.
 
+**This gate is ADVISORY (non-blocking).** Across Runs 068 and 069 it returned
+FAIL and was human-WAIVED 2-for-2, every residual failure being a
+single-shot-agent / harness artifact (empty/truncated output, or spec-COMPLIANT
+behavior the scorer misjudged), NOT a spec defect -- a ~0% observed precision.
+The gate still RUNS and its result is recorded for the self-audit, but it NEVER
+aborts the pipeline and NEVER requires a human waiver. The blocking pre-spawn
+signals are the structural gates 9w.5/9w.6, which stay blocking. Do NOT tighten
+the spec or hand-author a verification file in response to this gate. (Re-promotion
+path: if the scorer's precision is fixed, restore the abort in step 2 below.)
+
 Run the spec eval gate from the project root:
 
 1. Run: `eval-harness/.venv/bin/python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id> --cost-cap 1.0`
-2. Check exit code:
-   - Exit 0 (PASS): all HIGH-confidence claims passed. Proceed to Step 9w.9.
-   - Exit 1 (FAIL): read `docs/reports/<run-id>/spec-eval-*/spec-eval-gate.json`.
-     The `failed_details` array lists which spec instructions agents couldn't
-     follow. For each failed claim: tighten the spec instruction to be more
-     concrete (e.g., "validate email" becomes "validate email with regex
-     `^[\w.-]+@[\w.-]+\.\w+$`"). Commit:
-     `git add docs/plans/<plan-file>`
-     `git commit -m "fix: tighten vague spec instructions (spec eval gate)"`
-     Re-run Step 9w.8. Max 1 retry.
-   - Exit 1 (WARN_UNSCORABLE): too few testable claims extracted. The spec
-     may lack concrete instructions. Proceed with caution -- log the warning
-     in BUILD_TRACKING.
-   - Exit 1 (RETRY): transient API errors. Re-run once.
+2. Check the exit code, record an **advisory** result in BUILD_TRACKING + the
+   run report, then ALWAYS proceed to Step 9w.9 (never abort, never waive):
+   - Exit 0 (PASS): record `spec-eval PASS (advisory)`.
+   - Exit 1 (FAIL): record `spec-eval FAIL (advisory, <N> claims failed -- see
+     report; not a spec defect by itself, no spawn gate)`. Do NOT tighten the
+     spec, retry, or abort.
+   - Exit 1 (WARN_UNSCORABLE): record `spec-eval WARN_UNSCORABLE (advisory,
+     too few testable claims)`.
+   - Exit 1 (RETRY): transient API errors. Re-run ONCE. If it still returns
+     RETRY, record `spec-eval RETRY (advisory, transient harness error, no
+     verdict)` -- a transient blip is NOT logged as a spec advisory.
    - Exit 2 (ENV_ERROR): environment misconfiguration (e.g., missing
-     ANTHROPIC_API_KEY). Do NOT retry or attempt to fix the spec. Abort with:
-     `"SPEC EVAL GATE ENV ERROR: <stderr message>"`
-3. If still FAIL after retry: abort with
-   `"SPEC EVAL GATE FAILED: <N> claims failed. See report for details."`
+     ANTHROPIC_API_KEY). Record `spec-eval ENV_ERROR (advisory, no spec
+     verdict)` -- this names an environment fault, NOT a spec pass, so a
+     permanently-broken harness cannot masquerade as a clean run. Do NOT retry
+     or edit the spec. (Cross-run escalation of a persistently-broken harness is
+     out of scope for this step.)
+
+   The recorded entry is **advisory only** -- it does NOT indicate the swarm
+   spawned. If a later pre-spawn gate (9w.9 ghost-file or 10w path-validation)
+   aborts, leave this entry as-is; the run status is set by the aborting gate and
+   BUILD_TRACKING AGENT_STATUS (no agents started) shows spawn was not reached.
 
 **What this catches that other gates don't:** Spec completeness (9w.6) checks
 that sections exist. Spec eval gate checks that the instructions in those
 sections are precise enough for agents to follow. Example: "validate email"
-passes completeness but fails spec eval because it doesn't say how.
+passes completeness but fails spec eval because it doesn't say how. Because its
+observed precision is ~0% (2-for-2 false-FAIL then waive), it informs the
+self-audit but does not gate the spawn.
 
 ### Step 9w.9: Ghost-File Cleanup (MANDATORY -- SWARM ONLY)
 
@@ -546,18 +561,17 @@ The review caught it as P2, but it should have been caught before agents launche
 
 ### Step 10w: Parallel Swarm Work
 
-**PRECONDITION:** Before reading the agent assignment table, verify BOTH:
+**PRECONDITION:** Before reading the agent assignment table, verify:
 1. `docs/reports/<run-id>/gate-verification.md` exists AND contains
    `STATUS: CLEARED`.
-2. `docs/reports/<run-id>/spec-eval-*/spec-eval-verification.md` exists
-   AND contains `STATUS: PASS`.
 
 If gate-verification.md is missing or BLOCKED, abort with:
 `"CANNOT SPAWN: gate-verification.md missing or BLOCKED. Run Step 9w.7 first."`
-If spec-eval-verification.md is missing, abort with:
-`"CANNOT SPAWN: spec-eval-verification.md missing. Run Step 9w.8 first."`
-These file-based checks prevent the orchestrator from skipping gates
-(the exact pattern that caused Run 054's gate bypass).
+This file-based check prevents the orchestrator from skipping the structural
+gates 9w.5/9w.6 (the exact pattern that caused Run 054's gate bypass). The
+spec-eval gate (9w.8) is **advisory** and has NO precondition here -- it never
+blocks the spawn, so there is no `spec-eval-verification.md STATUS: PASS`
+requirement.
 
 Read the `## Swarm Agent Assignment` section from the plan. Before spawning
 any agents, validate ALL file paths in the assignment table:
