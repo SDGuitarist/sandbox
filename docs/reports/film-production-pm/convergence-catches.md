@@ -68,6 +68,22 @@ Fresh-context Codex review returned 4 pre-launch + 1 cleanup finding — all cro
 4. **Stale `(via triggers)`** (cleanup) — Data Ownership expenses row now says spent_cents updates via model functions.
 5. **Stale `VALID_TRANSITIONS[current]`** (cleanup) — replaced with concrete `VALID_PHASE_TRANSITIONS[current_phase]` / `VALID_SCENE_TRANSITIONS[current_status]`.
 
-All verified absent via grep. Convergence criterion (Codex clean + human zero-P0) pending the final human structural-verification gate.
+All verified absent via grep.
+
+## Human structural-verification gate (2026-06-08) — PASSED
+
+Four parallel angle-sliced verification agents read the spec fresh from disk: (A) data-contract chain, (B) signature/orchestration, (C) auth/route/validation + ownership, (D) enum/algorithm/seed. **Result: ZERO P0s** → convergence criterion met (Codex clean AND human finds zero P0s). 2 P1 + 4 P2 surfaced; all P1s and the load-bearing P2s fixed (none reopen architecture):
+
+| ID | Sev | Finding | Fix |
+|----|-----|---------|-----|
+| GATE-1 | P1 | Decorator stacking order never pinned — wrong order ⇒ `require_role` reads unset `g.member` ⇒ 500 on every protected route | Added MANDATORY canonical stacking example + rule to Auth Decorators |
+| GATE-2 | P1 | Call-sheet re-generation hits UNIQUE(project_id, shoot_date) ⇒ unhandled 500 on 2nd Generate | `generate_call_sheet` now idempotent inside the lock (returns existing id); Input Validation row updated |
+| GATE-3 | P2 | `created_by` not pinned in expense-create snippet (load-bearing for delete-ownership) | Pinned `created_by=g.user['id']` |
+| GATE-4 | P2 | Unguarded `int(request.form['department_id'])` ⇒ 500 on bad input (3 sites) | Guarded the expense snippet + added parse-safety rule covering crew snippets |
+| GATE-5 | P2 | `get_departments` def `-> list` vs authoritative `-> list[dict]` | Aligned to `-> list[dict]` |
+| GATE-6 | P2 | GET routes with `<int:>` absent from Input Validation (Agent C: "checker may flag") | **NON-ISSUE (evidence):** RestaurantOps (29-agent, passed) has 22 such GET routes, lists 0 in Input Validation; GigSheet same. Checker does not enforce in practice. Logged as a watch-item for the 9w.6 run, not a blocker. |
+| GATE-7 | P2 | `crew_call_time` NOT NULL gap | Benign (column has DEFAULT, is nullable). No action. |
+
+**Gate verdict: PASS.** Zero P0s; all runtime-500 risks (the 2 P1s) eliminated; spec ready for launch (run 070) on `feat/film-production-pm`, pending only the operator's go.
 | F-L4 | **FIXED** | Branch names swarm-063-* → swarm-070-* (next run). |
 | F-L1,L2,L3,L5 | OPEN (accepted) | Single-agent-internal or acceptable defaults; noted for Codex round, not blocking. |

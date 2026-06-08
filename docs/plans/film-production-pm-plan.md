@@ -709,7 +709,7 @@ def get_crew_member(conn, crew_member_id) -> dict | None: ...
 
 ```python
 # Returns: list[dict] with keys: id, name, head_id, head_name
-def get_departments(conn, project_id) -> list: ...
+def get_departments(conn, project_id) -> list[dict]: ...
 
 # Returns: dict or None
 def get_department(conn, department_id) -> dict | None: ...
@@ -755,7 +755,9 @@ def delete_schedule_entry(conn, entry_id) -> None: ...
 ### callsheet_models.py
 
 ```python
-# Returns: int (call_sheet_id) -- commits internally (BEGIN IMMEDIATE, multi-table)
+# Returns: int (call_sheet_id) -- commits internally (BEGIN IMMEDIATE, multi-table).
+#   IDEMPOTENT: if a call sheet already exists for (project_id, shoot_date) it returns
+#   that existing id (no duplicate, no UNIQUE violation). Route redirects to it.
 def generate_call_sheet(conn, project_id, shoot_date) -> int: ...
 
 # Returns: dict or None
@@ -952,6 +954,21 @@ def require_role(*roles):
             return f(*args, **kwargs)
         return decorated
     return decorator
+```
+
+**Decorator stacking order (MANDATORY — same for ALL project-scoped routes).**
+Python applies decorators bottom-up, so the on-page order below IS the execution order.
+`require_project_member` reads `g.user` (set by `login_required`); `require_role` reads
+`g.member` (set by `require_project_member`). Writing them out of order ⇒ KeyError/500 on
+every request to that route. Always stack exactly:
+
+```python
+@bp.route('/<int:project_id>/...', methods=[...])
+@login_required            # runs 1st — sets g.user
+@require_project_member    # runs 2nd — sets g.project, g.member (404/403)
+@require_role('producer')  # runs 3rd — checks g.member['role'] (omit for all-members routes)
+def handler(project_id, ...):
+    ...
 ```
 
 ---
@@ -1374,7 +1391,7 @@ consumers must match character-for-character.
 | POST /schedule/\<pid\> | scene_id, location_id, shoot_date | scene_id must exist, location_id must exist, date YYYY-MM-DD format | Flash specific, redirect |
 | POST /schedule/\<pid\>/\<eid\>/delete | -- | entry must exist, entry.project_id == pid | 404 |
 | POST /schedule/\<pid\>/reorder | JSON: order (list[int]), shoot_date | all IDs belong to project+date, no missing/extra vs DB set | JSON 400 with error |
-| POST /call-sheets/\<pid\>/generate | shoot_date (form) | date must have schedule entries | Flash "No scenes scheduled", redirect |
+| POST /call-sheets/\<pid\>/generate | shoot_date (form) | date must have schedule entries; if a call sheet already exists for the date, generate_call_sheet returns the existing id (idempotent — no 500) | Flash "No scenes scheduled" if none; else redirect to the (new or existing) call sheet |
 | POST /budget/\<pid\>/allocate | department_id, amount_cents | department must exist in project, amount int >= 0, SUM <= total_budget | Flash with remaining, redirect |
 | POST /budget/\<pid\>/line-items | category_id, description, estimated_cents | category must exist, description required, cents int >= 0 | Flash specific, redirect |
 | POST /expenses/\<pid\> | department_id, amount_cents, vendor, expense_date, category_id | amount int > 0, vendor required, date YYYY-MM-DD, dept must exist, spent+amount <= allocated | Flash with remaining, redirect |
@@ -1611,7 +1628,10 @@ if scene['project_id'] != project_id:
 `require_role(...)` only checks the role string. The `department_head` scope ("own dept
 only") MUST be enforced in the route body with the code below. **Producer and AD are
 unrestricted** — these checks apply ONLY when `g.member['role'] == 'department_head'`.
-A head owns a department iff `departments.head_id == g.user['id']`.
+A head owns a department iff `departments.head_id == g.user['id']`. **Parse-safety rule:**
+every `int(request.form['department_id'])` below must be wrapped in the guarded pattern
+(try/except `(KeyError, ValueError)` → flash + redirect) BEFORE the ownership check — shown
+bare in the crew snippets only for brevity. A raw `int()` on missing/non-numeric input is a 500.
 
 ```python
 # Shared helpers (crew routes + expenses routes)
@@ -1675,10 +1695,17 @@ else:
 
 **Expenses — `POST /expenses/<pid>` (create):**
 ```python
-dept_id = int(request.form['department_id'])
+try:
+    dept_id = int(request.form['department_id'])
+except (KeyError, ValueError):
+    flash('Department is required', 'error')
+    return redirect(...)
 if _is_head() and dept_id not in _allowed_dept_ids(conn, project_id):
     abort(403)
-# ...then the money parse + create_expense(...) -> None on overspend -> flash remaining.
+# ...then money parse -> amount_cents, then create with created_by PINNED:
+#   expense_id = create_expense(conn, project_id, dept_id, amount_cents, vendor,
+#       description, expense_date, category_id, created_by=g.user['id'])
+#   if expense_id is None: flash remaining allocation; redirect.   # overspend
 ```
 
 **Expenses — `POST /expenses/<pid>/<eid>/delete`:**
@@ -1753,6 +1780,15 @@ def generate_call_sheet(conn, project_id, shoot_date):
     call_sheets + call_sheet_scenes + call_sheet_cast)."""
     try:
         conn.execute('BEGIN IMMEDIATE')
+
+        # 0. Idempotent: one call sheet per (project, shoot_date) [UNIQUE constraint].
+        #    If it already exists, return it instead of hitting the UNIQUE violation.
+        existing = conn.execute(
+            'SELECT id FROM call_sheets WHERE project_id = ? AND shoot_date = ?',
+            (project_id, shoot_date)).fetchone()
+        if existing:
+            conn.execute('COMMIT')
+            return existing['id']
 
         # 1. Scenes scheduled that day, in schedule order
         entries = conn.execute('''
