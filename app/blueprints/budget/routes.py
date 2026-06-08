@@ -51,11 +51,13 @@ def index(project_id):
     conn = get_db()
     summary = get_budget_summary(conn, project_id)
     categories = get_budget_categories(conn, project_id)
+    departments = get_departments(conn, project_id)
     return render_template(
         'budget/index.html',
         project=g.project,
         summary=summary,
         categories=categories,
+        departments=departments,
     )
 
 
