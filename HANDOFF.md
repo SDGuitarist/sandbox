@@ -22,9 +22,18 @@ The orchestration-hardening plan's implementation (Phases 0–3) is **done and c
 backtest fixtures FAIL/N/A/PASS as designed; solo path (≤354) untouched; `original_branch`
 merge-back (swarm-runner Step 7) byte-for-byte untouched.
 
-**Phase 4 next steps:**
-1. **Codex binding review** (2–3 rounds, manual handoff — the prompt is in this session's output;
-   regenerate via `codex-handoff-writer` if needed). GO/NO-GO per track; apply fixes.
+**Phase 4 — Codex binding review:**
+- **Round 1 verdict:** Track B **GO**, Track C **GO**, Track A **NO-GO** → **FIXED** in `1f4c5bd`.
+  - Track A bug: detached-HEAD pre-flight (`git rev-parse --abbrev-ref <branch>`) was dead code —
+    a branch name never resolves to `HEAD`, and the runtime contract has no worktree paths.
+    Fix: removed the unfireable check; kept the merge-commit pre-flight; detached-HEAD workers
+    manifest as a recorded "empty delta" no-op; first-class handling deferred (`git worktree
+    list --porcelain`). Tracks B/C unchanged.
+- **Round 2 (NEXT):** re-review the Track A fix (`1f4c5bd`) to confirm NO-GO cleared. Focused
+  re-review prompt is in this session's output.
+
+**Phase 4 remaining steps:**
+1. **Codex round 2** — confirm Track A fix; then merge.
 2. **Validate-on-real-build:** the next real feature-branch swarm must exercise all three tracks
    in ONE run; complete ONLY if its reports contain the 9w.6 PASS, the advisory spec-eval log,
    AND a per-worker cherry-pick base in `assembly-summary.md`. A 9w.6 false-FAIL that aborts
