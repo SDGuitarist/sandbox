@@ -48,6 +48,17 @@ draining them into their owning artifacts (triage). The top 4 are DONE; ~31 rema
 - **M35** — SKILL: decision-log artifact (capture orchestrator pivot REASONING, not just outcomes; ~7 load-bearing deviations in 070).
 - **M-meta** — make post-run meta-analysis a standard budgeted phase (this whole exercise only happened because it was requested).
 
+## BIG PARALLEL EFFORT (own context window) — Retroactive Corpus Meta-Analysis
+**`docs/proposals/retroactive-corpus-meta-analysis.md`** — operator idea (2026-06-08):
+apply the run-070 meta-analysis lens to ALL prior builds (024–069 + named). It's M36
+at corpus scale AND the validation set for the 38 patterns (which recur = real, which
+were 070 flukes) AND the empirical proof of the M36 thesis. Read-only location-sliced
+fan-out (one agent per build) → synthesis into cross-build trends, calibrated latent
+risks/mitigations, instrument time-series (M34), and candidate net-new FCs. Run as its
+OWN context with a token budget + loop-until-dry on novel patterns. Caveats: thin
+early-build artifacts (~024–045), hindsight-retrofit bias, diminishing returns.
+Distinct from (and larger than) the parked-bucket drain below — sequence it separately.
+
 ## OPEN OPERATOR DECISIONS (NOT mine to execute — leave for the human)
 1. **Merge** orchestration-hardening branch (feat/cpaa-event-replay-simulator) to master. Recommendation: GO for Tracks A & C (field-proven); Track B is fixture-worthy first (see M4 proposal) before claiming it field-proven.
 2. **Push** either branch to remote (still local-only).
