@@ -58,6 +58,8 @@
 - **Cross-boundary exports created:** [list of exports other agents will consume]
 - **Commit:** [hash]
 
+### Ownership Gate: PASS (24 agents) — each worker commit touched only assigned files (see docs/reports/069/ownership-gate.md). Note: worktrees rooted on master line (base f90aed8), not feat 053b2c1 — assemble via cherry-pick.
+
 ---
 
 ## FAILURES
