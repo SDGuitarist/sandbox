@@ -1,0 +1,127 @@
+{
+  "status": "FAIL",
+  "high_confidence": {
+    "total": 277,
+    "passed": 262,
+    "failed": 15,
+    "errors": 0
+  },
+  "low_confidence": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0
+  },
+  "failed_details": [
+    {
+      "claim_id": "tbl-070",
+      "claim_text": "Name '`crew.list`' (endpoint)",
+      "passed": false,
+      "evidence": "```python\n@app.route('/api/crew/list', methods=['GET'])\ndef crew_list():\n    \"\"\"Endpoint to list all crew members\"\"\"\n```\nThe route path is `/api/crew/list` and the Flask endpoint name defaults to the function name `crew_list`. Neither matches the required name `crew.list`. There is no `endpoint='crew.list'` parameter in the decorator, and no route path of `/crew.list`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-071",
+      "claim_text": "Name '`departments.list`' (endpoint)",
+      "passed": false,
+      "evidence": "The relevant code lines are:\n```python\n@app.route('/api/departments/list', methods=['GET'])\ndef departments_list():\n    \"\"\"\n    Endpoint: departments.list\n    ...\n    \"\"\"\n```\nThe function name is `departments_list` (underscore, not dot), and the route URL is `/api/departments/list`. There is no `endpoint='departments.list'` parameter in the `@app.route()` decorator. The name `departments.list` only appears in a docstring comment, not as an actual programmatic endpoint name.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-146",
+      "claim_text": "Function '`generate_call_sheet`': Function: `generate_call_sheet`, Transaction: BEGIN IMMEDIATE, Commits?: YES, Error Handling: try/except/ROLLBACK (multi-table: call_sheets + call_sheet_scenes + call_sheet_cast)",
+      "passed": false,
+      "evidence": "Required pattern not found: generate_call_sheet",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-023",
+      "claim_text": "VALID_SCENE_TRANSITIONS must be defined in app/models/scene_models.py with the prescribed mapping",
+      "passed": false,
+      "evidence": "The constant and its mapping are defined correctly:\n```python\nVALID_SCENE_TRANSITIONS = {\n    'not_started': ['in_prep', 'on_hold'],\n    'in_prep': ['ready', 'on_hold'],\n    'ready': ['shooting', 'on_hold'],\n    'shooting': ['wrapped', 'on_hold'],\n    'on_hold': ['in_prep', 'ready', 'shooting'],\n    'wrapped': []\n}\n```\n\nHowever, the code contains Flask app initialization, route definitions, and database setup, which strongly indicates this is NOT `app/models/scene_models.py` but rather a main application file. No file path is stated in the code block that confirms it is `app/models/scene_models.py`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-031",
+      "claim_text": "JavaScript JSON POST requests must send the CSRF token in the X-CSRFToken header",
+      "passed": false,
+      "evidence": "The CSRF token reading part is present:\n```javascript\nfunction getCsrfToken() {\n    const token = document.querySelector('meta[name=\"csrf-token\"]').content;\n    return token;\n}\n```\n\nHowever, the fetch request is never shown - the code is cut off:\n```javascript\nfunction scheduleReorder() {\n    const itemName = document.getElementById('itemName').value;\n    const quantity = document.getElementById('quantity').value;\n    \n    \n```\nThe `X-CSRFToken` header usage in an actual fetch call is absent from the code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-033",
+      "claim_text": "Routes must parse dollar form fields to integer cents using int(round(float(value) * 100)) before passing to model functions",
+      "passed": false,
+      "evidence": "\nIn create_account_route:\n```python\ntry:\n    balance_cents = int(round(float(initial_balance) * 100))\nexcept (ValueError, TypeError, KeyError):\n    flash('Invalid amount', 'error')\n    return redirect(url_for('create_account_route'))\n```\n\nThe deposit route is cut off mid-implementation:\n```python\n@app.route('/transaction/deposit', methods=['GET', 'POST'])\ndef deposit():\n    if request.method == 'POST':\n        account_id = request.form.get('account_id')\n        description = request.form.get('description', 'Deposit').strip()\n        amount = request.form.get('amount', '')\n        \n        if not account_id:\n            flash('Account selection is required', 'error')\n            return redirect(url_for\n```\nThe deposit route's money parsing logic is missing/cut off.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-040",
+      "claim_text": "Do NOT use Python datetime.now() \u2014 use SQL datetime('now') for all timestamps",
+      "passed": false,
+      "evidence": "Lines using timestamps:\n```python\ncreated_at = db.Column(db.DateTime, nullable=False, default=lambda: db.func.now())\nupdated_at = db.Column(db.DateTime, nullable=False, default=lambda: db.func.now(), onupdate=lambda: db.func.now())\n```\nThese appear in all three models (User, Post, Comment).\n\nThe spec requires SQL `datetime('now')` - e.g., something like `db.text(\"datetime('now')\")` or a raw SQL expression using `datetime('now')`.\n\nInstead, the code uses `db.func.now()`, which is SQLAlchemy's wrapper for the SQL `NOW()` function - a completely different function that is not `datetime('now')`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-041",
+      "claim_text": "Do NOT set conn.row_factory in model functions \u2014 get_db() sets it once",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-048",
+      "claim_text": "generate_call_sheet() must be idempotent: if a call sheet already exists for (project_id, shoot_date), return the existing id without creating a duplicate",
+      "passed": false,
+      "evidence": "No evidence found. The code does not contain a `generate_call_sheet(conn, project_id, shoot_date)` function with idempotency logic. Instead, it contains a function called `generate_call_sheet_implementation()` that sends prompts to Claude API, and a `create_app_structure()` function that would attempt to write the result to a file at runtime. The actual implementation of the required function \u2014 including the check for existing (project_id, shoot_date) records \u2014 is absent entirely from the code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-050",
+      "claim_text": "get_dood_grid() must return 'H' status for dates between a cast member's first and last scheduled day when they are not working",
+      "passed": false,
+      "evidence": "\nThe code ends abruptly at:\n```python\n        else:\n            # They are not scheduled to work (hold)\n        \n```\nThe actual assignment `row['dates'][date_obj.strftime('%Y-%m-%d')] = 'H'` is missing. The code is cut off before the critical 'H' assignment is made.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-051",
+      "claim_text": "tests/test_critical_flows.py must implement all 10 prescribed test cases",
+      "passed": false,
+      "evidence": "No evidence found of any test functions (def test_*) in the code. The code is truncated at `@app.route('/api/dood` without implementing any of the 10 prescribed test cases. The code only contains model definitions and partial route setup.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-053",
+      "claim_text": "Routes must call index_entity() and remove_entity() in the same transaction as the source-row write",
+      "passed": false,
+      "evidence": "\nThe only complete route is `create_scene()`:\n```python\ncursor.execute('BEGIN IMMEDIATE')\ncursor.execute('''INSERT INTO scenes (title, description) VALUES (?, ?)''', ...)\nscene_id = cursor.lastrowid\nindex_entity(cursor, 'scene', scene_id, data['title'], data.get('description', ''))\nconn.commit()\n```\nThis one route correctly follows the spec. However, the code cuts off at `@` after `create_scene`, meaning all other required routes (update scene, delete scene, create/update/delete cast/crew/locations) are missing entirely. The spec requires all such routes to follow this pattern, and the vast majority are absent from the code.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-054",
+      "claim_text": "The compound write pattern for scenes routes must wrap update_scene + add_cast_to_scene + index_entity in a single BEGIN IMMEDIATE transaction",
+      "passed": false,
+      "evidence": "The route handler is incomplete:\n```python\n        with transaction() as cursor:\n            # Update scene\n            \n```\nThe body of the `with transaction()` block is truncated and contains only the comment `# Update scene`. None of the three required function calls \u2014 `update_scene()`, `add_cast_to_scene()`, `index_entity()` \u2014 appear inside the transaction block. The spec requires all three to be wrapped in the transaction, but the code doesn't show this happening.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-055",
+      "claim_text": "Model functions that commit internally must use the BEGIN IMMEDIATE / COMMIT / ROLLBACK pattern",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-058",
+      "claim_text": "Do NOT catch bare Exception when an IntegrityError is expected \u2014 catch sqlite3.IntegrityError specifically",
+      "passed": false,
+      "evidence": "In `create_user`:\n```python\n    except IntegrityError as e:  # This is sqlalchemy.exc.IntegrityError, NOT sqlite3.IntegrityError\n        db.session.rollback()\n        ...\n    except sqlite3.IntegrityError as e:  # This would rarely be reached as SQLAlchemy wraps exceptions\n        db.session.rollback()\n        return {'success': False, 'error': f'Database integrity error: {str(e)}'}\n```\n\nIn `create_product`:\n```python\n    except IntegrityError as e:  # Again sqlalchemy.exc.IntegrityError as primary handler\n        db.session.rollback()\n        if 'sku' in str(e):\n```\n\nThe import line: `from sqlalchemy.exc import IntegrityError` shows that the primary `IntegrityError` being caught is SQLAlchemy's, not sqlite3's.",
+      "is_error": false
+    }
+  ],
+  "low_warnings": [],
+  "cost_usd": 2.3412712,
+  "runtime_ms": 376157,
+  "spec_path": "docs/plans/film-production-pm-plan.md",
+  "run_id": "spec-eval-1780926640"
+}
