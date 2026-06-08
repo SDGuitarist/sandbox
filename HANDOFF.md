@@ -1,53 +1,60 @@
 # HANDOFF — Sandbox
 
-**Date:** 2026-06-07
-**Branch:** feat/cpaa-event-replay-simulator
-**Phase:** Orchestration-hardening **COMPOUND COMPLETE** (work + Codex review GO ×3 + solution doc + learnings propagated). Only remaining gate: **validate-on-real-build**.
+**Date:** 2026-06-08
+**Branch:** feat/film-production-pm  (checked out; 1 commit `dd02ae0` on top of the frozen hardening branch)
+**Phase:** **Spec convergence in progress** for Film Production PM — the vehicle for the orchestration-hardening **validate-on-real-build** gate.
 
 ## Current State
 
-The post-Run-069 autopilot orchestration-hardening refactor is fully implemented (3 tracks, spike-gated), Codex binding-reviewed (**GO ×3**), documented (solution doc), and its lessons propagated to all learning surfaces. 9 commits on `feat/cpaa-event-replay-simulator`. The changes govern **every future swarm run**; they are reviewed-but-not-yet-field-proven on a live build.
+We are converging the Film Production PM spec (16-agent swarm, run **070** target) so the next swarm both (a) ships an app and (b) field-proves the orchestration-hardening Tracks A/B/C. The spec passed an internal completeness pass; Claude Code then ran a structural verification and found 11 issues, **fixing 9** (2 P0 + 3 P1 + 1 gate-blindness + low-sev). Awaiting a **fresh-context Codex review** (handoff written, see below), then human structural verification, then launch.
 
-Tracks: **A (FC51)** base-divergence-aware cherry-pick assembly + `assembly-ownership-conflict:` class + ownership base `main`→`original_branch`; **B (FC50)** orchestration-entrypoint signature-presence guard; **C** spec-eval (9w.8) demoted to advisory.
+Two branches, deliberately separated:
+- **feat/cpaa-event-replay-simulator** `0d36a24` — orchestration-hardening, **FROZEN at Codex GO×3**. Untouched. Stays reviewable for its merge decision.
+- **feat/film-production-pm** `dd02ae0` — convergence work, **inherits the hardening** so the swarm exercises it. This is the validate-on-real-build vehicle.
+
+## Convergence — what was found & fixed
+
+Catch ledger + dispositions: `docs/reports/film-production-pm/convergence-catches.md` (11 catches, 9 fixed).
+- **F-H1/H2 (P0×2):** FTS single-writer — dropped triggers, kept explicit `index_entity`/`remove_entity` (killed double-index + impossible search-agent-owns-schema.sql conflict). Both were cross-section contradictions — the class gates can't catch.
+- **F-H3 (P1):** defined the previously-undefined `VALID_PHASE_TRANSITIONS` / `VALID_SCENE_TRANSITIONS` maps.
+- **F-H4 (P1):** standardized money convention (dollars in, integer cents stored).
+- **F-H5 (P1):** `create_expense -> int | None` (overspend is a return value, not a 500).
+- **F-G1 (P1):** added `Full Signature` column + 10 orchestration-entrypoint rows so Track B's FC50 guard **fires and passes** on the call-sheet surface.
+- **F-H6 (P2):** dept_head ownership code — **OPEN, deferred to Codex round.**
+
+**Roadmap finding (logged):** the FC50 completeness guard returns **N/A when zero orchestration-entrypoint rows are declared** — so it was silently blind to the 6-import call-sheet surface it exists to protect. Spec-template must require those rows. See `docs/roadmap-to-fully-unattended.md`.
 
 ## Key Artifacts
 
 | Item | Location |
 |------|----------|
-| Plan | docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md |
-| Spike (Phase 0) | docs/reports/orchestration-hardening/spike-worktree-base.{sh,md} (+ spike-ownership.sh, spike-conflict.sh) |
-| Solution | docs/solutions/2026-06-07-autopilot-orchestration-hardening.md |
-| Fixtures | docs/fixtures/{unpinned,model-only,pinned}-entrypoint-spec.md |
+| Spec (hardened) | docs/plans/film-production-pm-plan.md |
+| Brainstorm | docs/brainstorms/2026-06-02-film-production-pm-brainstorm.md |
+| Convergence catches | docs/reports/film-production-pm/convergence-catches.md |
+| Codex review handoff | docs/handoffs/film-production-pm-codex-spec-review.md |
+| Unattended roadmap | docs/roadmap-to-fully-unattended.md |
 
-## Open Operator Decisions (NOT done — outward actions, awaiting your call)
+## Next Steps (in order)
 
-- **(a) Push** `feat/cpaa-event-replay-simulator` to remote?
-- **(b) Merge to master now, or hold** until validate-on-real-build?
-- Recommendation: **push + hold the merge** until validate-on-real-build (these changes govern all future runs; let the next swarm validate from the branch first).
+1. **Codex review** — handoff at `docs/handoffs/film-production-pm-codex-spec-review.md` (already copied to clipboard once). Paste into Codex, fresh context.
+2. **Fold findings** back into the spec; resolve F-H6 with Codex's proposed ownership code.
+3. **Human structural verification** — cross-section field/type matching (non-optional per CLAUDE.md). Convergence criterion: Codex clean AND human finds zero P0s.
+4. **Launch swarm (run 070)** from `feat/film-production-pm`.
+5. **Confirm validate-on-real-build** — the run's reports MUST contain: the **9w.6 PASS**, the **advisory spec-eval log**, AND a **per-worker cherry-pick base in `assembly-summary.md`**. A 9w.6 false-FAIL that aborts before Track A = validation incomplete.
+6. **Then** decide the hardening branch merge (held until validate passes).
 
-## Remaining Gate — Validate-on-Real-Build
+## Open Operator Decisions
 
-The next real feature-branch swarm must exercise all three tracks in ONE run; complete ONLY if its reports contain the **9w.6 PASS**, the **advisory spec-eval log**, AND a **per-worker cherry-pick base in `assembly-summary.md`**. A 9w.6 false-FAIL that aborts before Track A = validation incomplete, not pass.
-
-## Deferred Items
-
-- First-class detached-HEAD detection via `git worktree list --porcelain` (needs worktree paths in the runtime contract).
-- **Cosmetic:** `SKILL.md:40` intro parenthetical ("inlines ... merge-conflict resolution") is now inaccurate; left because it is above the solo/swarm branch point (354), out of work-phase scope.
-- Spec-eval re-promotion path if `spec_eval_gate.py` precision is fixed.
-- **[069-D1]** GOLDEN_PROJECTION_HASH not frozen (compute_golden.py CSRF token-reuse bug; F1 test skips gracefully). **[069-D2]** F2 worker worktree may remain (`git worktree remove --force`).
-
-## Three Questions
-
-1. **Hardest decision?** Demoting the spec-eval gate whose own design-time solution doc argues it should stay hard — resolved by weighting field precision (2-for-2 waive = ~0%) over bench calibration, with a documented re-promotion path (not deletion).
-2. **What was rejected?** keep-merge-fork assembly (dead code in the divergent-base reality); a call-site classifier for entrypoint coverage (a second 0-precision gate); retrofitting the frozen 069 plan; passing worktree paths into the runtime just to detect detached-HEAD.
-3. **Least confident about?** validate-on-real-build hasn't run; the detached-HEAD residual (empty-delta path) is bounded but not field-observed. The first real swarm on this branch is the proof.
+- **Push** either branch to remote? (Not pushed yet — both govern the validation run.)
+- **Merge** orchestration-hardening to master — **HOLD** until validate-on-real-build passes (recommendation unchanged).
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is Sandbox, the compound-engineering autopilot repo.
-Orchestration-hardening is COMPOUND COMPLETE (Codex GO x3, branch feat/cpaa-event-replay-simulator).
-Decide: push branch? merge to master? Then the only remaining gate is validate-on-real-build —
-run the next real feature-branch swarm and confirm its reports contain the 9w.6 PASS, the advisory
-spec-eval log, and a per-worker cherry-pick base in assembly-summary.md.
+Read HANDOFF.md. This is Sandbox. We are mid spec-convergence on Film Production PM
+(branch feat/film-production-pm, run 070 target) — the validate-on-real-build vehicle for
+the frozen orchestration-hardening branch. Spec is hardened (9/11 catches fixed; see
+docs/reports/film-production-pm/convergence-catches.md). Next: run the Codex review
+(docs/handoffs/film-production-pm-codex-spec-review.md), fold findings, resolve F-H6,
+do human structural verification, then launch the swarm and confirm the 3 validation proofs.
 ```
