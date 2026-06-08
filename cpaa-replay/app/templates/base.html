@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CPAA Replay{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; background: #f6f7f9; }
+    nav { background: #1f2937; color: #fff; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    nav a { color: #d1d5db; text-decoration: none; font-weight: 600; }
+    nav a:hover { color: #fff; }
+    nav .brand { font-weight: 700; color: #fff; margin-right: 0.5rem; }
+    nav .spacer { flex: 1; }
+    nav form { display: inline; margin: 0; }
+    nav button { background: #374151; color: #fff; border: 1px solid #4b5563; padding: 0.35rem 0.7rem; border-radius: 4px; cursor: pointer; font: inherit; font-weight: 600; }
+    nav button:hover { background: #4b5563; }
+    main { max-width: 1100px; margin: 1.5rem auto; padding: 0 1rem; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid #e5e7eb; padding: 0.45rem 0.6rem; text-align: left; font-size: 0.9rem; }
+    th { background: #f3f4f6; }
+    code { font-family: ui-monospace, monospace; font-size: 0.85rem; word-break: break-all; }
+    .flash { padding: 0.6rem 0.9rem; border-radius: 4px; margin-bottom: 0.75rem; }
+    .flash.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .flash.success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 1rem; margin-bottom: 1.25rem; }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.1rem; margin-top: 0; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand">CPAA Replay</span>
+    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+    <a href="{{ url_for('dashboard.runs') }}">Runs</a>
+    {% if session.get('user') %}
+    <form method="post" action="{{ url_for('replay.start') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Replay</button>
+    </form>
+    <form method="post" action="{{ url_for('ingest.run_ingest') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Ingest</button>
+    </form>
+    <form method="post" action="{{ url_for('validate.run') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Validate</button>
+    </form>
+    {% endif %}
+    <span class="spacer"></span>
+    {% if session.get('user') %}
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Log out</button>
+    </form>
+    {% else %}
+    <a href="{{ url_for('auth.login') }}">Log in</a>
+    {% endif %}
+  </nav>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
