@@ -2,13 +2,45 @@
 
 **Date:** 2026-06-07
 **Branch:** feat/cpaa-event-replay-simulator
-**Phase:** Run 069 COMPLETE. **NEXT: Work phase on the CONVERGED orchestration-hardening plan
-(launch from a FRESH context window).**
+**Phase:** Orchestration-hardening **WORK PHASE COMPLETE** (4 commits). **NEXT: Phase 4 —
+Codex binding review (manual handoff) → then validate-on-real-build.**
 
-## ⏭️ Next Session: Work Phase — Autopilot Orchestration Hardening
+## ⏭️ Next Session: Phase 4 — Codex Binding Review + Validate-on-Real-Build
+
+The orchestration-hardening plan's implementation (Phases 0–3) is **done and committed** on
+`feat/cpaa-event-replay-simulator`. Four surgical commits, each a separate track:
+
+| Commit | Track | What |
+|--------|-------|------|
+| `0acd660` | C | spec-eval gate (9w.8) → **advisory**; Step-10w precondition removed; RETRY/ENV_ERROR handled |
+| `3185f22` | B | **FC50** orchestration-entrypoint signature-presence guard (template + CLAUDE.md + checker Check 1b + 3 fixtures) |
+| `97acabe` | A | **Phase-0 spike** (16/16 + 1 + 5 PASS) — chose strategy (i) uniform cherry-pick |
+| `ed38378` | A | **FC51** base-divergence-aware cherry-pick assembly + `assembly-ownership-conflict:` class + ownership base `main`→`original_branch` |
+
+**Verification (all PASS):** spike scripts green; no hardcoded `main...` (ownership base =
+`original_branch`); 0 functional readers of `spec-eval-verification`; FC50 on all 3 surfaces;
+backtest fixtures FAIL/N/A/PASS as designed; solo path (≤354) untouched; `original_branch`
+merge-back (swarm-runner Step 7) byte-for-byte untouched.
+
+**Phase 4 next steps:**
+1. **Codex binding review** (2–3 rounds, manual handoff — the prompt is in this session's output;
+   regenerate via `codex-handoff-writer` if needed). GO/NO-GO per track; apply fixes.
+2. **Validate-on-real-build:** the next real feature-branch swarm must exercise all three tracks
+   in ONE run; complete ONLY if its reports contain the 9w.6 PASS, the advisory spec-eval log,
+   AND a per-worker cherry-pick base in `assembly-summary.md`. A 9w.6 false-FAIL that aborts
+   before Track A = validation incomplete, not pass.
+
+**Known cosmetic deferral:** the intro parenthetical at `SKILL.md:40` still says swarm-runner
+"inlines ... merge-conflict resolution" (now inaccurate after Track A). Left as-is because it is
+**above** the solo/swarm branch point (354) and editing there was out of the work-phase constraint.
+Fold into Phase-4 fixes if Codex wants it corrected.
+
+---
+
+## Orchestration-Hardening Plan (record)
 
 A post-Run-069 analysis produced a **converged, Codex-reviewed plan** to harden the autopilot
-pipeline. It is plan→deepen→self-review→Codex-GO complete and committed. Start the WORK phase.
+pipeline. It was plan→deepen→self-review→Codex-GO (×3) complete; the work phase above implemented it.
 
 **Plan:** `docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md`
 (type: refactor, manual autonomy class, `verify_first: true`). Three tracks:
