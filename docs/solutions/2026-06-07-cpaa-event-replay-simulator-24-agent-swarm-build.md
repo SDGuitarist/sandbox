@@ -368,6 +368,17 @@ The plan's Feed-Forward risk was two-headed:
 ~70% context flag threshold. 24 agents is within the delegation architecture's
 safe operating range for inline spawn.
 
+> **Measurement caveat (the result is partly confounded).** This run executed on a
+> **1M-token context window.** "Comfortably below ~70%" therefore proves *24 agents +
+> delegation fit in 1M* — it does NOT cleanly isolate how much of that headroom comes
+> from the delegation architecture versus simply from the large window. The two are not
+> yet separable from this single data point. Read "validated at 24" with that asterisk:
+> we have not shown delegation is what keeps the orchestrator alive, only that it
+> survived on this hardware. **The 48-agent test must control for window size** (e.g.,
+> capture peak `context_proxy_chars` and back out what fraction of a 200K window the
+> inline spawn phase alone would consume) before claiming the architecture, not the
+> window, is doing the work.
+
 **Cross-section P0 class:** CORRECTLY IDENTIFIED AND FIXED. The review agent
 scrutinized all four risk areas:
 - Canonical hash byte recipe: VERIFIED correct (RFC 8785-aligned, correct table set)
