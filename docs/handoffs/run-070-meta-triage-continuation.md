@@ -26,14 +26,23 @@ draining them into their owning artifacts (triage). The top 4 are DONE; ~31 rema
 - **M34** → tail-runner **Step 6 RUN_METRICS** "Run Health Instruments" block (tools-per-assigned-file outliers, spec-eval pass-RATE, judgment-call count) + self-audit "What Was Missed" now uses those outliers as its search heuristic.
 - **M23** → tail-runner **Step 6 RUN_METRICS** retires "0 merge conflicts" as a quality signal; replaced with an **Integration Health** row (contract-check + import-resolution at boot). If a conflict count is kept it must be labeled tautological. (Historical run reports left untouched per CLAUDE.md; swarm-planner's "zero merge conflicts" objective line left as-is — it describes the planner's design goal, not a reported run-quality claim.)
 
-## PARKED — drain these (recommended order: planning, then governance, then small)
+## DONE — Bucket 2 (light, calibration-aware only), committed this session
+After reading `docs/proposals/retroactive-corpus-meta-analysis.md`, Bucket 2 was
+split: the heavy structural patterns are n=1 (run 070 only) and would be premature
+to harden into live files, so only the two corpus-safe items were drained. The
+heavy three are parked as the corpus mine's first calibration targets (below).
+- **M24** → agent-pitfalls **FC35** "Stronger fix" block: model-layer ownership-enforcement DEFAULT (`get_X(conn, id, user)` refuses un-owned rows), framed corpus-proven defense-in-depth (FC35 recurs: VenueConnect/GigSheet/BrewOps/SlateFund), additive to the per-route 403 check — explicitly NOT n=1. (Did not edit the live spec-template; agent-pitfalls is the registry home for a recurring class's mitigation.)
+- **M11** → agent-pitfalls **FC50** risk-calibration note: divergence-risk ∝ non-model-layer share of coupling, NOT raw import density; steers Feed-Forward "least confident" toward unpinned Tier 2/3 entrypoints. Tagged n=1 (run 070) pending corpus confirmation. Reversible reasoning fix, so safe to write.
 
-### Bucket 2 — Spec-template / planning
-- **M20/M21** — Coupling-aware decomposition: swarm-planner should read the Cross-Boundary Wiring density and choose cut-points that minimize cross-agent edges; "16 verticals" should be an OUTPUT, not a fixed template input. (swarm-planner agent + planning docs.)
-- **M24** — Make model-layer ownership enforcement the DEFAULT for multi-role apps (get_X(conn,id,user) refuses un-owned rows) → IDOR impossible-by-construction. (spec-template + Authorization Matrix guidance.)
-- **M11** — Feed-Forward calibration: divergence-risk ≠ coupling-density (a dense but model-pinned surface is low-risk). Fix how "least confident" items are chosen.
-- **M16** — Convergence value audit: for each added section, did it change a worker decision? (a third of 070's convergence delta was restatement.)
-- **M22** — Add "Schema-Behavior Contracts" surface to the spec template (cross-agent dependencies on cascade/constraint behavior, e.g., callsheets idempotency ← ON DELETE CASCADE). Between FC46 and FC50.
+### Bucket 2 (PARKED — blocked on corpus calibration; first targets of the corpus mine)
+These are heavy and structural — they change live `swarm-planner.md` / the spec
+template, which future builds read. A flagged-but-written change to a live file is
+riskier than parking, and each rests on a single run. Do NOT write them until the
+retroactive corpus mine (`docs/proposals/retroactive-corpus-meta-analysis.md`)
+confirms they recur. Make these the mine's FIRST calibration targets.
+- **M20/M21** — Coupling-aware decomposition: swarm-planner should read the Cross-Boundary Wiring density and choose cut-points that minimize cross-agent edges; "16 verticals" should be an OUTPUT, not a fixed template input. (swarm-planner agent + planning docs.) **Corpus test:** does agent-count-vs-P1-count / cross-agent-edge density predict integration P1s across builds?
+- **M16** — Convergence value audit: for each added section, did it change a worker decision? (a third of 070's convergence delta was restatement.) **Corpus test:** is restatement-heavy convergence common across builds?
+- **M22** — Add "Schema-Behavior Contracts" surface to the spec template (cross-agent dependencies on cascade/constraint behavior, e.g., callsheets idempotency ← ON DELETE CASCADE). Between FC46 and FC50. **Corpus test:** how many prior builds had a cross-agent schema-behavior dependency that bit? (n=1 today.)
 
 ### Bucket 3 — Validation method / governance
 - **M6** — Add an epistemic-quality axis to the Run Quality grade ("how strong is the evidence for the claim this run exists to support?") distinct from execution quality. (self-audit rubric + verify-self-audit.)
