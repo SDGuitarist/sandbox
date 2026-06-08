@@ -1,63 +1,54 @@
 # HANDOFF — Sandbox
 
 **Date:** 2026-06-08
-**Branch:** feat/film-production-pm  (checked out; 1 commit `dd02ae0` on top of the frozen hardening branch)
-**Phase:** **Spec convergence COMPLETE — ready to launch run 070.** Film Production PM is the vehicle for the orchestration-hardening **validate-on-real-build** gate. Codex round folded + human structural-verification gate **PASSED (zero P0s)**. Blocked only on launch environment (see below).
+**Branch:** feat/film-production-pm
+**Phase:** Run 070 COMPLETE — tail running (review done, compound done, learnings in progress)
 
 ## Current State
 
-We are converging the Film Production PM spec (16-agent swarm, run **070** target) so the next swarm both (a) ships an app and (b) field-proves the orchestration-hardening Tracks A/B/C. The spec passed an internal completeness pass; Claude Code then ran a structural verification and found 11 issues, **fixing 9** (2 P0 + 3 P1 + 1 gate-blindness + low-sev). Awaiting a **fresh-context Codex review** (handoff written, see below), then human structural verification, then launch.
-
-Two branches, deliberately separated:
-- **feat/cpaa-event-replay-simulator** `0d36a24` — orchestration-hardening, **FROZEN at Codex GO×3**. Untouched. Stays reviewable for its merge decision.
-- **feat/film-production-pm** `dd02ae0` — convergence work, **inherits the hardening** so the swarm exercises it. This is the validate-on-real-build vehicle.
-
-## Convergence — what was found & fixed
-
-Catch ledger + dispositions: `docs/reports/film-production-pm/convergence-catches.md` (11 catches, 9 fixed).
-- **F-H1/H2 (P0×2):** FTS single-writer — dropped triggers, kept explicit `index_entity`/`remove_entity` (killed double-index + impossible search-agent-owns-schema.sql conflict). Both were cross-section contradictions — the class gates can't catch.
-- **F-H3 (P1):** defined the previously-undefined `VALID_PHASE_TRANSITIONS` / `VALID_SCENE_TRANSITIONS` maps.
-- **F-H4 (P1):** standardized money convention (dollars in, integer cents stored).
-- **F-H5 (P1):** `create_expense -> int | None` (overspend is a return value, not a 500).
-- **F-G1 (P1):** added `Full Signature` column + 10 orchestration-entrypoint rows so Track B's FC50 guard **fires and passes** on the call-sheet surface.
-- **F-H6 (P2):** dept_head ownership code — **OPEN, deferred to Codex round.**
-
-**Roadmap finding (logged):** the FC50 completeness guard returns **N/A when zero orchestration-entrypoint rows are declared** — so it was silently blind to the 6-import call-sheet surface it exists to protect. Spec-template must require those rows. See `docs/roadmap-to-fully-unattended.md`.
+Run 070 (Film Production PM Tool, 16-agent swarm) is complete. All three orchestration-hardening validation proofs are confirmed: Track A (per-worker cherry-pick base in assembly-summary.md), Track B (spec-completeness Check 1b FIRED+PASSED with 10 entrypoint rows), Track C (spec-eval ADVISORY did not block). 0 P1 findings at review; 2 P2 findings (1 fixed in commit a09a725, 1 deferred as todo #070). The orchestration-hardening branch (`feat/cpaa-event-replay-simulator`) is now validated and ready for master merge.
 
 ## Key Artifacts
 
-| Item | Location |
-|------|----------|
-| Spec (hardened) | docs/plans/film-production-pm-plan.md |
+| Phase | Location |
+|-------|----------|
+| Plan (converged 2295-line spec) | docs/plans/film-production-pm-plan.md |
 | Brainstorm | docs/brainstorms/2026-06-02-film-production-pm-brainstorm.md |
-| Convergence catches | docs/reports/film-production-pm/convergence-catches.md |
-| Codex review handoff | docs/handoffs/film-production-pm-codex-spec-review.md |
-| Unattended roadmap | docs/roadmap-to-fully-unattended.md |
+| Assembly summary | docs/reports/070/assembly-summary.md |
+| Smoke tests | docs/reports/070/smoke-test.md (18/18 PASS) |
+| Test suite | docs/reports/070/test-results.md (10/10 PASS) |
+| Review summary | docs/reports/070/review-summary.md (0 P1, 2 P2, 3 P3) |
+| Solution doc | docs/solutions/2026-06-08-film-production-pm-run-070-swarm-build.md |
+| Track B proof | docs/reports/070/spec-completeness-check.md |
+| Track C proof | docs/reports/070/spec-eval-1780926640/ |
+| BUILD_TRACKING | BUILD_TRACKING.md |
 
-## Convergence: DONE (commits dd02ae0, 00049dd, 60ad283)
+## Review Fixes Applied
 
-- Codex round (5 cross-section findings) folded.
-- Human gate: 4 angle-sliced verification agents, **zero P0s**; 2 P1 + load-bearing P2s fixed (decorator-stacking-order 500, idempotent call-sheet generation, created_by pin, department_id parse guard, get_departments annotation). Full ledger: `docs/reports/film-production-pm/convergence-catches.md`.
-- Watch-item (not a blocker): GET `<int:>` routes aren't in Input Validation, but RestaurantOps/GigSheet passed 9w.6 with the identical structure — if 9w.6 false-FAILs on these, that's a checker bug to log, not a spec defect.
+| Priority | Finding | Fix |
+|----------|---------|-----|
+| P2-1 | Budget allocate form: departments list missing from GET /budget render context | Fixed in commit a09a725 |
+| P2-2 | Double get_schedule_entries in callsheets.generate (regressed from run 063) | Deferred — todo #070 |
 
-## Next Steps (in order)
+## Deferred Items
 
-1. **LAUNCH BLOCKED ON ENVIRONMENT.** Autopilot needs `dangerouslySkipPermissions: true` in `.claude/settings.local.json` AND the session started from `~/Projects/sandbox`. This session does NOT have it. In a properly-configured session: `cd ~/Projects/sandbox`, checkout `feat/film-production-pm`, then run `/autopilot` (reads `swarm: true` from the plan → 16-agent swarm path).
-2. **Confirm validate-on-real-build** in the run's reports: the **9w.6 PASS**, the **advisory spec-eval log**, AND a **per-worker cherry-pick base in `assembly-summary.md`**. A 9w.6 false-FAIL that aborts before Track A = validation INCOMPLETE (re-run, don't call it done).
-3. **Then** decide the hardening branch (`feat/cpaa-event-replay-simulator`) merge — held until validate passes.
+1. **Todo #070 (P2):** Double `get_schedule_entries` in callsheets.generate. Fix: pass pre-fetched entries as optional parameter to `generate_call_sheet` to avoid double SQL query.
+2. **Orchestration-hardening merge decision:** `feat/cpaa-event-replay-simulator` validated by Run 070. Operator decision: push + PR to merge to master.
+3. **FC51 orchestrator fix:** Ensure converged spec is present at worktree base before spawning workers. Options: (A) cherry-pick spec-update commit into each worktree, (B) inject sections + log titles in orchestration notes.
 
-## Open Operator Decisions
+## Three Questions
 
-- **Push** either branch to remote? (Not pushed yet — both govern the validation run.)
-- **Merge** orchestration-hardening to master — **HOLD** until validate-on-real-build passes (recommendation unchanged).
+1. **Hardest decision?** Whether to treat the spec-file divergence (FC51 new facet) as a run failure or a managed risk. Treated as managed risk — brief injection worked, all gates passed. But fragility noted.
+2. **What was rejected?** Stopping the run at 9w to re-sync all worktrees with the converged spec. Brief-injection was chosen as lower-disruption. Correct for this run, not repeatable in general.
+3. **Least confident about?** Whether the FC50 full-signature table alone prevents callsheet wiring failures when spec convergence is absent — the gate checks presence not implementation accuracy.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is Sandbox. We are mid spec-convergence on Film Production PM
-(branch feat/film-production-pm, run 070 target) — the validate-on-real-build vehicle for
-the frozen orchestration-hardening branch. Spec is hardened (9/11 catches fixed; see
-docs/reports/film-production-pm/convergence-catches.md). Next: run the Codex review
-(docs/handoffs/film-production-pm-codex-spec-review.md), fold findings, resolve F-H6,
-do human structural verification, then launch the swarm and confirm the 3 validation proofs.
+Read HANDOFF.md. This is Sandbox. Run 070 (Film Production PM Tool, 16-agent swarm) is COMPLETE.
+All 3 orchestration-hardening validation proofs confirmed (Tracks A/B/C).
+Next decisions:
+1. Merge feat/cpaa-event-replay-simulator to master (orchestration-hardening, Codex GO×3, Run 070 validated).
+2. Fix todo #070 (deferred P2: double get_schedule_entries in callsheets.generate).
+3. Address FC51 orchestrator rule: cherry-pick converged spec into worktrees before spawn.
 ```

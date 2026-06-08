@@ -1,33 +1,34 @@
 ---
 review_agents:
   - learnings-researcher
-  - architecture-strategist
-  - code-simplicity-reviewer
   - security-sentinel
+  - performance-oracle
+  - flow-trace-reviewer
 ---
 
-# Review Context — Sandbox (Autopilot Orchestration Hardening, post-069)
+# Review Context — Film Production PM Tool (Run 070)
 
 ## Risk Chain
 
-**Plan risk (Feed-Forward):** Track A (worktree base) is the highest-blast-radius edit — it touches the assembly path of a pipeline that just ran a clean 24-agent build. The residual unknown: is `git merge-base(original_branch, branch)` always the worker's true fork point, and does cherry-picking the per-worker delta reproduce the working merge path across empty/multi-commit workers?
+**Brainstorm risk:** Multi-module call sheet aggregation — 6 cross-module imports is the densest coupling surface attempted; a single name or type mismatch crashes the call sheet page.
 
-**Spike mitigation (Phase 0):** Throwaway-repo spike (16/16 + 1 + 5 assertions PASS) resolved it BEFORE any SKILL.md edit. merge-base IS the true fork point; cherry-pick replays all N commits; `<branch>^` drops commits (forbidden); zero-commit = no-op; conflict → clean abort + branches preserved. Strategy (i) uniform cherry-pick chosen (reproduces merge tree; matches 069's clean run).
+**Plan mitigation:** FC50 Orchestration Entrypoints table with full signatures for all 6 imports; spec-completeness Check 1b would fire and verify signatures were present before workers spawned.
 
-**Work risk:** demoting a gate (spec-eval) whose own design-time doc argues to keep it hard; and propagating the blocking-class change (`merge-conflict:` → `assembly-ownership-conflict:`) across swarm-runner + orchestrator without breaking the wire-abort handler.
+**Work risk (from Feed-Forward, spec convergence):** Worker worktrees rooted on master f90aed8 (pre-convergence 2010-line spec). 4 spec sections missing. Orchestrator brief-injected the convergence fixes verbatim. Contract-check PASSED but the mitigation was fragile.
 
-**Review resolution (Codex binding, GO x3):** Round 1 — Track B GO, Track C GO, Track A NO-GO (detached-HEAD pre-flight was dead code: a branch name never resolves to HEAD, runtime has no worktree path). Fixed in `1f4c5bd` (removed; manifests as empty-delta no-op). Round 2 — Track A GO. Constraints confirmed: solo path ≤354 untouched, `original_branch` merge-back untouched, O3 invariant holds, class bookkeeping complete.
+**Review resolution:** 0 P1, 2 P2, 3 P3. Feed-Forward risk RESOLVED — 6-import callsheet wiring verified end-to-end clean by flow-trace-reviewer. P2-1 (budget departments context) fixed in commit a09a725. P2-2 (double get_schedule_entries) deferred as todo #070. New finding: FC51 worktree-base divergence extends to spec files — brief injection is fragile, orchestrator must ensure converged spec at worktree base.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| .claude/skills/autopilot/SKILL.md | 9w.8 advisory; 10w precondition removed; ownership base main→original_branch; wire-abort class | swarm-path gates + assembly entry (all below :354) |
-| .claude/agents/swarm-runner.md | per-worker merge → cherry-pick; `assembly-ownership-conflict:` class; pre-flight; Step 7 merge-back untouched | assembly correctness, blocking-class propagation |
-| .claude/agents/spec-completeness-checker.md | Check 1b orchestration-entrypoint presence guard | pre-swarm coverage (FC50) |
-| docs/templates/shared-spec-flask.md, CLAUDE.md | entrypoint row-class + Full Signature column / item 1 | spec authoring contract |
-| docs/reports/orchestration-hardening/spike-*.{sh,md} | Phase-0 spike + report | Track A gate evidence |
+| app/blueprints/callsheets/routes.py | cross-boundary imports + generate route | 6-import wiring, TOCTOU, date validation |
+| app/models/callsheet_models.py | generate_call_sheet idempotent algorithm | TOCTOU reads-outside/writes-inside, ON DELETE CASCADE |
+| app/blueprints/expenses/routes.py | dept-head ownership (F-H6) | _headed_dept_ids vs _allowed_dept_ids pattern |
+| app/blueprints/budget/routes.py | allocate route + index render context | departments list missing (P2-1, fixed) |
+| app/models/search_models.py | FTS5 contentless single-writer | rowid encoding, project-scoping, coupling fragility |
+| app/models/project_models.py | VALID_PHASE_TRANSITIONS, create_project | set vs list type, creator enrollment |
 
 ## Plan Reference
 
-`docs/plans/2026-06-07-refactor-autopilot-orchestration-hardening-plan.md`
+`docs/plans/film-production-pm-plan.md`
