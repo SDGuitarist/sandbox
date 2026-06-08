@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ department['name'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">{{ department['name'] }}</h1>
+  <a href="{{ url_for('departments.list', project_id=project['id']) }}" class="btn btn-outline-secondary btn-sm">
+    Back to Departments
+  </a>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-5">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">Department Head</div>
+      <div class="card-body">
+        <p class="mb-3">
+          {% if department['head_name'] %}
+            <strong>{{ department['head_name'] }}</strong>
+          {% else %}
+            <span class="text-muted">Unassigned</span>
+          {% endif %}
+        </p>
+
+        {% if g.member and g.member['role'] == 'producer' %}
+        <form method="POST"
+              action="{{ url_for('departments.assign_head', project_id=project['id'], department_id=department['id']) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label for="user_id" class="form-label">Assign Head</label>
+            <select class="form-select" id="user_id" name="user_id" required>
+              <option value="" disabled selected>Select a project member</option>
+              {% for member in members %}
+              <option value="{{ member['id'] }}"
+                {% if member['id'] == department['head_id'] %}selected{% endif %}>
+                {{ member['display_name'] }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">Assign</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-7">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">Crew Roster</div>
+      {% if crew %}
+      <div class="table-responsive">
+        <table class="table table-dark table-striped table-hover mb-0 align-middle">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Role</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for member in crew %}
+            <tr>
+              <td>{{ member['name'] }}</td>
+              <td>{{ member['role_title'] }}</td>
+              <td>{{ member['phone'] or '' }}</td>
+              <td>{{ member['email'] or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted">
+        No crew assigned to this department yet.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

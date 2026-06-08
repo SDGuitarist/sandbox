@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule - {{ project['title'] }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Shooting Schedule</h1>
+  <a class="btn btn-primary"
+     href="{{ url_for('schedule.new', project_id=project['id']) }}">
+    Add Scene to Schedule
+  </a>
+</div>
+
+{% if shoot_dates %}
+<div class="card bg-dark border-secondary">
+  <ul class="list-group list-group-flush">
+    {% for shoot_date in shoot_dates %}
+    <li class="list-group-item bg-dark d-flex justify-content-between align-items-center">
+      <span>{{ shoot_date }}</span>
+      <a class="btn btn-sm btn-outline-light"
+         href="{{ url_for('schedule.day_view', project_id=project['id'], date=shoot_date) }}">
+        View Day
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% else %}
+<div class="card bg-dark border-secondary">
+  <div class="card-body text-center text-muted">
+    No shoot days yet.
+    <a href="{{ url_for('schedule.new', project_id=project['id']) }}">Add one?</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
