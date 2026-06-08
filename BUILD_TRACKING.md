@@ -24,15 +24,21 @@
 | stage-1-plan (deepen → Codex convergence → human verify) | CONVERGED (attended, pre-run) | docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md |
 | stage-1-spec-consistency (deepen) | report | docs/reports/069/spec-consistency-check.md |
 | _Stage-2 gates below run unattended at launch_ | | |
+| gates-completeness | PASS (1 retry; +login_required wiring, +/auth/logout validation) | docs/reports/069/spec-completeness-check.md |
+| gates-consistency | PASS (2 LOW WARN, non-blocking) | docs/reports/069/spec-consistency-check.md |
+| gate-verification (9w.7) | CLEARED | docs/reports/069/gate-verification.md |
+| spec-eval (9w.8) | WAIVED_BY_HUMAN (44 single-shot artifacts; structural gates PASS) | docs/reports/069/spec-eval-waiver.md |
+| swarm-planner (7w) | PASS (24 agents, 37 files, 0 overlap) | (inline) |
 
 **Run State:**
 - run_id: 069
+- run_start_ts: 1780877034
 - plan_path: docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md
 - branch: feat/cpaa-event-replay-simulator
 - swarm: true
 - total_agents: 24
 - context_proxy_chars: 0 (instrument at each phase boundary; meta-goal measurement — flag if >~70% before Step 17w)
-- final_status: NOT_STARTED (awaiting explicit human GO)
+- final_status: RUNNING (Stage-2 launched 2026-06-07 after explicit human GO)
 
 ---
 
@@ -121,7 +127,7 @@
 ---
 
 ## Advisory Baseline
-baseline_sha: [set by advisory-audit baseline mode at run start]
+baseline_sha: 1c885bc3077c0dd9d1bb779e38036ccfd679ac8d
 
 ## Template Version
 
