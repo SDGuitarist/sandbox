@@ -559,6 +559,48 @@ the new build and create import landmines.
 `app/db.py` defined a second `get_db()` pointing to `brewops.db` — a landmine.
 The review caught it as P2, but it should have been caught before agents launched.
 
+### Step 9w.9.5: Pre-Spawn Spec-Provenance Gate (MANDATORY -- SWARM ONLY) (FC52/FC51)
+
+Worker worktrees root on the repo's DEFAULT branch (master/main), NOT the
+orchestrator's feature branch (FC51). So each worker reads
+`docs/plans/<spec>.md` **as it exists at the worktree base** — which is STALE if
+the spec was converged/edited on the feature branch after that base commit. Every
+pre-swarm gate (9w.5-9w.8) validated the FEATURE-BRANCH spec. If the worktree-base
+spec differs, the gates certified an artifact the workers will never read — a
+silent FC52 (gate/use provenance drift). Run 070: all 16 workers read a 2010-line
+stale spec while the gates validated the 2295-line converged spec; missed only by
+luck.
+
+The worktree base is harness-opaque, so do BOTH:
+
+1. **Detect.** Diff the gated spec against the default-branch (worktree-base) copy:
+   `git diff --stat <default-branch> <original_branch> -- docs/plans/<spec>.md`
+   (use the actual default branch name; `<original_branch>` is the orchestrator's
+   feature branch). Capture both blob SHAs:
+   `git rev-parse <default-branch>:docs/plans/<spec>.md` and
+   `git rev-parse <original_branch>:docs/plans/<spec>.md`.
+2. **Repair (choose the reliable channel).** If the SHAs differ:
+   - **Preferred / reliable — make the brief the authoritative spec channel.**
+     Do NOT rely on workers reading the worktree file. Inject the full converged
+     spec (or the per-role relevant sections) INLINE into every worker brief, and
+     tell workers the brief is authoritative over any spec file in their worktree.
+     This sidesteps the harness-opaque worktree base entirely.
+   - **Additional — put the converged spec at the worktree base.** Commit/cherry-pick
+     the converged spec file onto the default branch HEAD (where worktrees root) so
+     the file channel also matches. (NOTE: merging the default branch INTO the
+     feature branch does NOT fix this — it leaves the converged spec absent from the
+     default branch. Run 070's pre-flight merge fixed the CODE assembly invariant,
+     not the spec channel.)
+3. **Record.** Write `docs/reports/<run-id>/spec-provenance.md` with line 1 =
+   `STATUS: PROVENANCE_OK` (SHAs identical) or
+   `STATUS: PROVENANCE_REPAIRED -- <inline-injection | spec-committed-to-base>`,
+   plus both blob SHAs and (if repaired) the list of injected section titles. This
+   is the audit trail proving the workers' spec == the gated spec.
+4. NEVER spawn workers while the worktree-base spec differs from the gated spec
+   without recording the repair. The cost of this check is seconds; the cost of
+   detecting the drift mid-swarm is the whole run (recovery options collapse past
+   the spawn boundary).
+
 ### Step 10w: Parallel Swarm Work
 
 **PRECONDITION:** Before reading the agent assignment table, verify:
@@ -632,6 +674,28 @@ Then wait for all agents to complete. You will be notified as each finishes.
 **Timeout:** If any agent has not completed after 10 minutes, report it as
 a failure and proceed with the agents that did complete. Do not wait
 indefinitely.
+
+**Post-Completion Cross-Worker Batch-Scan (MANDATORY -- SWARM ONLY) (M38/FC52):**
+Do NOT rely only on incremental per-completion reading — systemic defects
+(stale spec, divergent assumptions) are invisible per-worker and visible only in
+aggregate, and completion ORDER is duration-random so a late "tell" is caught when
+recovery is most expensive. After ALL workers finish, run ONE aggregate scan
+across the completion summaries before the ownership gate:
+1. **Spec-version agreement:** every worker must reference the SAME spec
+   identity (same section-set / spec SHA / no worker reporting "missing section X"
+   that others used). A mismatch = FC52 drift surfaced — investigate before
+   assembling.
+2. **Divergent gap-fills:** collect every worker's reported judgment call /
+   "I implemented X since the spec didn't say" (the `SPEC_ISSUES:` field if
+   present). Two workers filling the same cross-boundary gap differently = an
+   integration risk no merge-conflict will show (FC3/FC30/FC50). Flag for the
+   contract-check.
+3. **Empirical-wall reports:** collect any worker that discovered a spec
+   impossibility (e.g., a schema constraint that makes a prescribed return shape
+   unachievable). These are higher-signal than any green check — route to review.
+Write findings to `docs/reports/<run-id>/cross-worker-scan.md`. This scan is the
+systematic replacement for catching such issues by luck from an offhand summary
+remark (Run 070).
 
 **Build worker_status list:** After all agents complete or time out, build
 the `worker_status` list that will be passed to swarm-runner in Steps 11w-16w.
