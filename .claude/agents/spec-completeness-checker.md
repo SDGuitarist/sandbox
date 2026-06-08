@@ -54,8 +54,9 @@ Every surface follows this exact decision tree:
 
 ## The 6 Checks
 
-Run Check 1 first. Check 2 depends on Check 1's output. Checks 3-6 are
-independent and can run in any order.
+Run Check 1 first. Check 1b (orchestration entrypoint signatures) reuses
+Check 1's parsed Export Names table. Check 2 depends on Check 1's output.
+Checks 3-6 are independent and can run in any order.
 
 ### Check 1: Export Names Coverage (FC1)
 
@@ -80,6 +81,32 @@ If zero identifiers found across all 4 classes: N/A.
 If identifiers exist: find Export Names heading. Missing = FAIL.
 If found: extract column 1 of Export Names table. Each enumerated identifier
 NOT in the table = FAIL finding.
+
+### Check 1b: Orchestration Entrypoint Signatures (FC50)
+
+A **signature-presence guard**, NOT a call-site classifier. It validates only
+what the spec author DECLARED in the Export Names table -- it does NOT parse the
+spec body to infer which calls *should* be entrypoints. Building that classifier
+would be a new 0-precision semantic gate; a wholly-omitted entrypoint is instead
+caught downstream by the assembly contract-check. This guard reuses the Export
+Names table already parsed in Check 1 -- no new parser.
+
+**Enumerate:** From the Export Names table, select every row whose `Type` cell is
+exactly `orchestration entrypoint` (case-insensitive, trimmed). The template
+requires BOTH route→non-model function calls AND tool→constants imports that
+cross an agent/cluster boundary to be listed as such rows.
+
+If zero `orchestration entrypoint` rows: **N/A** (the guard checks what IS
+declared; it cannot detect a row the planner omitted -- documented blind spot).
+
+If such rows exist: the table MUST have a `Full Signature` column (case-insensitive
+header match). For each `orchestration entrypoint` row, the `Full Signature` cell
+must be non-empty and not a placeholder (`—`, `-`, `TODO`, `TBD`, or blank). Any
+empty/placeholder Full Signature = **FAIL finding** naming the symbol. A missing
+`Full Signature` column when entrypoint rows exist = FAIL.
+
+This catches the demonstrated Run 069 failure mode: route→engine calls whose
+import name (B2/B3) or arity (C1/C6) drifted because the verb was never pinned.
 
 ### Check 2: Wiring Coverage (FC3)
 
@@ -206,6 +233,7 @@ STATUS: PASS
 | Surface | Status | Findings |
 |---------|--------|----------|
 | Export Names (FC1) | PASS/FAIL/N/A | <N> identifiers checked, <M> missing |
+| Orchestration Entrypoints (FC50) | PASS/FAIL/N/A | <N> entrypoint rows, <M> missing Full Signature |
 | Cross-Boundary Wiring (FC3) | PASS/FAIL/N/A/BLOCKED | <N> cross-boundary functions, <M> missing |
 | Input Validation (FC4) | PASS/FAIL/N/A | <N> qualifying routes, <M> unvalidated |
 | Registration Points (FC5) | PASS/FAIL/N/A | <N> blueprints, <M> unregistered |

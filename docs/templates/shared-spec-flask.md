@@ -196,10 +196,23 @@ date validation, the callsheets agent consuming the same dates did not.
 Every model function, endpoint name (`url_for` target), blueprint name, and
 route path that crosses agent boundaries.
 
-| Name | Type | Defined By | Used By |
-|------|------|------------|---------|
-| `create_item` | model function | `app/models.py` | `items` agent |
-| `items.list` | endpoint | `app/blueprints/items/routes.py` | `layout` agent (navbar), `dashboard` agent (links) |
+**Orchestration entrypoints (FC50) are a required row-class.** In addition to
+the noun classes above, list every **route → non-model function call** and every
+**tool → constants import** that crosses an agent/cluster boundary as a row with
+`Type = orchestration entrypoint` and a populated **`Full Signature`** column
+(function name + parameter names/types + return type; for a constants import,
+the symbol name + type). Run 069 had 2/2 unpinned route→engine calls diverge
+(4 review P1s) precisely because these verbs were never pinned. The
+`Full Signature` column is `—` for the noun classes; it MUST be non-empty for
+every `orchestration entrypoint` row (the 9w.6 presence guard FAILs on an empty
+signature).
+
+| Name | Type | Defined By | Used By | Full Signature |
+|------|------|------------|---------|----------------|
+| `create_item` | model function | `app/models.py` | `items` agent | — |
+| `items.list` | endpoint | `app/blueprints/items/routes.py` | `layout` agent (navbar), `dashboard` agent (links) | — |
+| `replay_run` | orchestration entrypoint | `app/services/replay.py` | `replay` route (`app/blueprints/replay/routes.py`) | `replay_run(run_id: int, *, dedup: bool = True) -> ReplayResult` |
+| `EMPTY_PROJECTION_HASH` | orchestration entrypoint | `app/constants.py` | `projection` tool import (`tools/compute_golden.py`) | `EMPTY_PROJECTION_HASH: str` (tool→constants import) |
 
 ## Cross-Boundary Wiring Table
 

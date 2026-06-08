@@ -49,10 +49,14 @@ The spec-completeness-checker (Step 9w.6) validates they exist and are
 complete. Missing sections FAIL the pre-swarm gate.
 
 1. **Export Names Table** -- every model function, endpoint name (url_for target),
-   blueprint name, and route path that crosses agent boundaries. Columns: Name,
-   Type, Defined By, Used By. (The checker validates these 4 classes; template
-   filenames and form field names should also be listed but are not yet
-   machine-checked.)
+   blueprint name, route path, and **orchestration entrypoint** that crosses agent
+   boundaries. Orchestration entrypoints (FC50) are every route→non-model function
+   call and tool→constants import crossing an agent/cluster boundary, listed with
+   `Type = orchestration entrypoint`. Columns: Name, Type, Defined By, Used By,
+   Full Signature. (The checker validates these 5 classes; for `orchestration
+   entrypoint` rows it additionally FAILs on an empty Full Signature -- the FC50
+   presence guard. Template filenames and form field names should also be listed
+   but are not yet machine-checked.)
 2. **Cross-Boundary Wiring Table** -- every cross-module function call with
    producer file, consumer file, and import path.
 3. **Input Validation Prescriptions** -- every POST/PUT/PATCH/DELETE route and typed URL param
