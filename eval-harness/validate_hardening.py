@@ -47,6 +47,19 @@ TRACK_TITLES = {
     "FC52": "FC52 — spec-provenance divergence detection",
 }
 
+# Honest status for tracks with no automated fixture, so they are never rendered
+# as a fidelity label they did not earn. (fidelity, outcome, evidence)
+#   Track A: P-accept. The cherry-pick assembly is agent-prose in swarm-runner.md;
+#   exercising it as-shipped needs a share-not-fork extraction (a deliberate
+#   hardening refactor with its own real-build validation), NOT a fixture. Until
+#   then it stays field+spike-validated, labelled honestly — not EXERCISED.
+TRACK_STATIC = {
+    "A": ("FIELD+SPIKE", "N/A",
+          "P-accept: cherry-pick assembly is agent-prose (swarm-runner.md:76-138); "
+          "field-proven runs 069/070 + spikes. NOT fixtured as EXERCISED — pending a "
+          "deliberate P-extract refactor."),
+}
+
 
 @dataclass
 class FixtureResult:
@@ -206,13 +219,114 @@ def run_fb1(claude_bin: str = "claude", timeout: int = 420) -> FixtureResult:
 
 
 # --------------------------------------------------------------------------- #
+# F-D1 — FC52: invoke the SHIPPED spec-provenance detector (detection only).    #
+# --------------------------------------------------------------------------- #
+
+PROVENANCE_DETECTOR = REPO_ROOT / "tools" / "check_spec_provenance.py"
+_SPEC_REL = "docs/plans/demo-spec.md"
+
+
+def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+
+
+def _init_fixture_repo(base_text: str, feat_text: str) -> Path:
+    """Temp git repo: `master` carries base_text at the spec path, `feature`
+    carries feat_text. Mirrors FC51 worktree-base (master) vs gated feature branch.
+    """
+    repo = Path(tempfile.mkdtemp(prefix="fd1-"))
+    _git(repo, "init", "-q", "-b", "master")
+    _git(repo, "config", "user.email", "fixture@example.com")
+    _git(repo, "config", "user.name", "fixture")
+    spec = repo / _SPEC_REL
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text(base_text)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base spec on master")
+    _git(repo, "checkout", "-q", "-b", "feature")
+    spec.write_text(feat_text)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "converged spec on feature")
+    return repo
+
+
+def _detect(repo: Path) -> tuple[int, str]:
+    """Run the SHIPPED detector on `repo`; return (exit_code, line-1 STATUS)."""
+    cp = subprocess.run(
+        [sys.executable, str(PROVENANCE_DETECTOR),
+         "--default-branch", "master", "--original-branch", "feature",
+         "--spec-path", _SPEC_REL, "--repo", str(repo)],
+        capture_output=True, text=True,
+    )
+    out = (cp.stdout + cp.stderr).strip()
+    line1 = out.splitlines()[0] if out else ""
+    return cp.returncode, line1
+
+
+def run_fd1(claude_bin: str = "claude") -> FixtureResult:
+    """Drive the shipped FC52 detector against a diverged-spec scenario.
+
+    EXERCISED, not MIRRORED: this invokes `tools/check_spec_provenance.py`, the
+    SAME script SKILL Step 9w.9.5 now calls -- one implementation, so the fixture
+    cannot pass against a copy that drifts from the gate.
+
+    Scope: DETECTION only. The LLM inline-injection REPAIR is agent judgment and
+    is out of fixture scope (plan). The fixture asserts the detector FIRES on
+    drift AND a positive control (identical spec both branches) reports OK -- so
+    it proves discrimination, not an always-DRIFT stub.
+    """
+    base = (FIXTURES_DIR / "fd1" / "worktree_base_spec.md").read_text()
+    gated = (FIXTURES_DIR / "fd1" / "gated_spec.md").read_text()
+
+    if not PROVENANCE_DETECTOR.exists():
+        return FixtureResult(
+            "F-D1", "FC52", EXERCISED, False, "ERROR",
+            f"shipped detector missing: {PROVENANCE_DETECTOR}",
+        )
+
+    drift_repo = _init_fixture_repo(base, gated)      # base != gated -> DRIFT
+    ok_repo = _init_fixture_repo(gated, gated)         # identical     -> OK (control)
+    try:
+        drift_code, drift_status = _detect(drift_repo)
+        ok_code, ok_status = _detect(ok_repo)
+    finally:
+        shutil.rmtree(drift_repo, ignore_errors=True)
+        shutil.rmtree(ok_repo, ignore_errors=True)
+
+    drift_fired = drift_code == 3 and "PROVENANCE_DRIFT" in drift_status
+    control_ok = ok_code == 0 and "PROVENANCE_OK" in ok_status
+    passed = drift_fired and control_ok
+
+    if passed:
+        verdict, detail = "PROVENANCE_DRIFT", (
+            "detector FIRED on the diverged spec (exit 3) and the identical-spec "
+            "control reported PROVENANCE_OK (exit 0) — discriminates correctly"
+        )
+    elif not drift_fired:
+        verdict, detail = drift_status or "UNKNOWN", (
+            f"detector did NOT flag drift: exit={drift_code} status={drift_status!r}"
+        )
+    else:
+        verdict, detail = ok_status or "UNKNOWN", (
+            "control FAILED: detector cried drift on an identical spec "
+            f"(exit={ok_code} status={ok_status!r}) — over-firing"
+        )
+    return FixtureResult("F-D1", "FC52", EXERCISED, passed, verdict, detail)
+
+
+# --------------------------------------------------------------------------- #
 # Registry + matrix                                                             #
 # --------------------------------------------------------------------------- #
 
-# fixture id -> runner callable. Phase 2/3 fixtures land here as they are built.
+# fixture id -> runner callable. Phase 3 fixtures (F-B2, F-C1) land here later.
 FIXTURES = {
     "F-B1": run_fb1,
+    "F-D1": run_fd1,
 }
+
+# fixture id -> the track it proves. Lets the matrix tell "built but not selected
+# this invocation" apart from "no fixture exists yet".
+FIXTURE_TRACKS = {"F-B1": "B", "F-D1": "FC52"}
 
 
 def render_matrix(results: dict[str, FixtureResult]) -> str:
@@ -221,11 +335,17 @@ def render_matrix(results: dict[str, FixtureResult]) -> str:
     Tracks with no implemented fixture are shown PENDING -- never given a
     fidelity label they did not earn.
     """
+    built_tracks = set(FIXTURE_TRACKS.values())
     rows = []
     for track in TRACKS:
         res = next((r for r in results.values() if r.track == track), None)
         if res is None:
-            rows.append((track, "PENDING", "—", "Phase 2/3 — not built"))
+            if track in TRACK_STATIC:
+                rows.append((track, *TRACK_STATIC[track]))
+            elif track in built_tracks:
+                rows.append((track, "NOT RUN", "—", "fixture exists; not selected this invocation"))
+            else:
+                rows.append((track, "PENDING", "—", "Phase 3 — not built"))
         else:
             outcome = "PASSED" if res.passed else "FAILED"
             rows.append((track, res.fidelity, outcome, f"{res.fixture_id}: {res.detail}"))
