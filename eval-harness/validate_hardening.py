@@ -20,6 +20,7 @@ A / C / FC52 are Phase 2/3 and are shown as PENDING.
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
@@ -63,6 +64,72 @@ class FixtureResult:
 # F-B1 — Track B / FC50: invoke the REAL spec-completeness-checker agent.       #
 # --------------------------------------------------------------------------- #
 
+# Identifies the FC50 surface in a Results-table row or Details header.
+_FC50_SURFACE = re.compile(r"orchestration entrypoint|FC50", re.IGNORECASE)
+
+
+def _fc50_surface_failed(lines: list[str]) -> bool:
+    """True iff the report marks the Orchestration-Entrypoint (FC50) SURFACE as
+    FAIL.
+
+    Reads the STATUS *cell* of the FC50 Results-table row (or a Details header) --
+    NOT merely "the word FAIL appears on a line mentioning entrypoints", which
+    false-matches explanatory prose when FC50 actually PASSED. This precision is
+    what lets the negative case (pinned signature -> FC50 PASS, gate still FAILs
+    on an unrelated surface) correctly report the fixture as FAILED.
+    """
+    for ln in lines:
+        s = ln.strip()
+        if s.startswith("|"):  # Results-table row: | <surface> | <status> | ... |
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if len(cells) >= 2 and _FC50_SURFACE.search(cells[0]):
+                if cells[1].upper() == "FAIL":
+                    return True
+        elif s.startswith("#"):  # Details header: ### Orchestration ... (FC50): FAIL
+            if _FC50_SURFACE.search(s) and re.search(r":\s*FAIL\b", s, re.IGNORECASE):
+                return True
+    return False
+
+
+def evaluate_fb1_report(text: str) -> tuple[bool, str, str]:
+    """Decide F-B1's outcome from the agent's report text. Pure + testable.
+
+    PASSES only when the guard FAILED *on the FC50 surface specifically* and
+    named `compute_schedule`. Requiring the FC50 surface (not just any FAIL, and
+    not merely the symbol appearing somewhere) is what makes the negative case
+    discriminate: if the signature were pinned, FC50 flips to PASS/N-A and the
+    symbol still appears in the results row -- but the fixture must then report
+    FAILED, because Track B's guard did not fire.
+
+    Returns (passed, verdict, detail).
+    """
+    lines = text.splitlines()
+    status_line = lines[0].strip() if lines else ""
+    gate_failed = status_line.upper().startswith("STATUS: FAIL")
+    fc50_failed = _fc50_surface_failed(lines)
+    names_symbol = "compute_schedule" in text
+
+    if gate_failed and fc50_failed and names_symbol:
+        return True, "FAIL", (
+            f"gate FAILED on the FC50 surface naming compute_schedule "
+            f"(line 1: {status_line!r})"
+        )
+    if gate_failed and names_symbol and not fc50_failed:
+        return False, "FAIL", (
+            "gate FAILED but NOT on the FC50 surface -- the failure is not "
+            f"attributable to the unpinned entrypoint (line 1: {status_line!r})"
+        )
+    if gate_failed and not names_symbol:
+        return False, "FAIL", (
+            "gate FAILED but did not name compute_schedule "
+            f"(line 1: {status_line!r})"
+        )
+    return False, (status_line or "UNKNOWN"), (
+        "gate did NOT flag the unpinned entrypoint -- Track B unproven "
+        f"(line 1: {status_line!r})"
+    )
+
+
 def run_fb1(claude_bin: str = "claude", timeout: int = 420) -> FixtureResult:
     """Drive the shipped spec-completeness-checker agent against the F-B1 spec.
 
@@ -98,18 +165,19 @@ def run_fb1(claude_bin: str = "claude", timeout: int = 420) -> FixtureResult:
             f"2. Reports directory: {reports}\n"
             f"3. BUILD_TRACKING.md: {build_tracking}\n"
         )
+        # The prompt goes via stdin, NOT as a positional: `--add-dir` is variadic
+        # and would otherwise swallow the prompt as a second directory.
         cmd = [
             claude_bin, "-p",
             "--agent", "spec-completeness-checker",
             "--dangerously-skip-permissions",
             "--add-dir", str(work),
-            prompt,
         ]
 
         try:
             proc = subprocess.run(
-                cmd, cwd=str(REPO_ROOT), capture_output=True, text=True,
-                timeout=timeout,
+                cmd, input=prompt, cwd=str(REPO_ROOT), capture_output=True,
+                text=True, timeout=timeout,
             )
         except FileNotFoundError:
             return FixtureResult(
@@ -131,28 +199,7 @@ def run_fb1(claude_bin: str = "claude", timeout: int = 420) -> FixtureResult:
             )
 
         text = report.read_text()
-        status_line = text.splitlines()[0].strip() if text.splitlines() else ""
-
-        gate_failed = status_line.upper().startswith("STATUS: FAIL")
-        names_symbol = "compute_schedule" in text
-        passed = gate_failed and names_symbol
-
-        if passed:
-            verdict, detail = "FAIL", (
-                f"gate correctly FAILED naming compute_schedule "
-                f"(line 1: {status_line!r})"
-            )
-        elif gate_failed and not names_symbol:
-            verdict, detail = "FAIL", (
-                "gate FAILED but did not name compute_schedule -- "
-                f"FAIL not attributable to FC50 (line 1: {status_line!r})"
-            )
-        else:
-            verdict, detail = status_line or "UNKNOWN", (
-                "gate did NOT fail the unpinned entrypoint -- Track B unproven "
-                f"(line 1: {status_line!r})"
-            )
-
+        passed, verdict, detail = evaluate_fb1_report(text)
         return FixtureResult("F-B1", "B", EXERCISED, passed, verdict, detail)
     finally:
         shutil.rmtree(work, ignore_errors=True)
