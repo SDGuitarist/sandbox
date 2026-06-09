@@ -383,6 +383,40 @@ L1_ENV_UNAVAILABLE = "ENV_UNAVAILABLE"  # env/transport: no API key, timeout, co
 L1_SCORER_DEFECT = "SCORER_DEFECT"      # reachable but no verdict (WARN_UNSCORABLE/RETRY/no-JSON/malformed)
 
 
+def _valid_gate_statuses() -> set[str]:
+    """The SHIPPED GateStatus enum values, read from the gate's own models so the
+    valid set can NEVER drift from the scorer (share-not-fork — the same principle
+    the whole suite rests on). Falls back to the known set only if `models` is not
+    importable in this context. NOTE: ENV_ERROR is an exit code, not a GateStatus,
+    so it is correctly absent here — it never appears in the JSON report.
+    """
+    try:
+        from models import GateStatus  # co-located in eval-harness/; authoritative
+        return {s.value for s in GateStatus}
+    except Exception:
+        return {"PASS", "FAIL", "WARN_UNSCORABLE", "RETRY"}
+
+
+def _classify_scorer_report(status, report_name: str) -> tuple[str, str]:
+    """Classify a scorer run that DID write a JSON report, by its `status` field.
+    A written report means the scorer reached scoring — but the status must still
+    be a KNOWN GateStatus. A non-empty but unrecognized status is schema drift (a
+    defect), NOT a verdict, and must not read as EXERCISED success (the hole Codex
+    flagged). Pure + unit-tested.
+    """
+    if not status:
+        return L1_SCORER_DEFECT, f"scorer JSON has no status field ({report_name})"
+    valid = _valid_gate_statuses()
+    if status not in valid:
+        return L1_SCORER_DEFECT, (
+            f"scorer JSON status {status!r} is not a known GateStatus "
+            f"{sorted(valid)} — schema drift, not a verdict ({report_name})"
+        )
+    return L1_EXERCISED, (
+        f"scorer ran and produced verdict={status!r} + JSON report ({report_name})"
+    )
+
+
 def _check_advisory_prose() -> tuple[bool, str]:
     """Layer 2 (PROSE-ASSERTED): the advisory/non-blocking demotion lives in the
     Step 9w.8 wrapper prose, NOT in spec_eval_gate.py (the script still exits 1 on
@@ -439,12 +473,7 @@ def _run_scorer(timeout: int = 420) -> tuple[str, str]:
                 status = json.loads(reports[0].read_text()).get("status", "")
             except (json.JSONDecodeError, OSError) as exc:
                 return L1_SCORER_DEFECT, f"scorer wrote unreadable JSON: {exc}"
-            if not status:
-                return L1_SCORER_DEFECT, f"scorer JSON has no status field ({reports[0].name})"
-            return L1_EXERCISED, (
-                f"scorer ran and produced verdict={status!r} + JSON report "
-                f"({reports[0].name})"
-            )
+            return _classify_scorer_report(status, reports[0].name)
 
         # No gate JSON: the scorer did not reach a verdict. Classify the cause.
         return _classify_scorer_miss(proc.returncode, proc.stdout + proc.stderr)
