@@ -63,7 +63,10 @@ suite exists to catch.
 
 ### Cost / hermeticity
 
-The default `validate_hardening.py` run is free of paid API calls **except F-B1**,
-which invokes the real `spec-completeness-checker` agent (one bounded agent call).
-F-C1 layer 1 (the spec-eval scorer, real bounded LLM calls) is **opt-in** via
-`--with-api`; without it the suite asserts only the deterministic advisory contract.
+The default `validate_hardening.py` run is **not fully hermetic**: **F-B1 and
+F-B2** each invoke the real `spec-completeness-checker` agent (two bounded agent
+calls — network + tokens). F-D1 and F-C1 layer 2 are free and deterministic
+(git + file reads). F-C1 layer 1 (the spec-eval scorer, real bounded LLM calls)
+is the only **opt-in** cost, via `--with-api`; without it the suite asserts only
+the deterministic advisory contract. So "default" ≈ two agent calls; truly
+zero-cost subsets are `--fixture F-D1` and `--fixture F-C1` (without `--with-api`).
