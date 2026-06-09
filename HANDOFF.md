@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-09
 **Branch:** feat/film-production-pm
-**Phase:** Orchestration-hardening FIXTURE SUITE — **COMPOUND COMPLETE**. NEXT: the merge decision (gated on explicit go-ahead).
+**Phase:** Orchestration-hardening FIXTURE SUITE — **COMPOUND COMPLETE** + 9w.9.5 rewire **VALIDATED** (scoped real-swarm check). NEXT: Codex R3 pass → then merge in a new session.
 
 ## Current State
 
@@ -46,12 +46,41 @@ risk — NOT validated by a real swarm run, only by F-D1 in isolation.**
 
 `feat/film-production-pm` is **~108 commits / 245 files ahead of master** — merging
 ships the ENTIRE Run 070 build + hardening + meta-analysis + the fixture suite, not
-just the fixtures. This is a large, deliberate call. Two pre-merge gates:
-1. **(optional) Final Codex pass on R3** (`1d6ac07..8dca4b5`) — not yet reviewed;
-   operator opted to proceed.
-2. **Real-swarm check of the SKILL 9w.9.5 FC52 rewire** — the agent→CLI wiring is
-   deterministic in isolation (F-D1) but un-exercised end-to-end. This is the
-   residual risk.
+just the fixtures. This is a large, deliberate call. **Operator plan: do the Codex R3
+pass, then merge in a NEW session.**
+
+1. **Codex R3 pass (REMAINING pre-merge step)** — final binding Codex review of
+   `1d6ac07..8dca4b5` (the round-3 scorer hardening: timeout-as-failure, no silent
+   enum fallback). Handoff prompt is in HANDOFF (see "Codex R3 Handoff Prompt" below).
+   Use the manual human-driven Codex, not headless `codex exec`.
+2. ~~Real-swarm check of the SKILL 9w.9.5 FC52 rewire~~ — **DONE (2026-06-09).** A
+   scoped real-orchestrator run on branch `test/fc52-9w95-rewire-real-swarm`
+   (commit `998854e`) drove Step 9w.9.5 to completion and STOPPED before spawn:
+   the step invoked `tools/check_spec_provenance.py` with real branch args →
+   `PROVENANCE_DRIFT`/exit 3 (the agent→CLI wiring works); the 9w.6 completeness
+   gate FAIL→fix→PASS proved the run legitimately reaches 9w.9.5. Repair was
+   identified but NOT executed (pre-spawn halt) — recorded honestly, not as
+   `PROVENANCE_REPAIRED`. Evidence: `docs/reports/fc52-9w95-val/{spec-provenance.md,
+   spec-completeness-check.md}` on the test branch. **Scope boundary:** proved the
+   DETECT wiring (the new/risky part); did NOT exercise live brief-injection at
+   Step 10w or the OK-path (lower risk; OK-path covered by F-D1 in isolation).
+   Keep the `test/` branch until merge as the audit trail.
+
+## Codex R3 Handoff Prompt (run before merge)
+
+> Binding review. Scope: commits `1d6ac07..8dca4b5` on `feat/film-production-pm`
+> (round-3 fixes to `eval-harness/validate_hardening.py`). Context: this is the
+> orchestration-hardening fixture suite's F-C1 scorer-validation layer. The R3
+> changes: (1) a scorer TIMEOUT is now its own FAILING class `L1_TIMEOUT` (a hang
+> must not pass under `--with-api` as "environment"); (2) `_valid_gate_statuses()`
+> dropped its silent fallback — it reads `from models import GateStatus` and RAISES
+> if unimportable, and `_run_scorer` resolves the valid set BEFORE spending an API
+> call, returning a visible fail-closed `SCORER_DEFECT` on failure. Pressure-test:
+> (a) Is the EXERCISED/ENV/DEFECT/TIMEOUT classification airtight — can any genuine
+> scorer defect still masquerade as a non-failing environment miss, or vice-versa?
+> (b) Is the fail-closed enum read correct (no path where a drifted/absent enum
+> silently validates)? (c) Does the timeout bound risk a false TIMEOUT on a slow-but-
+> healthy scorer? Confirm GO or list blocking findings.
 
 ## Deferred Items
 
@@ -82,12 +111,16 @@ just the fixtures. This is a large, deliberate call. Two pre-merge gates:
 
 ```
 Read HANDOFF.md. This is Sandbox, branch feat/film-production-pm. The orchestration-
-hardening fixture suite is COMPOUND COMPLETE (solution doc + learnings propagated).
-Solution: docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md.
+hardening fixture suite is COMPOUND COMPLETE and the SKILL 9w.9.5 FC52 rewire is
+VALIDATED (scoped real-swarm check, evidence on branch test/fc52-9w95-rewire-real-swarm
+commit 998854e). Solution: docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md.
 
-The open decision is the MERGE: feat/film-production-pm is ~108 commits ahead of
-master — merging ships the whole Run 070 build, not just the fixtures. Before merge,
-weigh the two gates: (a) optional final Codex pass on R3 (1d6ac07..8dca4b5); (b) the
-live SKILL 9w.9.5 FC52 rewire has no real-swarm validation yet. Decide: merge now,
-do a real-swarm check first, or extract Track A (P-extract) first.
+This session = the MERGE. Two steps, in order:
+1. Codex R3 pass — run the "Codex R3 Handoff Prompt" in HANDOFF.md against
+   1d6ac07..8dca4b5 (manual human-driven Codex). Bring findings back; if any
+   blocking, fix before merging.
+2. If Codex says GO: merge feat/film-production-pm -> master. This is a ~108-commit
+   merge shipping the WHOLE Run 070 build + hardening + meta-analysis + fixtures.
+   Confirm with the operator ("are you sure") before executing; it is hard to reverse.
+   After merge, delete the throwaway test/fc52-9w95-rewire-real-swarm branch.
 ```
