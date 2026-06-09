@@ -447,27 +447,46 @@ def _run_scorer(timeout: int = 420) -> tuple[str, str]:
             )
 
         # No gate JSON: the scorer did not reach a verdict. Classify the cause.
-        blob = proc.stdout + proc.stderr
-        if proc.returncode == 2 or "ENV_ERROR" in blob:
-            return L1_ENV_UNAVAILABLE, "scorer returned ENV_ERROR (env) — scorer not exercised"
-        if re.search(r"Connection|timed out|Network|getaddrinfo|temporarily unavailable", blob, re.I):
-            return L1_ENV_UNAVAILABLE, "scorer hit a transport error (env) — scorer not exercised"
-        if "WARN_UNSCORABLE" in blob:
-            return L1_SCORER_DEFECT, (
-                "scorer returned WARN_UNSCORABLE on a spec built to be scorable — "
-                "extraction regression (no verdict)"
-            )
-        if "RETRY" in blob:
-            return L1_SCORER_DEFECT, (
-                "scorer returned RETRY (no verdict after its own retries) — "
-                "not silently passed"
-            )
-        return L1_SCORER_DEFECT, (
-            f"scorer produced no verdict/JSON. exit={proc.returncode}. "
-            f"tail: {blob.strip()[-300:]!r}"
-        )
+        return _classify_scorer_miss(proc.returncode, proc.stdout + proc.stderr)
     finally:
         shutil.rmtree(out_dir, ignore_errors=True)
+
+
+# Clear environment/transport markers that mean the scorer was never exercised
+# (a present-but-INVALID key, DNS, refused connection) — NOT a scorer defect.
+_ENV_FAULT = re.compile(
+    r"AuthenticationError|invalid x-api-key|\b401\b|PermissionDenied|"
+    r"getaddrinfo|Could not resolve|Connection refused|Network is unreachable|"
+    r"Temporary failure in name resolution",
+    re.IGNORECASE,
+)
+
+
+def _classify_scorer_miss(returncode: int, blob: str) -> tuple[str, str]:
+    """Classify a scorer run that produced NO gate JSON. Pure + unit-tested.
+
+    Order is load-bearing (review issue #1): WARN_UNSCORABLE and RETRY are checked
+    BEFORE the auth/transport markers, so a RETRY whose error details happen to
+    mention a connection cannot be reclassified as "environment" and slip through
+    as a non-failing INCONCLUSIVE. Only the gate's own ENV_ERROR (exit 2) or a
+    clear auth/transport fault with no WARN/RETRY present is environment.
+    """
+    if returncode == 2 or "ENV_ERROR" in blob:
+        return L1_ENV_UNAVAILABLE, "scorer returned ENV_ERROR (env) — scorer not exercised"
+    if "WARN_UNSCORABLE" in blob:
+        return L1_SCORER_DEFECT, (
+            "scorer returned WARN_UNSCORABLE on a spec built to be scorable — "
+            "extraction regression (no verdict)"
+        )
+    if "RETRY" in blob:
+        return L1_SCORER_DEFECT, (
+            "scorer returned RETRY (no verdict after its own retries) — not silently passed"
+        )
+    if _ENV_FAULT.search(blob):
+        return L1_ENV_UNAVAILABLE, "scorer hit an auth/transport fault (env) — scorer not exercised"
+    return L1_SCORER_DEFECT, (
+        f"scorer produced no verdict/JSON. exit={returncode}. tail: {blob.strip()[-300:]!r}"
+    )
 
 
 def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureResult:
