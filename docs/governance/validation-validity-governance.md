@@ -80,6 +80,14 @@ structural cracks, all surfaced by run 070:
 **Drained (this doc):** the model and its four cracks are now documented governance,
 with crack #2 turned into a concrete operator pre-merge check.
 
+**Crack #2 check RESULT (2026-06-08): CLEAN.** Executed — `merge-base(feat/film,
+feat/cpaa)` = feat/cpaa's tip `0d36a24` = the hardening commit; pure-hardening files
+byte-identical; feat/film's SKILL.md changes are additive-only (`+64/-0`, `+46/-0`).
+Merging feat/cpaa brings exactly the validated hardening. The check ALSO surfaced
+crack-adjacent finding M30: the FC52 spec-provenance fix (`5af6f4d`) lives only on
+feat/film and would be stranded by a feat/cpaa→master merge. Full evidence + the
+"two decisions" framing in the handoff's Open Operator Decisions section.
+
 **Not touched (operator authority):** the actual merge/push remain the operator's
 call (`CLAUDE.md` Forbidden Actions; roadmap §0 "authority touches"). This doc
 informs that decision; it does not make it.

@@ -92,6 +92,21 @@ Distinct from (and larger than) the parked-bucket drain below — sequence it se
 1. **Merge** orchestration-hardening branch (feat/cpaa-event-replay-simulator) to master. Recommendation: GO for Tracks A & C (field-proven); Track B is fixture-worthy first (see M4 proposal) before claiming it field-proven.
 2. **Push** either branch to remote (still local-only).
 
+### M7 pre-merge diff check — RUN 2026-06-08, result: CLEAN (validated-copy == merged-copy)
+The governance doc's M7 crack-#2 check (`docs/governance/validation-validity-governance.md`) was executed. Evidence:
+- `merge-base(feat/film-production-pm, feat/cpaa-event-replay-simulator)` = `0d36a24` = **feat/cpaa's tip** = the completed-hardening commit. feat/film branched FROM the hardening tip; feat/cpaa has zero commits past it.
+- Pure-hardening control files (`swarm-runner.md`, `spec-completeness-checker.md`, `deepen-merge-runner.md`, `shared-spec-flask.md`, `CLAUDE.md`, `eval-harness/`, `tools/`): **byte-identical** between branches (empty diff).
+- feat/film's only SKILL.md changes since branching are `+64/-0` (5af6f4d) and `+46/-0` (06cefe4) — **purely additive, zero hardening lines altered**. All three control-file-touching commits (5af6f4d, 06cefe4, 2308826) are POST-070 meta-analysis additions that did not exist when run 070 executed.
+- **Conclusion:** merging feat/cpaa (`0d36a24`) brings EXACTLY the hardening run 070 validated. The merge is safe on the M7 axis (Track B's fixture caveat is separate, unchanged).
+
+### Secondary finding from the M7 check — empirically confirms M30 (stranded fix)
+The post-070 improvements live ONLY on feat/film and would **NOT travel** with a `feat/cpaa → master` merge:
+- **`5af6f4d` = the FC52 spec-provenance gate (Step 9w.9.5) + post-completion batch-scan** — the M2 fix for run 070's scariest near-miss (silent stale-spec ship). Merging feat/cpaa **strands this fix.**
+- Also stranded: Bucket 1 instruments (06cefe4: M29/M34/M23), Bucket 3 governance (2308826: M6), Bucket 2/4 docs (4eeab55, 94b600b).
+- This is **M30 playing out for real**: the run's key finding (spec-provenance, a SKILL bug) is orphaned relative to the hardening-BRANCH merge. The merge is clean AND the most valuable lesson of run 070 isn't on the branch you'd merge to get the hardening.
+
+**So the merge is really two decisions:** (a) the hardening (`0d36a24`) — validated, clean, safe; (b) the FC52 gate + instruments + governance — SKILL/agent improvements sitting only on feat/film, arguably higher-value than the hardening, needing their own path to master (cherry-pick the three control-file commits 5af6f4d/06cefe4/2308826, or selectively merge feat/film's `.claude/` changes — WITHOUT dragging the whole Film PM app onto master). Both remain operator decisions; this section records the evidence, not the call.
+
 ## Kickoff for the new session
 Read docs/handoffs/run-070-meta-triage-continuation.md and docs/reports/070/meta-analysis.md.
 Continue draining the PARKED meta-analysis patterns into their owning artifacts,
