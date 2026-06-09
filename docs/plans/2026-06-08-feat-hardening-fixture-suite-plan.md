@@ -70,60 +70,101 @@ guard is a Python mirror (not the shipped agent) as `MIRRORED` — never `EXERCI
   which is exactly why the drift trap is real (don't fork it; share it).
 - `tools/verify_delegated_status.py` exists — precedent for standalone Python that
   drives a pipeline mechanic.
-- Track A assembly recipe (verified in FC51 fix-status / swarm-runner): per-COMPLETED-worker
-  `git cherry-pick $(git merge-base <original_branch> <branch>)..<branch>`; a
-  cherry-pick conflict ⇒ abort with blocking class `assembly-ownership-conflict:`.
-- Ownership gate is three-dot `git diff --name-only <original_branch>...<branch>`.
+- Track A assembly recipe (per-COMPLETED-worker `git cherry-pick $(git merge-base
+  <original_branch> <branch>)..<branch>`; conflict ⇒ `assembly-ownership-conflict:`
+  abort) is **agent-prose inside `swarm-runner.md` Step 3 (lines 76-138)** — executed
+  by the swarm-runner LLM, NOT callable infrastructure (corrected by the deepen pass;
+  see below). The three-dot ownership gate (`git diff --name-only
+  <original_branch>...<branch>`, `SKILL.md` Step 10.5w:773) is orchestrator-inline
+  Bash — callable but not a reusable function.
+
+## Deepening findings (2026-06-08, plan-flow deepen pass — 3 parallel code-grounded agents)
+
+The plan's central assumption ("each guard can be driven against a fixture as the
+SHIPPED artifact") was tested against the real code. **Result: only Track B is cleanly
+exercisable-as-shipped today.** Most hardening guards are LLM-orchestration prose, not
+callable code — which means the Feed-Forward "least confident" risk is CONFIRMED REAL
+for Tracks A, C, and the FC52 repair. Callability matrix:
+
+| Guard (fixture) | What's shipped | Exercisable as-shipped? | Path |
+|---|---|---|---|
+| **Check 1b / FC50 (F-B1, F-B2)** | agent-prose in `spec-completeness-checker.md:85-109`; STATUS on line 1 of its report | **YES — invoke the real agent** on a tiny fixture spec, read the STATUS line (~60s, 1 agent call). Proven in prod (runs 069/070). `extractor.py:_parse_markdown_table` exists but a Python reimpl of 1b = a FORK (drift) — rejected. | invoke real agent |
+| **spec_eval scorer / Track C (F-C1)** | `spec_eval_gate.py` real CLI: `python -m eval_harness.spec_eval_gate <spec> [opts]` | **PARTIAL.** The SCRIPT blocks (exit 1 on FAIL/WARN_UNSCORABLE). Its "advisory/non-blocking" property lives in the SKILL **Step 9w.8 wrapper**, not the script. So a fixture can exercise the scorer (verdict + exit code) but the *non-blocking* behavior under test is orchestrator-prose. | scorer: callable; non-block: prose |
+| **FC52 provenance (F-D1)** | `SKILL.md` Step 9w.9.5: SHA-blob compare (`git rev-parse <branch>:<spec>` both sides) + LLM repair (inline-inject spec into briefs). No `tools/check_spec_provenance.py`. | **DETECTION yes** (the SHA compare is ~3 callable lines, trivially extractable); **REPAIR no** (agent judgment). Fixture exercises detection only. | extract detection (small) |
+| **Track A assembly + conflict (F-A1, F-A2)** | agent-prose in `swarm-runner.md:76-138`; executed by swarm-runner LLM | **NO** — not callable. BUT spike scripts already exist and demonstrate the behavior: `docs/reports/orchestration-hardening/spike-worktree-base.sh` and `spike-conflict.sh`. | extract OR promote spikes |
+
+**The meta-finding (surface to operator).** "Fixture the guards" turns out to partly
+mean "make the guards callable first." The hardening is mostly agent instructions, so
+genuine ship-exercising fixtures for Track A require a **share-not-fork extraction**
+(pull the cherry-pick/abort flow into e.g. `tools/assembly_worker.py` that the
+swarm-runner agent then CALLS, and the fixture calls too) — a real refactor of shipped
+hardening, larger than "write a fixture." Three honest paths for the non-Track-B
+guards, for the operator to choose (does NOT block Track B):
+- **(P-extract)** Refactor Track A + FC52-detection into shared callable functions →
+  agents call them, fixtures call them. Zero drift, fully testable, biggest scope.
+- **(P-promote)** Promote the EXISTING spike scripts into a maintained regression
+  fixture for Track A, labelled `SPIKE-VALIDATED` (honestly NOT `EXERCISED`, since a
+  spike is a copy of the recipe, not the ship). Cheapest; accepts mild drift risk.
+- **(P-accept)** Leave Track A/C as one-time spike-validated + field-proven (runs
+  069/070); fixture only the cleanly-testable slices (B, FC52-detection, scorer).
 
 ## Build sequence (phased; each phase ships independently)
 
-### Phase 0 — Verify-first spike (NO fixture code until this passes)
-For each of the three guard *families*, prove it can be driven in isolation against
-a crafted input while remaining the artifact the autopilot runs:
-- **Check 1b (B):** Can its structural logic run against a fixture spec file and
-  return FAIL/N/A deterministically? Decide ONE of: (i) invoke the real
-  `spec-completeness-checker` agent on the fixture and assert its verdict (true
-  guard-proof, one agent call), or (ii) extract Check 1b into a shared
-  `eval-harness` function that the agent is refactored to call (single source of
-  truth, zero drift) and test the function. Recommend (ii) ONLY if the agent proves
-  unreliable/expensive; default (i).
-- **Assembly/ownership/provenance (A, FC52):** Can a temp git repo reproduce the
-  divergent-base / same-file / diverged-spec scenarios and run the *actual* recipe
-  (merge-base cherry-pick; three-dot ownership diff; provenance diff) as Python
-  subprocess calls? (Expected yes — pure git.)
-- **Spec-eval (C):** Can `spec_eval_gate.py` run on a one-claim fixture and return
-  an advisory verdict without blocking? (Expected yes — it's already advisory.)
-Output: a one-page spike note in `docs/reports/hardening-fixtures/spike.md` recording,
-per guard, "invoked-as-shipped: yes/no" and the chosen invocation method. This
-resolves the Feed-Forward risk before any fixture is written.
+### Phase 0 — Verify-first spike (LARGELY PRE-RESOLVED by the deepen pass)
+The deepen pass already answered "invoked-as-shipped: yes/no" per guard (see the
+callability matrix above). Phase 0 now reduces to one operator decision plus two small
+confirmations:
+- **Operator decision (gates Phase 2 only):** choose **P-extract / P-promote / P-accept**
+  for Track A + FC52-repair (see meta-finding above). This does NOT gate Track B.
+- **Confirm (small):** (a) the real `spec-completeness-checker` agent returns
+  `STATUS: FAIL` on the F-B1 fixture spec and `N/A`/PASS on F-B2 (one agent call each);
+  (b) the FC52 SHA-compare extracts cleanly into a ~3-line callable.
+- Output: the one-page note at `docs/reports/hardening-fixtures/spike.md` recording the
+  matrix (done above) + the chosen Phase-2 path. The Feed-Forward risk is now RESOLVED,
+  not open.
 
 ### Phase 1 — MVP: Track-B proof + runner (unblocks the merge)
 - `eval-harness/fixtures/` scaffold + `validate_hardening.py` runner that discovers
-  fixtures, runs each, and prints the per-track `EXERCISED|MIRRORED / PASSED|FAILED`
-  matrix.
+  fixtures, runs each, and prints the per-track matrix. Fidelity label vocabulary
+  (honesty contract, M6): `EXERCISED` (drove the shipped artifact) | `SPIKE-VALIDATED`
+  (ran an existing spike copy) | `PROSE-ASSERTED` (checked an orchestrator-prose
+  contract, no executable guard) | `MIRRORED` (ran a Python reimplementation — a
+  last resort, never conflated with EXERCISED). Second axis: `PASSED | FAILED`.
 - **F-B1** (Track B FC50 guard): a ~30-line fixture spec with one genuine
   route→orchestration call declared as an `orchestration entrypoint` row with an
-  EMPTY `Full Signature`. Assert the gate FAILS naming the symbol. ← the decisive
-  Track-B evidence.
-- Matrix output for Track B: `EXERCISED ✓ / PASSED ✓`.
+  EMPTY `Full Signature`. The runner **invokes the real `spec-completeness-checker`
+  agent** on this spec and asserts its report STATUS line is `FAIL` naming the symbol
+  (exercises the ship, no reimplementation). ← the decisive Track-B evidence.
+- Matrix output for Track B: `EXERCISED ✓ / PASSED ✓` (real agent, not a mirror).
 
-### Phase 2 — Track A + FC52 (deterministic git fixtures)
+### Phase 2 — Track A + FC52 (GATED on the Phase-0 P-extract/P-promote/P-accept choice)
+Per the deepen pass, Track A is agent-prose, so these fixtures' fidelity depends on the
+chosen path. Build accordingly:
 - **F-A1** (FC51 cherry-pick): temp repo, feature branch + orphan commit on default
-  branch (divergent base), 1–2 worker branches. Run the merge-base cherry-pick
-  recipe. Assert: assembly clean, per-worker base == `merge-base`, no commit dropped.
-- **F-A2** (FC51 hidden dep): two worker branches touching the SAME file. Run
-  ownership gate + assembly. Assert abort with `assembly-ownership-conflict:` (proves
-  the escape is caught, not silently merged).
-- **F-D1** (FC52 provenance): worktree-base spec deliberately diverged from the gated
-  spec. Run the Step 9w.9.5 provenance check. Assert it detects the diff and
-  records/repairs before "spawn."
+  branch (divergent base), 1–2 worker branches. Run the merge-base cherry-pick recipe;
+  assert assembly clean, per-worker base == `merge-base`, no commit dropped. Under
+  **P-extract** this calls the extracted `tools/assembly_worker.py` (labelled
+  `EXERCISED`); under **P-promote** it wraps the existing `spike-worktree-base.sh`
+  (labelled `SPIKE-VALIDATED`).
+- **F-A2** (FC51 hidden dep): two worker branches touching the SAME file → assert abort
+  with `assembly-ownership-conflict:`. Same P-extract/P-promote labelling; the existing
+  `spike-conflict.sh` is the P-promote source.
+- **F-D1** (FC52 provenance — DETECTION only): worktree-base spec deliberately diverged
+  from the gated spec. Run the extracted SHA-blob compare; assert it reports divergence
+  before "spawn." The LLM **repair** (inline-inject) is agent judgment and is OUT of
+  fixture scope — the fixture asserts detection fires, not that repair is correct.
 
 ### Phase 3 — Completeness (blind-spot + advisory documentation)
 - **F-B2** (FC50 false-N/A): a spec with ZERO orchestration-entrypoint rows but a
   real route→module call in fixture code. Assert gate returns N/A AND the assembly
   contract-check backstops it. Documents the known blind spot honestly.
-- **F-C1** (Track C advisory): a deliberately vague claim ("validate the input").
-  Assert spec-eval flags it advisory and the pipeline does NOT block.
+- **F-C1** (Track C advisory) — TWO-LAYER, per the deepen pass: (layer 1, callable)
+  invoke `python -m eval_harness.spec_eval_gate <vague-spec>` and assert it produces a
+  verdict + JSON report (the scorer runs). (layer 2, the actual demotion) assert the
+  SKILL **Step 9w.8 wrapper** treats a non-PASS exit as advisory and proceeds — note
+  this property is orchestrator-prose, so the fixture can only assert it by checking the
+  Step 9w.8 contract text / a wrapper shim, NOT the `spec_eval_gate.py` exit code (which
+  still blocks). Label Track C `EXERCISED` for layer 1, `PROSE-ASSERTED` for layer 2.
 
 ## Acceptance Tests (EARS)
 
@@ -131,10 +172,10 @@ resolves the Feed-Forward risk before any fixture is written.
 - WHEN F-B1 runs against the spec with an unpinned orchestration entrypoint THE
   SYSTEM SHALL report Track B `EXERCISED` and the gate verdict `FAIL` naming the
   symbol.
-  - Verify: `eval-harness/.venv/bin/python eval-harness/validate_hardening.py --fixture F-B1` — exit non-zero from the gate, matrix row `B | EXERCISED | PASSED`.
+  - Verify: `eval-harness/.venv/bin/python eval-harness/validate_hardening.py --fixture F-B1` — the spec-completeness-checker report's line-1 STATUS is `FAIL` naming the symbol; runner matrix row `B | EXERCISED | PASSED`.
 - WHEN F-A1 runs with a divergent-base scenario THE SYSTEM SHALL assemble cleanly
   with each worker's cherry-pick base equal to `merge-base(original_branch, branch)`.
-  - Verify: `... validate_hardening.py --fixture F-A1` — matrix row `A | EXERCISED | PASSED`; spike/fixture log shows per-worker base == merge-base.
+  - Verify: `... validate_hardening.py --fixture F-A1` — matrix row `A | EXERCISED|SPIKE-VALIDATED | PASSED` (label per the chosen Phase-2 path); log shows per-worker base == merge-base.
 - WHEN F-A2 runs with two workers owning the same file THE SYSTEM SHALL abort
   assembly with `assembly-ownership-conflict:`.
   - Verify: `... --fixture F-A2` — output contains `assembly-ownership-conflict:`.
@@ -152,9 +193,9 @@ resolves the Feed-Forward risk before any fixture is written.
 - WHEN F-B2 runs (zero entrypoint rows, real call exists) THE SYSTEM SHALL return
   gate verdict `N/A` and assert the contract-check backstop, NOT a false PASS.
   - Verify: `... --fixture F-B2` — verdict `N/A`; matrix notes the backstop.
-- WHEN F-C1 runs a vague claim THE SYSTEM SHALL record an advisory result and the
-  pipeline SHALL proceed (no block).
-  - Verify: `... --fixture F-C1` — advisory verdict present, exit code 0 (non-blocking).
+- WHEN F-C1 runs a vague claim THE SYSTEM SHALL produce a scorer verdict (layer 1) AND
+  assert the Step 9w.8 wrapper's non-blocking contract (layer 2).
+  - Verify: `... --fixture F-C1` — `spec_eval_gate.py` emits a JSON report + verdict (note: the SCRIPT exits non-zero on non-PASS — that is expected; the demotion is in the 9w.8 wrapper, which the fixture asserts via the wrapper contract/shim, labelled `PROSE-ASSERTED`).
 - WHEN any fixture's expected verdict does not occur THE SYSTEM SHALL exit non-zero
   and name the failing fixture.
   - Verify: temporarily pin F-B1's signature → suite reports `B | EXERCISED | FAILED`.
@@ -178,23 +219,32 @@ resolves the Feed-Forward risk before any fixture is written.
   evidence); (b) reimplementing each gate in Python for clean determinism — rejected
   as the drift trap (validates a copy, not the ship); (c) MVP = all six fixtures —
   descoped to F-B1-first because Track B is the only merge-blocking gap.
-- **Least confident:** that all three git-mechanics fixtures (F-A1/F-A2/F-D1) can
-  drive the *actual* assembly/ownership/provenance code paths via subprocess without
-  re-encoding their logic. If the recipes live only inside agent prose (not callable
-  code), F-A* may require the same share-not-fork refactor as Check 1b — Phase 0
-  determines this and it is the gate on Phase 2.
+- **Least confident → NOW RESOLVED by the deepen pass.** The open question was whether
+  F-A1/F-A2/F-D1 could drive the *actual* code paths. Answer: **no** — Track A assembly
+  + conflict are agent-prose (`swarm-runner.md:76-138`), the FC52 repair is agent
+  judgment, and even Track C's "advisory" property is orchestrator-prose (the
+  `spec_eval_gate.py` script itself blocks). Only Track B (via invoking the real agent),
+  the FC52 SHA-detection, and the spec-eval scorer are exercisable-as-shipped. So the
+  residual uncertainty is no longer technical — it is the operator's **P-extract /
+  P-promote / P-accept** choice for Track A (refactor for true fidelity vs promote the
+  existing spikes vs accept field+spike validation). Track B (the merge-blocker) is
+  unaffected and clean.
 
 ## Codex handoff prompt
 
 > Review `docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md` against
-> `docs/proposals/validate-hardening-on-fixtures.md` and the shipped guards it
-> exercises (`.claude/agents/spec-completeness-checker.md` Check 1b lines 85-106;
-> `.claude/agents/swarm-runner.md` cherry-pick assembly + `assembly-ownership-conflict`;
-> autopilot `SKILL.md` Step 9w.9.5 provenance gate; `eval-harness/spec_eval_gate.py`).
-> Focus your review on ONE question above all: **does any fixture risk validating a
-> reimplementation of a guard rather than the guard the autopilot actually runs?**
-> For each of the six fixtures, state whether the plan's invocation method exercises
-> the shipped artifact or a mirror, and whether the Phase-0 spike adequately gates
-> that distinction. Then check the EARS tests are individually runnable and the
-> EXERCISED-vs-MIRRORED honesty distinction (M6) is preserved end to end. Flag any
-> fixture whose "deterministic" claim is overstated (LLM in the loop).
+> `docs/proposals/validate-hardening-on-fixtures.md` and the shipped guards
+> (`.claude/agents/spec-completeness-checker.md` Check 1b:85-109;
+> `.claude/agents/swarm-runner.md:76-138` cherry-pick assembly + `assembly-ownership-conflict`;
+> autopilot `SKILL.md` Step 9w.9.5 provenance gate + Step 9w.8 spec-eval wrapper;
+> `eval-harness/spec_eval_gate.py`). A plan-flow deepen pass already established the
+> "Deepening findings" callability matrix (most guards are agent-prose, only Track B is
+> cleanly exercisable-as-shipped). **Pressure-test two things specifically:**
+> (1) Is the deepen matrix CORRECT? Verify each row against the cited lines — especially
+> the claim that Track A assembly/abort is agent-prose-only and that Track C's advisory
+> property lives in the 9w.8 wrapper not `spec_eval_gate.py`. Flag any miscategorization.
+> (2) Is the **P-extract / P-promote / P-accept** framing for Track A sound, and is the
+> EXERCISED / SPIKE-VALIDATED / PROSE-ASSERTED labelling honest (does it ever let a
+> mirror or spike be reported as EXERCISED)? Then confirm the Phase-1 MVP (F-B1 via the
+> real agent) is genuinely decisive Track-B evidence and the EARS tests are individually
+> runnable.

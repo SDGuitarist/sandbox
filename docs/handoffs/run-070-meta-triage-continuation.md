@@ -77,15 +77,27 @@ triage work:
   M35 decision-log opt-in trial (Bucket 4). Real builds, not doc edits.
 - **OPEN OPERATOR DECISIONS** (unchanged, untouched): branch merge / push (below).
 
-### NEXT STEP TEED UP — M4 fixture suite plan drafted (2026-06-08)
-`docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md` — gate-ready plan for the
-deterministic fixture suite that gives Track B its decisive proof (the merge-blocker).
-Phased: Phase 0 verify-first spike (can each guard be exercised as the SHIPPED artifact,
-not a mirror? — the FC52/M1 drift trap is the central risk), Phase 1 = F-B1 + runner +
-EXERCISED/PASSED matrix (unblocks merge), Phase 2 = F-A1/F-A2/F-D1 (git mechanics),
-Phase 3 = F-B2/F-C1. EARS acceptance + Feed-Forward + Codex handoff included. **Awaiting
-plan review (Codex) + operator go for the build phase.** Proposal status flipped
-PROPOSED→PLANNED.
+### NEXT STEP TEED UP — M4 fixture suite plan drafted + DEEPENED (2026-06-08)
+`docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md` — gate-ready plan
+(plan→deepen→self-review chain run; Codex handoff included, awaiting your manual review).
+A 3-agent deepen pass tested the plan's core assumption against the real code and
+**corrected it**: most hardening guards are agent/orchestrator PROSE, not callable code.
+Callability matrix now in the plan. Consequences:
+- **Track B (the merge-blocker) is cleanly exercisable-as-shipped** — F-B1 invokes the
+  REAL `spec-completeness-checker` agent on a tiny unpinned-entrypoint spec and asserts
+  its STATUS=FAIL. Phase 1 MVP is decisive and viable as designed. ✅
+- **Track A** (cherry-pick assembly + conflict-abort) is agent-prose (`swarm-runner.md:76-138`),
+  NOT callable — existing spike scripts (`docs/reports/orchestration-hardening/spike-*.sh`)
+  demonstrate it. **FC52** gate = SHA-compare detection (extractable) + LLM repair
+  (agent judgment). **Track C** "advisory" property is in the 9w.8 WRAPPER, not
+  `spec_eval_gate.py` (which blocks).
+- New operator decision for Phase 2 (does NOT gate Track B): **P-extract** (refactor
+  Track A into shared callable code — zero drift, biggest scope) vs **P-promote** (wrap
+  the existing spikes, labelled SPIKE-VALIDATED) vs **P-accept** (fixture only the
+  testable slices; Track A stays field+spike-validated).
+- Honesty labels (M6) baked into the runner matrix: EXERCISED / SPIKE-VALIDATED /
+  PROSE-ASSERTED / MIRRORED — a mirror is never reported as EXERCISED.
+**Awaiting plan review (Codex) + operator go for the build.** Proposal flipped PROPOSED→PLANNED.
 
 ## BIG PARALLEL EFFORT (own context window) — Retroactive Corpus Meta-Analysis
 **`docs/proposals/retroactive-corpus-meta-analysis.md`** — operator idea (2026-06-08):
