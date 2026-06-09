@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{% if view == 'runs' %}Runs{% else %}Dashboard{% endif %} — CPAA Replay{% endblock %}
+{% block content %}
+<h1>{% if view == 'runs' %}Replay Runs{% else %}Dashboard{% endif %}</h1>
+
+{% if view != 'runs' %}
+<div class="card">
+  <h2>Dedup Counters</h2>
+  <table>
+    <thead><tr><th>Kind</th><th>Count</th></tr></thead>
+    <tbody>
+      <tr><td>dup_exact</td><td>{{ dedup_counters.dup_exact }}</td></tr>
+      <tr><td>dup_conflict</td><td>{{ dedup_counters.dup_conflict }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Latest Projection Summary</h2>
+  <table>
+    <thead><tr><th>Projection Table</th><th>Rows</th></tr></thead>
+    <tbody>
+      <tr><td>station_state</td><td>{{ projection_summary.station_state }}</td></tr>
+      <tr><td>auction_state</td><td>{{ projection_summary.auction_state }}</td></tr>
+      <tr><td>environmental_state</td><td>{{ projection_summary.environmental_state }}</td></tr>
+      <tr><td>system_state</td><td>{{ projection_summary.system_state }}</td></tr>
+    </tbody>
+  </table>
+  <p>Anomalies recorded: {{ anomaly_count }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Replay Runs</h2>
+  {% if runs %}
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th><th>Status</th><th>Events Applied</th>
+        <th>Projection Hash</th><th>Reset Done</th>
+        <th>Started</th><th>Finished</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td><a href="{{ url_for('replay.run_detail', run_id=run.run_id) }}"><code>{{ run.run_id }}</code></a></td>
+        <td>{{ run.status }}</td>
+        <td>{{ run.events_applied }}</td>
+        <td>{% if run.projection_hash %}<code>{{ run.projection_hash }}</code>{% else %}—{% endif %}</td>
+        <td>{{ run.reset_done }}</td>
+        <td>{{ run.started_at if run.started_at is not none else '—' }}</td>
+        <td>{{ run.finished_at if run.finished_at is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No replay runs yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Determinism Results</h2>
+  {% if determinism_results %}
+  <table>
+    <thead>
+      <tr><th>Result</th><th>Run A</th><th>Run B</th><th>Match</th><th>Created</th></tr>
+    </thead>
+    <tbody>
+      {% for result in determinism_results %}
+      <tr>
+        <td><a href="{{ url_for('validate.detail', result_id=result.id) }}">{{ result.id }}</a></td>
+        <td><code>{{ result.run_a }}</code></td>
+        <td><code>{{ result.run_b }}</code></td>
+        <td>{{ 'match' if result.match == 1 else 'mismatch' }}</td>
+        <td>{{ result.created_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No determinism comparisons yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

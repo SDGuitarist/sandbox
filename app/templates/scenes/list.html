@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Scenes{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Scenes</h1>
+  {% if g.member and g.member.role in ['producer', 'ad'] %}
+  <a class="btn btn-primary" href="{{ url_for('scenes.new', project_id=project.id) }}">Add Scene</a>
+  {% endif %}
+</div>
+
+{% if scenes %}
+<div class="card bg-dark border-secondary">
+  <div class="table-responsive">
+    <table class="table table-dark table-striped table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Scene #</th>
+          <th>Description</th>
+          <th>INT/EXT</th>
+          <th>Day/Night</th>
+          <th>Pages</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scene in scenes %}
+        <tr>
+          <td>{{ scene.scene_number }}</td>
+          <td>{{ scene.description or '' }}</td>
+          <td>{{ scene.int_ext }}</td>
+          <td>{{ scene.day_night }}</td>
+          <td>{{ scene.page_count_eighths | page_count }}</td>
+          <td>{{ scene.location_name or '—' }}</td>
+          <td><span class="badge bg-secondary">{{ scene.status }}</span></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-light"
+               href="{{ url_for('scenes.detail', project_id=project.id, scene_id=scene.id) }}">View</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card bg-dark border-secondary">
+  <div class="card-body text-center text-muted">
+    No scenes yet.
+    {% if g.member and g.member.role in ['producer', 'ad'] %}
+    <a href="{{ url_for('scenes.new', project_id=project.id) }}">Add one?</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -340,7 +340,10 @@ CREATE TABLE IF NOT EXISTS call_sheet_cast (
     pickup_time TEXT,
     makeup_time TEXT,
     on_set_time TEXT,
-    status TEXT NOT NULL DEFAULT 'W' CHECK (status IN ('W','SW','WF','SWF','H')),
+    -- Call sheets list ONLY cast working that day. Status is the Start/Work/Finish
+    -- marker for THIS shoot date: SWF (only working day), SW (first), WF (last), W (mid).
+    -- 'H' (hold) is DOOD-grid-only, never a call_sheet_cast value.
+    status TEXT NOT NULL DEFAULT 'W' CHECK (status IN ('W','SW','WF','SWF')),
     remarks TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cs_cast_sheet ON call_sheet_cast(call_sheet_id);
@@ -407,8 +410,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
     content='', contentless_delete=1
 );
 
--- FTS5 sync triggers use BEFORE (not AFTER) to prevent silent index corruption
--- Triggers are created by the search agent on: scenes, cast_members, crew_members, locations
+-- FTS5 index is maintained by EXACTLY ONE writer: explicit index_entity()/remove_entity()
+-- calls from the scenes/cast/crew/locations routes (see Search Index Wiring). There are
+-- NO database triggers on the source tables (FC52 single-writer). Two writers (triggers +
+-- explicit calls) would double-index this contentless table. The database agent does NOT
+-- create FTS triggers; the search agent does NOT touch schema.sql.
 
 -- ============================================================
 -- SEED DATA (database agent inserts these in init_db)
@@ -584,7 +590,7 @@ def init_app(app):
 | budget_categories | budget_models | expenses, reports |
 | budget_line_items | budget_models | reports |
 | department_budgets | budget_models | expenses, reports |
-| expenses | expense_models | budget (via triggers), reports |
+| expenses | expense_models | budget (via spent_cents updates in expense_models), reports |
 | search_index | search_models | search |
 
 ---
@@ -642,9 +648,9 @@ def create_scene(conn, project_id, scene_number, description, int_ext, day_night
 # Returns: list[dict] with keys: id, scene_number, description, int_ext, day_night, page_count_eighths, location_name, status
 def get_scenes(conn, project_id) -> list: ...
 
-# Returns: list[dict] -- subset by scene IDs
+# Returns: list[dict] with keys: id, scene_number, description, int_ext, day_night, page_count_eighths
 # Usage: scenes = get_scenes_by_ids(conn, scene_ids)
-def get_scenes_by_ids(conn, scene_ids) -> list: ...
+def get_scenes_by_ids(conn, scene_ids) -> list[dict]: ...
 
 # Returns: dict or None
 def get_scene(conn, scene_id) -> dict | None: ...
@@ -670,7 +676,7 @@ def get_cast_member(conn, cast_member_id) -> dict | None: ...
 
 # Returns: list[dict] with keys: id, name, character_name, cast_id_number
 # Usage: cast = get_cast_for_scenes(conn, scene_ids)
-def get_cast_for_scenes(conn, scene_ids) -> list: ...
+def get_cast_for_scenes(conn, scene_ids) -> list[dict]: ...
 
 # Returns: None -- does NOT commit
 def add_cast_to_scene(conn, scene_id, cast_member_id) -> None: ...
@@ -693,9 +699,9 @@ def get_crew_members(conn, project_id) -> list: ...
 
 # Returns: list[dict] grouped by department: [{department_name, members: [{id, name, role_title, phone}]}]
 # Usage: grouped = get_crew_by_department(conn, project_id)
-def get_crew_by_department(conn, project_id) -> list: ...
+def get_crew_by_department(conn, project_id) -> list[dict]: ...
 
-# Returns: dict or None
+# Returns: dict or None with keys: id, project_id, name, role_title, department_id, department_name, phone, email, daily_rate_cents
 def get_crew_member(conn, crew_member_id) -> dict | None: ...
 ```
 
@@ -703,7 +709,7 @@ def get_crew_member(conn, crew_member_id) -> dict | None: ...
 
 ```python
 # Returns: list[dict] with keys: id, name, head_id, head_name
-def get_departments(conn, project_id) -> list: ...
+def get_departments(conn, project_id) -> list[dict]: ...
 
 # Returns: dict or None
 def get_department(conn, department_id) -> dict | None: ...
@@ -734,7 +740,7 @@ def create_schedule_entry(conn, project_id, scene_id, location_id, shoot_date, s
 
 # Returns: list[dict] with keys: id, scene_id, scene_number, location_id, location_name, shoot_date, sort_order, int_ext, day_night, page_count_eighths, strip_color_class
 # Usage: entries = get_schedule_entries(conn, project_id, shoot_date)
-def get_schedule_entries(conn, project_id, shoot_date) -> list: ...
+def get_schedule_entries(conn, project_id, shoot_date) -> list[dict]: ...
 
 # Returns: list[str] -- distinct shoot dates in order
 def get_shoot_dates(conn, project_id) -> list: ...
@@ -749,7 +755,9 @@ def delete_schedule_entry(conn, entry_id) -> None: ...
 ### callsheet_models.py
 
 ```python
-# Returns: int (call_sheet_id) -- commits internally (BEGIN IMMEDIATE, multi-table)
+# Returns: int (call_sheet_id) -- commits internally (BEGIN IMMEDIATE, multi-table).
+#   IDEMPOTENT: if a call sheet already exists for (project_id, shoot_date) it returns
+#   that existing id (no duplicate, no UNIQUE violation). Route redirects to it.
 def generate_call_sheet(conn, project_id, shoot_date) -> int: ...
 
 # Returns: dict or None
@@ -790,8 +798,13 @@ def update_line_item(conn, line_item_id, estimated_cents=None, actual_cents=None
 ### expense_models.py
 
 ```python
-# Returns: int (expense_id) -- commits internally (BEGIN IMMEDIATE + spent_cents update)
-def create_expense(conn, project_id, department_id, amount_cents, vendor, description, expense_date, category_id, created_by) -> int: ...
+# Returns: int (expense_id) or None if it would exceed the department allocation
+#   -- commits internally (BEGIN IMMEDIATE + spent_cents update).
+#   Inside the lock: re-read department_budgets.spent_cents/allocated_cents; if
+#   spent_cents + amount_cents > allocated_cents, ROLLBACK and return None (do NOT
+#   rely on the CHECK constraint raising — that path is a 500). Route flashes the
+#   remaining amount on None. Mirrors create_schedule_entry -> int | None.
+def create_expense(conn, project_id, department_id, amount_cents, vendor, description, expense_date, category_id, created_by) -> int | None: ...
 
 # Returns: bool -- commits internally (BEGIN IMMEDIATE + spent_cents rollback)
 def delete_expense(conn, expense_id) -> bool: ...
@@ -801,6 +814,10 @@ def approve_expense(conn, expense_id, approved_by) -> bool: ...
 
 # Returns: list[dict]
 def get_expenses(conn, project_id, department_id=None) -> list: ...
+
+# Returns: dict or None with keys: id, project_id, department_id, created_by, approved_by, amount_cents, expense_date, vendor, description, category_id
+# Usage: expense = get_expense(conn, expense_id) -- used by expenses routes for ownership/IDOR checks
+def get_expense(conn, expense_id) -> dict | None: ...
 ```
 
 ### search_models.py
@@ -826,6 +843,46 @@ def get_dood_grid(conn, project_id) -> list: ...
 # Returns: dict -- production progress stats
 def get_production_progress(conn, project_id) -> dict: ...
 ```
+
+---
+
+## Transition Maps (FC54 — referenced constants must be defined)
+
+Both transition validators in Input Validation reference these maps (`VALID_PHASE_TRANSITIONS[current_phase]` and `VALID_SCENE_TRANSITIONS[current_status]`).
+These maps are defined here, each owned by exactly one agent and imported only within
+that agent's own routes (no cross-boundary import). A target phase/status is valid iff
+it appears in the list for the current value. Same-value (no-op) and any value not in
+the list are rejected with the prescribed flash.
+
+```python
+# app/models/project_models.py (projects agent owns this constant)
+# Phases are forward-only and linear; 'distribution' is terminal.
+VALID_PHASE_TRANSITIONS = {
+    'development':     ['pre_production'],
+    'pre_production':  ['production'],
+    'production':      ['post_production'],
+    'post_production': ['distribution'],
+    'distribution':    [],
+}
+# Used by: transition_project_phase() and POST /projects/<id>/phase
+```
+
+```python
+# app/models/scene_models.py (scenes agent owns this constant)
+VALID_SCENE_TRANSITIONS = {
+    'not_started': ['in_prep', 'on_hold'],
+    'in_prep':     ['ready', 'on_hold'],
+    'ready':       ['shooting', 'on_hold'],
+    'shooting':    ['wrapped', 'on_hold'],
+    'on_hold':     ['in_prep', 'ready', 'shooting'],
+    'wrapped':     [],   # terminal
+}
+# Used by: transition_scene_status() and POST /scenes/<pid>/<sid>/status
+```
+
+The route validates `new_value in VALID_*_TRANSITIONS.get(current, [])`; the model
+function re-checks the same inside its BEGIN IMMEDIATE lock (TOCTOU fence) and returns
+False if invalid.
 
 ---
 
@@ -899,6 +956,21 @@ def require_role(*roles):
     return decorator
 ```
 
+**Decorator stacking order (MANDATORY — same for ALL project-scoped routes).**
+Python applies decorators bottom-up, so the on-page order below IS the execution order.
+`require_project_member` reads `g.user` (set by `login_required`); `require_role` reads
+`g.member` (set by `require_project_member`). Writing them out of order ⇒ KeyError/500 on
+every request to that route. Always stack exactly:
+
+```python
+@bp.route('/<int:project_id>/...', methods=[...])
+@login_required            # runs 1st — sets g.user
+@require_project_member    # runs 2nd — sets g.project, g.member (404/403)
+@require_role('producer')  # runs 3rd — checks g.member['role'] (omit for all-members routes)
+def handler(project_id, ...):
+    ...
+```
+
 ---
 
 ## Route Table
@@ -951,10 +1023,10 @@ def require_role(*roles):
 | Method | Path | Handler | Auth | Template |
 |--------|------|---------|------|----------|
 | GET | /\<int:project_id\> | crew.list | login+member | crew/list.html |
-| GET | /\<int:project_id\>/new | crew.new | login+member+producer/ad/dept_head | crew/new.html |
-| POST | /\<int:project_id\> | crew.create | login+member+producer/ad/dept_head | redirect |
+| GET | /\<int:project_id\>/new | crew.new | login+member+producer/ad/department_head | crew/new.html |
+| POST | /\<int:project_id\> | crew.create | login+member+producer/ad/department_head | redirect |
 | GET | /\<int:project_id\>/\<int:crew_member_id\> | crew.detail | login+member | crew/detail.html |
-| POST | /\<int:project_id\>/\<int:crew_member_id\>/edit | crew.update | login+member+producer/ad/dept_head | redirect |
+| POST | /\<int:project_id\>/\<int:crew_member_id\>/edit | crew.update | login+member+producer/ad/department_head | redirect |
 
 ### departments (url_prefix=/departments)
 
@@ -1009,10 +1081,10 @@ def require_role(*roles):
 
 | Method | Path | Handler | Auth | Template |
 |--------|------|---------|------|----------|
-| GET | /\<int:project_id\> | expenses.list | login+member+producer/dept_head | expenses/list.html |
-| GET | /\<int:project_id\>/new | expenses.new | login+member+producer/dept_head | expenses/new.html |
-| POST | /\<int:project_id\> | expenses.create | login+member+producer/dept_head | redirect |
-| POST | /\<int:project_id\>/\<int:expense_id\>/delete | expenses.delete | login+member+producer/dept_head | redirect |
+| GET | /\<int:project_id\> | expenses.list | login+member+producer/department_head | expenses/list.html |
+| GET | /\<int:project_id\>/new | expenses.new | login+member+producer/department_head | expenses/new.html |
+| POST | /\<int:project_id\> | expenses.create | login+member+producer/department_head | redirect |
+| POST | /\<int:project_id\>/\<int:expense_id\>/delete | expenses.delete | login+member+producer/department_head | redirect |
 | POST | /\<int:project_id\>/\<int:expense_id\>/approve | expenses.approve | login+member+producer | redirect |
 
 ### reports (url_prefix=/reports)
@@ -1102,8 +1174,8 @@ fetch(url, {
 
 ## Export Names Table
 
-| Name | Type | Defined By | Used By |
-|------|------|------------|---------|
+| Name | Type | Defined By | Used By | Full Signature |
+|------|------|------------|---------|----------------|
 | `get_db` | function | app/database.py | ALL agents |
 | `init_db` | function | app/database.py | app factory |
 | `login_required` | decorator | auth routes | ALL route agents |
@@ -1134,7 +1206,7 @@ fetch(url, {
 | `get_crew_members` | model fn | crew_models | crew routes |
 | `get_crew_by_department` | model fn | crew_models | callsheets routes |
 | `get_crew_member` | model fn | crew_models | crew routes |
-| `get_departments` | model fn | department_models | departments routes, callsheets routes, crew routes |
+| `get_departments` | model fn | department_models | departments routes, callsheets routes, crew routes, expenses routes |
 | `get_department` | model fn | department_models | departments routes |
 | `assign_department_head` | model fn | department_models | departments routes |
 | `create_location` | model fn | location_models | locations routes |
@@ -1160,6 +1232,7 @@ fetch(url, {
 | `delete_expense` | model fn | expense_models | expenses routes |
 | `approve_expense` | model fn | expense_models | expenses routes |
 | `get_expenses` | model fn | expense_models | expenses routes, reports routes |
+| `get_expense` | model fn | expense_models | expenses routes (ownership/IDOR checks) |
 | `search` | model fn | search_models | search routes |
 | `index_entity` | model fn | search_models | scenes, cast, crew, locations routes |
 | `remove_entity` | model fn | search_models | scenes, cast, crew, locations routes |
@@ -1178,7 +1251,7 @@ fetch(url, {
 | `schedule.index` | endpoint | schedule routes | navbar |
 | `callsheets.list` | endpoint | callsheets routes | navbar |
 | `budget.index` | endpoint | budget routes | navbar (producer only) |
-| `expenses.list` | endpoint | expenses routes | navbar (producer/dept_head) |
+| `expenses.list` | endpoint | expenses routes | navbar (producer/department_head) |
 | `reports.index` | endpoint | reports routes | navbar |
 | `search.search_page` | endpoint | search routes | navbar search form |
 | `scaffold` | blueprint | app/__init__.py | -- |
@@ -1195,6 +1268,26 @@ fetch(url, {
 | `expenses` | blueprint | expenses routes | app/__init__.py |
 | `reports` | blueprint | reports routes | app/__init__.py |
 | `search` | blueprint | search routes | app/__init__.py |
+
+### Orchestration Entrypoints (FC50 — cross-boundary calls pinned with full signatures)
+
+These are the cross-boundary consumption points where a wrong import name, arity, or
+return type crashes the consumer (the Run-069 B3/C1/C6 failure mode). The call sheet
+surface is the densest (6 imports). Signatures here are AUTHORITATIVE — producers and
+consumers must match character-for-character.
+
+| Name | Type | Defined By | Used By | Full Signature |
+|------|------|------------|---------|----------------|
+| `get_schedule_entries` | orchestration entrypoint | schedule_models | callsheet_models, reports routes | `get_schedule_entries(conn, project_id, shoot_date) -> list[dict]` (keys: id, scene_id, scene_number, location_id, location_name, shoot_date, sort_order, int_ext, day_night, page_count_eighths, strip_color_class) |
+| `get_cast_for_scenes` | orchestration entrypoint | cast_models | callsheet_models | `get_cast_for_scenes(conn, scene_ids) -> list[dict]` (keys: id, name, character_name, cast_id_number) |
+| `get_scenes_by_ids` | orchestration entrypoint | scene_models | callsheet_models | `get_scenes_by_ids(conn, scene_ids) -> list[dict]` (keys: id, scene_number, description, int_ext, day_night, page_count_eighths) |
+| `get_location` | orchestration entrypoint | location_models | callsheet_models | `get_location(conn, location_id) -> dict \| None` (keys: id, name, address, contact_name, contact_phone, permit_status, nearest_hospital) |
+| `get_crew_by_department` | orchestration entrypoint | crew_models | callsheets routes | `get_crew_by_department(conn, project_id) -> list[dict]` (shape: [{department_name, members: [{id, name, role_title, phone}]}]) |
+| `get_departments` | orchestration entrypoint | department_models | callsheets routes, crew routes, expenses routes | `get_departments(conn, project_id) -> list[dict]` (keys: id, name, head_id, head_name) |
+| `login_required` | orchestration entrypoint | auth routes | ALL route agents | `login_required(f) -> Callable` (sets g.user; redirects to auth.login if no session) |
+| `require_project_member` | orchestration entrypoint | auth routes | ALL project-scoped route agents | `require_project_member(f) -> Callable` (sets g.project, g.member; 404/403) |
+| `require_role` | orchestration entrypoint | auth routes | ALL project-scoped route agents | `require_role(*roles) -> Callable` (checks g.member['role'] in roles AFTER require_project_member) |
+| `get_db` | orchestration entrypoint | app/database.py | ALL route agents | `get_db() -> sqlite3.Connection` (row_factory=Row; PRAGMAs set; NOT a context manager) |
 
 ---
 
@@ -1225,6 +1318,7 @@ fetch(url, {
 | Producer | Consumer | Import Path |
 |----------|----------|-------------|
 | app/models/budget_models.py | app/blueprints/expenses/routes.py | `from app.models.budget_models import get_department_allocation` |
+| app/models/department_models.py | app/blueprints/expenses/routes.py | `from app.models.department_models import get_departments` |
 | app/models/expense_models.py | app/blueprints/reports/routes.py | `from app.models.expense_models import get_expenses` |
 | app/models/budget_models.py | app/blueprints/reports/routes.py | `from app.models.budget_models import get_budget_summary` |
 
@@ -1288,16 +1382,16 @@ fetch(url, {
 | POST /auth/register | username, password, display_name | username 3-50 chars, password 8+ chars, display_name 1-100 | Flash specific error, redirect |
 | POST /projects | title | required, strip, 1-200 chars | Flash "Title is required", redirect |
 | POST /projects/\<id\>/edit | title, description, total_budget_cents | title required 1-200, budget int() try/except >= 0 | Flash error, redirect |
-| POST /projects/\<id\>/phase | new_phase | must be in VALID_TRANSITIONS[current] | Flash "Invalid transition", redirect |
+| POST /projects/\<id\>/phase | new_phase | must be in VALID_PHASE_TRANSITIONS[current_phase] | Flash "Invalid transition", redirect |
 | POST /scenes/\<pid\> | scene_number, int_ext, day_night, page_count_eighths | scene_number required unique-per-project, int_ext in set, day_night in set, page_count int > 0 | Flash specific, redirect |
-| POST /scenes/\<pid\>/\<sid\>/status | new_status | must be in VALID_TRANSITIONS[current] | Flash "Invalid transition", redirect |
+| POST /scenes/\<pid\>/\<sid\>/status | new_status | must be in VALID_SCENE_TRANSITIONS[current_status] | Flash "Invalid transition", redirect |
 | POST /cast/\<pid\> | name, character_name, cast_id_number | name required, character required, cast_id int 1-99 unique-per-project | Flash specific, redirect |
 | POST /crew/\<pid\> | name, role_title, department_id | name required, role_title required, department_id must exist in project | Flash specific, redirect |
 | POST /locations/\<pid\> | name | required 1-200 chars | Flash "Name is required", redirect |
 | POST /schedule/\<pid\> | scene_id, location_id, shoot_date | scene_id must exist, location_id must exist, date YYYY-MM-DD format | Flash specific, redirect |
 | POST /schedule/\<pid\>/\<eid\>/delete | -- | entry must exist, entry.project_id == pid | 404 |
 | POST /schedule/\<pid\>/reorder | JSON: order (list[int]), shoot_date | all IDs belong to project+date, no missing/extra vs DB set | JSON 400 with error |
-| POST /call-sheets/\<pid\>/generate | shoot_date (form) | date must have schedule entries | Flash "No scenes scheduled", redirect |
+| POST /call-sheets/\<pid\>/generate | shoot_date (form) | date must have schedule entries; if a call sheet already exists for the date, generate_call_sheet returns the existing id (idempotent — no 500) | Flash "No scenes scheduled" if none; else redirect to the (new or existing) call sheet |
 | POST /budget/\<pid\>/allocate | department_id, amount_cents | department must exist in project, amount int >= 0, SUM <= total_budget | Flash with remaining, redirect |
 | POST /budget/\<pid\>/line-items | category_id, description, estimated_cents | category must exist, description required, cents int >= 0 | Flash specific, redirect |
 | POST /expenses/\<pid\> | department_id, amount_cents, vendor, expense_date, category_id | amount int > 0, vendor required, date YYYY-MM-DD, dept must exist, spent+amount <= allocated | Flash with remaining, redirect |
@@ -1312,15 +1406,25 @@ fetch(url, {
 | POST /call-sheets/\<pid\>/\<csid\>/publish | -- | call_sheet must exist, cs.project_id == pid, cs.status == 'draft' | Flash "Already published", redirect |
 | GET /search/\<pid\>?q= | q (query param) | strip, sanitize FTS5 operators, wrap in quotes | Empty results if empty |
 
-**Money parsing pattern (ALL budget/expense routes):**
+**Money unit convention (FC55 — single units rule):**
+- **Forms submit DOLLARS** in fields named WITHOUT a `_cents` suffix: `amount`,
+  `estimated`, `actual`, `total_budget`. Templates use these exact field names.
+- **Routes parse dollars → integer cents** via the pattern below before calling any
+  model function. **Model functions ALWAYS receive and store integer `*_cents`.**
+- Every `*_cents` reference in the Input Validation table above (`amount_cents`,
+  `total_budget_cents`, `estimated_cents`, `actual_cents`) denotes the *parsed* integer
+  value passed to the model — NOT the form field name. The corresponding form fields are
+  the suffix-free names (`amount`, `total_budget`, `estimated`, `actual`) per the rule above.
+
 ```python
+# Generic money parse — `field` is the dollars form field ('amount', 'estimated', ...)
 try:
-    amount_cents = int(round(float(request.form['amount']) * 100))
-except (ValueError, TypeError):
+    cents = int(round(float(request.form[field]) * 100))
+except (ValueError, TypeError, KeyError):
     flash('Invalid amount', 'error')
     return redirect(...)
-if amount_cents <= 0:
-    flash('Amount must be positive', 'error')
+if cents < 0:                      # use `<= 0` for expense amount (must be positive)
+    flash('Amount must be non-negative', 'error')
     return redirect(...)
 ```
 
@@ -1342,7 +1446,7 @@ if amount_cents <= 0:
 | Page count display | `{{ eighths \| page_count }}` — renders "1 4/8" | scenes, schedule template agents |
 | Date format | Display dates as `{{ date }}` (YYYY-MM-DD stored, displayed as-is in Phase 1) | ALL template agents |
 | Timestamps | All timestamps use SQL `datetime('now')`, NEVER Python `datetime.now()` | ALL model agents |
-| Navbar links | Ordered: Dashboard, Scenes, Cast, Crew, Departments, Locations, Schedule, Call Sheets, Budget*, Expenses*, Reports, Search. *Budget/Expenses only for producer/dept_head | scaffold agent (base.html) |
+| Navbar links | Ordered: Dashboard, Scenes, Cast, Crew, Departments, Locations, Schedule, Call Sheets, Budget*, Expenses*, Reports, Search. *Budget/Expenses only for producer/department_head | scaffold agent (base.html) |
 | Navbar role check | `{% if session.get('user_id') %}` for logged-in items. Budget: check g.member.role via context processor | scaffold agent |
 | Strip colors | CSS classes: `strip-day-ext` (yellow), `strip-day-int` (white), `strip-night-int` (blue), `strip-night-ext` (green). NEVER use Bootstrap `bg-*` | scaffold agent (CSS), schedule agent (templates) |
 | Status badges | Use `escape()` before `Markup()` per FC47 | ALL agents using status display |
@@ -1408,7 +1512,7 @@ if amount_cents <= 0:
 | `allocate_budget` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (SUM check inside lock) |
 | `create_line_item` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
 | `update_line_item` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
-| `create_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (spent_cents update in same txn) |
+| `create_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK; returns None (not raise) on overspend — re-check spent+amount<=allocated inside lock, spent_cents update in same txn |
 | `delete_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK (spent_cents rollback in same txn) |
 | `approve_expense` | BEGIN IMMEDIATE | YES | try/except/ROLLBACK |
 | `index_entity` | none | NO | caller commits (fire-and-forget, no transaction needed for FTS5 insert) |
@@ -1468,8 +1572,8 @@ def some_write_function(conn, ...):
 | POST /cast/\<pid\> | role-only | producer, ad | `require_role('producer','ad')` |
 | POST /cast/\<pid\>/\<cid\>/edit | role-only | producer, ad | `require_role` + cast.project_id == pid |
 | GET /crew/\<pid\> | role-only | all members | `require_project_member` |
-| POST /crew/\<pid\> | role-only | producer, ad, department_head | `require_role` + dept_head: own dept only |
-| POST /crew/\<pid\>/\<cid\>/edit | role-only | producer, ad, department_head | `require_role` + crew.project_id == pid + dept_head: own dept only |
+| POST /crew/\<pid\> | role-only | producer, ad, department_head | `require_role` + department_head: own dept only |
+| POST /crew/\<pid\>/\<cid\>/edit | role-only | producer, ad, department_head | `require_role` + crew.project_id == pid + department_head: own dept only |
 | GET /departments/\<pid\> | role-only | all members | `require_project_member` |
 | GET /departments/\<pid\>/\<did\> | role-only | all members | `require_project_member` + dept.project_id == pid |
 | POST /departments/\<pid\>/\<did\>/head | role-only | producer | `require_role('producer')` + dept.project_id == pid |
@@ -1489,9 +1593,9 @@ def some_write_function(conn, ...):
 | POST /budget/\<pid\>/allocate | role-only | producer | `require_role('producer')` |
 | POST /budget/\<pid\>/line-items | role-only | producer | `require_role('producer')` |
 | POST /budget/\<pid\>/line-items/\<iid\>/edit | role-only | producer | `require_role('producer')` + item.project_id == pid |
-| GET /expenses/\<pid\> | role+ownership | producer, department_head | producer: all; dept_head: own dept (dept.head_id == g.user['id']) |
-| POST /expenses/\<pid\> | role+ownership | producer, department_head | producer: any dept; dept_head: own dept only |
-| POST /expenses/\<pid\>/\<eid\>/delete | role+ownership | producer, department_head | producer: any; dept_head: own dept + created_by == g.user['id'] |
+| GET /expenses/\<pid\> | role+ownership | producer, department_head | producer: all; department_head: own dept (dept.head_id == g.user['id']) |
+| POST /expenses/\<pid\> | role+ownership | producer, department_head | producer: any dept; department_head: own dept only |
+| POST /expenses/\<pid\>/\<eid\>/delete | role+ownership | producer, department_head | producer: any; department_head: own dept + created_by == g.user['id'] |
 | POST /expenses/\<pid\>/\<eid\>/approve | role-only | producer | `require_role('producer')` |
 | GET /reports/\<pid\> | role-only | all members | `require_project_member` |
 | GET /reports/\<pid\>/budget-summary | role-only | producer | `require_role('producer')` |
@@ -1502,14 +1606,14 @@ def some_write_function(conn, ...):
 | GET /scenes/\<pid\>/\<sid\>/edit | role-only | producer, ad | `require_role` + scene.project_id == pid |
 | GET /cast/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
 | GET /cast/\<pid\>/\<cid\> | role-only | all members | `require_project_member` + cast.project_id == pid |
-| GET /crew/\<pid\>/new | role-only | producer, ad, department_head | `require_role` + dept_head: own dept |
+| GET /crew/\<pid\>/new | role-only | producer, ad, department_head | `require_role` + department_head: own dept |
 | GET /crew/\<pid\>/\<cid\> | role-only | all members | `require_project_member` + crew.project_id == pid |
 | GET /locations/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
 | GET /locations/\<pid\>/\<lid\> | role-only | all members | `require_project_member` + loc.project_id == pid |
 | GET /schedule/\<pid\>/day/\<date\> | role-only | all members | `require_project_member` |
 | GET /schedule/\<pid\>/new | role-only | producer, ad | `require_role('producer','ad')` |
 | GET /budget/\<pid\>/line-items/new | role-only | producer | `require_role('producer')` |
-| GET /expenses/\<pid\>/new | role+ownership | producer, department_head | producer: any; dept_head: own dept |
+| GET /expenses/\<pid\>/new | role+ownership | producer, department_head | producer: any; department_head: own dept |
 
 **IDOR Prevention Pattern (FC35):**
 After every database lookup on a detail/edit/delete route, verify the resource belongs to the current project:
@@ -1519,6 +1623,102 @@ if scene is None:
     abort(404)
 if scene['project_id'] != project_id:
     abort(404)  # Use 404 not 403 to avoid info leak
+```
+
+### Department-Head Ownership Enforcement (F-H6 — exact code, not prose)
+
+`require_role(...)` only checks the role string. The `department_head` scope ("own dept
+only") MUST be enforced in the route body with the code below. **Producer and AD are
+unrestricted** — these checks apply ONLY when `g.member['role'] == 'department_head'`.
+A head owns a department iff `departments.head_id == g.user['id']`. **Parse-safety rule:**
+every `int(request.form['department_id'])` below must be wrapped in the guarded pattern
+(try/except `(KeyError, ValueError)` → flash + redirect) BEFORE the ownership check — shown
+bare in the crew snippets only for brevity. A raw `int()` on missing/non-numeric input is a 500.
+
+```python
+# Shared helpers (crew routes + expenses routes)
+def _allowed_dept_ids(conn, project_id):
+    """Set of department ids this user heads. Empty for non-heads."""
+    return {d['id'] for d in get_departments(conn, project_id)
+            if d['head_id'] == g.user['id']}
+
+def _is_head():
+    return g.member['role'] == 'department_head'
+```
+
+**Crew — `GET /crew/<pid>/new` and `POST /crew/<pid>`:**
+```python
+allowed = _allowed_dept_ids(conn, project_id)
+if _is_head() and not allowed:
+    abort(403)                                   # head of nothing
+# GET /new: if _is_head(), pass only [d for d in get_departments(...) if d['id'] in allowed]
+#           to the form dropdown; otherwise pass all departments.
+# POST: target department must be permitted for a head
+if _is_head() and int(request.form['department_id']) not in allowed:
+    abort(403)
+```
+
+**Crew — `POST /crew/<pid>/<cid>/edit`:**
+```python
+crew = get_crew_member(conn, cid)
+if crew is None or crew['project_id'] != project_id:
+    abort(404)
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if not allowed:
+        abort(403)
+    if crew['department_id'] not in allowed:                 # existing dept must be owned
+        abort(404)
+    if int(request.form['department_id']) not in allowed:    # target dept must be owned
+        abort(403)
+```
+
+**Expenses — `GET /expenses/<pid>` (list):**
+```python
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if not allowed:
+        abort(403)
+    expenses = [e for d in allowed for e in get_expenses(conn, project_id, department_id=d)]
+else:                                                        # producer: all
+    expenses = get_expenses(conn, project_id)
+```
+
+**Expenses — `GET /expenses/<pid>/new`:**
+```python
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if not allowed:
+        abort(403)
+    departments = [d for d in get_departments(conn, project_id) if d['id'] in allowed]
+else:
+    departments = get_departments(conn, project_id)
+```
+
+**Expenses — `POST /expenses/<pid>` (create):**
+```python
+try:
+    dept_id = int(request.form['department_id'])
+except (KeyError, ValueError):
+    flash('Department is required', 'error')
+    return redirect(...)
+if _is_head() and dept_id not in _allowed_dept_ids(conn, project_id):
+    abort(403)
+# ...then money parse -> amount_cents, then create with created_by PINNED:
+#   expense_id = create_expense(conn, project_id, dept_id, amount_cents, vendor,
+#       description, expense_date, category_id, created_by=g.user['id'])
+#   if expense_id is None: flash remaining allocation; redirect.   # overspend
+```
+
+**Expenses — `POST /expenses/<pid>/<eid>/delete`:**
+```python
+expense = get_expense(conn, eid)
+if expense is None or expense['project_id'] != project_id:
+    abort(404)
+if _is_head():
+    allowed = _allowed_dept_ids(conn, project_id)
+    if expense['department_id'] not in allowed or expense['created_by'] != g.user['id']:
+        abort(403)                          # head: own dept AND own expense
 ```
 
 ---
@@ -1537,7 +1737,7 @@ if scene['project_id'] != project_id:
 10. Do NOT use `{{ csrf_token }}` (no parens) — always `{{ csrf_token() }}`
 11. Do NOT add routes that duplicate the blueprint url_prefix — paths are RELATIVE to prefix
 12. Do NOT use `Markup()` without `escape()` on interpolated variables
-13. Do NOT use AFTER triggers for FTS5 sync — use BEFORE DELETE and BEFORE UPDATE
+13. Do NOT create ANY database triggers for FTS5 sync — the index has a single writer: explicit `index_entity()`/`remove_entity()` calls from routes (FC52). Routes MUST call them in the same transaction as the source-row write.
 14. Do NOT pass unsanitized user input to FTS5 MATCH — strip operators, wrap in quotes
 15. Do NOT use `session['logged_in']` — use `session['user_id']` (integer, not boolean)
 
@@ -1566,6 +1766,91 @@ def _strip_color(int_ext, day_night):
         return 'strip-night-ext' if int_ext == 'EXT' else 'strip-night-int'
     return 'strip-day-ext' if int_ext == 'EXT' else 'strip-day-int'
 ```
+
+---
+
+## Call Sheet Generation Algorithm
+
+Prescribed exactly. The callsheets agent MUST implement `generate_call_sheet` per this
+algorithm. **A call sheet lists ONLY cast working on `shoot_date`** (no held cast — `H` is
+DOOD-only). Each listed cast member's `status` is the Start/Work/Finish marker for that
+date, computed over their distinct scheduled shoot dates across the whole project.
+
+```python
+def generate_call_sheet(conn, project_id, shoot_date):
+    """Returns call_sheet_id. Commits internally (BEGIN IMMEDIATE, multi-table:
+    call_sheets + call_sheet_scenes + call_sheet_cast)."""
+    try:
+        conn.execute('BEGIN IMMEDIATE')
+
+        # 0. Idempotent: one call sheet per (project, shoot_date) [UNIQUE constraint].
+        #    If it already exists, return it instead of hitting the UNIQUE violation.
+        existing = conn.execute(
+            'SELECT id FROM call_sheets WHERE project_id = ? AND shoot_date = ?',
+            (project_id, shoot_date)).fetchone()
+        if existing:
+            conn.execute('COMMIT')
+            return existing['id']
+
+        # 1. Scenes scheduled that day, in schedule order
+        entries = conn.execute('''
+            SELECT scene_id, sort_order FROM schedule_entries
+            WHERE project_id = ? AND shoot_date = ? ORDER BY sort_order
+        ''', (project_id, shoot_date)).fetchall()
+        # (caller/route already validated entries is non-empty -> "No scenes scheduled")
+        scene_ids = [r['scene_id'] for r in entries]
+
+        # 2. Header row (sheet_number = next per project)
+        n = conn.execute('SELECT COALESCE(MAX(sheet_number),0)+1 AS n FROM call_sheets WHERE project_id = ?',
+                         (project_id,)).fetchone()['n']
+        cs_id = conn.execute('''INSERT INTO call_sheets (project_id, sheet_number, shoot_date)
+                                VALUES (?, ?, ?)''', (project_id, n, shoot_date)).lastrowid
+
+        # 3. Scene rows
+        for r in entries:
+            conn.execute('''INSERT INTO call_sheet_scenes (call_sheet_id, scene_id, sort_order)
+                            VALUES (?, ?, ?)''', (cs_id, r['scene_id'], r['sort_order']))
+
+        # 4. Working cast = cast assigned to any scene scheduled that day
+        working_cast = conn.execute('''
+            SELECT DISTINCT sc.cast_member_id
+            FROM scene_cast sc
+            JOIN schedule_entries se ON se.scene_id = sc.scene_id
+            WHERE se.project_id = ? AND se.shoot_date = ?
+        ''', (project_id, shoot_date)).fetchall()
+
+        # 5. Per-member Start/Work/Finish status for THIS date
+        for row in working_cast:
+            cm_id = row['cast_member_id']
+            dates = [d['shoot_date'] for d in conn.execute('''
+                SELECT DISTINCT se.shoot_date
+                FROM schedule_entries se
+                JOIN scene_cast sc ON sc.scene_id = se.scene_id
+                WHERE se.project_id = ? AND sc.cast_member_id = ?
+                ORDER BY se.shoot_date
+            ''', (project_id, cm_id)).fetchall()]
+            first, last = dates[0], dates[-1]
+            if first == last:
+                status = 'SWF'
+            elif shoot_date == first:
+                status = 'SW'
+            elif shoot_date == last:
+                status = 'WF'
+            else:
+                status = 'W'
+            conn.execute('''INSERT INTO call_sheet_cast (call_sheet_id, cast_member_id, status)
+                            VALUES (?, ?, ?)''', (cs_id, cm_id, status))
+
+        conn.execute('COMMIT')
+        return cs_id
+    except Exception:
+        conn.execute('ROLLBACK')
+        raise
+```
+
+`get_call_sheet_cast(conn, call_sheet_id)` returns these rows joined to cast_members
+(keys: cast_member_id, name, character_name, cast_id_number, status, pickup_time,
+makeup_time, on_set_time, remarks). All statuses are in {W, SW, WF, SWF}.
 
 ---
 
@@ -1666,7 +1951,7 @@ The tests agent MUST implement all 10 test cases from the brief. These go in `te
 # Create expense -> verify spent_cents incremented -> delete expense -> verify spent_cents restored
 
 # Test 5: Department-head IDOR
-# Log in as dept_head for Camera -> attempt to create expense for Sound -> verify 403
+# Log in as department_head for Camera -> attempt to create expense for Sound -> verify 403
 
 # Test 6: Crew-member budget IDOR
 # Log in as crew member -> attempt GET /budget/<pid> -> verify 403
@@ -1902,7 +2187,7 @@ else:
 |------|---------|
 | app/blueprints/expenses/__init__.py | empty |
 | app/blueprints/expenses/routes.py | Expense CRUD, approval |
-| app/models/expense_models.py | create_expense, delete_expense, approve_expense, get_expenses |
+| app/models/expense_models.py | create_expense, delete_expense, approve_expense, get_expenses, get_expense (ownership/IDOR check) |
 | app/templates/expenses/list.html | Expense list with filters |
 | app/templates/expenses/new.html | New expense form |
 
@@ -1950,22 +2235,22 @@ else:
 
 | # | Agent Name | Branch | Files (relative to project root) |
 |---|-----------|--------|------|
-| 1 | scaffold | swarm-063-scaffold | app/__init__.py, app/templates/base.html, app/static/css/style.css, app/static/js/app.js, run.py, requirements.txt, .gitignore |
-| 2 | auth | swarm-063-auth | app/blueprints/auth/__init__.py, app/blueprints/auth/routes.py, app/models/auth_models.py, app/templates/auth/login.html, app/templates/auth/register.html |
-| 3 | projects | swarm-063-projects | app/blueprints/projects/__init__.py, app/blueprints/projects/routes.py, app/models/project_models.py, app/templates/projects/dashboard.html, app/templates/projects/new.html, app/templates/projects/edit.html |
-| 4 | scenes | swarm-063-scenes | app/blueprints/scenes/__init__.py, app/blueprints/scenes/routes.py, app/models/scene_models.py, app/templates/scenes/list.html, app/templates/scenes/new.html, app/templates/scenes/detail.html, app/templates/scenes/edit.html |
-| 5 | cast | swarm-063-cast | app/blueprints/cast/__init__.py, app/blueprints/cast/routes.py, app/models/cast_models.py, app/templates/cast/list.html, app/templates/cast/new.html, app/templates/cast/detail.html |
-| 6 | crew | swarm-063-crew | app/blueprints/crew/__init__.py, app/blueprints/crew/routes.py, app/models/crew_models.py, app/templates/crew/list.html, app/templates/crew/new.html, app/templates/crew/detail.html |
-| 7 | departments | swarm-063-departments | app/blueprints/departments/__init__.py, app/blueprints/departments/routes.py, app/models/department_models.py, app/templates/departments/list.html, app/templates/departments/detail.html |
-| 8 | locations | swarm-063-locations | app/blueprints/locations/__init__.py, app/blueprints/locations/routes.py, app/models/location_models.py, app/templates/locations/list.html, app/templates/locations/new.html, app/templates/locations/detail.html |
-| 9 | schedule | swarm-063-schedule | app/blueprints/schedule/__init__.py, app/blueprints/schedule/routes.py, app/models/schedule_models.py, app/templates/schedule/index.html, app/templates/schedule/day.html, app/templates/schedule/new.html, app/static/js/schedule.js |
-| 10 | callsheets | swarm-063-callsheets | app/blueprints/callsheets/__init__.py, app/blueprints/callsheets/routes.py, app/models/callsheet_models.py, app/templates/callsheets/list.html, app/templates/callsheets/detail.html |
-| 11 | budget | swarm-063-budget | app/blueprints/budget/__init__.py, app/blueprints/budget/routes.py, app/models/budget_models.py, app/templates/budget/index.html, app/templates/budget/top_sheet.html, app/templates/budget/new_line_item.html |
-| 12 | expenses | swarm-063-expenses | app/blueprints/expenses/__init__.py, app/blueprints/expenses/routes.py, app/models/expense_models.py, app/templates/expenses/list.html, app/templates/expenses/new.html |
-| 13 | reports | swarm-063-reports | app/blueprints/reports/__init__.py, app/blueprints/reports/routes.py, app/models/report_models.py, app/templates/reports/index.html, app/templates/reports/budget_summary.html, app/templates/reports/dood.html, app/templates/reports/progress.html |
-| 14 | search | swarm-063-search | app/blueprints/search/__init__.py, app/blueprints/search/routes.py, app/models/search_models.py, app/templates/search/results.html |
-| 15 | database | swarm-063-database | schema.sql, app/database.py, app/models/__init__.py |
-| 16 | tests | swarm-063-tests | test_smoke.py, tests/__init__.py, tests/test_critical_flows.py, tests/conftest.py |
+| 1 | scaffold | swarm-070-scaffold | app/__init__.py, app/templates/base.html, app/static/css/style.css, app/static/js/app.js, run.py, requirements.txt, .gitignore |
+| 2 | auth | swarm-070-auth | app/blueprints/auth/__init__.py, app/blueprints/auth/routes.py, app/models/auth_models.py, app/templates/auth/login.html, app/templates/auth/register.html |
+| 3 | projects | swarm-070-projects | app/blueprints/projects/__init__.py, app/blueprints/projects/routes.py, app/models/project_models.py, app/templates/projects/dashboard.html, app/templates/projects/new.html, app/templates/projects/edit.html |
+| 4 | scenes | swarm-070-scenes | app/blueprints/scenes/__init__.py, app/blueprints/scenes/routes.py, app/models/scene_models.py, app/templates/scenes/list.html, app/templates/scenes/new.html, app/templates/scenes/detail.html, app/templates/scenes/edit.html |
+| 5 | cast | swarm-070-cast | app/blueprints/cast/__init__.py, app/blueprints/cast/routes.py, app/models/cast_models.py, app/templates/cast/list.html, app/templates/cast/new.html, app/templates/cast/detail.html |
+| 6 | crew | swarm-070-crew | app/blueprints/crew/__init__.py, app/blueprints/crew/routes.py, app/models/crew_models.py, app/templates/crew/list.html, app/templates/crew/new.html, app/templates/crew/detail.html |
+| 7 | departments | swarm-070-departments | app/blueprints/departments/__init__.py, app/blueprints/departments/routes.py, app/models/department_models.py, app/templates/departments/list.html, app/templates/departments/detail.html |
+| 8 | locations | swarm-070-locations | app/blueprints/locations/__init__.py, app/blueprints/locations/routes.py, app/models/location_models.py, app/templates/locations/list.html, app/templates/locations/new.html, app/templates/locations/detail.html |
+| 9 | schedule | swarm-070-schedule | app/blueprints/schedule/__init__.py, app/blueprints/schedule/routes.py, app/models/schedule_models.py, app/templates/schedule/index.html, app/templates/schedule/day.html, app/templates/schedule/new.html, app/static/js/schedule.js |
+| 10 | callsheets | swarm-070-callsheets | app/blueprints/callsheets/__init__.py, app/blueprints/callsheets/routes.py, app/models/callsheet_models.py, app/templates/callsheets/list.html, app/templates/callsheets/detail.html |
+| 11 | budget | swarm-070-budget | app/blueprints/budget/__init__.py, app/blueprints/budget/routes.py, app/models/budget_models.py, app/templates/budget/index.html, app/templates/budget/top_sheet.html, app/templates/budget/new_line_item.html |
+| 12 | expenses | swarm-070-expenses | app/blueprints/expenses/__init__.py, app/blueprints/expenses/routes.py, app/models/expense_models.py, app/templates/expenses/list.html, app/templates/expenses/new.html |
+| 13 | reports | swarm-070-reports | app/blueprints/reports/__init__.py, app/blueprints/reports/routes.py, app/models/report_models.py, app/templates/reports/index.html, app/templates/reports/budget_summary.html, app/templates/reports/dood.html, app/templates/reports/progress.html |
+| 14 | search | swarm-070-search | app/blueprints/search/__init__.py, app/blueprints/search/routes.py, app/models/search_models.py, app/templates/search/results.html |
+| 15 | database | swarm-070-database | schema.sql, app/database.py, app/models/__init__.py |
+| 16 | tests | swarm-070-tests | test_smoke.py, tests/__init__.py, tests/test_critical_flows.py, tests/conftest.py |
 
 ---
 
@@ -1976,7 +2261,7 @@ else:
 - WHEN a producer creates a scene and adds cast members THE SYSTEM SHALL display them in the scene detail view
 - WHEN a producer schedules scenes to a shoot day THE SYSTEM SHALL display them in the stripboard with correct strip colors
 - WHEN a producer drags to reorder schedule entries THE SYSTEM SHALL persist the new order via JSON POST
-- WHEN a producer generates a call sheet for a shoot day THE SYSTEM SHALL include all scheduled scenes, assigned cast with DOOD statuses, and the location
+- WHEN a producer generates a call sheet for a shoot day THE SYSTEM SHALL include all scheduled scenes, only the cast working that day each with a call status in {W, SW, WF, SWF}, and the location
 - WHEN a producer views the DOOD grid THE SYSTEM SHALL show correct W/SW/WF/SWF/H statuses per the derivation algorithm
 - WHEN a producer allocates budget and logs an expense THE SYSTEM SHALL update spent_cents atomically
 

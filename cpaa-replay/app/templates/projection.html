@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Projection at {{ t }} — CPAA Replay{% endblock %}
+{% block content %}
+<h1>Point-in-Time Projection</h1>
+<p>State as of <code>{{ t }}</code> (events with logical_ts &le; t, ordered by event_id).</p>
+
+{% for table_name, rows in projection.items() %}
+<div class="card">
+  <h2>{{ table_name }}</h2>
+  {% if rows %}
+  <table>
+    <thead>
+      <tr><th>PK</th><th>Row</th></tr>
+    </thead>
+    <tbody>
+      {% for pk, row in rows.items() %}
+      <tr>
+        <td><code>{{ pk }}</code></td>
+        <td>
+          {% for col, val in row.items() %}
+          <div><strong>{{ col }}:</strong> {{ val if val is not none else 'null' }}</div>
+          {% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No rows.</p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

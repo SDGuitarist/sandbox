@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Departments{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Departments</h1>
+</div>
+
+{% if departments %}
+<div class="card bg-dark border-secondary">
+  <div class="table-responsive">
+    <table class="table table-dark table-striped table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th scope="col">Department</th>
+          <th scope="col">Head</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dept in departments %}
+        <tr>
+          <td>
+            <a href="{{ url_for('departments.detail', project_id=project['id'], department_id=dept['id']) }}">
+              {{ dept['name'] }}
+            </a>
+          </td>
+          <td>
+            {% if dept['head_name'] %}
+              {{ dept['head_name'] }}
+            {% else %}
+              <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card bg-dark border-secondary">
+  <div class="card-body text-center text-muted">
+    No departments yet.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

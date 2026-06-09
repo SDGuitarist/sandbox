@@ -1,33 +1,29 @@
 ---
 review_agents:
-  - learnings-researcher
-  - security-sentinel
-  - performance-oracle
-  - flow-trace-reviewer
+  - codex (manual, binding — 3 rounds R1/R2/R3)
 ---
 
-# Review Context — Sandbox (Gig Outcome Tracker, Run 068)
+# Review Context — Orchestration-Hardening Fixture Suite (compound 2026-06-09)
 
 ## Risk Chain
 
-**Brainstorm risk:** Dashboard aggregation query correctness — paid-only revenue / GROUP BY / COALESCE logic. No prior solution doc covers it. The deterministic fixture (3 played, $880, 4.5 avg energy, 8000 tips) is the verification anchor.
+**Brainstorm/Plan risk:** The drift trap — a fixture that silently tests a Python *reimplementation* of a guard rather than the guard the pipeline runs. That is FC52/M1 (gate-vs-use artifact drift) reborn *inside the validator*: a fixture passing against a reimplementation proves nothing about the shipped gate.
 
-**Plan mitigation:** Section 12 prescribed the exact SQL for all dashboard queries (COALESCE, LEFT JOIN, payment_status filter). Deterministic fixture included in Acceptance Tests (Section 14) as a smoke test anchor.
+**Plan mitigation:** Phase-0 deepen pass established a callability matrix per guard; the fidelity column labels any non-ship invocation honestly (`MIRRORED`/`SPIKE-VALIDATED`/`PROSE-ASSERTED`), never rounding up to `EXERCISED`. Only guards drivable as-shipped earn `EXERCISED`.
 
-**Work risk (from Feed-Forward):** Whether the dashboard agent would implement the LEFT JOIN correctly (so paid gigs without outcomes still count their pay), apply payment_status='paid' filter (so Gig 3's unpaid $450 is excluded), and average energy over outcome rows (2) not gig rows (3).
+**Work risk (from Feed-Forward):** The live SKILL.md Step 9w.9.5 rewire (gate now CALLS `tools/check_spec_provenance.py`) is proven by F-D1 in isolation but never exercised inside a real swarm — the agent→CLI wiring is deterministic on the bench, un-exercised end-to-end.
 
-**Review resolution:** 0 P1, 2 P2 from 1 review round. Dashboard aggregation verified correct — risk did NOT materialize. Prescriptive SQL in spec was the load-bearing mitigation. P2-1: monthly_revenue months parameter ignored (hardcoded -6). P2-2: init_debrief_schema nested with conn: inconsistency. Both fixed in commit 89c2148. 2 P3s deferred (informational flash category, list_contacts missing ORDER BY).
+**Review resolution:** 3 Codex rounds applied. R1 — F-C1 surfaces scorer defects (no longer hidden as INCONCLUSIVE), Track A pulled out of the fidelity column. R2 — validate scorer JSON status against the shipped `GateStatus` enum; crash-proof the schema defense. R3 — timeout is its own FAILING class (hang ≠ env); removed the silent enum fallback (fail-closed + visible). R3 (`1d6ac07..8dca4b5`) not yet re-reviewed — operator opted to proceed. No new failure class.
 
 ## Files to Scrutinize
 
 | File | What changed | Risk area |
 |------|-------------|-----------|
-| app/gig_models.py | monthly_revenue: parameterize months in SQL | Parameter contract correctness |
-| app/debrief_models.py | init_debrief_schema: remove nested with conn: | Transaction consistency with other init_*_schema functions |
-| app/dashboard_routes.py | New — dashboard aggregation | COALESCE + LEFT JOIN + payment filter correctness |
-| app/__init__.py | New — scaffold, get_db, init_db, auth blueprint | PRAGMA foreign_keys, row_factory placement, SECRET_KEY fail-close |
-| app/contact_models.py | Assembly inline fix: executescript → execute | Transaction isolation during init_db |
+| eval-harness/validate_hardening.py | runner + all fixture logic; fidelity matrix; scorer classification | honesty-label correctness; fail-closed enum validation; timeout-as-failure |
+| tools/check_spec_provenance.py | NEW shared FC52 detector (SHA-blob compare, exit codes 0/2/3/5) | share-not-fork: must stay the SINGLE impl both gate and F-D1 call |
+| .claude/skills/autopilot/SKILL.md | Step 9w.9.5 rewired to CALL the detector (was inline git rev-parse) | un-exercised end-to-end under a real swarm (the residual risk) |
+| eval-harness/fixtures/ | F-B1/F-B2/F-C1/F-D1 crafted broken inputs + README fidelity contract | each fixture must trigger the ACTUAL guard surface, not any incidental FAIL |
 
 ## Plan Reference
 
-`docs/plans/2026-06-05-gig-outcome-tracker-plan.md`
+`docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md`

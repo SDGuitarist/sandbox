@@ -1,0 +1,330 @@
+{
+  "status": "FAIL",
+  "high_confidence": {
+    "total": 155,
+    "passed": 111,
+    "failed": 44,
+    "errors": 0
+  },
+  "low_confidence": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0
+  },
+  "failed_details": [
+    {
+      "claim_id": "tbl-007",
+      "claim_text": "Name '`parse_patch(payload: dict, allowed: tuple) -> dict[str, object \\' (None]` `# PRESENT keys only; explicit null -> None; absent key omitted`)",
+      "passed": false,
+      "evidence": "The function is defined as:\n```python\ndef parse_patch(payload: dict, allowed: tuple) -> dict[str, object]:\n```\nThe return type is `dict[str, object]`, but the spec requires `dict[str, object | None]`. The `| None` part is missing from the return type annotation.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-021",
+      "claim_text": "Name '`build_projection_at(conn, t: str) -> dict[str, dict[str, dict]]` `# SINGLE apply impl: opens a throwaway in-memory sqlite (projection schema), calls the SAME proj_*.apply_*/reset_* on it for events_at_time(t), reads result into dict; NEVER writes shadow.db`' (fn)",
+      "passed": false,
+      "evidence": "The spec requires calling \"the SAME proj_*.apply_*/reset_* on it for events_at_time(t)\" but the code:\n1. Never calls any `proj_*.apply_*` or `proj_*.reset_*` functions anywhere\n2. Never calls `events_at_time(t)` - instead directly queries: `main_cursor.execute(\"\"\" SELECT id, event_type, table_name, operation, row_id, data, timestamp FROM events WHERE timestamp <= ? ORDER BY timestamp ASC, id ASC \"\"\", (t,))`\n3. Instead manually applies events with raw SQL: `insert_sql = f\"INSERT INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})\"`, `update_sql = f\"UPDATE {table_name} SET {set_clause} WHERE rowid=?\"`, etc.\n4. Code is also truncated and incomplete.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-024",
+      "claim_text": "Name '`login_required(view)` decorator; `auth.login`/`auth.logout` (POST/GET)' (decorator + routes)",
+      "passed": false,
+      "evidence": "The decorator is correctly named:\n```python\ndef login_required(view):\n```\n\nBut the routes fail the spec requirement for `auth.login`/`auth.logout` blueprint-style endpoints:\n```python\n@app.route('/auth/login', methods=['GET', 'POST'])\ndef login():\n    ...\n\n@app.route('/auth/logout', methods=['GET', 'POST'])\ndef logout():\n    ...\n```\n\nThese create endpoints named `login` and `logout` on the main app, NOT `auth.login` and `auth.logout`. There is no Blueprint named `auth` defined anywhere in the code. Additionally, the `login_required` decorator references `url_for('auth.login')` which would fail at runtime since the endpoint is just named `login`:\n```python\nreturn redirect(url_for('auth.login'))\n```",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-030",
+      "claim_text": "Endpoint '`validate.detail`': Endpoint: `validate.detail`, Method: GET, Path: /validate/<int:result_id>",
+      "passed": false,
+      "evidence": "\n```python\n@app.route('/validate/<int:result_id>', methods=['GET'])\ndef validate_detail(result_id):\n```\n\nThe route decorator correctly specifies the path `/validate/<int:result_id>` and method `GET`, but the Flask endpoint name will default to `validate_detail` (the function name), not `validate.detail` as required by the spec. To achieve an endpoint name of `validate.detail`, the code would need either:\n1. `@app.route('/validate/<int:result_id>', methods=['GET'], endpoint='validate.detail')`, or\n2. A Blueprint named `validate` with a function named `detail`\n\nNeither approach is used in the code.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-031",
+      "claim_text": "Endpoint '`dashboard.index`': Blueprint: `dashboard_bp`, url_for name: dashboard, url_prefix: /, Endpoint: `dashboard.index`, Method: GET, Path: /",
+      "passed": false,
+      "evidence": "Line: `dashboard_bp = app.create_blueprint('dashboard', __name__, url_prefix='/')` - Flask does not have an `app.create_blueprint()` method; the correct approach is `Blueprint('dashboard', __name__, url_prefix='/')` imported from flask. `Blueprint` is also not imported anywhere in the code. The blueprint is never registered with `app.register_blueprint(dashboard_bp)`. The code is also truncated and incomplete.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-043",
+      "claim_text": "Route 'per-event payload (INGEST-TIME, in payload.py/ingest)': Route: per-event payload (INGEST-TIME, in payload.py/ingest), Input: `payload` text, Validation: `parse_json` ok AND `isinstance(parsed,dict)`; `event_type` non-empty `str` \u2264128 AND in `DISPATCH`; required PK key (per \u00a74.4) present; payload \u226464KB, Error Response: non-dict/oversize/bad-type/missing-PK \u2192 `record_anomaly('malformed_payload')`, event SKIPPED (not appended); `event_type` not in `DISPATCH` \u2192 `record_anomaly('unknown_key', detail='unmapped event_type')`, skipped",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-047",
+      "claim_text": "Function '`apply_*`': Function: `apply_*`, Writes: projection tables (each owns its own), Pattern: inside replay T2 BEGIN IMMEDIATE; SQL upsert, Errors: unknown key \u2192 anomaly, continue",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-048",
+      "claim_text": "Function '`reset_*` (proj_* owners, called by replay_engine)': Function: `reset_*` (proj_* owners, called by replay_engine), Writes: own projection table (DELETE), Pattern: first statements of T2, Errors: \u2014",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-055",
+      "claim_text": "Route Group: `GET /`, `/runs`, `/replay/run/<id>`, `/replay/projection/at`, `/validate/<id>`, Mode: public (read), Notes: loopback-bound; no secrets in projections",
+      "passed": false,
+      "evidence": "\nRoutes present:\n- `@app.route('/', methods=['GET'])` - present\n- `@app.route('/runs', methods=['GET'])` - present\n- `@app.route('/replay/run/<run_id>', methods=['GET'])` - present\n\nRoutes MISSING:\n- No evidence of `@app.route('/replay/projection/at', ...)` anywhere in the code\n- No evidence of `@app.route('/validate/<id>', ...)` or `@app.route('/validate/<run_id>', ...)` anywhere in the code\n\nCode is also truncated:\n```python\nreturn jsonify({\n    \"run\": run,\n    \"projection\":\n```\nThe `replay_run` function is cut off mid-statement.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-058",
+      "claim_text": "Route Group: `live.db` write, Mode: forbidden (no route, no writable handle), Notes: isolation invariant (frozen #3)",
+      "passed": false,
+      "evidence": "Violation 1 - Routes exist with write methods (spec says \"no route\"):\n```python\n@app.route('/live/users', methods=['GET', 'POST', 'PUT', 'DELETE'])\n@app.route('/live/users/<int:user_id>', methods=['GET', 'PUT', 'DELETE'])\n```\n\nViolation 2 - Writable handle exists (spec says \"no writable handle\"):\n```python\ndef init_db():\n    conn = sqlite3.connect(DB_PATH)  # writable connection\n    cursor.execute(\"INSERT INTO users ...\")  # actual writes performed\n    conn.commit()\n```\n\nViolation 3 - Read routes also use writable connections:\n```python\nconn = sqlite3.connect(DB_PATH)  # no read-only flag, writable by default\n```\n\nThe decorator approach (runtime 403) is not equivalent to \"no route, no writable handle\" as specified.",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-062",
+      "claim_text": "Route '`/ingest/run`': Route: `/ingest/run`, Method: POST, Payload: login + X-CSRFToken, Expected: 302/200; 409 if running",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-063",
+      "claim_text": "Route '`/replay/run`': Route: `/replay/run`, Method: POST, Payload: login + X-CSRFToken, Expected: 302/200; 409 if running",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "tbl-068",
+      "claim_text": "Route '`/validate/run`': Route: `/validate/run`, Method: POST, Payload: login + X-CSRFToken + `{run_a,run_b}`, Expected: 200/202; 400/404/409 per \u00a77",
+      "passed": false,
+      "evidence": "The code is truncated and missing success responses:\n```python\ntry:\n    # Update run status to executing\n    runs_db[run_a]['status'] = 'executing'\n    runs_db[run_b]['status'] = 'executing'\n    \n    # Simulate run execution\n    runs_db[run_a]['status']\n```\nThe function ends here without returning 200 or 202 as required by the spec. The spec explicitly requires \"Expected: 200/202; 400/404/409 per \u00a77\" but only 400/404/409 are implemented.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-002",
+      "claim_text": "live.db must be opened READ-ONLY; no writable live.db handle is permitted anywhere in the codebase.",
+      "passed": false,
+      "evidence": "Violating code in create_test_database():\n```python\ndef create_test_database():\n    db_path = Path(\"live.db\")\n    \n    # Create the database with some test data\n    conn = sqlite3.connect(str(db_path))\n```\n\nThis opens live.db with a writable handle, directly violating the spec: \"no writable live.db handle is permitted anywhere in the codebase.\"\n\nThe correct read-only implementation exists in open_live_ro():\n```python\nconnection = sqlite3.connect(f\"file:{db_path}?mode=ro\", uri=True)\n```\nBut this does not save the overall code from failing the spec.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-004",
+      "claim_text": "get_db() must be used for all shadow DB reads and writes; no bare sqlite3.connect is permitted in runtime code (except the two explicit exceptions: init_db.py and build_projection_at).",
+      "passed": false,
+      "evidence": "\nIn app/routes.py:\n- `with get_db() as db:` is used in get_users() and get_posts() - COMPLIANT\n- But routes also call `User.save()`, `User.get_by_id()`, `Post.save()` from models - UNVERIFIABLE\n\nMissing: `app/models.py` - this file is imported but not provided. The spec explicitly states \"runtime modules (routes, models, engine) do not call sqlite3.connect directly.\" Models.py is absent.\n\napp/routes.py is also cut off: `@bp.route('/posts/<int:post` - incomplete code.\n\nThe `get_db()` in app/db.py correctly uses `sqlite3.connect` as its implementation (lines: `db = sqlite3.connect(DATABASE)`), which is acceptable since it IS get_db().\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-011",
+      "claim_text": "CSRFProtect(app) must be called in create_app(); mutating routes must require CSRF; HTML forms use {{ csrf_token() }}; JSON/programmatic callers send X-CSRFToken header.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-014",
+      "claim_text": "A separate SELECT-probe then UPDATE for the run lock is FORBIDDEN.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-015",
+      "claim_text": "reap_stale_runs(conn) must set status='ABORTED' for any RUNNING row with finished_at IS NULL AND started_at < datetime('now','-15 minutes').",
+      "passed": false,
+      "evidence": "\nThe spec requires: `started_at < datetime('now','-15 minutes')` in the SQL.\n\nThe code uses instead:\n```python\ncutoff_time = datetime.now() - timedelta(minutes=15)\ncutoff_time_str = cutoff_time.isoformat()\n...\nAND started_at < ?\n...\ncursor.execute(query, (cutoff_time_str,))\n```\n\nThere is NO use of `datetime('now','-15 minutes')` anywhere in the SQL query string.\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-016",
+      "claim_text": "reap_stale_runs(conn) must be called on app start AND at the top of every POST /replay and POST /ingest handler.",
+      "passed": false,
+      "evidence": "\nPresent in replay_routes.py:\n```python\nreap_stale_runs(conn)\n```\n(called at top of POST /replay handler)\n\nPresent in ingest_routes.py:\n```python\nreap_stale_runs(conn)\n```\n(called at top of POST /ingest handler)\n\nMissing: No app startup code exists anywhere in the provided files (no app.py, no main.py, no Flask app factory, no startup hook calling reap_stale_runs(conn)).\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-018",
+      "claim_text": "determinism verdict must live in determinism_results.match (0 or 1), not in replay_runs.status.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-019",
+      "claim_text": "The 3-transaction replay sequence must be: T1=lock-acquire commits; T2=BEGIN IMMEDIATE containing reset_*(conn) for each owner + apply all events + write_snapshot + compute projection_hash + mark_complete_pass (sets reset_done=1); T3=on T2 exception, mark_aborted(run_id).",
+      "passed": false,
+      "evidence": "The `replay_lifecycle` function starts but is truncated:\n```python\ndef replay_lifecycle(run_id, owners, events_data):\n    \"\"\"\n    Execute the 3-transaction replay sequence:\n    T1: Lock acquisition\n    T2: Full replay (reset, apply, snapshot, hash, mark_complete_pass)\n    T3: Exception handling and abort\n    \"\"\"\n    \n    conversation_history = []\n    \n    # Initial system message\n    system_message = \"\"\"You are a database replay engine coordinator...\n```\n\nThe function only initializes `conversation_history` and begins a `system_message` string. It never:\n1. Wraps `acquire_lock` in a committed T1 transaction\n2. Executes T2 as `BEGIN IMMEDIATE` with reset/apply/snapshot/hash/mark_complete_pass in sequence\n3. Wraps T2 in a try/except that calls `mark_aborted(run_id)` in T3\n\nThe code is incomplete and does not implement the 3-transaction replay sequence as specified.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-020",
+      "claim_text": "mark_complete_pass must be the SOLE writer of reset_done=1 on replay_runs; a COMPLETE_PASS run always carries reset_done=1.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-022",
+      "claim_text": "logical_ts must be stored as TEXT in YYYY-MM-DD HH:MM:SS format (SQLite datetime; never ISO-8601 T format); TS_FORMAT and TS_RE in constants.py are the sole owners.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-024",
+      "claim_text": "anomalies table must be written ONLY by anomaly_models.record_anomaly(conn, ...); no other module writes directly to anomalies.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-025",
+      "claim_text": "determinism_results and determinism_diffs tables must be written ONLY by validation_models.",
+      "passed": false,
+      "evidence": "The `ValidationModels` class contains only:\n```python\nclass ValidationModels:\n    \"\"\"Singleton class to manage all writes to determinism_results and determinism_diffs tables\"\"\"\n    \n    _instance = None\n    \n    def __new__(cls):\n        if cls._instance is None:\n            cls._instance = super(ValidationModels, cls).__new__(cls)\n        return cls._instance\n```\nNo write methods (create/insert/update/save) are implemented. No `db.session.add()` or `db.session.commit()` calls appear anywhere in the file. No verification mechanism exists to ensure other modules don't write to these tables.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-026",
+      "claim_text": "projection_snapshots table must be written ONLY by snapshot_models (write_snapshot/read_snapshot).",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-027",
+      "claim_text": "dedup_counters table must be written ONLY by event_models.",
+      "passed": false,
+      "evidence": "Positive evidence - writes in event_models.py:\n- `__tablename__ = 'dedup_counters'` (line 9)\n- `db.session.add(counter)` in increment_counter, reset_counter, set_counter\n- `counter.counter += 1`, `counter.counter = 0`, `counter.counter = value` for updates\n\nMissing evidence:\n- Code is truncated at `db.` with no closing/complete implementation\n- No verification that other modules don't write to dedup_counters\n- No imports check or static analysis of other modules",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-029",
+      "claim_text": "Per table in canonical_hash, SELECT must use ORDER BY <pk> COLLATE BINARY ASC.",
+      "passed": false,
+      "evidence": "\nFallback construction: `query = f\"SELECT * FROM {table} ORDER BY {pk_column} COLLATE BINARY ASC\"` \u2014 this correctly includes COLLATE BINARY ASC.\n\nVerification check: `if \"COLLATE BINARY\" in query.upper():` \u2014 checks for presence of COLLATE BINARY.\n\nHowever, the code is truncated and ends with `all_` which is incomplete, making the code syntactically invalid and unable to run. Additionally, the primary mechanism delegates query generation to an LLM (Claude) rather than directly constructing the query with `ORDER BY <pk> COLLATE BINARY ASC`.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-030",
+      "claim_text": "The canonical hash block per table must be: header = b'<table>\\x1f<rowcount>'; if zero rows: block = header only; else block = header + b'\\x00' + b'\\x00'.join(row_jsons). Table blocks joined by b'\\x1e'; UTF-8 encoded; SHA-256 hashed.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-034",
+      "claim_text": "canonical_hash MUST NOT include replay_runs, events, anomalies, projection_snapshots, or any *_at column.",
+      "passed": false,
+      "evidence": "\nThe code does not contain a real implementation of `canonical_hash()` in `serialization.py`. Instead, it embeds a sample as a string:\n\n```python\nsample_code = '''\ndef canonical_hash(db_session):\n    ...\n'''\n```\n\nThis `sample_code` string is passed to Claude for analysis but is never an actual callable function. The code is also incomplete, cut off at:\n```python\n\"role\": \"user\n```\n\nNo actual `serialization.py` file or real `canonical_hash()` function implementation exists in the code produced.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-035",
+      "claim_text": "append_event must use INSERT OR IGNORE; if rowcount==1 return lastrowid; else re-read existing row and compare stored canonical payload to new canonical payload \u2014 equal: increment dedup_counters[dup_exact] (no anomaly); different: increment dedup_counters[dup_conflict] AND call record_anomaly('dup_conflict').",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-038",
+      "claim_text": "Handlers must build the SQL upsert SET clause from parse_patch dict keys using INSERT INTO t(...) VALUES(...) ON CONFLICT(pk) DO UPDATE SET col=excluded.col (no Python read-modify-write).",
+      "passed": false,
+      "evidence": "\nproj_station.py correctly implements:\n```python\nset_clause = ', '.join([f'{col} = excluded.{col}' for col in parse_patch.keys()])\n...\nquery = f\"\"\"\n    INSERT INTO stations ({', '.join(columns)})\n    VALUES ({placeholders})\n    ON CONFLICT(station_id) DO UPDATE SET {set_clause}\n    RETURNING *\n\"\"\"\n```\n\nproj_auction.py partially implements (truncated):\n```python\nset_clause = ', '.join([f'{col} = excluded.{col}' for col in parse_patch.keys()])\n...\nquery = f\"\"\"\n    INSERT INTO auctions ({', '.join(columns)})\n```\n(query is cut off)\n\nproj_environmental.py: No evidence found (file entirely absent)\nproj_system.py: No evidence found (file entirely absent)\n",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-039",
+      "claim_text": "Additive counters (sales_total_cents +=, bid_high_cents MAX, bid_count +=) must treat a present-None payload value as a no-op (NOT a clear).",
+      "passed": false,
+      "evidence": "\nproj_station.py (PASS):\n```python\nif amount_cents is not None:\n    station.sales_total_cents = (station.sales_total_cents or 0) + amount_cents\n```\n\nproj_auction.py (FAIL - truncated, no implementation):\n```python\n# Skip counter updates if values are None (no-op\n```\nThe function is cut off here \u2014 no actual guard condition (`if bid_amount_cents is not None:`) is present before updating `bid_high_cents` or `bid_count`. The logic for both `bid_high_cents` (MAX) and `bid_count` (+=) is entirely absent.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-046",
+      "claim_text": "build_projection_at must be a pure function with no DB writes and no run lock; it uses an in-memory :memory: SQLite connection that it creates, loads projection schema into, applies handlers against, reads, and discards.",
+      "passed": false,
+      "evidence": "\nLine 18: `conn = sqlite3.connect(':memory:')` - Creates in-memory SQLite connection\nLines 23-24: `cursor.executescript(projection_schema)` / `conn.commit()` - Loads projection schema\nLines 27-42: `for event in events: ... _apply_user_created(cursor, event)` etc. - Applies handlers\nLines 45-47: `result = _read_projection(cursor)` / `return result` - Reads results\nLines 50-51: `conn.close()` in finally block - Discards connection\nNo reference to `shadow.db` anywhere in the code - No DB writes to persistent storage\nNo lock mechanisms present - No run lock",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-047",
+      "claim_text": "replay_engine must capture live_hash_pre before reset (via live_guard) and live_hash_post after apply, storing both through mark_complete_pass.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-048",
+      "claim_text": "live_content_hash(ro_conn) in live_guard.py must hash live.db content via query (not file bytes).",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-049",
+      "claim_text": "The nav in base.html must contain links to dashboard.index ('Dashboard'), dashboard.runs ('Runs'), replay.start ('Replay'), ingest.run_ingest ('Ingest'), validate.run ('Validate'); login/logout gated by session.",
+      "passed": false,
+      "evidence": "Present:\n- `<li><a href=\"{{ url_for('dashboard.index') }}\">Dashboard</a></li>`\n- `<li><a href=\"{{ url_for('dashboard.runs') }}\">Runs</a></li>`\n- `<li><a href=\"{{ url_for('replay.start') }}\">Replay</a></li>`\n\nMissing (code truncated at `{{ url_`):\n- No evidence of `url_for('ingest.run_ingest')` link\n- No evidence of `url_for('validate.run')` link\n- No evidence of session-gated login/logout conditional block",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-054",
+      "claim_text": "tools/compute_golden.py must compute EMPTY_PROJECTION_HASH and the golden corpus projection_hash after the serializer and schema land, and freeze them as literals in constants.py.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-056",
+      "claim_text": "At ingest-time, structural checks include: valid JSON object, event_type in DISPATCH, required PK key present, size cap. Failure produces anomaly (malformed_payload or unknown_key) and event is SKIPPED.",
+      "passed": false,
+      "evidence": "",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-061",
+      "claim_text": "Flash message categories must be only 'error' or 'success' (no other categories).",
+      "passed": false,
+      "evidence": "The flask_code string is truncated before any flash() calls appear:\n```python\nflask_code = '''\nfrom flask import Flask, flash, render_template, request, redirect\n\napp = Flask(__name__)\napp.secret_key = 'your-secret-key'\n\n@app.route('/login', methods=['GET', 'POST'])\ndef login():\n    if request.method == 'POST':\n        username = request.form.get('username')\n        \n```\nNo flash() calls are visible in any route handler. The code is cut off mid-snippet with no evidence of flash() usage at all.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-073",
+      "claim_text": "The project must include tests/test_dedup.py, tests/test_determinism.py, tests/test_patch_semantics.py, tests/test_pointintime.py, tests/test_isolation.py, tests/conftest.py, and smoke_test.py.",
+      "passed": false,
+      "evidence": "Present:\n- \"# tests/conftest.py\" - conftest.py exists\n- \"# tests/test_dedup.py\" - test_dedup.py exists (but is incomplete/truncated)\n\nMissing (no evidence found):\n- tests/test_determinism.py - not present in the code\n- tests/test_patch_semantics.py - not present in the code\n- tests/test_pointintime.py - not present in the code\n- tests/test_isolation.py - not present in the code\n- smoke_test.py - not present in the code",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-082",
+      "claim_text": "wallclock columns (*_at: appended_at, started_at, finished_at, created_at) must never enter a projection column or the canonical hash.",
+      "passed": false,
+      "evidence": "\nThe code is a meta-analyzer using the Anthropic API, not an actual implementation:\n```python\ndef analyze_code_for_wallclock_violations():\n    client = anthropic.Anthropic()\n    files_to_analyze = {\n        \"serialization.py\": \"\"\"...\"\"\",  # These are strings, not actual files\n        \"proj_handler.py\": \"\"\"...\"\"\"\n    }\n```\n\nThe actual serialization.py and proj_*.py files with the required behavior are not produced - they exist only as string literals within the analyzer script. Additionally, the code is truncated/incomplete, ending abruptly at `\"` in the JSON format section. The spec requires actual implementation of the exclusion in `canonical_hash()` and apply handlers, not a tool to analyze hypothetical code strings.",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-085",
+      "claim_text": "generate_source.py must keep seed=42, the 4 failure injections, and the exact event types/payloads from the original generator.",
+      "passed": false,
+      "evidence": "1. seed=42 is present: `random.seed(42)` at line 6\n2. 4 failure injections defined: `database_connection_failure`, `api_rate_limit_exceeded`, `memory_exhaustion`, `network_partition`\n3. Event types defined: `user_login`, `purchase_completed`, `inventory_updated`, `notification_sent`\n4. Code is broken/incomplete: ends with `generated_code += f\"\\n# Failure injection handler for` - an unterminated f-string\n5. The spec says \"exact event types/payloads from the original generator\" - no reference to the original generator exists; these appear to be invented values",
+      "is_error": false
+    },
+    {
+      "claim_id": "prose-086",
+      "claim_text": "When POST /validate/run compares two runs whose snapshots differ, it must record match=0 and emit ordered field-level diffs with columns (table_name, pk, key, value_a, value_b).",
+      "passed": false,
+      "evidence": "No evidence found of a `record_determinism()` function. The code contains model definitions (DeterminismResults, DeterminismDiffs) and a partially defined `extract_diffs()` function, but the actual `record_determinism()` function required by the spec is completely absent. The code also appears to be truncated, ending mid-function in `extract_diffs()`.",
+      "is_error": false
+    }
+  ],
+  "low_warnings": [],
+  "cost_usd": 2.8592356000000008,
+  "runtime_ms": 482517,
+  "spec_path": "docs/plans/2026-06-06-feat-cpaa-event-replay-simulator-plan.md",
+  "run_id": "spec-eval-1780877897"
+}

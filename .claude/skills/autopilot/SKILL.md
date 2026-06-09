@@ -141,6 +141,46 @@ If the template file doesn't exist, create a minimal BUILD_TRACKING.md with
 Run Info + Phase Status section + AGENT_STATUS table header + empty FAILURES +
 empty RUN_METRICS.
 
+### Step 1.52: Orchestrator Context Instrumentation (MANDATORY — observability)
+
+**Why (M29):** Delegates run in fresh contexts — they cannot die and they each
+report their own tokens/duration. The orchestrator is the ONLY actor that
+accumulates context across every phase + all 16 workers, and the ONLY one that
+can suffer context death. Yet it is the only un-instrumented actor:
+`context_proxy_chars` ships as `0` and, before this step, was never updated — a
+never-filled placeholder. We were instrumenting the safe actors and flying blind
+on the fragile one. This step wires the proxy so a near-death orchestrator is
+visible after the fact instead of silent.
+
+**Protocol — update `context_proxy_chars` at every phase boundary.** A phase
+boundary is each of: end of Step 6 (deepen), Step 9w.6 (gates done), Step 10w
+(all workers returned), each Steps 11w-16w return, and immediately before Step
+17w (tail delegation). At each boundary:
+1. Read BUILD_TRACKING.md. Find the line starting with `- context_proxy_chars:`.
+2. Add a rough tally of every Read body + Agent return the orchestrator ingested
+   since the previous boundary (character count; an estimate is fine — the metric
+   is a comparative proxy, not a gate).
+3. Use Edit with `old_string` = the exact current line and `new_string` = the new
+   cumulative value. Do not hardcode the prior value.
+4. Append one row to `docs/reports/<run-id>/context-telemetry.md` (create on first
+   write; columns: `phase boundary | context_proxy_chars | % of ~200K-char proxy
+   budget | note`).
+
+**Known gaps (do not over-trust the number):** the tally misses system prompts,
+tool schemas, and compaction effects. It is useful for comparing runs and
+spotting a saturation trend, NOT for absolute pass/fail thresholds. It is
+observability only — never a gate.
+
+**>70% warning (M29 — recorded finding, NOT a runtime action).** If
+`context_proxy_chars` exceeds ~140K (~70% of the ~200K-char proxy budget) at the
+pre-17w boundary, write a `WARN: orchestrator context proxy >70% before tail
+delegation` line into `context-telemetry.md` and the BUILD_TRACKING FAILURES
+section. This does NOT block — the tail is delegated to a fresh context anyway
+(that is the whole point of Step 17w). It is a post-run signal that the
+orchestrator nearly saturated before it could hand off, which feeds the
+context-death-architecture follow-up decision. The self-audit picks it up as a
+WARN like any other.
+
 ### Step 1.55: Advisory Baseline Capture (non-blocking)
 
 Run `/advisory-audit baseline`
@@ -484,39 +524,54 @@ swarm launched anyway). The artifact is a hard precondition for Step 10w.
    status lines. Do NOT proceed to Step 10w. This is a hard abort.
 5. If CLEARED: proceed to Step 9w.8.
 
-### Step 9w.8: Spec Eval Gate (MANDATORY -- SWARM ONLY)
+### Step 9w.8: Spec Eval Gate (ADVISORY -- SWARM ONLY)
 
 Test whether agents can actually follow this spec's concrete instructions.
 This gate catches specs that are structurally complete (9w.6 passed) but
 too vague for agents to implement correctly.
 
+**This gate is ADVISORY (non-blocking).** Across Runs 068 and 069 it returned
+FAIL and was human-WAIVED 2-for-2, every residual failure being a
+single-shot-agent / harness artifact (empty/truncated output, or spec-COMPLIANT
+behavior the scorer misjudged), NOT a spec defect -- a ~0% observed precision.
+The gate still RUNS and its result is recorded for the self-audit, but it NEVER
+aborts the pipeline and NEVER requires a human waiver. The blocking pre-spawn
+signals are the structural gates 9w.5/9w.6, which stay blocking. Do NOT tighten
+the spec or hand-author a verification file in response to this gate. (Re-promotion
+path: if the scorer's precision is fixed, restore the abort in step 2 below.)
+
 Run the spec eval gate from the project root:
 
 1. Run: `eval-harness/.venv/bin/python3 eval-harness/spec_eval_gate.py <plan_path> --output-dir docs/reports/<run-id> --cost-cap 1.0`
-2. Check exit code:
-   - Exit 0 (PASS): all HIGH-confidence claims passed. Proceed to Step 9w.9.
-   - Exit 1 (FAIL): read `docs/reports/<run-id>/spec-eval-*/spec-eval-gate.json`.
-     The `failed_details` array lists which spec instructions agents couldn't
-     follow. For each failed claim: tighten the spec instruction to be more
-     concrete (e.g., "validate email" becomes "validate email with regex
-     `^[\w.-]+@[\w.-]+\.\w+$`"). Commit:
-     `git add docs/plans/<plan-file>`
-     `git commit -m "fix: tighten vague spec instructions (spec eval gate)"`
-     Re-run Step 9w.8. Max 1 retry.
-   - Exit 1 (WARN_UNSCORABLE): too few testable claims extracted. The spec
-     may lack concrete instructions. Proceed with caution -- log the warning
-     in BUILD_TRACKING.
-   - Exit 1 (RETRY): transient API errors. Re-run once.
+2. Check the exit code, record an **advisory** result in BUILD_TRACKING + the
+   run report, then ALWAYS proceed to Step 9w.9 (never abort, never waive):
+   - Exit 0 (PASS): record `spec-eval PASS (advisory)`.
+   - Exit 1 (FAIL): record `spec-eval FAIL (advisory, <N> claims failed -- see
+     report; not a spec defect by itself, no spawn gate)`. Do NOT tighten the
+     spec, retry, or abort.
+   - Exit 1 (WARN_UNSCORABLE): record `spec-eval WARN_UNSCORABLE (advisory,
+     too few testable claims)`.
+   - Exit 1 (RETRY): transient API errors. Re-run ONCE. If it still returns
+     RETRY, record `spec-eval RETRY (advisory, transient harness error, no
+     verdict)` -- a transient blip is NOT logged as a spec advisory.
    - Exit 2 (ENV_ERROR): environment misconfiguration (e.g., missing
-     ANTHROPIC_API_KEY). Do NOT retry or attempt to fix the spec. Abort with:
-     `"SPEC EVAL GATE ENV ERROR: <stderr message>"`
-3. If still FAIL after retry: abort with
-   `"SPEC EVAL GATE FAILED: <N> claims failed. See report for details."`
+     ANTHROPIC_API_KEY). Record `spec-eval ENV_ERROR (advisory, no spec
+     verdict)` -- this names an environment fault, NOT a spec pass, so a
+     permanently-broken harness cannot masquerade as a clean run. Do NOT retry
+     or edit the spec. (Cross-run escalation of a persistently-broken harness is
+     out of scope for this step.)
+
+   The recorded entry is **advisory only** -- it does NOT indicate the swarm
+   spawned. If a later pre-spawn gate (9w.9 ghost-file or 10w path-validation)
+   aborts, leave this entry as-is; the run status is set by the aborting gate and
+   BUILD_TRACKING AGENT_STATUS (no agents started) shows spawn was not reached.
 
 **What this catches that other gates don't:** Spec completeness (9w.6) checks
 that sections exist. Spec eval gate checks that the instructions in those
 sections are precise enough for agents to follow. Example: "validate email"
-passes completeness but fails spec eval because it doesn't say how.
+passes completeness but fails spec eval because it doesn't say how. Because its
+observed precision is ~0% (2-for-2 false-FAIL then waive), it informs the
+self-audit but does not gate the spawn.
 
 ### Step 9w.9: Ghost-File Cleanup (MANDATORY -- SWARM ONLY)
 
@@ -544,20 +599,66 @@ the new build and create import landmines.
 `app/db.py` defined a second `get_db()` pointing to `brewops.db` — a landmine.
 The review caught it as P2, but it should have been caught before agents launched.
 
+### Step 9w.9.5: Pre-Spawn Spec-Provenance Gate (MANDATORY -- SWARM ONLY) (FC52/FC51)
+
+Worker worktrees root on the repo's DEFAULT branch (master/main), NOT the
+orchestrator's feature branch (FC51). So each worker reads
+`docs/plans/<spec>.md` **as it exists at the worktree base** — which is STALE if
+the spec was converged/edited on the feature branch after that base commit. Every
+pre-swarm gate (9w.5-9w.8) validated the FEATURE-BRANCH spec. If the worktree-base
+spec differs, the gates certified an artifact the workers will never read — a
+silent FC52 (gate/use provenance drift). Run 070: all 16 workers read a 2010-line
+stale spec while the gates validated the 2295-line converged spec; missed only by
+luck.
+
+The worktree base is harness-opaque, so do BOTH:
+
+1. **Detect (run the shared detector).** Run:
+   `python tools/check_spec_provenance.py --default-branch <default-branch> --original-branch <original_branch> --spec-path docs/plans/<spec>.md`
+   (use the actual default branch name; `<original_branch>` is the orchestrator's
+   feature branch). It captures both blob SHAs
+   (`git rev-parse <branch>:docs/plans/<spec>.md`) and compares them. Line 1 of
+   its output is `STATUS: PROVENANCE_OK` (identical, exit 0) or
+   `STATUS: PROVENANCE_DRIFT` (differ, or the spec exists on only one branch,
+   exit 3); exit 2 = ERROR (missing branch / not a repo / spec on neither branch).
+   This is the SAME detector the fixture suite exercises (F-D1) -- one
+   implementation, no gate/use drift. If it reports `PROVENANCE_DRIFT`, proceed to
+   Repair; if `PROVENANCE_OK`, skip to Record.
+2. **Repair (choose the reliable channel).** If the SHAs differ:
+   - **Preferred / reliable — make the brief the authoritative spec channel.**
+     Do NOT rely on workers reading the worktree file. Inject the full converged
+     spec (or the per-role relevant sections) INLINE into every worker brief, and
+     tell workers the brief is authoritative over any spec file in their worktree.
+     This sidesteps the harness-opaque worktree base entirely.
+   - **Additional — put the converged spec at the worktree base.** Commit/cherry-pick
+     the converged spec file onto the default branch HEAD (where worktrees root) so
+     the file channel also matches. (NOTE: merging the default branch INTO the
+     feature branch does NOT fix this — it leaves the converged spec absent from the
+     default branch. Run 070's pre-flight merge fixed the CODE assembly invariant,
+     not the spec channel.)
+3. **Record.** Write `docs/reports/<run-id>/spec-provenance.md` with line 1 =
+   `STATUS: PROVENANCE_OK` (SHAs identical) or
+   `STATUS: PROVENANCE_REPAIRED -- <inline-injection | spec-committed-to-base>`,
+   plus both blob SHAs and (if repaired) the list of injected section titles. This
+   is the audit trail proving the workers' spec == the gated spec.
+4. NEVER spawn workers while the worktree-base spec differs from the gated spec
+   without recording the repair. The cost of this check is seconds; the cost of
+   detecting the drift mid-swarm is the whole run (recovery options collapse past
+   the spawn boundary).
+
 ### Step 10w: Parallel Swarm Work
 
-**PRECONDITION:** Before reading the agent assignment table, verify BOTH:
+**PRECONDITION:** Before reading the agent assignment table, verify:
 1. `docs/reports/<run-id>/gate-verification.md` exists AND contains
    `STATUS: CLEARED`.
-2. `docs/reports/<run-id>/spec-eval-*/spec-eval-verification.md` exists
-   AND contains `STATUS: PASS`.
 
 If gate-verification.md is missing or BLOCKED, abort with:
 `"CANNOT SPAWN: gate-verification.md missing or BLOCKED. Run Step 9w.7 first."`
-If spec-eval-verification.md is missing, abort with:
-`"CANNOT SPAWN: spec-eval-verification.md missing. Run Step 9w.8 first."`
-These file-based checks prevent the orchestrator from skipping gates
-(the exact pattern that caused Run 054's gate bypass).
+This file-based check prevents the orchestrator from skipping the structural
+gates 9w.5/9w.6 (the exact pattern that caused Run 054's gate bypass). The
+spec-eval gate (9w.8) is **advisory** and has NO precondition here -- it never
+blocks the spawn, so there is no `spec-eval-verification.md STATUS: PASS`
+requirement.
 
 Read the `## Swarm Agent Assignment` section from the plan. Before spawning
 any agents, validate ALL file paths in the assignment table:
@@ -619,6 +720,28 @@ Then wait for all agents to complete. You will be notified as each finishes.
 a failure and proceed with the agents that did complete. Do not wait
 indefinitely.
 
+**Post-Completion Cross-Worker Batch-Scan (MANDATORY -- SWARM ONLY) (M38/FC52):**
+Do NOT rely only on incremental per-completion reading — systemic defects
+(stale spec, divergent assumptions) are invisible per-worker and visible only in
+aggregate, and completion ORDER is duration-random so a late "tell" is caught when
+recovery is most expensive. After ALL workers finish, run ONE aggregate scan
+across the completion summaries before the ownership gate:
+1. **Spec-version agreement:** every worker must reference the SAME spec
+   identity (same section-set / spec SHA / no worker reporting "missing section X"
+   that others used). A mismatch = FC52 drift surfaced — investigate before
+   assembling.
+2. **Divergent gap-fills:** collect every worker's reported judgment call /
+   "I implemented X since the spec didn't say" (the `SPEC_ISSUES:` field if
+   present). Two workers filling the same cross-boundary gap differently = an
+   integration risk no merge-conflict will show (FC3/FC30/FC50). Flag for the
+   contract-check.
+3. **Empirical-wall reports:** collect any worker that discovered a spec
+   impossibility (e.g., a schema constraint that makes a prescribed return shape
+   unachievable). These are higher-signal than any green check — route to review.
+Write findings to `docs/reports/<run-id>/cross-worker-scan.md`. This scan is the
+systematic replacement for catching such issues by luck from an offhand summary
+remark (Run 070).
+
 **Build worker_status list:** After all agents complete or time out, build
 the `worker_status` list that will be passed to swarm-runner in Steps 11w-16w.
 For each spawned agent, record one entry:
@@ -641,10 +764,18 @@ assignments used below come from the swarm-planner output. If Step 7w
 FAILed, this step is never reached (7w FAIL aborts the pipeline).
 
 Before merging any worktree branch, validate that each agent only touched its
-assigned files. For each worktree branch, run these as SEPARATE Bash calls
-(one per branch -- do NOT use a for-loop):
+assigned files. First capture `original_branch`: run
+`git -C <project-root> branch --show-current` (the orchestrator's current
+feature branch). Worker worktrees are rooted on the repo default branch, NOT on
+`original_branch` (verified Run 069), so the diff base MUST be `original_branch`
+-- a hardcoded `main` would mis-attribute every file the feature branch has added
+since it forked. The three-dot operator diffs against
+`merge-base(original_branch, branch)` -- the worker's true fork point, and the
+SAME base the swarm-runner cherry-pick uses (the O3 invariant). For each worktree
+branch, run these as SEPARATE Bash calls (one per branch -- do NOT use a
+for-loop):
 
-1. Run: `git -C <project-root> diff --name-only main...<branch-name>`
+1. Run: `git -C <project-root> diff --name-only <original_branch>...<branch-name>`
 2. Compare the output against the agent's assigned files using Read tool.
 3. If ANY file in the diff is NOT in the agent's assignment, **abort the merge
    for that branch**. Use Write tool to create `docs/reports/<run-id>/ownership-violation.md`:
@@ -707,12 +838,12 @@ from disk-verifying the artifact (below), so a swarm-runner that completed the m
 but was cut off before echoing its STATUS does not fail a genuinely good run.
 
 - If `STATUS: FAIL` and the reason starts with `contract-check:` or
-  `merge-conflict:`: the swarm-runner has already aborted (no merge to main, no
-  cleanup) and set `final_status` in BUILD_TRACKING.md Run State. Do NOT proceed
-  to Step 17w, and do NOT disk-verify (these blocking classes abort BEFORE writing
-  `assembly-summary.md`, and a stale prior-run summary must not mask the abort). The
-  run ends. (These are the two blocking failure classes — see CLAUDE.md Escalation
-  Rules.)
+  `assembly-ownership-conflict:`: the swarm-runner has already aborted (no merge to
+  main, no cleanup, worker branches preserved) and set `final_status` in
+  BUILD_TRACKING.md Run State. Do NOT proceed to Step 17w, and do NOT disk-verify
+  (these blocking classes abort BEFORE writing `assembly-summary.md`, and a stale
+  prior-run summary must not mask the abort). The run ends. (These are the two
+  blocking failure classes — see CLAUDE.md Escalation Rules.)
 - **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
   The blocking classes above are the ONLY wire-driven aborts in this handler. All of
   the following wire outcomes route identically to the disk-verify below — none of them
@@ -742,6 +873,12 @@ assembly/verification logic. Do NOT reintroduce inline Steps 11w-16w here.
 
 ### Step 17w: Delegate Shared Tail (SWARM ONLY)
 
+**Pre-delegation instrumentation (M29):** Before spawning the tail-runner,
+perform the final `context_proxy_chars` boundary update from Step 1.52 and apply
+the >70% warning check. This is the last boundary the orchestrator records before
+handing off, so it is the one that reveals whether the orchestrator nearly
+saturated. Non-blocking — record the WARN if tripped, then proceed.
+
 Use the **tail-runner** agent to execute the entire Shared Tail in a
 fresh context window.
 
@@ -762,7 +899,7 @@ the tail-runner reviews the merged code on the main branch. Any worker branches
 the swarm-runner preserved (TIMED_OUT/FAILED workers) exist only for manual
 inspection and are NOT the review target.
 
-A blocking failure (`contract-check:` or `merge-conflict:`) means the
+A blocking failure (`contract-check:` or `assembly-ownership-conflict:`) means the
 swarm-runner aborted WITHOUT merging to main. In that case the orchestrator
 already ended the run at the Steps 11w-16w handler and never reaches Step 17w.
 

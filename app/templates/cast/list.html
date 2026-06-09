@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Cast — {{ project['title'] }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">Cast</h1>
+  {% if g.member.role in ('producer', 'ad') %}
+  <a class="btn btn-primary" href="{{ url_for('cast.new', project_id=project['id']) }}">Add Cast Member</a>
+  {% endif %}
+</div>
+
+{% if cast %}
+<div class="card bg-dark border-secondary">
+  <div class="table-responsive">
+    <table class="table table-dark table-striped table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Name</th>
+          <th scope="col">Character</th>
+          <th scope="col">Agent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in cast %}
+        <tr>
+          <td>{{ member['cast_id_number'] }}</td>
+          <td>
+            <a href="{{ url_for('cast.detail', project_id=project['id'], cast_member_id=member['id']) }}">
+              {{ member['name'] }}
+            </a>
+          </td>
+          <td>{{ member['character_name'] }}</td>
+          <td>{{ member['agent_name'] or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card bg-dark border-secondary">
+  <div class="card-body text-center text-muted">
+    No cast members yet.
+    {% if g.member.role in ('producer', 'ad') %}
+    <a href="{{ url_for('cast.new', project_id=project['id']) }}">Add one?</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
