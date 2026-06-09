@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -48,17 +49,20 @@ TRACK_TITLES = {
     "FC52": "FC52 — spec-provenance divergence detection",
 }
 
-# Honest status for tracks with no automated fixture, so they are never rendered
-# as a fidelity label they did not earn. (fidelity, outcome, evidence)
+# Honest status for tracks with no automated fixture. The fidelity column is
+# reserved for the canonical labels a fixture can EARN (EXERCISED /
+# SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED). A track with NO fixture earned no
+# fidelity, so its fidelity cell is "—" and its real coverage provenance
+# ("FIELD+SPIKE") lives in the evidence column — never in the fidelity column,
+# never rounded up to EXERCISED. (fidelity, outcome, evidence)
 #   Track A: P-accept. The cherry-pick assembly is agent-prose in swarm-runner.md;
 #   exercising it as-shipped needs a share-not-fork extraction (a deliberate
-#   hardening refactor with its own real-build validation), NOT a fixture. Until
-#   then it stays field+spike-validated, labelled honestly — not EXERCISED.
+#   hardening refactor with its own real-build validation), NOT a fixture.
 TRACK_STATIC = {
-    "A": ("FIELD+SPIKE", "N/A",
-          "P-accept: cherry-pick assembly is agent-prose (swarm-runner.md:76-138); "
-          "field-proven runs 069/070 + spikes. NOT fixtured as EXERCISED — pending a "
-          "deliberate P-extract refactor."),
+    "A": ("—", "NOT FIXTURED",
+          "FIELD+SPIKE (P-accept): cherry-pick assembly is agent-prose "
+          "(swarm-runner.md:76-138); field-proven runs 069/070 + spikes. No fixture, "
+          "so no fidelity is claimed — pending a deliberate P-extract refactor."),
 }
 
 
@@ -369,7 +373,14 @@ SPEC_EVAL_GATE = HARNESS_DIR / "spec_eval_gate.py"
 # Stable substrings that encode the advisory/non-blocking contract in Step 9w.8 +
 # the Step 10w precondition. If either is gone, the demotion was weakened.
 _ADVISORY_CONTRACT = ("ADVISORY (non-blocking)", "NEVER aborts the pipeline")
-_VALID_GATE_STATUS = {"PASS", "FAIL", "WARN_UNSCORABLE", "RETRY", "ENV_ERROR"}
+
+# Layer-1 (scorer) outcome classes. The split is the point of review issue #1:
+# a SCORER_DEFECT must NOT be hidden as an environment miss. Only genuine
+# environment unavailability is non-failing; everything else where the scorer
+# was reachable but produced no verdict is a defect that FAILS the fixture.
+L1_EXERCISED = "EXERCISED"        # scorer ran in a working env and produced a verdict + JSON
+L1_ENV_UNAVAILABLE = "ENV_UNAVAILABLE"  # env/transport: no API key, timeout, connection — could not exercise
+L1_SCORER_DEFECT = "SCORER_DEFECT"      # reachable but no verdict (WARN_UNSCORABLE/RETRY/no-JSON/malformed)
 
 
 def _check_advisory_prose() -> tuple[bool, str]:
@@ -390,14 +401,24 @@ def _check_advisory_prose() -> tuple[bool, str]:
 
 
 def _run_scorer(timeout: int = 420) -> tuple[str, str]:
-    """Layer 1 (EXERCISED): invoke the real spec_eval_gate.py on the vague fixture
-    spec, bounded. Returns (status, detail) where status is one of:
-    'EXERCISED' (scorer ran, verdict + JSON produced), 'INCONCLUSIVE' (env/transient
-    — could not exercise, not a Track-C defect), or 'FAILED' (ran but produced no
-    verdict/JSON — a real infra regression).
+    """Layer 1: invoke the real spec_eval_gate.py on the vague fixture spec,
+    bounded. Returns (outcome, detail) where outcome is one of L1_EXERCISED /
+    L1_ENV_UNAVAILABLE / L1_SCORER_DEFECT.
+
+    The fixture spec is DESIGNED to be scorable (>= 1 HIGH claim with
+    --min-high-claims 1). So WARN_UNSCORABLE (extraction no longer finds the
+    claims), RETRY (the gate never produced a verdict after its own retries), a
+    missing/unreadable JSON report, or a malformed status are all SCORER DEFECTS
+    on this controlled input — NOT environment misses — and must surface, never
+    pass silently (review issue #1). Only a genuinely unreachable environment
+    (no API key / ENV_ERROR exit 2, a hard timeout, or a transport/connection
+    error) is L1_ENV_UNAVAILABLE: the scorer's logic was never exercised, so it
+    is neither a pass nor a defect.
     """
     if not SPEC_EVAL_GATE.exists():
-        return "FAILED", f"shipped scorer missing: {SPEC_EVAL_GATE}"
+        return L1_SCORER_DEFECT, f"shipped scorer missing: {SPEC_EVAL_GATE}"
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return L1_ENV_UNAVAILABLE, "ANTHROPIC_API_KEY not set — scorer not exercised (env)"
     out_dir = Path(tempfile.mkdtemp(prefix="fc1-"))
     try:
         cmd = [
@@ -410,27 +431,38 @@ def _run_scorer(timeout: int = 420) -> tuple[str, str]:
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
-            return "INCONCLUSIVE", f"scorer timed out after {timeout}s (transient)"
+            return L1_ENV_UNAVAILABLE, f"scorer timed out after {timeout}s (transport/env)"
 
         reports = list(out_dir.glob("spec-eval-*/spec-eval-gate.json"))
         if reports:
             try:
                 status = json.loads(reports[0].read_text()).get("status", "")
             except (json.JSONDecodeError, OSError) as exc:
-                return "FAILED", f"scorer wrote unreadable JSON: {exc}"
-            return "EXERCISED", (
+                return L1_SCORER_DEFECT, f"scorer wrote unreadable JSON: {exc}"
+            if not status:
+                return L1_SCORER_DEFECT, f"scorer JSON has no status field ({reports[0].name})"
+            return L1_EXERCISED, (
                 f"scorer ran and produced verdict={status!r} + JSON report "
                 f"({reports[0].name})"
             )
 
-        # No gate JSON. Distinguish a transient/env miss from an infra regression.
-        blob = (proc.stdout + proc.stderr)
+        # No gate JSON: the scorer did not reach a verdict. Classify the cause.
+        blob = proc.stdout + proc.stderr
         if proc.returncode == 2 or "ENV_ERROR" in blob:
-            return "INCONCLUSIVE", "scorer returned ENV_ERROR (no API key / env) — not a Track-C defect"
-        if "RETRY" in blob or "WARN_UNSCORABLE" in blob:
-            reason = "RETRY (transient)" if "RETRY" in blob else "WARN_UNSCORABLE (too few claims)"
-            return "INCONCLUSIVE", f"scorer returned {reason} — no verdict to assert"
-        return "FAILED", (
+            return L1_ENV_UNAVAILABLE, "scorer returned ENV_ERROR (env) — scorer not exercised"
+        if re.search(r"Connection|timed out|Network|getaddrinfo|temporarily unavailable", blob, re.I):
+            return L1_ENV_UNAVAILABLE, "scorer hit a transport error (env) — scorer not exercised"
+        if "WARN_UNSCORABLE" in blob:
+            return L1_SCORER_DEFECT, (
+                "scorer returned WARN_UNSCORABLE on a spec built to be scorable — "
+                "extraction regression (no verdict)"
+            )
+        if "RETRY" in blob:
+            return L1_SCORER_DEFECT, (
+                "scorer returned RETRY (no verdict after its own retries) — "
+                "not silently passed"
+            )
+        return L1_SCORER_DEFECT, (
             f"scorer produced no verdict/JSON. exit={proc.returncode}. "
             f"tail: {blob.strip()[-300:]!r}"
         )
@@ -447,6 +479,11 @@ def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureR
         infrastructure, EXERCISED by invoking spec_eval_gate.py. Gated behind a
         flag because it makes real (bounded) LLM calls — the regression net stays
         hermetic and free by default.
+
+    Outcome policy (review issue #1): layer 2 must hold. With --with-api, a
+    L1_SCORER_DEFECT FAILS the fixture (a real scorer regression is never hidden);
+    L1_ENV_UNAVAILABLE does not fail (the scorer was never exercised) but is
+    reported, never dressed up as EXERCISED.
     """
     l2_ok, l2_detail = _check_advisory_prose()
 
@@ -455,12 +492,15 @@ def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureR
         detail = f"layer2 {l2_detail}; layer1 scorer run is opt-in (--with-api)"
         return FixtureResult("F-C1", "C", fidelity, l2_ok, "ADVISORY-PROSE", detail)
 
-    l1_status, l1_detail = _run_scorer()
-    exercised = l1_status == "EXERCISED"
-    l1_regression = l1_status == "FAILED"
-    passed = l2_ok and not l1_regression
-    fidelity = f"{EXERCISED}(L1)+{PROSE_ASSERTED}(L2)" if exercised else f"{PROSE_ASSERTED}(L2)"
-    detail = f"layer1 [{l1_status}] {l1_detail}; layer2 {l2_detail}"
+    l1_outcome, l1_detail = _run_scorer()
+    passed = l2_ok and l1_outcome != L1_SCORER_DEFECT
+    if l1_outcome == L1_EXERCISED:
+        fidelity = f"{EXERCISED}(L1)+{PROSE_ASSERTED}(L2)"
+    else:
+        # ENV_UNAVAILABLE or SCORER_DEFECT — layer 1 was NOT exercised; never
+        # round up to EXERCISED.
+        fidelity = f"{PROSE_ASSERTED}(L2)"
+    detail = f"layer1 [{l1_outcome}] {l1_detail}; layer2 {l2_detail}"
     return FixtureResult("F-C1", "C", fidelity, passed, "ADVISORY-PROSE+SCORER", detail)
 
 
@@ -522,6 +562,13 @@ def render_matrix(results: dict[str, FixtureResult]) -> str:
     lines += [header, sep]
     for track, fid, out, ev in rows:
         lines.append(f"| {track.ljust(w_track)} | {fid.ljust(w_fid)} | {out.ljust(w_out)} | {ev} |")
+    lines.append("")
+    lines.append(
+        "Fidelity column = the canonical label a fixture EARNED "
+        "(EXERCISED / SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED). "
+        "'—', PENDING, NOT RUN are no-result sentinels — no fidelity is claimed; "
+        "see Evidence for a non-fixtured track's coverage provenance."
+    )
     lines.append("")
     return "\n".join(lines)
 
