@@ -161,7 +161,7 @@ found." But be skeptical. Something is almost always missed.
 
 ## Questions A Skeptical Reviewer Would Ask
 
-Generate 3-5 questions that a skeptical external reviewer would ask about this
+Generate 3-6 questions that a skeptical external reviewer would ask about this
 build, then answer each one honestly. Focus on:
 
 1. Gaps between the plan and what was actually built
@@ -169,6 +169,13 @@ build, then answer each one honestly. Focus on:
 3. Whether deferred items are truly safe to defer or are being punted
 4. Whether the failure classes cited are the right ones (not just the closest)
 5. Whether the build introduced any patterns not covered by existing pitfalls
+6. **Epistemic quality (M6):** if this run existed to ESTABLISH a claim (a
+   validation run, a spike, a "does X work" build), how strong is the evidence
+   for that claim — *distinct from* whether execution was clean? A run can grade
+   well on execution while barely proving the thing it was run to prove. Name the
+   claim, then rate the evidence for it honestly (e.g. "graded A on execution, but
+   the feature under test was never actually exercised — see M3/M4"). If the run
+   was an ordinary build with no claim to establish, say so and skip.
 
 Format:
 **Q1:** <question>

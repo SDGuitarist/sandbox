@@ -44,11 +44,15 @@ confirms they recur. Make these the mine's FIRST calibration targets.
 - **M16** — Convergence value audit: for each added section, did it change a worker decision? (a third of 070's convergence delta was restatement.) **Corpus test:** is restatement-heavy convergence common across builds?
 - **M22** — Add "Schema-Behavior Contracts" surface to the spec template (cross-agent dependencies on cascade/constraint behavior, e.g., callsheets idempotency ← ON DELETE CASCADE). Between FC46 and FC50. **Corpus test:** how many prior builds had a cross-agent schema-behavior dependency that bit? (n=1 today.)
 
-### Bucket 3 — Validation method / governance
-- **M6** — Add an epistemic-quality axis to the Run Quality grade ("how strong is the evidence for the claim this run exists to support?") distinct from execution quality. (self-audit rubric + verify-self-audit.)
-- **M7/M33** — Frozen-branch governance fixes: (a) assert validated-copy == merged-copy; (b) add a feedback edge (validation surfaced a hardening-adjacent issue → amend before merge); (c) freeze can't assume a stationary master. (governance doc.)
-- **M10** — Re-promote / fix the feasibility gate: spec-eval is the ONLY gate covering the semantic-feasibility layer, which is where 070's real gaps lived (contentless-FTS impossibility, 8 judgment calls). Fix the harness (the demotion reason was ~0% failure-precision), don't abandon the layer.
-- **M18** — Thin-brief validation mode: during VALIDATION runs, deliberately use minimal briefs so systemic bugs fail loudly instead of being masked by defensive briefing.
+## DONE — Bucket 3 (governance), committed this session
+New owning artifact: **`docs/governance/validation-validity-governance.md`** — the
+"is our green actually meaningful?" axis (distinct from the roadmap's
+verification-touch axis). Same calibration discipline as Bucket 2: principle +
+actionable change captured; invasive live-gate changes on n=1 evidence PARKED.
+- **M6** → governance doc + **safe non-breaking** edit to `self-audit-reviewer` skeptical-questions (a 6th focus: "how strong is the evidence for the claim this run exists to support, distinct from clean execution?"). **PARKED:** a 7th *gated* Run Quality dimension — `verify-self-audit` Gate 7b hard-requires exactly 6 rows; needs an atomic rubric+gate change + corpus calibration.
+- **M7/M33** → governance doc: the freeze→validate→merge model + its four cracks (circular validation, validated-copy ≠ merged-copy, no feedback edge, non-stationary master). Crack #2 turned into a concrete **operator pre-merge diff check** (validated branch vs merge-source). The merge/push themselves untouched (operator authority).
+- **M10** → governance doc + **safe non-breaking** note in `[[spec-eval-gate-behavior]]` memory: the demotion left the FEASIBILITY layer ungated (070's real gaps were all feasibility-layer); structural gates ≠ feasibility coverage; precision-fix-then-re-promote is an open roadmap improvement, not optional cleanup. **PARKED:** the `spec_eval_gate.py` precision fix + 9w.8 re-promotion (real engineering, a build).
+- **M18** → governance doc: thin-brief validation mode documented as an **opt-in mode for validation runs** (declare in the plan), NOT a SKILL default — defensive briefing stays correct for production builds.
 
 ### Bucket 4 — Smaller pitfalls / skill
 - **M27** — agent-pitfalls: cross-domain read aggregator (FTS workaround → 4-domain leak surface).
