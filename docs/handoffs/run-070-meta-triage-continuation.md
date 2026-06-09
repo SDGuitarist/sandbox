@@ -120,8 +120,8 @@ early-build artifacts (~024–045), hindsight-retrofit bias, diminishing returns
 Distinct from (and larger than) the parked-bucket drain below — sequence it separately.
 
 ## OPEN OPERATOR DECISIONS (NOT mine to execute — leave for the human)
-1. **Merge** orchestration-hardening branch (feat/cpaa-event-replay-simulator) to master. Recommendation: GO for Tracks A & C (field-proven); Track B is fixture-worthy first (see M4 proposal) before claiming it field-proven.
-2. **Push** either branch to remote (still local-only).
+1. **Merge** orchestration-hardening branch (feat/cpaa-event-replay-simulator) to master. Recommendation: GO for Tracks A & C (field-proven); Track B is fixture-worthy first (see M4 proposal) before claiming it field-proven. STILL OPEN — and see M30 "two decisions" framing below (the FC52 gate is stranded on feat/film).
+2. ~~**Push** branch to remote~~ — **DONE 2026-06-08:** `feat/film-production-pm` pushed to `origin` with upstream tracking (durability backup only — NO PR, NO merge). `origin/feat/cpaa-event-replay-simulator` was already at `0d36a24` (hardening already remote). Merge/PR remain deferred (decision #1).
 
 ### M7 pre-merge diff check — RUN 2026-06-08, result: CLEAN (validated-copy == merged-copy)
 The governance doc's M7 crack-#2 check (`docs/governance/validation-validity-governance.md`) was executed. Evidence:
@@ -138,8 +138,22 @@ The post-070 improvements live ONLY on feat/film and would **NOT travel** with a
 
 **So the merge is really two decisions:** (a) the hardening (`0d36a24`) — validated, clean, safe; (b) the FC52 gate + instruments + governance — SKILL/agent improvements sitting only on feat/film, arguably higher-value than the hardening, needing their own path to master (cherry-pick the three control-file commits 5af6f4d/06cefe4/2308826, or selectively merge feat/film's `.claude/` changes — WITHOUT dragging the whole Film PM app onto master). Both remain operator decisions; this section records the evidence, not the call.
 
-## Kickoff for the new session
-Read docs/handoffs/run-070-meta-triage-continuation.md and docs/reports/070/meta-analysis.md.
-Continue draining the PARKED meta-analysis patterns into their owning artifacts,
-starting with Bucket 1 (instruments — nearly free). One bucket at a time; commit per
-bucket. Do NOT touch the open operator decisions (branch merge / push).
+## Kickoff for the new session — BUILD the fixture suite (Phase 1 MVP)
+Triage is COMPLETE (all 4 buckets drained) and the M4 fixture plan is drafted →
+deepened → self-reviewed → Codex-reviewed (GO, 1 P1 fixed). Branch
+`feat/film-production-pm` is pushed to origin. Next session = WORK phase:
+
+> Read `docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md` (the deepening
+> findings + callability matrix are the load-bearing part). Build **Phase 1 only**:
+> `eval-harness/fixtures/` scaffold + `validate_hardening.py` runner + **F-B1** (the
+> Track-B FC50 proof — invoke the REAL `spec-completeness-checker` agent on a tiny
+> unpinned-orchestration-entrypoint spec; assert its report STATUS line is FAIL). Emit
+> the per-track fidelity matrix with the honest label vocabulary (EXERCISED /
+> SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED). Phase 1 is the decisive Track-B
+> evidence and does NOT depend on the Phase-2 path choice. Verify against the EARS
+> "WHEN F-B1…" test. Commit in ~50-100 line increments.
+
+Before Phase 2, the operator picks **P-extract / P-promote / P-accept** (Track A +
+FC52-detection) — see the plan's meta-finding. Do NOT touch the open operator
+decisions (the hardening→master merge / any PR). Corpus meta-analysis stays a separate
+operator-triggered effort.
