@@ -402,10 +402,12 @@ def _classify_scorer_report(status, report_name: str) -> tuple[str, str]:
     A written report means the scorer reached scoring — but the status must still
     be a KNOWN GateStatus. A non-empty but unrecognized status is schema drift (a
     defect), NOT a verdict, and must not read as EXERCISED success (the hole Codex
-    flagged). Pure + unit-tested.
+    flagged). Any non-string/missing status (a drifted schema) is likewise a
+    defect — a schema-drift defense must not itself crash on drifted data. Pure +
+    unit-tested.
     """
-    if not status:
-        return L1_SCORER_DEFECT, f"scorer JSON has no status field ({report_name})"
+    if not isinstance(status, str) or not status:
+        return L1_SCORER_DEFECT, f"scorer JSON has no valid status field ({report_name})"
     valid = _valid_gate_statuses()
     if status not in valid:
         return L1_SCORER_DEFECT, (
@@ -470,9 +472,11 @@ def _run_scorer(timeout: int = 420) -> tuple[str, str]:
         reports = list(out_dir.glob("spec-eval-*/spec-eval-gate.json"))
         if reports:
             try:
-                status = json.loads(reports[0].read_text()).get("status", "")
+                data = json.loads(reports[0].read_text())
             except (json.JSONDecodeError, OSError) as exc:
                 return L1_SCORER_DEFECT, f"scorer wrote unreadable JSON: {exc}"
+            # A report that is not a JSON object is itself schema drift.
+            status = data.get("status") if isinstance(data, dict) else None
             return _classify_scorer_report(status, reports[0].name)
 
         # No gate JSON: the scorer did not reach a verdict. Classify the cause.
