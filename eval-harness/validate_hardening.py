@@ -105,6 +105,18 @@ def _fc50_surface_failed(lines: list[str]) -> bool:
     return False
 
 
+def _fc50_surface_status(lines: list[str]) -> str | None:
+    """Return the FC50 surface's STATUS cell (upper-cased), or None if absent.
+    Reads the Results-table row for the Orchestration-Entrypoint surface."""
+    for ln in lines:
+        s = ln.strip()
+        if s.startswith("|"):
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            if len(cells) >= 2 and _FC50_SURFACE.search(cells[0]):
+                return cells[1].upper()
+    return None
+
+
 def evaluate_fb1_report(text: str) -> tuple[bool, str, str]:
     """Decide F-B1's outcome from the agent's report text. Pure + testable.
 
@@ -144,32 +156,25 @@ def evaluate_fb1_report(text: str) -> tuple[bool, str, str]:
     )
 
 
-def run_fb1(claude_bin: str = "claude", timeout: int = 420, **_) -> FixtureResult:
-    """Drive the shipped spec-completeness-checker agent against the F-B1 spec.
+def _invoke_spec_completeness_checker(
+    fixture_dir: Path, claude_bin: str, timeout: int, prefix: str,
+) -> tuple[str | None, str]:
+    """Run the SHIPPED spec-completeness-checker agent on a fixture spec.
 
-    Faithfulness: we invoke `claude -p --agent spec-completeness-checker`, which
-    loads `.claude/agents/spec-completeness-checker.md` verbatim as the session
-    agent. That IS the artifact the autopilot pipeline runs (runs 069/070) -- no
-    reimplementation, so the label is EXERCISED. We then read line 1 of the
-    report the agent writes (its Output Contract) and assert the gate caught the
-    unpinned entrypoint.
-
-    The fixture PASSES when the guard correctly FAILS the broken spec naming
-    `compute_schedule`. If the guard returns PASS/N/A, Track B is unproven and
-    the fixture FAILS.
+    Faithfulness: `claude -p --agent spec-completeness-checker` loads
+    `.claude/agents/spec-completeness-checker.md` verbatim as the session agent --
+    the artifact the autopilot pipeline runs (runs 069/070), no reimplementation.
+    Returns (report_text, "") on success, or (None, error_detail) on failure.
+    Both F-B1 and F-B2 share this; only the report-evaluation differs.
     """
-    fb1_dir = FIXTURES_DIR / "fb1"
-    spec_src = fb1_dir / "spec.md"
-    bt_src = fb1_dir / "build_tracking.md"
-
-    work = Path(tempfile.mkdtemp(prefix="fb1-"))
+    work = Path(tempfile.mkdtemp(prefix=prefix))
     try:
         spec = work / "spec.md"
         build_tracking = work / "build_tracking.md"
         reports = work / "reports"
         reports.mkdir()
-        shutil.copy(spec_src, spec)
-        shutil.copy(bt_src, build_tracking)
+        shutil.copy(fixture_dir / "spec.md", spec)
+        shutil.copy(fixture_dir / "build_tracking.md", build_tracking)
 
         prompt = (
             "You are being run as the spec-completeness-checker gate on a fixture "
@@ -187,36 +192,76 @@ def run_fb1(claude_bin: str = "claude", timeout: int = 420, **_) -> FixtureResul
             "--dangerously-skip-permissions",
             "--add-dir", str(work),
         ]
-
         try:
             proc = subprocess.run(
                 cmd, input=prompt, cwd=str(REPO_ROOT), capture_output=True,
                 text=True, timeout=timeout,
             )
         except FileNotFoundError:
-            return FixtureResult(
-                "F-B1", "B", EXERCISED, False, "ERROR",
-                f"could not invoke '{claude_bin}' -- is the Claude CLI installed?",
-            )
+            return None, f"could not invoke '{claude_bin}' -- is the Claude CLI installed?"
         except subprocess.TimeoutExpired:
-            return FixtureResult(
-                "F-B1", "B", EXERCISED, False, "ERROR",
-                f"agent invocation timed out after {timeout}s",
-            )
+            return None, f"agent invocation timed out after {timeout}s"
 
         report = reports / "spec-completeness-check.md"
         if not report.exists():
             tail = (proc.stdout or proc.stderr or "").strip()[-400:]
-            return FixtureResult(
-                "F-B1", "B", EXERCISED, False, "ERROR",
-                f"agent wrote no report. exit={proc.returncode}. output tail: {tail!r}",
-            )
-
-        text = report.read_text()
-        passed, verdict, detail = evaluate_fb1_report(text)
-        return FixtureResult("F-B1", "B", EXERCISED, passed, verdict, detail)
+            return None, f"agent wrote no report. exit={proc.returncode}. output tail: {tail!r}"
+        return report.read_text(), ""
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def run_fb1(claude_bin: str = "claude", timeout: int = 420, **_) -> FixtureResult:
+    """F-B1: the gate must FAIL on the FC50 surface naming the unpinned entrypoint.
+    PASSES when the guard catches it; if it returns PASS/N/A, Track B is unproven.
+    """
+    text, err = _invoke_spec_completeness_checker(
+        FIXTURES_DIR / "fb1", claude_bin, timeout, "fb1-")
+    if text is None:
+        return FixtureResult("F-B1", "B", EXERCISED, False, "ERROR", err)
+    passed, verdict, detail = evaluate_fb1_report(text)
+    return FixtureResult("F-B1", "B", EXERCISED, passed, verdict, detail)
+
+
+def evaluate_fb2_report(text: str) -> tuple[bool, str, str]:
+    """F-B2 documents the FC50 blind spot: a wholly-OMITTED entrypoint row.
+
+    Check 1b is a signature-PRESENCE guard, not a call-site classifier
+    (spec-completeness-checker.md:88-90) -- with zero `orchestration entrypoint`
+    rows it returns N/A, NOT FAIL. The honest outcome is N/A: the guard reports
+    "I can't see this" rather than a false PASS that hides the omission. A
+    non-N/A status here would misreport the blind spot.
+    """
+    status = _fc50_surface_status(text.splitlines())
+    if status == "N/A":
+        return True, "N/A", (
+            "FC50 surface returned N/A on a wholly-omitted entrypoint — the "
+            "documented blind spot reported honestly (not a false PASS). The "
+            "downstream backstop is the assembly contract-check "
+            "(PROSE-ASSERTED — agent-prose, not exercised here)."
+        )
+    if status is None:
+        return False, "UNKNOWN", "could not find the FC50/Orchestration-Entrypoints surface row"
+    if status == "FAIL":
+        return False, "FAIL", (
+            "FC50 surface FAILED — unexpected: F-B2 declares NO entrypoint row, so "
+            "Check 1b should return N/A. (Did the spec accidentally declare one?)"
+        )
+    return False, status, (
+        f"FC50 surface is {status!r}, expected N/A — a non-N/A here misreports the "
+        "blind spot (a false PASS would hide the omitted entrypoint)"
+    )
+
+
+def run_fb2(claude_bin: str = "claude", timeout: int = 420, **_) -> FixtureResult:
+    """F-B2: with a wholly-omitted entrypoint row, the gate must return N/A for
+    FC50 (the honest blind spot), never a false PASS. Exercises the real agent."""
+    text, err = _invoke_spec_completeness_checker(
+        FIXTURES_DIR / "fb2", claude_bin, timeout, "fb2-")
+    if text is None:
+        return FixtureResult("F-B2", "B", EXERCISED, False, "ERROR", err)
+    passed, verdict, detail = evaluate_fb2_report(text)
+    return FixtureResult("F-B2", "B", EXERCISED, passed, verdict, detail)
 
 
 # --------------------------------------------------------------------------- #
@@ -423,16 +468,17 @@ def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureR
 # Registry + matrix                                                             #
 # --------------------------------------------------------------------------- #
 
-# fixture id -> runner callable. F-B2 (Phase 3 FC50 false-N/A) lands here later.
+# fixture id -> runner callable.
 FIXTURES = {
     "F-B1": run_fb1,
+    "F-B2": run_fb2,
     "F-D1": run_fd1,
     "F-C1": run_fc1,
 }
 
 # fixture id -> the track it proves. Lets the matrix tell "built but not selected
 # this invocation" apart from "no fixture exists yet".
-FIXTURE_TRACKS = {"F-B1": "B", "F-D1": "FC52", "F-C1": "C"}
+FIXTURE_TRACKS = {"F-B1": "B", "F-B2": "B", "F-D1": "FC52", "F-C1": "C"}
 
 
 def render_matrix(results: dict[str, FixtureResult]) -> str:
@@ -444,8 +490,8 @@ def render_matrix(results: dict[str, FixtureResult]) -> str:
     built_tracks = set(FIXTURE_TRACKS.values())
     rows = []
     for track in TRACKS:
-        res = next((r for r in results.values() if r.track == track), None)
-        if res is None:
+        track_res = [r for r in results.values() if r.track == track]
+        if not track_res:
             if track in TRACK_STATIC:
                 rows.append((track, *TRACK_STATIC[track]))
             elif track in built_tracks:
@@ -453,8 +499,18 @@ def render_matrix(results: dict[str, FixtureResult]) -> str:
             else:
                 rows.append((track, "PENDING", "—", "Phase 3 — not built"))
         else:
-            outcome = "PASSED" if res.passed else "FAILED"
-            rows.append((track, res.fidelity, outcome, f"{res.fixture_id}: {res.detail}"))
+            # A track may carry several fixtures (e.g. B = F-B1 + F-B2). The track
+            # PASSES only if every fixture passed; fidelity joins the distinct
+            # labels earned across them.
+            all_pass = all(r.passed for r in track_res)
+            outcome = "PASSED" if all_pass else "FAILED"
+            fids = sorted({r.fidelity for r in track_res})
+            fidelity = " / ".join(fids)
+            evidence = "; ".join(
+                f"{r.fixture_id} {'PASS' if r.passed else 'FAIL'}: {r.detail}"
+                for r in sorted(track_res, key=lambda r: r.fixture_id)
+            )
+            rows.append((track, fidelity, outcome, evidence))
 
     w_track = max(len("Track"), max(len(r[0]) for r in rows))
     w_fid = max(len("Fidelity"), max(len(r[1]) for r in rows))
