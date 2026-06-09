@@ -34,11 +34,15 @@ Second axis: `PASSED` (the guard produced the expected verdict) | `FAILED`.
 
 | Fixture | Track | Fidelity | Status |
 |---------|-------|----------|--------|
-| **F-B1** | B (FC50) | `EXERCISED` | Built. Real `spec-completeness-checker` agent; the merge-blocking proof. |
+| **F-B1** | B (FC50) | `EXERCISED` | Built. Real `spec-completeness-checker` agent; FAILs on an unpinned entrypoint. The merge-blocking proof. |
+| **F-B2** | B (FC50 false-N/A) | `EXERCISED` | Built. Real agent returns `N/A` on a wholly-omitted entrypoint — the honest blind spot, not a false PASS. Backstop (assembly contract-check) is `PROSE-ASSERTED`. |
 | **F-D1** | FC52 | `EXERCISED` | Built. Shipped `tools/check_spec_provenance.py` (detection only; repair is out of scope). |
 | **F-C1** | C | `PROSE-ASSERTED` (L2) / `EXERCISED` (L1, opt-in) | Built. Advisory contract always; real scorer via `--with-api`. |
 | **Track A** | A (FC51) | `FIELD+SPIKE` | **P-accept.** Cherry-pick assembly is agent-prose; field-proven runs 069/070 + spikes. NOT fixtured as `EXERCISED` — pending a deliberate `P-extract` refactor (its own real-build validation). F-A1/F-A2 intentionally not built. |
-| **F-B2** | B (FC50 false-N/A) | — | Phase 3 — not built. |
+
+All planned fixtures are now built except F-A1/F-A2 (intentionally `P-accept`'d).
+Track B carries two fixtures (FAIL-on-unpinned + N/A-on-omitted); the matrix
+aggregates them — the track PASSES only if both pass.
 
 ### The operator decision (resolved)
 
