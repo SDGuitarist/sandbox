@@ -20,6 +20,7 @@ A / C / FC52 are Phase 2/3 and are shown as PENDING.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -143,7 +144,7 @@ def evaluate_fb1_report(text: str) -> tuple[bool, str, str]:
     )
 
 
-def run_fb1(claude_bin: str = "claude", timeout: int = 420) -> FixtureResult:
+def run_fb1(claude_bin: str = "claude", timeout: int = 420, **_) -> FixtureResult:
     """Drive the shipped spec-completeness-checker agent against the F-B1 spec.
 
     Faithfulness: we invoke `claude -p --agent spec-completeness-checker`, which
@@ -263,7 +264,7 @@ def _detect(repo: Path) -> tuple[int, str]:
     return cp.returncode, line1
 
 
-def run_fd1(claude_bin: str = "claude") -> FixtureResult:
+def run_fd1(claude_bin: str = "claude", **_) -> FixtureResult:
     """Drive the shipped FC52 detector against a diverged-spec scenario.
 
     EXERCISED, not MIRRORED: this invokes `tools/check_spec_provenance.py`, the
@@ -315,18 +316,123 @@ def run_fd1(claude_bin: str = "claude") -> FixtureResult:
 
 
 # --------------------------------------------------------------------------- #
+# F-C1 — Track C: scorer (layer 1, EXERCISED) + advisory demotion (layer 2).    #
+# --------------------------------------------------------------------------- #
+
+SKILL_MD = REPO_ROOT / ".claude" / "skills" / "autopilot" / "SKILL.md"
+SPEC_EVAL_GATE = HARNESS_DIR / "spec_eval_gate.py"
+# Stable substrings that encode the advisory/non-blocking contract in Step 9w.8 +
+# the Step 10w precondition. If either is gone, the demotion was weakened.
+_ADVISORY_CONTRACT = ("ADVISORY (non-blocking)", "NEVER aborts the pipeline")
+_VALID_GATE_STATUS = {"PASS", "FAIL", "WARN_UNSCORABLE", "RETRY", "ENV_ERROR"}
+
+
+def _check_advisory_prose() -> tuple[bool, str]:
+    """Layer 2 (PROSE-ASSERTED): the advisory/non-blocking demotion lives in the
+    Step 9w.8 wrapper prose, NOT in spec_eval_gate.py (the script still exits 1 on
+    non-PASS). So the only honest way to assert the demotion is to check the
+    shipped SKILL contract text. Deterministic and free.
+    """
+    if not SKILL_MD.exists():
+        return False, f"SKILL.md not found: {SKILL_MD}"
+    # Normalize whitespace so a contract phrase that wraps across a line break
+    # (e.g. "it NEVER\naborts the pipeline") still matches.
+    text = re.sub(r"\s+", " ", SKILL_MD.read_text())
+    missing = [s for s in _ADVISORY_CONTRACT if s not in text]
+    if missing:
+        return False, f"advisory contract weakened — missing from SKILL.md: {missing}"
+    return True, "advisory/non-blocking contract present in SKILL Step 9w.8"
+
+
+def _run_scorer(timeout: int = 420) -> tuple[str, str]:
+    """Layer 1 (EXERCISED): invoke the real spec_eval_gate.py on the vague fixture
+    spec, bounded. Returns (status, detail) where status is one of:
+    'EXERCISED' (scorer ran, verdict + JSON produced), 'INCONCLUSIVE' (env/transient
+    — could not exercise, not a Track-C defect), or 'FAILED' (ran but produced no
+    verdict/JSON — a real infra regression).
+    """
+    if not SPEC_EVAL_GATE.exists():
+        return "FAILED", f"shipped scorer missing: {SPEC_EVAL_GATE}"
+    out_dir = Path(tempfile.mkdtemp(prefix="fc1-"))
+    try:
+        cmd = [
+            sys.executable, str(SPEC_EVAL_GATE),
+            str(FIXTURES_DIR / "fc1" / "vague_spec.md"),
+            "--output-dir", str(out_dir),
+            "--cost-cap", "0.50",
+            "--min-high-claims", "1",  # let a tiny spec reach the scorer cheaply
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return "INCONCLUSIVE", f"scorer timed out after {timeout}s (transient)"
+
+        reports = list(out_dir.glob("spec-eval-*/spec-eval-gate.json"))
+        if reports:
+            try:
+                status = json.loads(reports[0].read_text()).get("status", "")
+            except (json.JSONDecodeError, OSError) as exc:
+                return "FAILED", f"scorer wrote unreadable JSON: {exc}"
+            return "EXERCISED", (
+                f"scorer ran and produced verdict={status!r} + JSON report "
+                f"({reports[0].name})"
+            )
+
+        # No gate JSON. Distinguish a transient/env miss from an infra regression.
+        blob = (proc.stdout + proc.stderr)
+        if proc.returncode == 2 or "ENV_ERROR" in blob:
+            return "INCONCLUSIVE", "scorer returned ENV_ERROR (no API key / env) — not a Track-C defect"
+        if "RETRY" in blob or "WARN_UNSCORABLE" in blob:
+            reason = "RETRY (transient)" if "RETRY" in blob else "WARN_UNSCORABLE (too few claims)"
+            return "INCONCLUSIVE", f"scorer returned {reason} — no verdict to assert"
+        return "FAILED", (
+            f"scorer produced no verdict/JSON. exit={proc.returncode}. "
+            f"tail: {blob.strip()[-300:]!r}"
+        )
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
+def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureResult:
+    """Track C is two-layer (per the deepen pass):
+      * layer 2 (always, free): the advisory/non-blocking DEMOTION — the real
+        Track-C behavior — is orchestrator-prose, so it is PROSE-ASSERTED against
+        the shipped SKILL contract.
+      * layer 1 (opt-in via --with-api): the scorer itself is real callable
+        infrastructure, EXERCISED by invoking spec_eval_gate.py. Gated behind a
+        flag because it makes real (bounded) LLM calls — the regression net stays
+        hermetic and free by default.
+    """
+    l2_ok, l2_detail = _check_advisory_prose()
+
+    if not with_api:
+        fidelity = PROSE_ASSERTED
+        detail = f"layer2 {l2_detail}; layer1 scorer run is opt-in (--with-api)"
+        return FixtureResult("F-C1", "C", fidelity, l2_ok, "ADVISORY-PROSE", detail)
+
+    l1_status, l1_detail = _run_scorer()
+    exercised = l1_status == "EXERCISED"
+    l1_regression = l1_status == "FAILED"
+    passed = l2_ok and not l1_regression
+    fidelity = f"{EXERCISED}(L1)+{PROSE_ASSERTED}(L2)" if exercised else f"{PROSE_ASSERTED}(L2)"
+    detail = f"layer1 [{l1_status}] {l1_detail}; layer2 {l2_detail}"
+    return FixtureResult("F-C1", "C", fidelity, passed, "ADVISORY-PROSE+SCORER", detail)
+
+
+# --------------------------------------------------------------------------- #
 # Registry + matrix                                                             #
 # --------------------------------------------------------------------------- #
 
-# fixture id -> runner callable. Phase 3 fixtures (F-B2, F-C1) land here later.
+# fixture id -> runner callable. F-B2 (Phase 3 FC50 false-N/A) lands here later.
 FIXTURES = {
     "F-B1": run_fb1,
     "F-D1": run_fd1,
+    "F-C1": run_fc1,
 }
 
 # fixture id -> the track it proves. Lets the matrix tell "built but not selected
 # this invocation" apart from "no fixture exists yet".
-FIXTURE_TRACKS = {"F-B1": "B", "F-D1": "FC52"}
+FIXTURE_TRACKS = {"F-B1": "B", "F-D1": "FC52", "F-C1": "C"}
 
 
 def render_matrix(results: dict[str, FixtureResult]) -> str:
@@ -376,6 +482,12 @@ def main(argv: list[str] | None = None) -> int:
         "--claude-bin", default="claude",
         help="Path to the Claude CLI used to invoke the real agent (default: claude).",
     )
+    parser.add_argument(
+        "--with-api", action="store_true",
+        help="Run opt-in layers that make real (bounded) LLM calls — currently "
+             "F-C1 layer 1 (the spec-eval scorer). Off by default so the suite "
+             "stays hermetic and free.",
+    )
     args = parser.parse_args(argv)
 
     if args.fixture:
@@ -389,7 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     results: dict[str, FixtureResult] = {}
     for fid, runner in to_run.items():
         print(f"running {fid} ...", flush=True)
-        res = runner(claude_bin=args.claude_bin)
+        res = runner(claude_bin=args.claude_bin, with_api=args.with_api)
         results[fid] = res
         mark = "PASS" if res.passed else "FAIL"
         print(f"  {fid} [{res.fidelity}] {mark} — {res.detail}", flush=True)
