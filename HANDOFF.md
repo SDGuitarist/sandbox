@@ -122,11 +122,24 @@ hardening fixture suite is COMPOUND COMPLETE and the SKILL 9w.9.5 FC52 rewire is
 VALIDATED (scoped real-swarm check, evidence on branch test/fc52-9w95-rewire-real-swarm
 commit 998854e). Solution: docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md.
 
-This session = the MERGE. Both pre-merge gates are GREEN (real-swarm check DONE,
-Codex R3 GO — no blocking findings). Just do the merge:
-- Merge feat/film-production-pm -> master. This is a ~108-commit merge shipping the
-  WHOLE Run 070 build + hardening + meta-analysis + fixtures. Confirm with the
-  operator ("are you sure") before executing; it is hard to reverse.
-- Decide push timing (nothing is pushed yet; feat is ahead of origin).
+This session = the MERGE. All gates GREEN and pre-merge safety check CLEAN (below).
+- Merge feat/film-production-pm -> master (119 commits, 246 files; ships the WHOLE
+  Run 070 build + hardening + meta-analysis + fixtures). Confirm "are you sure" first.
+- DECIDE MERGE STYLE: master is an ANCESTOR of feat, so a plain merge fast-forwards.
+  Consider `git merge --no-ff` to keep a merge commit / branch boundary in history
+  for a 119-commit feature (recommended), vs a flat fast-forward.
+- Decide push timing (nothing pushed yet; local master == origin/master).
 - After merge, delete the throwaway test/fc52-9w95-rewire-real-swarm branch.
+
+## Pre-Merge Safety Check — CLEAN (2026-06-09, read-only)
+
+| Check | Result |
+|-------|--------|
+| Working tree | clean |
+| Merge type | **fast-forward** (master is a direct ancestor of feat) → **zero conflict risk** |
+| Conflict preview (`git merge-tree`) | exit 0, no conflicts |
+| local master vs origin/master | in sync (0/0) |
+| Sensitive files (.env/.key/.pem/.db/secrets) | none — only intentional BUILD_TRACKING / run-report / fixture artifacts |
+| New top-level files | `requirements.txt`, `schema.sql`, `test_smoke.py` (Run 070 Film PM app — expected) |
+| Scope | 119 commits, 246 files, +20,674 / −3,333 |
 ```
