@@ -377,38 +377,39 @@ _ADVISORY_CONTRACT = ("ADVISORY (non-blocking)", "NEVER aborts the pipeline")
 # Layer-1 (scorer) outcome classes. The split is the point of review issue #1:
 # a SCORER_DEFECT must NOT be hidden as an environment miss. Only genuine
 # environment unavailability is non-failing; everything else where the scorer
-# was reachable but produced no verdict is a defect that FAILS the fixture.
-L1_EXERCISED = "EXERCISED"        # scorer ran in a working env and produced a verdict + JSON
-L1_ENV_UNAVAILABLE = "ENV_UNAVAILABLE"  # env/transport: no API key, timeout, connection — could not exercise
-L1_SCORER_DEFECT = "SCORER_DEFECT"      # reachable but no verdict (WARN_UNSCORABLE/RETRY/no-JSON/malformed)
+# was reachable but produced no valid verdict is a defect that FAILS the fixture.
+L1_EXERCISED = "EXERCISED"        # scorer ran in a working env and produced a VALID verdict + JSON
+L1_ENV_UNAVAILABLE = "ENV_UNAVAILABLE"  # env/transport: no API key, ENV_ERROR, auth/DNS/refused — never exercised
+L1_SCORER_DEFECT = "SCORER_DEFECT"      # reachable but no valid verdict (WARN_UNSCORABLE/RETRY/no-JSON/bad status/enum-unavailable)
+L1_TIMEOUT = "TIMEOUT"                  # scorer did not return within the bound — a possible HANG; FAILS (never passes as env)
 
 
 def _valid_gate_statuses() -> set[str]:
     """The SHIPPED GateStatus enum values, read from the gate's own models so the
-    valid set can NEVER drift from the scorer (share-not-fork — the same principle
-    the whole suite rests on). Falls back to the known set only if `models` is not
-    importable in this context. NOTE: ENV_ERROR is an exit code, not a GateStatus,
-    so it is correctly absent here — it never appears in the JSON report.
+    valid set can NEVER drift from the scorer (share-not-fork — the principle the
+    whole suite rests on).
+
+    There is NO silent fallback (review issue #2): if `models` cannot be imported
+    we must not quietly validate scorer output against a stale hardcoded copy, so
+    this RAISES and the caller fails closed + visibly. NOTE: ENV_ERROR is an exit
+    code, not a GateStatus, so it is correctly absent — it never appears in JSON.
     """
-    try:
-        from models import GateStatus  # co-located in eval-harness/; authoritative
-        return {s.value for s in GateStatus}
-    except Exception:
-        return {"PASS", "FAIL", "WARN_UNSCORABLE", "RETRY"}
+    from models import GateStatus  # co-located in eval-harness/; authoritative — no fallback
+    return {s.value for s in GateStatus}
 
 
-def _classify_scorer_report(status, report_name: str) -> tuple[str, str]:
+def _classify_scorer_report(status, valid: set[str], report_name: str) -> tuple[str, str]:
     """Classify a scorer run that DID write a JSON report, by its `status` field.
     A written report means the scorer reached scoring — but the status must still
-    be a KNOWN GateStatus. A non-empty but unrecognized status is schema drift (a
-    defect), NOT a verdict, and must not read as EXERCISED success (the hole Codex
-    flagged). Any non-string/missing status (a drifted schema) is likewise a
-    defect — a schema-drift defense must not itself crash on drifted data. Pure +
-    unit-tested.
+    be a KNOWN GateStatus (`valid`, resolved by the caller, which owns the
+    fail-closed handling if the enum can't be loaded). A non-empty but unrecognized
+    status is schema drift (a defect), NOT a verdict, and must not read as EXERCISED
+    success (the hole Codex flagged). Any non-string/missing status (a drifted
+    schema) is likewise a defect — a schema-drift defense must not itself crash on
+    drifted data. Pure + unit-tested.
     """
     if not isinstance(status, str) or not status:
         return L1_SCORER_DEFECT, f"scorer JSON has no valid status field ({report_name})"
-    valid = _valid_gate_statuses()
     if status not in valid:
         return L1_SCORER_DEFECT, (
             f"scorer JSON status {status!r} is not a known GateStatus "
@@ -439,22 +440,32 @@ def _check_advisory_prose() -> tuple[bool, str]:
 def _run_scorer(timeout: int = 420) -> tuple[str, str]:
     """Layer 1: invoke the real spec_eval_gate.py on the vague fixture spec,
     bounded. Returns (outcome, detail) where outcome is one of L1_EXERCISED /
-    L1_ENV_UNAVAILABLE / L1_SCORER_DEFECT.
+    L1_ENV_UNAVAILABLE / L1_SCORER_DEFECT / L1_TIMEOUT.
 
     The fixture spec is DESIGNED to be scorable (>= 1 HIGH claim with
     --min-high-claims 1). So WARN_UNSCORABLE (extraction no longer finds the
     claims), RETRY (the gate never produced a verdict after its own retries), a
     missing/unreadable JSON report, or a malformed status are all SCORER DEFECTS
     on this controlled input — NOT environment misses — and must surface, never
-    pass silently (review issue #1). Only a genuinely unreachable environment
-    (no API key / ENV_ERROR exit 2, a hard timeout, or a transport/connection
-    error) is L1_ENV_UNAVAILABLE: the scorer's logic was never exercised, so it
-    is neither a pass nor a defect.
+    pass silently (review issue #1). A TIMEOUT is its own FAILING class: a hung
+    scorer must not pass as environment (review issue #1, round 3). Only a
+    genuinely unreachable environment (no API key / ENV_ERROR exit 2, or an
+    auth/DNS/refused transport fault) is L1_ENV_UNAVAILABLE.
     """
     if not SPEC_EVAL_GATE.exists():
         return L1_SCORER_DEFECT, f"shipped scorer missing: {SPEC_EVAL_GATE}"
     if not os.environ.get("ANTHROPIC_API_KEY"):
         return L1_ENV_UNAVAILABLE, "ANTHROPIC_API_KEY not set — scorer not exercised (env)"
+    # Resolve the authoritative valid-status set BEFORE spending an API call. No
+    # silent fallback: if the shipped enum can't be loaded, fail closed + visibly
+    # rather than validate against a stale copy (review issue #2).
+    try:
+        valid = _valid_gate_statuses()
+    except Exception as exc:
+        return L1_SCORER_DEFECT, (
+            f"cannot load the shipped GateStatus enum ({exc!r}) — failing closed; "
+            "refusing to validate scorer output against a stale copy"
+        )
     out_dir = Path(tempfile.mkdtemp(prefix="fc1-"))
     try:
         cmd = [
@@ -467,7 +478,10 @@ def _run_scorer(timeout: int = 420) -> tuple[str, str]:
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
-            return L1_ENV_UNAVAILABLE, f"scorer timed out after {timeout}s (transport/env)"
+            return L1_TIMEOUT, (
+                f"scorer did not return within {timeout}s — possible hang; FAILS "
+                "(a hung scorer must not pass as environment)"
+            )
 
         reports = list(out_dir.glob("spec-eval-*/spec-eval-gate.json"))
         if reports:
@@ -477,7 +491,7 @@ def _run_scorer(timeout: int = 420) -> tuple[str, str]:
                 return L1_SCORER_DEFECT, f"scorer wrote unreadable JSON: {exc}"
             # A report that is not a JSON object is itself schema drift.
             status = data.get("status") if isinstance(data, dict) else None
-            return _classify_scorer_report(status, reports[0].name)
+            return _classify_scorer_report(status, valid, reports[0].name)
 
         # No gate JSON: the scorer did not reach a verdict. Classify the cause.
         return _classify_scorer_miss(proc.returncode, proc.stdout + proc.stderr)
@@ -533,9 +547,9 @@ def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureR
         hermetic and free by default.
 
     Outcome policy (review issue #1): layer 2 must hold. With --with-api, a
-    L1_SCORER_DEFECT FAILS the fixture (a real scorer regression is never hidden);
-    L1_ENV_UNAVAILABLE does not fail (the scorer was never exercised) but is
-    reported, never dressed up as EXERCISED.
+    L1_SCORER_DEFECT or L1_TIMEOUT FAILS the fixture (a real scorer regression or a
+    hang is never hidden); only L1_ENV_UNAVAILABLE does not fail (the scorer was
+    never exercised) — but it is reported, never dressed up as EXERCISED.
     """
     l2_ok, l2_detail = _check_advisory_prose()
 
@@ -545,13 +559,15 @@ def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureR
         return FixtureResult("F-C1", "C", fidelity, l2_ok, "ADVISORY-PROSE", detail)
 
     l1_outcome, l1_detail = _run_scorer()
-    passed = l2_ok and l1_outcome != L1_SCORER_DEFECT
-    if l1_outcome == L1_EXERCISED:
-        fidelity = f"{EXERCISED}(L1)+{PROSE_ASSERTED}(L2)"
-    else:
-        # ENV_UNAVAILABLE or SCORER_DEFECT — layer 1 was NOT exercised; never
-        # round up to EXERCISED.
-        fidelity = f"{PROSE_ASSERTED}(L2)"
+    # Only genuine environment unavailability is non-failing. A defect, a hang
+    # (timeout), or an unloadable enum all FAIL.
+    l1_failing = l1_outcome in (L1_SCORER_DEFECT, L1_TIMEOUT)
+    passed = l2_ok and not l1_failing
+    # Only an actually-exercised scorer earns the L1 label; never round up.
+    fidelity = (
+        f"{EXERCISED}(L1)+{PROSE_ASSERTED}(L2)" if l1_outcome == L1_EXERCISED
+        else f"{PROSE_ASSERTED}(L2)"
+    )
     detail = f"layer1 [{l1_outcome}] {l1_detail}; layer2 {l2_detail}"
     return FixtureResult("F-C1", "C", fidelity, passed, "ADVISORY-PROSE+SCORER", detail)
 
