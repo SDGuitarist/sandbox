@@ -77,6 +77,16 @@ triage work:
   M35 decision-log opt-in trial (Bucket 4). Real builds, not doc edits.
 - **OPEN OPERATOR DECISIONS** (unchanged, untouched): branch merge / push (below).
 
+### NEXT STEP TEED UP — M4 fixture suite plan drafted (2026-06-08)
+`docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md` — gate-ready plan for the
+deterministic fixture suite that gives Track B its decisive proof (the merge-blocker).
+Phased: Phase 0 verify-first spike (can each guard be exercised as the SHIPPED artifact,
+not a mirror? — the FC52/M1 drift trap is the central risk), Phase 1 = F-B1 + runner +
+EXERCISED/PASSED matrix (unblocks merge), Phase 2 = F-A1/F-A2/F-D1 (git mechanics),
+Phase 3 = F-B2/F-C1. EARS acceptance + Feed-Forward + Codex handoff included. **Awaiting
+plan review (Codex) + operator go for the build phase.** Proposal status flipped
+PROPOSED→PLANNED.
+
 ## BIG PARALLEL EFFORT (own context window) — Retroactive Corpus Meta-Analysis
 **`docs/proposals/retroactive-corpus-meta-analysis.md`** — operator idea (2026-06-08):
 apply the run-070 meta-analysis lens to ALL prior builds (024–069 + named). It's M36

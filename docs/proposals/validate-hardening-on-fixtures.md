@@ -1,6 +1,8 @@
 # Proposal: Validate Orchestration Hardening on Fixtures, Not Real Builds (M4/M5/M13)
 
-**Status:** PROPOSED (from run 070 meta-analysis, docs/reports/070/meta-analysis.md)
+**Status:** PLANNED (2026-06-08) — gate-ready plan drafted at
+`docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md` (awaiting plan review +
+operator go for the build). Original proposal below unchanged.
 **Owner decision required:** adopt as the standard validation path for hardening changes.
 
 ## Problem
