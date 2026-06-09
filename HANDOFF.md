@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-09
 **Branch:** feat/film-production-pm
-**Phase:** Orchestration-hardening FIXTURE SUITE — **COMPOUND COMPLETE** + 9w.9.5 rewire **VALIDATED** (scoped real-swarm check). NEXT: Codex R3 pass → then merge in a new session.
+**Phase:** Orchestration-hardening FIXTURE SUITE — **COMPOUND COMPLETE** + 9w.9.5 rewire **VALIDATED** + **Codex R3 GO**. Both pre-merge gates GREEN. NEXT: the ~108-commit merge to master (operator plan: new session).
 
 ## Current State
 
@@ -49,10 +49,14 @@ ships the ENTIRE Run 070 build + hardening + meta-analysis + the fixture suite, 
 just the fixtures. This is a large, deliberate call. **Operator plan: do the Codex R3
 pass, then merge in a NEW session.**
 
-1. **Codex R3 pass (REMAINING pre-merge step)** — final binding Codex review of
-   `1d6ac07..8dca4b5` (the round-3 scorer hardening: timeout-as-failure, no silent
-   enum fallback). Handoff prompt is in HANDOFF (see "Codex R3 Handoff Prompt" below).
-   Use the manual human-driven Codex, not headless `codex exec`.
+1. **Codex R3 pass — DONE (2026-06-09): GO, no blocking findings.** Confirmed the
+   R3 fixes fail-closed: status validation reads `models.GateStatus` with no silent
+   fallback; non-string/non-dict/unrecognized statuses → `L1_SCORER_DEFECT`; no
+   honest-path regression (valid statuses incl. WARN_UNSCORABLE/RETRY still
+   EXERCISED); TIMEOUT is its own failing class (a hang can't pass as environment).
+   One **non-blocking** observation logged as a deferred item: a very slow-but-healthy
+   scorer could still hit the 420s timeout bound (operational, opt-in `--with-api`
+   only).
 2. ~~Real-swarm check of the SKILL 9w.9.5 FC52 rewire~~ — **DONE (2026-06-09).** A
    scoped real-orchestrator run on branch `test/fc52-9w95-rewire-real-swarm`
    (commit `998854e`) drove Step 9w.9.5 to completion and STOPPED before spawn:
@@ -94,6 +98,9 @@ pass, then merge in a NEW session.**
    `callsheets.generate` — pass pre-fetched entries as optional param.
 5. **FC51 orchestrator rule:** ensure converged spec is at the worktree base before
    spawn (cherry-pick the spec-update commit, OR inline-inject sections into briefs).
+6. **F-C1 scorer timeout bound (P3, LOW, from Codex R3):** the 420s `--with-api`
+   timeout could false-`TIMEOUT` a slow-but-healthy scorer. Non-blocking, opt-in
+   path only. Revisit if real `--with-api` runs ever flake on timeout.
 
 ## Three Questions
 
@@ -115,12 +122,11 @@ hardening fixture suite is COMPOUND COMPLETE and the SKILL 9w.9.5 FC52 rewire is
 VALIDATED (scoped real-swarm check, evidence on branch test/fc52-9w95-rewire-real-swarm
 commit 998854e). Solution: docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md.
 
-This session = the MERGE. Two steps, in order:
-1. Codex R3 pass — run the "Codex R3 Handoff Prompt" in HANDOFF.md against
-   1d6ac07..8dca4b5 (manual human-driven Codex). Bring findings back; if any
-   blocking, fix before merging.
-2. If Codex says GO: merge feat/film-production-pm -> master. This is a ~108-commit
-   merge shipping the WHOLE Run 070 build + hardening + meta-analysis + fixtures.
-   Confirm with the operator ("are you sure") before executing; it is hard to reverse.
-   After merge, delete the throwaway test/fc52-9w95-rewire-real-swarm branch.
+This session = the MERGE. Both pre-merge gates are GREEN (real-swarm check DONE,
+Codex R3 GO — no blocking findings). Just do the merge:
+- Merge feat/film-production-pm -> master. This is a ~108-commit merge shipping the
+  WHOLE Run 070 build + hardening + meta-analysis + fixtures. Confirm with the
+  operator ("are you sure") before executing; it is hard to reverse.
+- Decide push timing (nothing is pushed yet; feat is ahead of origin).
+- After merge, delete the throwaway test/fc52-9w95-rewire-real-swarm branch.
 ```
