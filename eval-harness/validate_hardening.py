@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""Orchestration-hardening fixture runner.
+
+Discovers negative-test fixtures, drives each against the SHIPPED guard it
+targets, and prints a per-track fidelity matrix. Run with no flags for the full
+matrix, or `--fixture F-B1` for a single fixture.
+
+The honesty contract (M6): the fidelity column reports the label the invocation
+actually earned and never rounds up. See `fixtures/README.md` for the vocabulary.
+
+    EXERCISED        drove the shipped artifact itself (e.g. the real agent)
+    SPIKE-VALIDATED  ran an existing spike copy of the recipe, not the ship
+    PROSE-ASSERTED   checked an orchestrator-prose contract; no executable guard
+    MIRRORED         ran a Python reimplementation -- never conflated with EXERCISED
+
+Phase 1 implements F-B1 only (Track B / FC50 -- the merge-blocking gap). Tracks
+A / C / FC52 are Phase 2/3 and are shown as PENDING.
+"""
+
+from __future__ import annotations
+
+import argparse
+import shutil
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+
+HARNESS_DIR = Path(__file__).resolve().parent
+REPO_ROOT = HARNESS_DIR.parent
+FIXTURES_DIR = HARNESS_DIR / "fixtures"
+
+# Fidelity labels (honesty contract). Never report a spike/prose/mirror as EXERCISED.
+EXERCISED = "EXERCISED"
+SPIKE_VALIDATED = "SPIKE-VALIDATED"
+PROSE_ASSERTED = "PROSE-ASSERTED"
+MIRRORED = "MIRRORED"
+
+# The four hardening tracks, in matrix order. Phase 1 builds Track B only.
+TRACKS = ["A", "B", "C", "FC52"]
+TRACK_TITLES = {
+    "A": "Track A — FC51 cherry-pick assembly + ownership conflict",
+    "B": "Track B — FC50 orchestration-entrypoint signature guard",
+    "C": "Track C — spec-eval advisory demotion",
+    "FC52": "FC52 — spec-provenance divergence detection",
+}
+
+
+@dataclass
+class FixtureResult:
+    """Outcome of one fixture run."""
+
+    fixture_id: str
+    track: str
+    fidelity: str          # one of the four labels above
+    passed: bool           # did the shipped guard produce the expected verdict?
+    verdict: str           # the guard's actual verdict (e.g. "FAIL", "PASS/N/A")
+    detail: str            # human-readable evidence line
+
+
+# --------------------------------------------------------------------------- #
+# F-B1 — Track B / FC50: invoke the REAL spec-completeness-checker agent.       #
+# --------------------------------------------------------------------------- #
+
+def run_fb1(claude_bin: str = "claude", timeout: int = 420) -> FixtureResult:
+    """Drive the shipped spec-completeness-checker agent against the F-B1 spec.
+
+    Faithfulness: we invoke `claude -p --agent spec-completeness-checker`, which
+    loads `.claude/agents/spec-completeness-checker.md` verbatim as the session
+    agent. That IS the artifact the autopilot pipeline runs (runs 069/070) -- no
+    reimplementation, so the label is EXERCISED. We then read line 1 of the
+    report the agent writes (its Output Contract) and assert the gate caught the
+    unpinned entrypoint.
+
+    The fixture PASSES when the guard correctly FAILS the broken spec naming
+    `compute_schedule`. If the guard returns PASS/N/A, Track B is unproven and
+    the fixture FAILS.
+    """
+    fb1_dir = FIXTURES_DIR / "fb1"
+    spec_src = fb1_dir / "spec.md"
+    bt_src = fb1_dir / "build_tracking.md"
+
+    work = Path(tempfile.mkdtemp(prefix="fb1-"))
+    try:
+        spec = work / "spec.md"
+        build_tracking = work / "build_tracking.md"
+        reports = work / "reports"
+        reports.mkdir()
+        shutil.copy(spec_src, spec)
+        shutil.copy(bt_src, build_tracking)
+
+        prompt = (
+            "You are being run as the spec-completeness-checker gate on a fixture "
+            "spec. Run your full checks and write the report per your Output "
+            "Contract. Arguments:\n"
+            f"1. Plan document: {spec}\n"
+            f"2. Reports directory: {reports}\n"
+            f"3. BUILD_TRACKING.md: {build_tracking}\n"
+        )
+        cmd = [
+            claude_bin, "-p",
+            "--agent", "spec-completeness-checker",
+            "--dangerously-skip-permissions",
+            "--add-dir", str(work),
+            prompt,
+        ]
+
+        try:
+            proc = subprocess.run(
+                cmd, cwd=str(REPO_ROOT), capture_output=True, text=True,
+                timeout=timeout,
+            )
+        except FileNotFoundError:
+            return FixtureResult(
+                "F-B1", "B", EXERCISED, False, "ERROR",
+                f"could not invoke '{claude_bin}' -- is the Claude CLI installed?",
+            )
+        except subprocess.TimeoutExpired:
+            return FixtureResult(
+                "F-B1", "B", EXERCISED, False, "ERROR",
+                f"agent invocation timed out after {timeout}s",
+            )
+
+        report = reports / "spec-completeness-check.md"
+        if not report.exists():
+            tail = (proc.stdout or proc.stderr or "").strip()[-400:]
+            return FixtureResult(
+                "F-B1", "B", EXERCISED, False, "ERROR",
+                f"agent wrote no report. exit={proc.returncode}. output tail: {tail!r}",
+            )
+
+        text = report.read_text()
+        status_line = text.splitlines()[0].strip() if text.splitlines() else ""
+
+        gate_failed = status_line.upper().startswith("STATUS: FAIL")
+        names_symbol = "compute_schedule" in text
+        passed = gate_failed and names_symbol
+
+        if passed:
+            verdict, detail = "FAIL", (
+                f"gate correctly FAILED naming compute_schedule "
+                f"(line 1: {status_line!r})"
+            )
+        elif gate_failed and not names_symbol:
+            verdict, detail = "FAIL", (
+                "gate FAILED but did not name compute_schedule -- "
+                f"FAIL not attributable to FC50 (line 1: {status_line!r})"
+            )
+        else:
+            verdict, detail = status_line or "UNKNOWN", (
+                "gate did NOT fail the unpinned entrypoint -- Track B unproven "
+                f"(line 1: {status_line!r})"
+            )
+
+        return FixtureResult("F-B1", "B", EXERCISED, passed, verdict, detail)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------- #
+# Registry + matrix                                                             #
+# --------------------------------------------------------------------------- #
+
+# fixture id -> runner callable. Phase 2/3 fixtures land here as they are built.
+FIXTURES = {
+    "F-B1": run_fb1,
+}
+
+
+def render_matrix(results: dict[str, FixtureResult]) -> str:
+    """Render the 4-row per-track fidelity matrix from the tracks that ran.
+
+    Tracks with no implemented fixture are shown PENDING -- never given a
+    fidelity label they did not earn.
+    """
+    rows = []
+    for track in TRACKS:
+        res = next((r for r in results.values() if r.track == track), None)
+        if res is None:
+            rows.append((track, "PENDING", "—", "Phase 2/3 — not built"))
+        else:
+            outcome = "PASSED" if res.passed else "FAILED"
+            rows.append((track, res.fidelity, outcome, f"{res.fixture_id}: {res.detail}"))
+
+    w_track = max(len("Track"), max(len(r[0]) for r in rows))
+    w_fid = max(len("Fidelity"), max(len(r[1]) for r in rows))
+    w_out = max(len("Outcome"), max(len(r[2]) for r in rows))
+
+    lines = ["", "Orchestration-Hardening Fixture Matrix", ""]
+    header = f"| {'Track'.ljust(w_track)} | {'Fidelity'.ljust(w_fid)} | {'Outcome'.ljust(w_out)} | Evidence |"
+    sep = f"|{'-' * (w_track + 2)}|{'-' * (w_fid + 2)}|{'-' * (w_out + 2)}|----------|"
+    lines += [header, sep]
+    for track, fid, out, ev in rows:
+        lines.append(f"| {track.ljust(w_track)} | {fid.ljust(w_fid)} | {out.ljust(w_out)} | {ev} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run orchestration-hardening negative-test fixtures.",
+    )
+    parser.add_argument(
+        "--fixture", metavar="ID",
+        help="Run a single fixture (e.g. F-B1). Default: run all implemented fixtures.",
+    )
+    parser.add_argument(
+        "--claude-bin", default="claude",
+        help="Path to the Claude CLI used to invoke the real agent (default: claude).",
+    )
+    args = parser.parse_args(argv)
+
+    if args.fixture:
+        if args.fixture not in FIXTURES:
+            print(f"unknown fixture: {args.fixture}. known: {', '.join(FIXTURES)}")
+            return 2
+        to_run = {args.fixture: FIXTURES[args.fixture]}
+    else:
+        to_run = FIXTURES
+
+    results: dict[str, FixtureResult] = {}
+    for fid, runner in to_run.items():
+        print(f"running {fid} ...", flush=True)
+        res = runner(claude_bin=args.claude_bin)
+        results[fid] = res
+        mark = "PASS" if res.passed else "FAIL"
+        print(f"  {fid} [{res.fidelity}] {mark} — {res.detail}", flush=True)
+
+    print(render_matrix(results))
+
+    failed = [r for r in results.values() if not r.passed]
+    if failed:
+        names = ", ".join(r.fixture_id for r in failed)
+        print(f"FAILED fixtures: {names}", flush=True)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
