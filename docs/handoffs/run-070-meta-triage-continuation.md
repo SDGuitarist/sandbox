@@ -97,7 +97,16 @@ Callability matrix now in the plan. Consequences:
   testable slices; Track A stays field+spike-validated).
 - Honesty labels (M6) baked into the runner matrix: EXERCISED / SPIKE-VALIDATED /
   PROSE-ASSERTED / MIRRORED — a mirror is never reported as EXERCISED.
-**Awaiting plan review (Codex) + operator go for the build.** Proposal flipped PROPOSED→PLANNED.
+**Codex review COMPLETE (2026-06-08): GO with 1 P1 (fixed).** Verdict: deepen matrix
+correct overall (Track A agent-prose ✓, Track C advisory-in-9w.8-wrapper ✓, Track B only
+cleanly-exercisable ✓); P-extract/P-promote/P-accept framing sound; Track-B MVP (F-B1 via
+real agent) decisive + EARS runnable. P1: F-D1/FC52 labeling was too loose — the plan
+treated F-D1 as `EXERCISED` in the generic matrix/EARS, but that's only honest if the
+SHA-compare is actually extracted into a shared callable. FIXED — F-D1's label is now
+conditional (P-extract→EXERCISED, P-promote→SPIKE-VALIDATED [+note: FC52 has no existing
+spike], P-accept→PROSE-ASSERTED) in Phase 2, the EARS verify, the generic-matrix EARS, and
+the callability-matrix cell. F-B1 wording left intact per Codex. **Now: operator go for the
+build (Phase 1 MVP, optionally pick the Phase-2 P-path).** Proposal flipped PROPOSED→PLANNED.
 
 ## BIG PARALLEL EFFORT (own context window) — Retroactive Corpus Meta-Analysis
 **`docs/proposals/retroactive-corpus-meta-analysis.md`** — operator idea (2026-06-08):

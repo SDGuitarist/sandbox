@@ -90,7 +90,7 @@ for Tracks A, C, and the FC52 repair. Callability matrix:
 |---|---|---|---|
 | **Check 1b / FC50 (F-B1, F-B2)** | agent-prose in `spec-completeness-checker.md:85-109`; STATUS on line 1 of its report | **YES — invoke the real agent** on a tiny fixture spec, read the STATUS line (~60s, 1 agent call). Proven in prod (runs 069/070). `extractor.py:_parse_markdown_table` exists but a Python reimpl of 1b = a FORK (drift) — rejected. | invoke real agent |
 | **spec_eval scorer / Track C (F-C1)** | `spec_eval_gate.py` real CLI: `python -m eval_harness.spec_eval_gate <spec> [opts]` | **PARTIAL.** The SCRIPT blocks (exit 1 on FAIL/WARN_UNSCORABLE). Its "advisory/non-blocking" property lives in the SKILL **Step 9w.8 wrapper**, not the script. So a fixture can exercise the scorer (verdict + exit code) but the *non-blocking* behavior under test is orchestrator-prose. | scorer: callable; non-block: prose |
-| **FC52 provenance (F-D1)** | `SKILL.md` Step 9w.9.5: SHA-blob compare (`git rev-parse <branch>:<spec>` both sides) + LLM repair (inline-inject spec into briefs). No `tools/check_spec_provenance.py`. | **DETECTION yes** (the SHA compare is ~3 callable lines, trivially extractable); **REPAIR no** (agent judgment). Fixture exercises detection only. | extract detection (small) |
+| **FC52 provenance (F-D1)** | `SKILL.md` Step 9w.9.5: SHA-blob compare (`git rev-parse <branch>:<spec>` both sides) + LLM repair (inline-inject spec into briefs). No `tools/check_spec_provenance.py`. | **DETECTION extractable** (the SHA compare is ~3 callable lines) — but `EXERCISED` only AFTER it is extracted into a shared callable the fixture invokes; else `PROSE-ASSERTED`. **REPAIR no** (agent judgment, out of scope). | extract detection (small) → then EXERCISED |
 | **Track A assembly + conflict (F-A1, F-A2)** | agent-prose in `swarm-runner.md:76-138`; executed by swarm-runner LLM | **NO** — not callable. BUT spike scripts already exist and demonstrate the behavior: `docs/reports/orchestration-hardening/spike-worktree-base.sh` and `spike-conflict.sh`. | extract OR promote spikes |
 
 **The meta-finding (surface to operator).** "Fixture the guards" turns out to partly
@@ -150,9 +150,16 @@ chosen path. Build accordingly:
   with `assembly-ownership-conflict:`. Same P-extract/P-promote labelling; the existing
   `spike-conflict.sh` is the P-promote source.
 - **F-D1** (FC52 provenance — DETECTION only): worktree-base spec deliberately diverged
-  from the gated spec. Run the extracted SHA-blob compare; assert it reports divergence
-  before "spawn." The LLM **repair** (inline-inject) is agent judgment and is OUT of
-  fixture scope — the fixture asserts detection fires, not that repair is correct.
+  from the gated spec; assert the gate reports divergence before "spawn." The LLM
+  **repair** (inline-inject) is agent judgment and is OUT of fixture scope — the fixture
+  asserts detection fires, not that repair is correct. **Label is conditional on the
+  chosen path (Codex P1):** `EXERCISED` ONLY if the SHA-blob compare has actually been
+  extracted into a shared callable that BOTH the gate and the fixture invoke (the
+  P-extract path); `SPIKE-VALIDATED` if a spike script drives the compare (P-promote —
+  note: unlike Track A, FC52 has NO existing spike, so P-promote here means authoring a
+  small one); `PROSE-ASSERTED` if the fixture only checks the Step 9w.9.5 prose contract
+  with no executable comparison (P-accept). Never report F-D1 `EXERCISED` while the
+  compare lives only in orchestrator prose.
 
 ### Phase 3 — Completeness (blind-spot + advisory documentation)
 - **F-B2** (FC50 false-N/A): a spec with ZERO orchestration-entrypoint rows but a
@@ -180,11 +187,13 @@ chosen path. Build accordingly:
   assembly with `assembly-ownership-conflict:`.
   - Verify: `... --fixture F-A2` — output contains `assembly-ownership-conflict:`.
 - WHEN F-D1 runs with a diverged worktree spec THE SYSTEM SHALL detect the
-  divergence before spawn.
-  - Verify: `... --fixture F-D1` — provenance check reports the diff; matrix `FC52 | EXERCISED | PASSED`.
-- WHEN the full suite runs THE SYSTEM SHALL emit a per-track EXERCISED/PASSED matrix
-  distinguishing exercised guards from mirrored ones.
-  - Verify: `... validate_hardening.py` — prints a 4-row (A/B/C/FC52) matrix.
+  divergence before spawn AND label the row per the chosen path (never `EXERCISED`
+  unless the SHA-compare is an invoked shared callable).
+  - Verify: `... --fixture F-D1` — provenance check reports the diff; matrix row `FC52 | EXERCISED|SPIKE-VALIDATED|PROSE-ASSERTED | PASSED` (label = P-extract|P-promote|P-accept respectively).
+- WHEN the full suite runs THE SYSTEM SHALL emit a 4-row (A/B/C/FC52) matrix whose
+  fidelity column uses the exact label earned (EXERCISED / SPIKE-VALIDATED /
+  PROSE-ASSERTED / MIRRORED), never rounding a spike/prose/mirror up to EXERCISED.
+  - Verify: `... validate_hardening.py` — prints the 4-row matrix; grep confirms each row's label matches its actual invocation method.
 
 ### Error / honesty cases
 - WHEN a fixture's guard is a Python mirror rather than the shipped artifact THE
