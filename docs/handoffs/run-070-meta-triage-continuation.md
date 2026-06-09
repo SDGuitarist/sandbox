@@ -54,12 +54,28 @@ actionable change captured; invasive live-gate changes on n=1 evidence PARKED.
 - **M10** → governance doc + **safe non-breaking** note in `[[spec-eval-gate-behavior]]` memory: the demotion left the FEASIBILITY layer ungated (070's real gaps were all feasibility-layer); structural gates ≠ feasibility coverage; precision-fix-then-re-promote is an open roadmap improvement, not optional cleanup. **PARKED:** the `spec_eval_gate.py` precision fix + 9w.8 re-promotion (real engineering, a build).
 - **M18** → governance doc: thin-brief validation mode documented as an **opt-in mode for validation runs** (declare in the plan), NOT a SKILL default — defensive briefing stays correct for production builds.
 
-### Bucket 4 — Smaller pitfalls / skill
-- **M27** — agent-pitfalls: cross-domain read aggregator (FTS workaround → 4-domain leak surface).
-- **M26** — agent-pitfalls/security: prose→code authz translation is higher-risk; the highest-effort hardening (F-H6 exact-code) is exactly what the stale channel dropped.
-- **M37** — agent-pitfalls: model-homogeneity correlated blind spots; deliberate model heterogeneity on high-risk slices + different-model review (decorrelation — the unstated reason for the Codex-binding-review preference).
-- **M35** — SKILL: decision-log artifact (capture orchestrator pivot REASONING, not just outcomes; ~7 load-bearing deviations in 070).
-- **M-meta** — make post-run meta-analysis a standard budgeted phase (this whole exercise only happened because it was requested).
+## DONE — Bucket 4 (smaller pitfalls / skill), committed this session
+Calibration discipline: M26/M27/M37 did NOT fire in 070 → they are latent risks, not
+failure classes, so NO new FC IDs were minted (the registry is for observed breakage).
+They were already listed in `latent-risks-and-mitigations.md`; this session adds their
+actionable mitigations for pre-mortems.
+- **M27** → `latent-risks-and-mitigations.md` "Pre-mortem actions" — cross-domain read aggregator: route reads through M24 ownership-scoped accessors, or add N-way scope assertion + per-domain test; treat as highest-leverage security target. (No FC minted; generalizes FC23, neighbor of FC35/FC36.)
+- **M26** → same section — prose→code authz translation: any non-trivial authz rule must be pinned as EXACT CODE in spec (not prose) + mandatory review-scrutiny target; M24 removes the per-route translation for ownership.
+- **M37** → same section — model-homogeneity: deliberate model heterogeneity on high-risk slices + different-engine binding review = the previously-unnamed error-DECORRELATION rationale for the Codex-review preference ([[feedback_codex_manual_review]]). Applied surgically (same-model correlation helps assembly per M9 but hurts detection).
+- **M35** → **`docs/proposals/orchestrator-decision-log.md`** (parked proposal): a `decision-log.md` capturing orchestrator pivot REASONING not just outcomes (~7 load-bearing deviations in 070). NOT drained into the live SKILL — a mandatory artifact needs a tail gate on n=1; proposed as opt-in trial first. Serves M6b (missing escalation tier) + feeds the meta-analysis phase.
+- **M-meta** → already DONE as **M36** (prior session): "meta-analysis as a budgeted phase" is live in `latent-risks-and-mitigations.md` Process section. No separate artifact needed; noted here for completeness.
+
+---
+
+## TRIAGE COMPLETE — all four PARKED buckets drained (2026-06-08)
+Every M-pattern is now in an owning artifact. What remains is **operator-gated**, not
+triage work:
+- **PARKED-for-corpus (heavy, n=1):** M20/M21, M22, M16 (Bucket 2) — first calibration
+  targets of the corpus mine. M6 7th gated dimension (Bucket 3). These need the corpus
+  to confirm recurrence before hardening live files.
+- **PARKED-for-engineering:** M10 spec-eval precision fix + 9w.8 re-promotion (Bucket 3);
+  M35 decision-log opt-in trial (Bucket 4). Real builds, not doc edits.
+- **OPEN OPERATOR DECISIONS** (unchanged, untouched): branch merge / push (below).
 
 ## BIG PARALLEL EFFORT (own context window) — Retroactive Corpus Meta-Analysis
 **`docs/proposals/retroactive-corpus-meta-analysis.md`** — operator idea (2026-06-08):

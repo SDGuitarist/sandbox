@@ -45,5 +45,45 @@ conditions matching this build's shape.
 
 ---
 
+## Pre-mortem actions for the security-shaped latent risks (Bucket 4 enrichment, 2026-06-08)
+
+These three did NOT fire in 070, so they are NOT failure classes (no FC ID minted —
+the registry is for observed breakage). But their mitigations are already known, so a
+pre-mortem whose build matches the trigger should apply them:
+
+- **M27 — Cross-domain read aggregator** (e.g. an FTS/search workaround that reads
+  several ownership domains' source tables directly). When one function must read
+  across N domains because a constraint forces it to bypass each domain's accessor
+  (070: contentless FTS5 made `search()` read scenes/cast/crew/locations directly),
+  that function becomes the single place where ALL N domains' authorization must be
+  re-enforced — one scoping gap = N-domain leak. **Mitigation:** (a) route the
+  aggregator's reads through the same ownership-scoped accessors as M24 (model-layer
+  enforcement) instead of raw table reads, so per-domain scoping can't be forgotten;
+  (b) if raw reads are unavoidable, add an explicit N-way scope assertion with one
+  test per domain. Treat the aggregator as the build's highest-leverage security
+  target. Generalizes the FC23 enumeration shape; neighbor of FC35/FC36.
+
+- **M26 — prose→code authorization translation is the higher-risk path.** The hardest
+  authz rules (070: F-H6 dept-head ownership) are exactly the ones a stale or thin
+  spec channel is most likely to drop to *prose*, forcing each agent to re-derive the
+  code — the likeliest hiding spot for a subtle authz bug. **Mitigation:** any authz
+  rule above a trivial role-check must be pinned as EXACT CODE in the spec (not
+  prose), and is a mandatory review-scrutiny target. Cross-ref M24 — model-layer
+  enforcement removes the per-route translation entirely for ownership.
+
+- **M37 — model-homogeneity correlated blind spots.** N same-model workers share blind
+  spots: a real spec ambiguity gets the SAME wrong default N times, looks
+  "consistent," and passes contract-check (internal consistency ≠ correctness).
+  Same-model REVIEW is least able to catch same-model BUILDER errors. **Mitigation:**
+  (a) deliberate model heterogeneity on the highest-risk slices (search, callsheets)
+  so a shared wrong default is less likely; (b) different-engine binding review — this
+  is the previously-unnamed reason the Codex-manual-review preference works
+  ([[feedback_codex_manual_review]]): it is error DECORRELATION, not just a second
+  opinion. Tension: same-model correlation HELPS assembly (compatible gap-fills, M9)
+  but HURTS detection — so apply heterogeneity surgically on high-risk slices, not
+  everywhere.
+
+---
+
 Full derivation: `docs/reports/070/meta-analysis.md` (patterns M1-M38).
 First population: Run 070 (2026-06-08). Append after each run's meta-analysis pass.
