@@ -613,12 +613,17 @@ luck.
 
 The worktree base is harness-opaque, so do BOTH:
 
-1. **Detect.** Diff the gated spec against the default-branch (worktree-base) copy:
-   `git diff --stat <default-branch> <original_branch> -- docs/plans/<spec>.md`
+1. **Detect (run the shared detector).** Run:
+   `python tools/check_spec_provenance.py --default-branch <default-branch> --original-branch <original_branch> --spec-path docs/plans/<spec>.md`
    (use the actual default branch name; `<original_branch>` is the orchestrator's
-   feature branch). Capture both blob SHAs:
-   `git rev-parse <default-branch>:docs/plans/<spec>.md` and
-   `git rev-parse <original_branch>:docs/plans/<spec>.md`.
+   feature branch). It captures both blob SHAs
+   (`git rev-parse <branch>:docs/plans/<spec>.md`) and compares them. Line 1 of
+   its output is `STATUS: PROVENANCE_OK` (identical, exit 0) or
+   `STATUS: PROVENANCE_DRIFT` (differ, or the spec exists on only one branch,
+   exit 3); exit 2 = ERROR (missing branch / not a repo / spec on neither branch).
+   This is the SAME detector the fixture suite exercises (F-D1) -- one
+   implementation, no gate/use drift. If it reports `PROVENANCE_DRIFT`, proceed to
+   Repair; if `PROVENANCE_OK`, skip to Record.
 2. **Repair (choose the reliable channel).** If the SHAs differ:
    - **Preferred / reliable — make the brief the authoritative spec channel.**
      Do NOT rely on workers reading the worktree file. Inject the full converged
