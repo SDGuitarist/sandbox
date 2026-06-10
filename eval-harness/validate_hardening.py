@@ -522,21 +522,44 @@ def _case_a4_merge() -> tuple[bool, str]:
         shutil.rmtree(home, ignore_errors=True)
 
 
+def _case_a5_wrong_branch() -> tuple[bool, str]:
+    """A5: HEAD is NOT the assembly branch on entry → ERROR, no mutation. Proves the
+    assertion guard (the tool never cherry-picks onto the wrong branch / moves HEAD
+    itself). The worker carries a real commit, so a missing guard would wrongly pick."""
+    home, repo, env = _fa_new_repo("fa1-a5-", {"base.txt": "base\n"})
+    try:
+        _fa_worker_from_base(repo, env)
+        (repo / "w.txt").write_text("w\n")
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "Cw worker")
+        _fa_git(repo, env, "checkout", "-q", "master")   # HEAD = master, NOT assembly
+        head_before = _fa_git(repo, env, "rev-parse", "HEAD").stdout.strip()
+        code, status = _invoke_assembler(repo, env)
+        head_after = _fa_git(repo, env, "rev-parse", "HEAD").stdout.strip()
+        unchanged = head_before == head_after and not (repo / "w.txt").exists()
+        ok = code == 2 and "STATUS: ERROR" in status and unchanged
+        return (ok, "A5 wrong-branch: ERROR; no mutation (assertion guard held)" if ok
+                else f"A5 FAILED: exit={code} status={status!r} unchanged={unchanged}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
 def run_fa1(claude_bin: str = "claude", **_) -> FixtureResult:
-    """Drive the SHIPPED Track-A cherry-pick assembler against four synthetic
-    worker shapes.
+    """Drive the SHIPPED Track-A cherry-pick assembler against five synthetic
+    worker / caller-state shapes.
 
     EXERCISED, not MIRRORED: this invokes `tools/assemble_worker.py`, the SAME
     primitive autopilot swarm-runner Step 3 calls — one implementation, so the
-    fixture cannot pass against a copy that drifts from the shipped path. The four
-    cases prove discrimination (clean pick / no-op / conflict / merge), not an
-    always-PICKED stub; A1 is the explicit negative control for the `<branch>^`
-    data-loss class.
+    fixture cannot pass against a copy that drifts from the shipped path. The cases
+    prove discrimination (clean pick / no-op / conflict / merge / guarded-refusal),
+    not an always-PICKED stub; A1 is the explicit negative control for the
+    `<branch>^` data-loss class and A5 proves the assertion guard.
     """
     if not ASSEMBLE_TOOL.exists():
         return FixtureResult("F-A1", "A", EXERCISED, False, "ERROR",
                              f"shipped assembler missing: {ASSEMBLE_TOOL}")
-    cases = [_case_a1_multicommit, _case_a2_empty, _case_a3_conflict, _case_a4_merge]
+    cases = [_case_a1_multicommit, _case_a2_empty, _case_a3_conflict,
+             _case_a4_merge, _case_a5_wrong_branch]
     results = [c() for c in cases]
     passed = all(ok for ok, _ in results)
     detail = "; ".join(d for _, d in results)
