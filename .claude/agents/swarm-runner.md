@@ -84,58 +84,64 @@ cherry-picking each COMPLETED worker's fork-point delta onto the assembly branch
 (Step 10.5w) these deltas never overlap, so cherry-pick is conflict-free; a
 conflict therefore signals an ownership-gate **ESCAPE**, not a mergeable conflict.
 
-For each COMPLETED worker branch (skip TIMED_OUT/FAILED — see Step 1), run these
-as SEPARATE Bash calls (one at a time, no for-loop):
+**The per-worker git logic is the SHIPPED tool `tools/assemble_worker.py`** — a
+single-worker primitive that computes the fork-point base (the **O3 invariant**:
+`git merge-base <original_branch> <branch>`), runs the merge-commit pre-flight,
+classifies the delta, and on a clean delta cherry-picks the FULL `<base>..<branch>`
+range (the `<branch>^` form is FORBIDDEN — it drops earlier commits on multi-commit
+workers, the FC51 data-loss class). Share-not-fork: this is the SAME tool the F-A1
+fixture exercises (`eval-harness/validate_hardening.py`), so the assembly logic you
+run is the one under test. You (the orchestrator) keep the loop, BUILD_TRACKING
+bookkeeping, the assembly summary, and the conflict/abort policy below — the tool
+emits metadata only and never writes reports.
 
-1. **Compute the fork-point base:** `git merge-base <original_branch> <branch>`
-   (capture as `base`). This is the SAME base the ownership gate used
-   (Step 10.5w three-dot diff) — the **O3 invariant**.
-2. **Pre-flight — abort loudly on out-of-scope states** (the harness produces
-   linear, single-author worker branches; anything else must not be
-   mis-attributed):
-   - `git rev-list --merges <base>..<branch>` — if non-empty (a merge commit on
-     the worker branch), take the ownership-conflict abort (reason:
-     `pre-flight: merge commit on <branch>`).
-   - **Detached-HEAD is NOT checkable here** and is out of scope: you receive
-     branch *names*, not worktree paths, and `git rev-parse --abbrev-ref <branch>`
-     resolves a ref name (never `HEAD`), so it cannot observe a detached worker
-     checkout. A worker that committed in a detached HEAD never advances its named
-     branch, so its `<base>..<branch>` range is empty and it falls through to the
-     zero-commit no-op below — recorded as "empty delta" in the summary
-     (Step 9), which is the visibility backstop. (If detached-HEAD ever needs
-     first-class handling, detect it via `git worktree list --porcelain`, which
-     also reports worktree paths — a follow-up, not this change.)
-3. **Zero-commit no-op:** if `git rev-list --count <base>..<branch>` is `0`, the
-   worker did no work (or its commits never reached the named branch — see the
-   detached-HEAD note above) — skip it (no cherry-pick), note "empty delta" in the
-   summary. This is NOT an error.
-4. **Cherry-pick the full fork-point range:** `git cherry-pick <base>..<branch>`.
-   This replays ALL N of the worker's commits. The `<branch>^` form is
-   **FORBIDDEN** — it silently drops earlier commits on multi-commit workers (the
-   FC51 data-loss class).
+The tool is an ASSERTION-guarded mutator: it verifies HEAD is already
+`<assembly_branch>` (cut+checked-out in Step 2) and refuses otherwise. It does NOT
+check out branches itself. On a conflict it aborts the cherry-pick and verifies the
+tree is clean AND HEAD is restored to the pre-pick commit before returning — so you
+never need to run `git cherry-pick --abort` yourself.
 
-After each successful cherry-pick:
-- Run `git log -1 --format=%h` (capture as commit_hash).
-- Use the Edit tool to append `| <N> | <role> | <commit_hash> | PASS |` as a
-  new row at the end of the AGENT_STATUS table in BUILD_TRACKING.md. Target the
-  line immediately before the `---` separator after the AGENT_STATUS section.
-  If the Edit fails: read BUILD_TRACKING.md, find the anchor, retry once.
-- Record the per-worker cherry-pick `base` for the assembly summary (Step 9).
+For each COMPLETED worker branch (skip TIMED_OUT/FAILED — see Step 1), as a SEPARATE
+Bash call (one at a time, no for-loop):
 
-**On a cherry-pick CONFLICT (or a pre-flight abort): this is an ownership-gate
-escape — do NOT resolve it inline.** Inline spec-based resolution would fabricate
-a resolution and MASK the ownership violation. Treat it as a **blocking failure**
-(`assembly-ownership-conflict:`):
-1. If a cherry-pick is in progress, run `git cherry-pick --abort` (restores a
-   clean tree). For a pre-flight abort, no cherry-pick is in progress — skip this.
-2. Do NOT clean up worktrees/branches and do NOT merge anything to
+```
+python tools/assemble_worker.py --repo . --original-branch <original_branch> \
+    --assembly-branch <assembly_branch> --worker-branch <branch>
+```
+
+Read **line 1** (`STATUS:`) and the **exit code**, and branch:
+
+1. **`STATUS: PICKED -- base=<sha> commit=<sha> count=<n>` (exit 0):** the worker's
+   full range was replayed. Use the Edit tool to append `| <N> | <role> | <commit>
+   | PASS |` as a new row at the end of the AGENT_STATUS table in BUILD_TRACKING.md
+   (target the line immediately before the `---` separator after AGENT_STATUS; if
+   the Edit fails, read the file, find the anchor, retry once). Record the per-worker
+   `base` for the assembly summary (Step 9).
+2. **`STATUS: EMPTY_DELTA -- base=<sha>` (exit 0):** the worker did no work (or its
+   commits never reached the named branch — e.g. a detached-HEAD worker, which is
+   out of scope and falls through here). Skip it; note "empty delta" in the summary.
+   This is NOT an error.
+3. **`STATUS: OWNERSHIP_CONFLICT -- <reason>` (exit 3):** a merge commit in the delta
+   OR a cherry-pick conflict — an ownership-gate **ESCAPE**. Under enforced disjoint
+   ownership (Step 10.5w) deltas never overlap, so this must not be resolved inline
+   (that would fabricate a resolution and MASK the violation). The tool has already
+   restored a clean tree. Take the **blocking failure** path below.
+4. **`STATUS: ERROR -- <reason>` (exit 2):** an unexpected state (dirty entry tree,
+   HEAD not on the assembly branch, abort-cleanup failure, bad branch, etc.). This
+   means assembly is in an untrusted state — take the **blocking failure** path
+   below with reason `assembly-error: <branch> -- <reason>` instead of
+   `assembly-ownership-conflict`.
+
+**Blocking failure path (cases 3 and 4):**
+1. Do NOT clean up worktrees/branches and do NOT merge anything to
    `original_branch` — PRESERVE all worker branches for inspection (skip Step 8),
    leaving `original_branch` untouched.
-3. Write the detail to `<reports_dir>/assembly-ownership-conflict.md` (STATUS on
-   line 1).
-4. Set `final_status: "FAIL -- assembly-ownership-conflict: <branch>"` in
-   BUILD_TRACKING.md Run State (Edit the `- final_status:` line).
-5. Return `STATUS: FAIL -- assembly-ownership-conflict: <branch>`. Do NOT proceed.
+2. Write the detail to `<reports_dir>/assembly-ownership-conflict.md` (case 3) or
+   `<reports_dir>/assembly-error.md` (case 4), STATUS on line 1.
+3. Set `final_status: "FAIL -- <reason>"` in BUILD_TRACKING.md Run State (Edit the
+   `- final_status:` line), where `<reason>` is
+   `assembly-ownership-conflict: <branch>` or `assembly-error: <branch> -- <detail>`.
+4. Return `STATUS: FAIL -- <reason>`. Do NOT proceed.
 
 ### Step 4: Contract check (CIRCUIT BREAKER — blocking)
 
@@ -228,9 +234,12 @@ End your output with the two key-value lines (see Output Contract).
    reference or attempt assembly-fix, spec-contract-checker, smoke-test-runner, or
    test-suite-runner. A cherry-pick conflict is an ownership-gate escape and MUST
    NOT be resolved inline (that would mask the violation) — it aborts (Step 3).
-2. **Two blocking failure classes only:** `contract-check:` (after one retry) and
-   `assembly-ownership-conflict:` (a cherry-pick conflict or a pre-flight abort in
-   Step 3). Both abort WITHOUT merging to main or cleaning up (worker branches
+2. **Three blocking failure classes:** `contract-check:` (after one retry),
+   `assembly-ownership-conflict:` (the assembler tool returns OWNERSHIP_CONFLICT —
+   a cherry-pick conflict or a merge-commit pre-flight in Step 3), and
+   `assembly-error:` (the assembler tool returns ERROR — an untrusted assembly
+   state: dirty tree, HEAD not on the assembly branch, abort-cleanup failure, etc.).
+   All three abort WITHOUT merging to main or cleaning up (worker branches
    preserved), set `final_status` in Run State, and return
    `STATUS: FAIL -- <class>: <reason>`.
 3. **Smoke and test failures are NON-blocking.** Note them in the report,
