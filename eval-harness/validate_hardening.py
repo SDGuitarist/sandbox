@@ -13,8 +13,10 @@ actually earned and never rounds up. See `fixtures/README.md` for the vocabulary
     PROSE-ASSERTED   checked an orchestrator-prose contract; no executable guard
     MIRRORED         ran a Python reimplementation -- never conflated with EXERCISED
 
-Phase 1 implements F-B1 only (Track B / FC50 -- the merge-blocking gap). Tracks
-A / C / FC52 are Phase 2/3 and are shown as PENDING.
+All four tracks are now fixtured: F-A1 (Track A / FC51 cherry-pick assembler),
+F-B1/F-B2 (Track B / FC50), F-C1 (Track C, two-layer), F-D1 (FC52 detector).
+F-A1, F-B1/2, F-D1 are EXERCISED (they drive the shipped artifact); F-C1's
+demotion layer is PROSE-ASSERTED with an opt-in EXERCISED scorer (--with-api).
 """
 
 from __future__ import annotations
@@ -51,19 +53,11 @@ TRACK_TITLES = {
 
 # Honest status for tracks with no automated fixture. The fidelity column is
 # reserved for the canonical labels a fixture can EARN (EXERCISED /
-# SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED). A track with NO fixture earned no
-# fidelity, so its fidelity cell is "—" and its real coverage provenance
-# ("FIELD+SPIKE") lives in the evidence column — never in the fidelity column,
-# never rounded up to EXERCISED. (fidelity, outcome, evidence)
-#   Track A: P-accept. The cherry-pick assembly is agent-prose in swarm-runner.md;
-#   exercising it as-shipped needs a share-not-fork extraction (a deliberate
-#   hardening refactor with its own real-build validation), NOT a fixture.
-TRACK_STATIC = {
-    "A": ("—", "NOT FIXTURED",
-          "FIELD+SPIKE (P-accept): cherry-pick assembly is agent-prose "
-          "(swarm-runner.md:76-138); field-proven runs 069/070 + spikes. No fixture, "
-          "so no fidelity is claimed — pending a deliberate P-extract refactor."),
-}
+# SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED). A track with NO fixture earns no
+# fidelity; its coverage provenance lives in the evidence column, never rounded up.
+# As of the Track A P-extract (2026-06-09) ALL FOUR tracks are fixtured, so this is
+# empty — kept as the seam for any future not-yet-fixtured track.
+TRACK_STATIC: dict[str, tuple[str, str, str]] = {}
 
 
 @dataclass
@@ -365,6 +359,192 @@ def run_fd1(claude_bin: str = "claude", **_) -> FixtureResult:
 
 
 # --------------------------------------------------------------------------- #
+# F-A1 — Track A / FC51: invoke the SHIPPED assemble_worker.py do-it tool.       #
+# --------------------------------------------------------------------------- #
+
+ASSEMBLE_TOOL = REPO_ROOT / "tools" / "assemble_worker.py"
+
+
+def _hardened_env(home: Path) -> dict:
+    """A git env that cannot leak global/system config into a mutating-tool
+    fixture (Codex isolation list). Both the repo builders and the SHIPPED tool
+    run under this env, so the cherry-pick is deterministic regardless of the
+    developer's ~/.gitconfig, hooks, or signing setup."""
+    env = dict(os.environ)
+    env.update({
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "HOME": str(home),
+        "XDG_CONFIG_HOME": str(home / ".config"),
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_AUTHOR_NAME": "fixture",
+        "GIT_AUTHOR_EMAIL": "fixture@example.com",
+        "GIT_COMMITTER_NAME": "fixture",
+        "GIT_COMMITTER_EMAIL": "fixture@example.com",
+    })
+    return env
+
+
+def _fa_git(repo: Path, env: dict, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(repo), *args], capture_output=True, text=True, env=env)
+
+
+def _fa_new_repo(prefix: str, base_files: dict[str, str]) -> tuple[Path, Path, dict]:
+    """Init a hermetic repo on `master` with `base_files` as the B0 base commit,
+    then cut+checkout `assembly` from B0 (so HEAD == assembly, the tool's guard).
+    Returns (home_to_cleanup, repo, env)."""
+    home = Path(tempfile.mkdtemp(prefix=prefix))
+    repo = home / "repo"
+    repo.mkdir()
+    env = _hardened_env(home)
+    _fa_git(repo, env, "init", "-q", "-b", "master")
+    _fa_git(repo, env, "config", "core.hooksPath", "/dev/null")
+    _fa_git(repo, env, "config", "commit.gpgsign", "false")
+    for rel, content in base_files.items():
+        (repo / rel).write_text(content)
+    _fa_git(repo, env, "add", "-A")
+    _fa_git(repo, env, "commit", "-qm", "B0 base")
+    _fa_git(repo, env, "checkout", "-q", "-b", "assembly")
+    return home, repo, env
+
+
+def _fa_worker_from_base(repo: Path, env: dict) -> None:
+    """Start a `worker` branch off master's B0 (the fork-point base)."""
+    _fa_git(repo, env, "checkout", "-q", "master")
+    _fa_git(repo, env, "checkout", "-q", "-b", "worker")
+
+
+def _invoke_assembler(repo: Path, env: dict) -> tuple[int, str]:
+    """Run the SHIPPED tool on `repo`; return (exit_code, line-1 STATUS)."""
+    cp = subprocess.run(
+        [sys.executable, str(ASSEMBLE_TOOL),
+         "--repo", str(repo), "--original-branch", "master",
+         "--assembly-branch", "assembly", "--worker-branch", "worker"],
+        capture_output=True, text=True, env=env,
+    )
+    out = (cp.stdout + cp.stderr).strip()
+    line1 = out.splitlines()[0] if out else ""
+    return cp.returncode, line1
+
+
+def _case_a1_multicommit() -> tuple[bool, str]:
+    """A1: a 2-commit worker; the EARLIER commit is load-bearing. Asserts the tool
+    replays BOTH commits — the negative control for the FORBIDDEN `<branch>^` form,
+    which would drop the earlier commit (the FC51 data-loss class)."""
+    home, repo, env = _fa_new_repo("fa1-a1-", {"base.txt": "base\n"})
+    try:
+        _fa_worker_from_base(repo, env)
+        (repo / "early.txt").write_text("early\n")   # commit 1 (would be dropped by <branch>^)
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "C1 early")
+        (repo / "late.txt").write_text("late\n")      # commit 2 (the tip)
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "C2 late")
+        _fa_git(repo, env, "checkout", "-q", "assembly")
+        code, status = _invoke_assembler(repo, env)
+        early_present = (repo / "early.txt").exists()
+        late_present = (repo / "late.txt").exists()
+        ok = (code == 0 and status.startswith("STATUS: PICKED")
+              and "count=2" in status and early_present and late_present)
+        if ok:
+            return True, "A1 multi-commit: PICKED count=2; earliest commit replayed (no <branch>^ drop)"
+        return False, (
+            f"A1 FAILED: exit={code} status={status!r} early={early_present} late={late_present}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def _case_a2_empty() -> tuple[bool, str]:
+    """A2: a worker with zero commits beyond the base → EMPTY_DELTA (no-op)."""
+    home, repo, env = _fa_new_repo("fa1-a2-", {"base.txt": "base\n"})
+    try:
+        _fa_worker_from_base(repo, env)               # worker == B0, no commits
+        _fa_git(repo, env, "checkout", "-q", "assembly")
+        code, status = _invoke_assembler(repo, env)
+        ok = code == 0 and "STATUS: EMPTY_DELTA" in status
+        return (ok, "A2 zero-commit: EMPTY_DELTA" if ok
+                else f"A2 FAILED: exit={code} status={status!r}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def _case_a3_conflict() -> tuple[bool, str]:
+    """A3: assembly already carries a commit touching the same line the worker
+    edits (an ownership escape). Cherry-pick conflicts → the tool must abort,
+    restore a clean tree, and report OWNERSHIP_CONFLICT."""
+    home, repo, env = _fa_new_repo("fa1-a3-", {"shared.txt": "original\n"})
+    try:
+        # assembly diverges from B0 first (simulates an already-assembled worker).
+        (repo / "shared.txt").write_text("assembly-version\n")
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "Ca assembly edit")
+        _fa_worker_from_base(repo, env)
+        (repo / "shared.txt").write_text("worker-version\n")
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "Cw worker edit")
+        _fa_git(repo, env, "checkout", "-q", "assembly")
+        code, status = _invoke_assembler(repo, env)
+        tree_clean = _fa_git(repo, env, "status", "--porcelain").stdout.strip() == ""
+        no_pick = _fa_git(repo, env, "rev-parse", "--verify", "--quiet",
+                          "CHERRY_PICK_HEAD").returncode != 0
+        ok = code == 3 and "OWNERSHIP_CONFLICT" in status and tree_clean and no_pick
+        if ok:
+            return True, "A3 conflict: OWNERSHIP_CONFLICT; tree restored clean, no cherry-pick in progress"
+        return False, (
+            f"A3 FAILED: exit={code} status={status!r} tree_clean={tree_clean} no_pick={no_pick}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def _case_a4_merge() -> tuple[bool, str]:
+    """A4: a merge commit in the worker's delta → pre-flight OWNERSHIP_CONFLICT
+    (the harness produces linear single-author branches; a merge must not be
+    silently replayed/mis-attributed)."""
+    home, repo, env = _fa_new_repo("fa1-a4-", {"base.txt": "base\n"})
+    try:
+        _fa_worker_from_base(repo, env)
+        (repo / "feature.txt").write_text("f1\n")
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "Cw1 worker feature")
+        _fa_git(repo, env, "checkout", "-q", "-b", "side", "master")
+        (repo / "side.txt").write_text("s\n")          # disjoint file → clean merge
+        _fa_git(repo, env, "add", "-A")
+        _fa_git(repo, env, "commit", "-qm", "Cs side")
+        _fa_git(repo, env, "checkout", "-q", "worker")
+        _fa_git(repo, env, "merge", "--no-ff", "-m", "merge side into worker", "side")
+        _fa_git(repo, env, "checkout", "-q", "assembly")
+        code, status = _invoke_assembler(repo, env)
+        ok = code == 3 and "OWNERSHIP_CONFLICT" in status and "merge commit" in status
+        return (ok, "A4 merge-commit: OWNERSHIP_CONFLICT (pre-flight merge commit)" if ok
+                else f"A4 FAILED: exit={code} status={status!r}")
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def run_fa1(claude_bin: str = "claude", **_) -> FixtureResult:
+    """Drive the SHIPPED Track-A cherry-pick assembler against four synthetic
+    worker shapes.
+
+    EXERCISED, not MIRRORED: this invokes `tools/assemble_worker.py`, the SAME
+    primitive autopilot swarm-runner Step 3 calls — one implementation, so the
+    fixture cannot pass against a copy that drifts from the shipped path. The four
+    cases prove discrimination (clean pick / no-op / conflict / merge), not an
+    always-PICKED stub; A1 is the explicit negative control for the `<branch>^`
+    data-loss class.
+    """
+    if not ASSEMBLE_TOOL.exists():
+        return FixtureResult("F-A1", "A", EXERCISED, False, "ERROR",
+                             f"shipped assembler missing: {ASSEMBLE_TOOL}")
+    cases = [_case_a1_multicommit, _case_a2_empty, _case_a3_conflict, _case_a4_merge]
+    results = [c() for c in cases]
+    passed = all(ok for ok, _ in results)
+    detail = "; ".join(d for _, d in results)
+    verdict = "PICKED/EMPTY/CONFLICT/MERGE" if passed else "MISCLASSIFIED"
+    return FixtureResult("F-A1", "A", EXERCISED, passed, verdict, detail)
+
+
+# --------------------------------------------------------------------------- #
 # F-C1 — Track C: scorer (layer 1, EXERCISED) + advisory demotion (layer 2).    #
 # --------------------------------------------------------------------------- #
 
@@ -578,6 +758,7 @@ def run_fc1(claude_bin: str = "claude", with_api: bool = False, **_) -> FixtureR
 
 # fixture id -> runner callable.
 FIXTURES = {
+    "F-A1": run_fa1,
     "F-B1": run_fb1,
     "F-B2": run_fb2,
     "F-D1": run_fd1,
@@ -586,7 +767,7 @@ FIXTURES = {
 
 # fixture id -> the track it proves. Lets the matrix tell "built but not selected
 # this invocation" apart from "no fixture exists yet".
-FIXTURE_TRACKS = {"F-B1": "B", "F-B2": "B", "F-D1": "FC52", "F-C1": "C"}
+FIXTURE_TRACKS = {"F-A1": "A", "F-B1": "B", "F-B2": "B", "F-D1": "FC52", "F-C1": "C"}
 
 
 def render_matrix(results: dict[str, FixtureResult]) -> str:
