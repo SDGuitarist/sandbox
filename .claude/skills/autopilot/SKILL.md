@@ -611,7 +611,9 @@ silent FC52 (gate/use provenance drift). Run 070: all 16 workers read a 2010-lin
 stale spec while the gates validated the 2295-line converged spec; missed only by
 luck.
 
-The worktree base is harness-opaque, so do BOTH:
+The worktree base is harness-opaque, so run this gate as a strict sequence —
+detect, repair, re-verify (the proof), then record. Never spawn until the
+re-verify passes (cherry-pick channel) or the fallback is recorded:
 
 1. **Detect (run the shared detector).** Run:
    `python tools/check_spec_provenance.py --default-branch <default-branch> --original-branch <original_branch> --spec-path docs/plans/<spec>.md`
@@ -622,29 +624,66 @@ The worktree base is harness-opaque, so do BOTH:
    `STATUS: PROVENANCE_DRIFT` (differ, or the spec exists on only one branch,
    exit 3); exit 2 = ERROR (missing branch / not a repo / spec on neither branch).
    This is the SAME detector the fixture suite exercises (F-D1) -- one
-   implementation, no gate/use drift. If it reports `PROVENANCE_DRIFT`, proceed to
-   Repair; if `PROVENANCE_OK`, skip to Record.
-2. **Repair (choose the reliable channel).** If the SHAs differ:
-   - **Preferred / reliable — make the brief the authoritative spec channel.**
-     Do NOT rely on workers reading the worktree file. Inject the full converged
-     spec (or the per-role relevant sections) INLINE into every worker brief, and
-     tell workers the brief is authoritative over any spec file in their worktree.
-     This sidesteps the harness-opaque worktree base entirely.
-   - **Additional — put the converged spec at the worktree base.** Commit/cherry-pick
-     the converged spec file onto the default branch HEAD (where worktrees root) so
-     the file channel also matches. (NOTE: merging the default branch INTO the
-     feature branch does NOT fix this — it leaves the converged spec absent from the
-     default branch. Run 070's pre-flight merge fixed the CODE assembly invariant,
-     not the spec channel.)
-3. **Record.** Write `docs/reports/<run-id>/spec-provenance.md` with line 1 =
-   `STATUS: PROVENANCE_OK` (SHAs identical) or
-   `STATUS: PROVENANCE_REPAIRED -- <inline-injection | spec-committed-to-base>`,
-   plus both blob SHAs and (if repaired) the list of injected section titles. This
-   is the audit trail proving the workers' spec == the gated spec.
-4. NEVER spawn workers while the worktree-base spec differs from the gated spec
-   without recording the repair. The cost of this check is seconds; the cost of
-   detecting the drift mid-swarm is the whole run (recovery options collapse past
-   the spawn boundary).
+   implementation, no gate/use drift. Route on the result:
+   - `PROVENANCE_OK` (exit 0): skip to Record (no repair needed).
+   - `PROVENANCE_DRIFT` (exit 3): proceed to Repair.
+   - **`STATUS: ERROR` (exit 2) — HARD ABORT.** The detector could not produce a
+     verdict (missing branch, not a repo, spec on neither branch, etc.). Do NOT
+     proceed to Repair and do NOT spawn — a missing verdict is not a clean spec.
+     Write `docs/reports/<run-id>/spec-provenance.md` with line 1
+     `STATUS: PROVENANCE_ERROR -- <reason from detector stderr/output>` and abort
+     the pipeline with that reason. Resolve the environment fault and re-run the gate.
+2. **Repair (PRIMARY = put the converged spec at the worktree base).** If the SHAs
+   differ, the goal is NOT "avoid touching the default branch" — it is to make the
+   workers read the EXACT spec the gates validated, and to PROVE it. Only the
+   file-channel repair is self-verifying, so it is the primary path:
+   - **PRIMARY / deterministic — commit/cherry-pick the converged spec onto the
+     default branch HEAD** (where worktrees root) so the file channel matches before
+     spawn. Cherry-pick the spec-only commit if one exists; otherwise commit the
+     converged `docs/plans/<spec>.md` to the default branch as a dedicated spec-only
+     commit. (NOTE: merging the default branch INTO the feature branch does NOT fix
+     this — it leaves the converged spec absent from the default branch. Run 070's
+     pre-flight merge fixed the CODE assembly invariant, not the spec channel.)
+   - **FALLBACK ONLY — inline brief injection.** Use this *only* when the
+     deterministic repair cannot be applied cleanly (e.g. the spec change is not
+     isolable into a clean commit). Inject the full converged spec (or per-role
+     sections) INLINE into every worker brief and tell workers the brief is
+     authoritative over any worktree spec file. This is **not self-verifying** — the
+     file channel still differs, so the detector will still report `PROVENANCE_DRIFT`.
+     It reduces risk but does NOT prove equivalence. Never treat it as a peer of the
+     cherry-pick channel.
+3. **Re-verify (MANDATORY — the proof, not an afterthought).** After the repair:
+   - **Cherry-pick channel:** re-run `tools/check_spec_provenance.py` with the same
+     args. Require `STATUS: PROVENANCE_OK` (exit 0) before spawn. If it is anything
+     else, ABORT the spawn — the repair did not close the drift. This re-run IS the
+     proof that all worktrees will read the converged spec (valid as long as
+     worktrees root on the default-branch HEAD in this same repo — the standing
+     assumption in this step; if that ever changes, this proof changes too).
+   - **Injection fallback:** the detector will still report `PROVENANCE_DRIFT` (file
+     unchanged). Record an explicit **injected-section manifest** (the list of spec
+     section titles injected, derived from the spec diff between base and feature).
+     This is an AUDIT step, not equivalence proof — flag it as such.
+4. **Cleanup contract (abort safety).** The cherry-pick repair mutates the default
+   branch before the build is validated. If the run ABORTS after the repair but
+   before spawn, the spec-only commit must NOT be left as an unexplained side effect.
+   Either (a) revert the spec-only repair commit on the default branch, OR
+   (b) explicitly record it as the intentional repaired base carried into the next
+   run. Record which in `spec-provenance.md`.
+5. **Record.** Write `docs/reports/<run-id>/spec-provenance.md` with line 1 =
+   `STATUS: PROVENANCE_OK` (SHAs already identical, no repair needed) or
+   `STATUS: PROVENANCE_REPAIRED -- spec-committed-to-base` (cherry-pick + re-verify
+   PASSED) or `STATUS: PROVENANCE_REPAIRED -- inline-injection-FALLBACK` (deterministic
+   repair not applicable). (The fourth status, `PROVENANCE_ERROR`, is written by the
+   Detect hard-abort branch above and never reaches Repair/Record.) Include: both
+   pre-repair blob SHAs; the post-repair
+   re-verify result (for cherry-pick) OR the injected-section manifest (for
+   injection, clearly labeled "FALLBACK — not equivalence proof"); and the cleanup
+   disposition if applicable. This is the audit trail proving the workers' spec ==
+   the gated spec.
+6. NEVER spawn workers while the worktree-base spec differs from the gated spec
+   without a recorded repair AND (for the cherry-pick channel) a passing re-verify.
+   The cost of this check is seconds; the cost of detecting the drift mid-swarm is
+   the whole run (recovery options collapse past the spawn boundary).
 
 ### Step 10w: Parallel Swarm Work
 

@@ -1,145 +1,82 @@
 # HANDOFF — Sandbox
 
 **Date:** 2026-06-09
-**Branch:** feat/film-production-pm
-**Phase:** Orchestration-hardening FIXTURE SUITE — **COMPOUND COMPLETE** + 9w.9.5 rewire **VALIDATED** + **Codex R3 GO**. Both pre-merge gates GREEN. NEXT: the ~108-commit merge to master (operator plan: new session).
+**Branch:** master
+**Phase:** Run 070 + orchestration-hardening + fixture suite **SHIPPED TO MASTER**.
+NEXT: deferred backlog, starting with the **FC51 orchestrator rule** (#3 below).
 
 ## Current State
 
-The orchestration-hardening fixture suite is built, green, reviewed (3 Codex
-rounds), and now **compounded**: solution doc written + learnings propagated. It
-is a negative-test regression net proving each shipped hardening guard FIRES (or
-honestly reports its blind spot), with no reimplementations. Driven by
-`eval-harness/validate_hardening.py`; emits a per-track fidelity matrix using the
-honest vocabulary (EXERCISED / SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED).
+The 120-commit `feat/film-production-pm` line is **merged into master** via a
+`--no-ff` merge commit (**`49deb17`**) and **pushed to origin**. Local and remote
+`master` are in sync. The feature branch (local + remote) and the throwaway
+`test/fc52-9w95-rewire-real-swarm` branch have been **deleted** (all commits are
+preserved in master's history).
 
-Full default run (2 real agent calls; not fully hermetic): **A** `—`/NOT FIXTURED,
-**B** EXERCISED/PASSED, **C** PROSE-ASSERTED/PASSED, **FC52** EXERCISED/PASSED. Exit 0.
+What shipped:
+- **Run 070 Film Production PM** app (16-agent swarm, validate-on-real-build vehicle).
+- **All 3 orchestration-hardening tracks** — A (cherry-pick assembly / FC51),
+  B (orchestration-entrypoint presence guard / FC50), C (spec-eval demotion).
+- **Orchestration-hardening fixture suite** (`eval-harness/validate_hardening.py`)
+  — negative-test regression net; honest fidelity vocabulary
+  (EXERCISED / SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED).
+- **FC52 spec-provenance detector** (`tools/check_spec_provenance.py`) +
+  SKILL 9w.9.5 share-not-fork rewire.
+- Meta-analysis + 4 solution docs + learnings propagation.
 
-| Fixture | Track | Fidelity | What it proves |
-|---------|-------|----------|----------------|
-| F-B1 | B (FC50) | EXERCISED | Real `spec-completeness-checker` FAILs on an unpinned orchestration entrypoint (merge-blocking proof). |
-| F-B2 | B (FC50 false-N/A) | EXERCISED | Real agent returns N/A on a wholly-omitted entrypoint — honest blind spot, not a false PASS. |
-| F-D1 | FC52 | EXERCISED | Shipped `tools/check_spec_provenance.py` detects spec drift (exit 3) + identical-spec control (exit 0). |
-| F-C1 | C | PROSE-ASSERTED (L2) / EXERCISED (L1, `--with-api`) | Advisory demotion in SKILL 9w.8 + real scorer run. |
-| Track A | A (FC51) | — (not fixtured) | P-accept: cherry-pick assembly is agent-prose; field-proven 069/070 + spikes. |
+All gates were GREEN at merge: 3 Codex rounds (R1/R2/R3 GO), 9w.9.5 rewire
+scoped-validated, pre-merge safety check CLEAN, merge fast-forward-safe (zero
+conflicts).
 
-**One live shipped change:** `SKILL.md` Step 9w.9.5 was rewired (share-not-fork) to
-CALL `tools/check_spec_provenance.py` instead of inlining `git rev-parse`. Behavior
-identical (detection only; repair stays agent-prose). **This is the highest residual
-risk — NOT validated by a real swarm run, only by F-D1 in isolation.**
+## Recovery SHAs (if ever needed)
+
+| Ref (deleted) | Tip SHA | Where it lives now |
+|---------------|---------|--------------------|
+| `feat/film-production-pm` | `9b432bf` | 2nd-parent lineage of `49deb17` on master |
+| `test/fc52-9w95-rewire-real-swarm` | `998854e` | reflog / GC window (~30d); narrative in git history |
 
 ## Key Artifacts
 
 | Phase | Location |
 |-------|----------|
-| Plan | docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md |
-| Review | 3 Codex rounds (manual): R1 `0433cf1`/`a64e48d`/`19e89ce`, R2 `9b17c1a`/`1d6ac07`, R3 `8dca4b5` |
-| Solution | docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md |
+| Plan (fixture suite) | docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md |
+| Solution (fixture suite) | docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md |
+| Solution (hardening) | docs/solutions/2026-06-07-autopilot-orchestration-hardening.md |
+| Solution (Run 070) | docs/solutions/2026-06-08-film-production-pm-run-070-swarm-build.md |
 | Runner + all fixture logic | eval-harness/validate_hardening.py |
 | Fixtures + README (fidelity contract) | eval-harness/fixtures/ |
-| Shipped FC52 detector (new) | tools/check_spec_provenance.py |
+| Shipped FC52 detector | tools/check_spec_provenance.py |
 | Live gate rewire | .claude/skills/autopilot/SKILL.md (Step 9w.9.5) |
-| Commits | feat/film-production-pm `787f2fb..8dca4b5` (15) + compound doc `81a36c8` |
 
-## THE MERGE DECISION (gated — do NOT merge without explicit go-ahead)
+## Deferred Backlog (priority order)
 
-`feat/film-production-pm` is **~108 commits / 245 files ahead of master** — merging
-ships the ENTIRE Run 070 build + hardening + meta-analysis + the fixture suite, not
-just the fixtures. This is a large, deliberate call. **Operator plan: do the Codex R3
-pass, then merge in a NEW session.**
-
-1. **Codex R3 pass — DONE (2026-06-09): GO, no blocking findings.** Confirmed the
-   R3 fixes fail-closed: status validation reads `models.GateStatus` with no silent
-   fallback; non-string/non-dict/unrecognized statuses → `L1_SCORER_DEFECT`; no
-   honest-path regression (valid statuses incl. WARN_UNSCORABLE/RETRY still
-   EXERCISED); TIMEOUT is its own failing class (a hang can't pass as environment).
-   One **non-blocking** observation logged as a deferred item: a very slow-but-healthy
-   scorer could still hit the 420s timeout bound (operational, opt-in `--with-api`
-   only).
-2. ~~Real-swarm check of the SKILL 9w.9.5 FC52 rewire~~ — **DONE (2026-06-09).** A
-   scoped real-orchestrator run on branch `test/fc52-9w95-rewire-real-swarm`
-   (commit `998854e`) drove Step 9w.9.5 to completion and STOPPED before spawn:
-   the step invoked `tools/check_spec_provenance.py` with real branch args →
-   `PROVENANCE_DRIFT`/exit 3 (the agent→CLI wiring works); the 9w.6 completeness
-   gate FAIL→fix→PASS proved the run legitimately reaches 9w.9.5. Repair was
-   identified but NOT executed (pre-spawn halt) — recorded honestly, not as
-   `PROVENANCE_REPAIRED`. Evidence: `docs/reports/fc52-9w95-val/{spec-provenance.md,
-   spec-completeness-check.md}` on the test branch. **Scope boundary:** proved the
-   DETECT wiring (the new/risky part); did NOT exercise live brief-injection at
-   Step 10w or the OK-path (lower risk; OK-path covered by F-D1 in isolation).
-   Keep the `test/` branch until merge as the audit trail.
-
-## Codex R3 Handoff Prompt (run before merge)
-
-> Binding review. Scope: commits `1d6ac07..8dca4b5` on `feat/film-production-pm`
-> (round-3 fixes to `eval-harness/validate_hardening.py`). Context: this is the
-> orchestration-hardening fixture suite's F-C1 scorer-validation layer. The R3
-> changes: (1) a scorer TIMEOUT is now its own FAILING class `L1_TIMEOUT` (a hang
-> must not pass under `--with-api` as "environment"); (2) `_valid_gate_statuses()`
-> dropped its silent fallback — it reads `from models import GateStatus` and RAISES
-> if unimportable, and `_run_scorer` resolves the valid set BEFORE spending an API
-> call, returning a visible fail-closed `SCORER_DEFECT` on failure. Pressure-test:
-> (a) Is the EXERCISED/ENV/DEFECT/TIMEOUT classification airtight — can any genuine
-> scorer defect still masquerade as a non-failing environment miss, or vice-versa?
-> (b) Is the fail-closed enum read correct (no path where a drifted/absent enum
-> silently validates)? (c) Does the timeout bound risk a false TIMEOUT on a slow-but-
-> healthy scorer? Confirm GO or list blocking findings.
-
-## Deferred Items
-
-1. **Track A `P-extract` (follow-on):** refactor `swarm-runner.md:76-138` cherry-pick
-   prose into a shared callable so Track A earns a real EXERCISED row — its own
-   real-build validation required.
-2. **Real-swarm validation of the 9w.9.5 rewire** (the merge gate above).
-3. **Suite adoption decision (operator):** wiring `validate_hardening.py` into the
-   autopilot pipeline as a blocking gate — proposal step 3, out of this scope.
-4. **[070-W4] Todo #070 (P2, LOW):** double `get_schedule_entries` in
-   `callsheets.generate` — pass pre-fetched entries as optional param.
-5. **FC51 orchestrator rule:** ensure converged spec is at the worktree base before
-   spawn (cherry-pick the spec-update commit, OR inline-inject sections into briefs).
-6. **F-C1 scorer timeout bound (P3, LOW, from Codex R3):** the 420s `--with-api`
-   timeout could false-`TIMEOUT` a slow-but-healthy scorer. Non-blocking, opt-in
-   path only. Revisit if real `--with-api` runs ever flake on timeout.
-
-## Three Questions
-
-1. **Hardest decision?** Per guard, invoke the real shipped artifact vs. extract a
-   shared callable. Resolved by fidelity: real agent for FC50; share-not-fork extract
-   for FC52; decline to fixture agent-prose Track A rather than ship a hollow
-   `SPIKE-VALIDATED` row. Never a Python mirror.
-2. **What was rejected?** Another validate-on-real-build (M4 instrument failure);
-   reimplementing guards in Python (the drift trap); `P-promote` for Track A (a spike
-   is a copy that can't catch ship-prose drift); hiding API cost / silent enum fallback.
-3. **Least confident about?** The live SKILL 9w.9.5 agent→CLI wiring under a real
-   swarm — deterministic in isolation, un-exercised end-to-end.
+1. **[NEXT] FC51 orchestrator rule** — ensure the converged spec is at the
+   worktree base before swarm spawn (cherry-pick the spec-update commit into each
+   worktree base, OR inline-inject spec sections into briefs). This is a **live
+   fragility that already bit Run 070** (brief-injection is fragile; orchestrator
+   must pre-load the converged spec into worktrees). Highest value — it's a real
+   defect, not a coverage gap. Lives in the autopilot skill orchestration path.
+2. **Track A `P-extract`** — refactor `swarm-runner.md:76-138` cherry-pick prose
+   into a shared callable so Track A (FC51) earns a real EXERCISED fixture row
+   instead of agent-prose. Needs its own real-build validation. (Note: overlaps
+   with #1 — doing #1 may reshape what gets extracted here.)
+3. **Suite adoption decision (operator)** — wire `validate_hardening.py` into the
+   autopilot pipeline as a blocking gate. Proposal: docs/proposals/validate-hardening-on-fixtures.md.
+4. **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in
+   `callsheets.generate`; pass pre-fetched entries as optional param.
+   File: todos/070-pending-p2-callsheets-generate-redundant-double-query.md
+5. **F-C1 scorer timeout bound (P3, LOW)** — 420s `--with-api` timeout could
+   false-`TIMEOUT` a slow-but-healthy scorer. Non-blocking, opt-in path only.
+   Revisit only if real `--with-api` runs flake on timeout.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is Sandbox, branch feat/film-production-pm. The orchestration-
-hardening fixture suite is COMPOUND COMPLETE and the SKILL 9w.9.5 FC52 rewire is
-VALIDATED (scoped real-swarm check, evidence on branch test/fc52-9w95-rewire-real-swarm
-commit 998854e). Solution: docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md.
-
-This session = the MERGE. All gates GREEN and pre-merge safety check CLEAN (below).
-- Merge feat/film-production-pm -> master (119 commits, 246 files; ships the WHOLE
-  Run 070 build + hardening + meta-analysis + fixtures). Confirm "are you sure" first.
-- DECIDE MERGE STYLE: master is an ANCESTOR of feat, so a plain merge fast-forwards.
-  Consider `git merge --no-ff` to keep a merge commit / branch boundary in history
-  for a 119-commit feature (recommended), vs a flat fast-forward.
-- Decide push timing (nothing pushed yet; local master == origin/master).
-- After merge, delete the throwaway test/fc52-9w95-rewire-real-swarm branch.
-
-## Pre-Merge Safety Check — CLEAN (2026-06-09, read-only)
-
-| Check | Result |
-|-------|--------|
-| Working tree | clean |
-| Merge type | **fast-forward** (master is a direct ancestor of feat) → **zero conflict risk** |
-| Conflict preview (`git merge-tree`) | exit 0, no conflicts |
-| local master vs origin/master | in sync (0/0) |
-| Sensitive files (.env/.key/.pem/.db/secrets) | none — only intentional BUILD_TRACKING / run-report / fixture artifacts |
-| New top-level files | `requirements.txt`, `schema.sql`, `test_smoke.py` (Run 070 Film PM app — expected) |
-| Scope | 119 commits, 246 files, +20,674 / −3,333 |
+Read HANDOFF.md. This is Sandbox, on master (49deb17) — the Run 070 + hardening
++ fixture suite line is shipped. Working the deferred backlog, starting with #1:
+the FC51 orchestrator rule. Goal: guarantee the converged spec is at the worktree
+base before swarm spawn (cherry-pick the spec commit into worktree bases, or
+inline-inject spec sections into briefs), so the Run-070 brief-injection fragility
+can't recur. Start by locating the spawn path in .claude/skills/autopilot/SKILL.md
+and how worktrees are created, then brainstorm the fix before changing anything.
 ```
