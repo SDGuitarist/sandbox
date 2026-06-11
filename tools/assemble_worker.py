@@ -28,6 +28,10 @@ Mutation contract:
     and verifies the tree is clean AND HEAD is restored to the pre-pick commit. If it
     cannot restore that state, it returns ERROR (never a false PICKED/CONFLICT).
 
+Output: the `STATUS:` line is ALWAYS printed to STDOUT as line 1, in every case
+(success or failure), and the exit code mirrors it. The caller can read line 1 of
+stdout for the verdict without merging stderr -- there is no STATUS-on-stderr split.
+
 Exit codes (kept in 1-255; 256 would wrap to 0 = a false success):
   0  PICKED / EMPTY_DELTA   clean replay of all N commits, or a zero-commit no-op
   2  ERROR                  bad repo/branch, dirty entry state, HEAD/branch mismatch,
@@ -55,7 +59,7 @@ class _Parser(argparse.ArgumentParser):
     """argparse exits 2 on error, which collides with EXIT_ERROR. Override to 5."""
 
     def error(self, message):
-        sys.stderr.write(f"STATUS: BAD_ARGS -- {message}\n")
+        print(f"STATUS: BAD_ARGS -- {message}")  # STATUS always to stdout
         sys.exit(EXIT_BAD_ARGS)
 
 
@@ -88,7 +92,7 @@ def _cherry_pick_in_progress(repo: str) -> bool:
 
 
 def _err(message: str) -> int:
-    sys.stderr.write(f"STATUS: ERROR -- {message}\n")
+    print(f"STATUS: ERROR -- {message}")  # STATUS always to stdout
     return EXIT_ERROR
 
 
@@ -137,8 +141,8 @@ def main(argv: list[str] | None = None) -> int:
     if merges.returncode != 0:
         return _err(f"rev-list --merges failed: {merges.stderr.strip()}")
     if merges.stdout.strip():
-        sys.stderr.write(
-            f"STATUS: OWNERSHIP_CONFLICT -- pre-flight: merge commit on {args.worker_branch}\n"
+        print(
+            f"STATUS: OWNERSHIP_CONFLICT -- pre-flight: merge commit on {args.worker_branch}"
         )
         return EXIT_CONFLICT
 
@@ -176,8 +180,8 @@ def main(argv: list[str] | None = None) -> int:
         return _err("could not restore clean pre-pick state after a failed cherry-pick")
 
     if unmerged:
-        sys.stderr.write(
-            f"STATUS: OWNERSHIP_CONFLICT -- cherry-pick conflict on {args.worker_branch}\n"
+        print(
+            f"STATUS: OWNERSHIP_CONFLICT -- cherry-pick conflict on {args.worker_branch}"
         )
         return EXIT_CONFLICT
 
@@ -192,5 +196,5 @@ if __name__ == "__main__":
     except SystemExit:
         raise
     except Exception as exc:  # fail-closed: an unexpected crash must never read as success
-        sys.stderr.write(f"STATUS: ERROR -- unexpected error: {exc}\n")
+        print(f"STATUS: ERROR -- unexpected error: {exc}")  # STATUS always to stdout
         sys.exit(EXIT_ERROR)

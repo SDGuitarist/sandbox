@@ -109,7 +109,9 @@ python tools/assemble_worker.py --repo . --original-branch <original_branch> \
     --assembly-branch <assembly_branch> --worker-branch <branch>
 ```
 
-Read **line 1** (`STATUS:`) and the **exit code**, and branch:
+The tool prints its `STATUS:` line to **stdout as line 1 in every case** (success or
+failure) and mirrors it in the exit code. Read **line 1** (`STATUS:`) and the
+**exit code**, and branch:
 
 1. **`STATUS: PICKED -- base=<sha> commit=<sha> count=<n>` (exit 0):** the worker's
    full range was replayed. Use the Edit tool to append `| <N> | <role> | <commit>
