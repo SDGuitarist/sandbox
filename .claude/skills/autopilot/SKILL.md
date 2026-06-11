@@ -732,6 +732,7 @@ For each agent in the assignment table:
    - `run_in_background: true`
    - `name: "swarm-[run-id]-[role-name]"` (e.g., `swarm-022-routes`)
    - `mode: "bypassPermissions"`
+   - `model: "opus"`
 
 Spawn ALL agents in a single message (parallel launch).
 
