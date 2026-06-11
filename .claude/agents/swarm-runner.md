@@ -131,13 +131,20 @@ Read **line 1** (`STATUS:`) and the **exit code**, and branch:
    means assembly is in an untrusted state — take the **blocking failure** path
    below with reason `assembly-error: <branch> -- <reason>` instead of
    `assembly-ownership-conflict`.
+5. **`STATUS: BAD_ARGS` (exit 5), or ANY other status / unrecognized nonzero exit:**
+   NOT expected in normal orchestration — you construct the invocation above with all
+   four required arguments, so `BAD_ARGS` should never occur. But do not assume:
+   treat `BAD_ARGS` and any unrecognized assembler result **fail-closed** as the
+   **blocking failure** path below, with reason
+   `assembly-error: <branch> -- unexpected tool result: <line 1 of output>`. Never
+   proceed past a tool result you do not recognize.
 
-**Blocking failure path (cases 3 and 4):**
+**Blocking failure path (cases 3, 4, and 5):**
 1. Do NOT clean up worktrees/branches and do NOT merge anything to
    `original_branch` — PRESERVE all worker branches for inspection (skip Step 8),
    leaving `original_branch` untouched.
 2. Write the detail to `<reports_dir>/assembly-ownership-conflict.md` (case 3) or
-   `<reports_dir>/assembly-error.md` (case 4), STATUS on line 1.
+   `<reports_dir>/assembly-error.md` (cases 4 and 5), STATUS on line 1.
 3. Set `final_status: "FAIL -- <reason>"` in BUILD_TRACKING.md Run State (Edit the
    `- final_status:` line), where `<reason>` is
    `assembly-ownership-conflict: <branch>` or `assembly-error: <branch> -- <detail>`.
@@ -238,7 +245,8 @@ End your output with the two key-value lines (see Output Contract).
    `assembly-ownership-conflict:` (the assembler tool returns OWNERSHIP_CONFLICT —
    a cherry-pick conflict or a merge-commit pre-flight in Step 3), and
    `assembly-error:` (the assembler tool returns ERROR — an untrusted assembly
-   state: dirty tree, HEAD not on the assembly branch, abort-cleanup failure, etc.).
+   state: dirty tree, HEAD not on the assembly branch, abort-cleanup failure, etc. —
+   OR any unrecognized result incl. BAD_ARGS, folded in fail-closed per Step 3 case 5).
    All three abort WITHOUT merging to main or cleaning up (worker branches
    preserved), set `final_status` in Run State, and return
    `STATUS: FAIL -- <class>: <reason>`.
@@ -270,6 +278,13 @@ or
 ```
 report_path: <reports_dir>/assembly-ownership-conflict.md
 STATUS: FAIL -- assembly-ownership-conflict: <branch>
+```
+
+or
+
+```
+report_path: <reports_dir>/assembly-error.md
+STATUS: FAIL -- assembly-error: <branch> -- <detail>
 ```
 
 Smoke/test failures do NOT produce `STATUS: FAIL`. The orchestrator reads the
