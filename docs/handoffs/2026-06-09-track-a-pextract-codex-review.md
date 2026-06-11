@@ -5,7 +5,18 @@ reviews the IMPLEMENTATION.
 **Date:** 2026-06-09
 **Repo:** `~/Projects/sandbox`
 **Branch:** `feat/track-a-pextract-cherrypick` (pushed). Review range: `master..HEAD`
-= commits `7f2d9db..65bcc7d` (4 commits).
+= commits `7f2d9db..18a3784` (6 commits).
+
+**Follow-ups already applied since this handoff was first drafted (review the final
+state, all on-branch):**
+- `bf304c9` — made swarm-runner Step 3 / Output Contract exhaustive: added the
+  `assembly-error.md` blocking example; Step 3 **case 5** folds the tool's `BAD_ARGS`/
+  exit 5 and ANY unrecognized result into the `assembly-error:` blocking path
+  fail-closed; Rule 2 updated to three blocking classes.
+- `18a3784` — **risk #1 fix:** the tool now prints its `STATUS:` line to **stdout as
+  line 1 in every case** (previously OWNERSHIP_CONFLICT/ERROR/BAD_ARGS went to
+  stderr). swarm-runner now documents the stdout-line-1 guarantee. Please confirm
+  this is sound and that no caller path still assumes the old split.
 
 ---
 
