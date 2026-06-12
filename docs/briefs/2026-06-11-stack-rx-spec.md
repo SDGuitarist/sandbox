@@ -1409,7 +1409,7 @@ The tests agent MUST implement all 12 test cases in `tests/test_critical_flows.p
 temp-file DB — NEVER `:memory:`, which is private per connection. MECHANISM (pinned —
 the env var is read once at module import, so setting `os.environ` later is a no-op):
 each test monkeypatches the module global, `monkeypatch.setattr(app.database,
-'DATABASE', tmp_path / 'test.db' as str)`, BEFORE calling `create_app()`; `get_db`
+'DATABASE', str(tmp_path / 'test.db'))`, BEFORE calling `create_app()`; `get_db`
 reads the global at call time so every connection hits the per-test file. `SECRET_KEY`
 and `ADMIN_PASSWORD` set; CSRF disabled via `WTF_CSRF_ENABLED=False` except test 11
 which enables it; temp files removed on teardown):
