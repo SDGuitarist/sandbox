@@ -23,4 +23,5 @@ docker run --rm -it \
   -v ~/.claude/CLAUDE.md:$CLAUDE_HOME/.claude/CLAUDE.md:ro \
   -w /workspace \
   claude-sandbox \
-  --dangerously-skip-permissions
+  --dangerously-skip-permissions \
+  --model claude-opus-4-8
