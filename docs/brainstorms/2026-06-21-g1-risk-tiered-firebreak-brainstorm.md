@@ -19,9 +19,17 @@ feed_forward:
 A **risk-tiered firebreak** that reconciles zero-prompt autopilot throughput with
 the "human controllers" principle (Google DeepMind, *Three Layers of Agent
 Security*). Today autopilot sets `dangerouslySkipPermissions: true` and injects
-`bypassPermissions` into every agent — a **blanket** bypass that overrides the
-risk-tiering already in the user's global CLAUDE.md Safety Rule (ask before
-destructive/irreversible actions) and permissions matrix.
+`bypassPermissions` into every agent — a **blanket** bypass.
+
+**The key reframe:** this isn't *overriding* safety — it's the missing
+**enforcement engine** for a contract that already exists. The sandbox's own
+`CLAUDE.md` "Forbidden Actions" section already enumerates most of the RED tier in
+prose (no prod-DB access; no `git push --force`/`reset --hard` without
+confirmation; no destructive history rewrites; no external API calls without
+declaration; no edits outside `~/Projects/sandbox/`). Under
+`dangerouslySkipPermissions`, that contract is currently **unenforced**. The
+firebreak makes it executable. (It also restores the risk-tiering in the global
+CLAUDE.md Safety Rule + permissions matrix that the blanket bypass overrides.)
 
 The firebreak restores *oversight proportionate to risk* without sacrificing
 unattended runs: it classifies each action, lets the safe majority run untouched,
@@ -30,6 +38,18 @@ and **defers** the binding/irreversible tail to an async human-approval queue.
 **In scope:** classifying actions, intercepting the risky tier, deferring them to
 a queue, async human approval. **Out of scope (this doc):** the in-flight AI
 monitor (G2), monoculture mitigation (G3), ledger hardening (G4) — separate items.
+
+### What success looks like (seeds the plan's EARS tests)
+
+- A run that hits a RED action **completes unattended**: the action is deferred to
+  a `NNN-pending-approval-*.md` todo, GREEN actions are unaffected, and the run
+  still produces all required tail artifacts.
+- **No RED action ever executes without explicit human approval.** Fail-closed:
+  an unknown or ambiguous action defers rather than runs.
+- The **sanctioned learnings-propagation writes are NOT deferred** (the carve-out
+  holds — the compound tail still writes).
+- A deferred item is **resolvable later** (approve → the action executes / the
+  merge lands) without re-running the build.
 
 ## Why This Approach
 
@@ -65,7 +85,19 @@ Grounded in the repo scan: the building blocks already exist, so G1 is mostly
 | Tier | Disposition | Actions |
 |------|-------------|---------|
 | **RED** | Defer to approval queue | **Git:** force-push; push to `main`/`master`/shared branches; amend/rewrite of pushed commits. **Merge:** the swarm-runner's final merge-to-`main` (the finished build waits on its assembly branch for approval). **Data:** destructive ops on a real `*.db` (DROP/DELETE/rm) outside `/tmp`; **deletes targeting any path outside the repo worktree** (e.g. `~/Data`, home, other projects) and not `/tmp`. **Outward-facing:** external sends (curl/email/webhook to a non-localhost host); **deploy/promote** commands (vercel / railway / fly / netlify); **external-service MCP writes** (default-deny — any `mcp__*` send/create/publish/update/delete to a non-local service). **Packages:** removal (`pip/npm uninstall\|remove`). |
-| **GREEN** | Auto-run (unchanged) | file writes inside the worktree; local commits; running tests; reads; local-only git ops |
+| **GREEN** | Auto-run (unchanged) | file writes inside the worktree; local commits; running tests; reads; local-only git ops; **sanctioned learnings-propagation out-of-repo writes** (see carve-out below) |
+
+> **Carve-out (must-fix for the plan):** CLAUDE.md sanctions specific out-of-repo
+> writes during the compound-phase tail — `~/.claude/docs/agent-pitfalls.md`,
+> `~/Documents/dev-notes/` (LESSONS_LEARNED + daily journal), and
+> `~/.claude/projects/[key]/memory/`. These are **append/write, not delete**, and
+> are legitimate. The RED "out-of-repo" rule must GREEN-list these exact paths, or
+> the firebreak will block the learnings propagation that every run requires.
+
+> **Scope guardrail:** v1 only *defers* the merge-to-`main`; it does **not**
+> redesign the assembly/tail flow. The build still assembles onto its
+> `swarm-<id>-assembly` branch as today — only the final land-on-`main` step waits
+> for approval.
 
 **Detection confidence varies by category** (drives the Phase-2 advisory priority):
 
@@ -101,6 +133,13 @@ outside its worktree, so default-deny on those costs almost no false positives.
    "approve-and-execute pending-approval" mode, or a dedicated `/approve` skill?
    And for a deferred *merge*, does approval trigger the merge automatically or
    just unblock it? (Design detail for the plan phase.)
+2. **Deferred-merge × Required Artifacts ordering.** CLAUDE.md says every
+   *completed* run must produce the tail artifacts (solution doc, learnings,
+   HANDOFF, self-audit). Confirm the phase order: review/compound/tail run on the
+   `swarm-<id>-assembly` branch and the run reports `PIPELINE_PASS` with the merge
+   **pending in the queue** (run "complete" but unlanded). The plan must ensure a
+   deferred merge does not trip the "run completes" / Required-Artifacts contract
+   or the self-audit gate.
 
 ## Feed-Forward
 
