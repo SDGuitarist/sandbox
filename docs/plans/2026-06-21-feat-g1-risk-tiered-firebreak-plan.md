@@ -42,25 +42,30 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
 
 ## Threat Model (what v1 does and does not promise)
 
-- **In scope (v1 enforces):** bound the blast radius of **outward / irreversible**
-  actions a swarm worker could emit — external network sends, deploys,
-  out-of-repo deletes, package removal, external-MCP writes, and force-push /
-  `git push` to a shared `master` (a **local** merge to `master` with no push is
-  GREEN — F5). Also: **protect the firebreak's own control
-  plane** from the workers it governs (F1).
+- **In scope (v1 enforces) — for DIRECT worker tool calls:** bound the blast radius
+  of **outward / irreversible** actions a swarm worker could emit as a tool call —
+  external network sends, deploys, out-of-repo deletes, package removal,
+  external-MCP writes, and force-push / `git push` to a shared `master` (a **local**
+  merge to `master` with no push is GREEN — F5). Also: **protect the firebreak's own
+  control plane** from workers' **direct** Write/Edit/Bash tool calls (F1) — see the
+  F6 bound immediately below.
 - **Guards honest-agent mistakes + bounded blast radius — NOT adversarial-proof.**
   A worker that is actively trying to evade a deterministic string-level classifier
   can still do so. v1 covers the common indirection vectors and **declares** the
   residual rather than overclaiming "unevadable."
 - **Explicit, prominent residual — the allowlisted interpreter is an unbounded
-  escape (F2 / 2nd-review P1-2).** An allowlisted runner (`pytest`,
-  `python3 -m pytest`, the run's test command) **collects and executes
-  worker-authored files** (a worker writing `tests/test_x.py` is GREEN). That test
-  body can perform any outward action (egress, deploy, force-push) — so the outward
-  bound holds for **direct** worker calls only, **not** for code routed through an
-  allowlisted interpreter. v1 does **not** sandbox test execution (that needs
-  OS/network-layer egress control — out of scope). This is stated as prominently as
-  the in-scope claim so the bound is not overclaimed.
+  escape for BOTH outward AND control-plane integrity (F2/F6 / 2nd-review P1-2).** An
+  allowlisted runner (`pytest`, `python -m pytest`) **collects and executes
+  worker-authored files** (a worker writing `tests/test_x.py` is GREEN), run by the
+  swarm-runner (a trusted identity). That test body does raw file I/O / `subprocess`
+  — **not tool calls** — so the PreToolUse hook never sees it. It can therefore (a)
+  perform any outward action (egress, deploy, force-push) **and** (b) overwrite the
+  firebreak's own control plane (`~/.claude/settings.json`, the sentinel,
+  `todos/approvals/`). **Every v1 guarantee — outward bound and control-plane
+  integrity alike — holds for DIRECT worker tool calls only.** v1 does **not**
+  sandbox test execution (real isolation needs OS/network-layer egress control —
+  out of scope). Stated as prominently as the in-scope claim so neither bound is
+  overclaimed. (F7 narrows what can be allowlisted, shrinking — not closing — this.)
 - **Deterministic-only authority.** No LLM in the dispose path (precedent: the
   spec-eval AI judge hit ~0% field precision and was demoted to advisory).
 
@@ -86,7 +91,7 @@ placement) is gated by Step 0, whose probe now spawns a **real**
 ## Deepening Review — Changelog (2026-06-21)
 
 Five adversarial reviewers (security, architecture, simplicity, data-integrity,
-performance) plus a second review pass shaped v1. The **body below is the current
+performance) plus two further review passes shaped v1. The **body below is the current
 v1 design** (no longer "first draft"); this table is the decision trail.
 
 ### First pass — R1–R8
@@ -102,7 +107,7 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 | **R7** | *(rewritten by F3 below)* GREEN learnings carve-out. | architecture P1; security P1-2 |
 | **R8** | **`/approve` skill deferred to v2.** v1 = the human reads the self-describing record and runs the recorded command; the **`resolve-todos` guard + glob isolation stay**. | A faithful-replay skill is a new RED-executing code path that could replay worker-tampered records. (simplicity #3; security P1-5; data-integrity P1-2) |
 
-### Second pass — F1–F4 (control-plane, indirection, carve-out, v2 isolation)
+### Second pass — F1–F5 (control-plane, indirection, carve-out, v2 isolation, identity root-fix)
 
 | # | Fix | What changed |
 |---|-----|--------------|
@@ -121,6 +126,15 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 > This depends on `agent_id`/`agent_type` being harness-supplied and unforgeable —
 > **gated by a Step 0 assertion** (if it fails, control-plane writes are
 > blanket-denied during an active run regardless of actor).
+
+### Third pass — F6–F9 (claim honesty, allowlist hardening, identity gating, env-indirection)
+
+| # | Fix | What changed |
+|---|-----|--------------|
+| **F6** | **Honest, unified bound — every v1 guarantee holds for DIRECT worker tool calls only.** The firebreak is a **PreToolUse hook**; it sees *tool calls*, not raw file I/O inside a process. So code executing under an **allowlisted interpreter** (e.g. a worker-authored `test_*.py` collected by `pytest`, which the swarm-runner runs as a trusted identity) does `open(...,'w')` / `subprocess` directly — **the hook never fires.** That path can break **not only the outward bound but also control-plane integrity** (it can overwrite `~/.claude/settings.json`, the sentinel, or `todos/approvals/`). v1's control-plane *and* outward guarantees are therefore **bounded to direct worker tool calls**; the allowlisted-interpreter escape is the single residual that bounds them both. Stated plainly in the Threat Model — the F1 "protects the control plane" claim is **narrowed** accordingly. |
+| **F7** | **`test_allowlist` is synthesized from a fixed structural safe-set, NOT arbitrary plan text.** The live swarm-runner derives the test command from the plan, so a bad plan could name `python3 deploy.py` / `node release.js` as the "test command." The classifier ships a **hardcoded `KNOWN_TEST_FRAMEWORKS`** structural matcher — direct framework invocations only: `pytest [args]`, `python -m pytest`, `python -m unittest`, `go test …`, `cargo test`, `rspec`, `jest`, `vitest` (no shell metacharacters, no arbitrary `<script>.py`/`./script` target, **`npm run`/`make` excluded** — those stay in the indirection-defer set). The sentinel's `test_allowlist` can only **select among** these recognized shapes; a plan-supplied runner string that doesn't structurally match defers (the human/plan must use a recognized framework or approve). A bad plan can no longer whitelist a deploy/exfil command as a "test." |
+| **F8** | **Step 0 validates hook metadata for ALL trusted roles, and is framed as a harness-contract check — not a proof of unforgeability.** Observing "present + distinct" `agent_id`/`agent_type` on **one** worker is insufficient. Step 0 must observe and record the metadata for **all four** actors — **orchestrator** (no `agent_id`), **`swarm-runner`**, **`tail-runner`**, and a **worker** — and confirm each presents the expected, distinct, stable `agent_type`. The plan states explicitly: **this is an empirical check of a harness-contract assumption** (the harness sets `agent_type` honestly and a worker cannot alter its own hook metadata), **NOT** cryptographic unforgeability. If the contract can't be confirmed for all roles → fall back to blanket control-plane deny during an active run. |
+| **F9** | **Close the env-indirected control-plane write hole — scoped to avoid GREEN over-defer.** Realpath + `~`/`$HOME` expansion does **not** cover a destination hidden behind an env var (`DEST=~/.claude/settings.json cp evil "$DEST"`) or command substitution. Rule: a **control-plane-capable write verb** defers for workers when its destination, after best-effort expansion, is **(a)** a control-plane path, **(b)** absolute/`~`/`$HOME`-rooted/`..`-escaping and not provably in-worktree, or **(c)** fully opaque (`$(…)`/inherited `$VAR`) for the arbitrary-destination verbs (`cp`/`install`/`ln`/`dd`/`mv`/`sed -i`/`truncate`). **Plain worktree-relative destinations (incl. `> "$out"`) stay GREEN** — so this does not regress throughput (3rd-review P1). Declared residual: an inherited-`$VAR` redirection to a control-plane path isn't caught at the redirect layer. |
 
 **RESOLVED (user, 2026-06-21): fully cut — no status-mapping sliver in v1.** A
 deferred shared-`master` merge reports its natural non-clean status (honest: the
@@ -146,7 +160,8 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
   collision-free filenames, classifier as sole writer (R5).
 - A **`resolve-todos` guard** so the unattended resolver never touches the queue.
 - **Control-plane protection** (F1): worker subagents cannot Write/Edit/Delete the
-  hook config, hook scripts, sentinel, or approvals queue.
+  hook config, hook scripts, sentinel, or approvals queue **via a direct tool call**
+  (the allowlisted-interpreter path is the declared F6 residual).
 
 **2. What must NOT change?**
 - The `resolve-todos` queue structure/behavior (reuse).
@@ -155,7 +170,10 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
 - The **sanctioned learnings-propagation writes** — GREEN via the F3 carve-out;
   the firebreak must never defer them.
 - GREEN throughput: **zero added deferrals** for local worktree work (file writes,
-  local commits, tests, reads) — the fast-path keeps python off that path (R6).
+  local commits, tests, reads) — the fast-path keeps python off that path (R6). **One
+  narrow exception (F9):** a control-plane-capable write verb aimed at a
+  non-worktree / opaque destination defers; ordinary worktree-relative writes
+  (incl. `> "$out"`) stay GREEN (see F9 scoping).
 - Manual-session behavior: no sentinel → no-op.
 - The assembly/tail flow — **unchanged** (v1 does not touch the merge wiring; the
   shared-`master` merge case simply defers like any other RED action).
@@ -163,8 +181,9 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
 **3. How will we know it worked?**
 See `## Acceptance Tests (EARS)`. In short: outward/irreversible RED actions land
 in `todos/approvals/` and never execute; GREEN actions and learnings writes run
-untouched; worker subagents cannot tamper with the control plane; the Step 0
-real-spawn probe proves the hook governs the worker path.
+untouched; worker subagents cannot tamper with the control plane **via a direct
+tool call** (F6 residual aside); the Step 0 real-spawn probe proves the hook governs
+the worker path.
 
 **4. What is the most likely way this plan is wrong?**
 - **(Primary) The real worker path.** The hook must fire for
@@ -231,6 +250,20 @@ when inside a subagent) and the sentinel for run context. Disposition:
   `~`/`$HOME` expansion defeats symlink/traversal/`$HOME` obfuscation; the entry
   gate forwards to the classifier on any control-plane substring **or** any
   `~`/`$HOME`/`..`/symlink-suspect token — it never auto-allows an obfuscated form.
+  **Env-indirection (F9 — scoped to avoid GREEN over-defer):** a control-plane-capable
+  write verb defers for workers when its destination, after **best-effort expansion**
+  (inline `VAR=…` assignments, `~`/`$HOME`), is **(a)** a control-plane path, **(b)**
+  absolute / `~`/`$HOME`-rooted / `..`-escaping and **not provably inside the
+  worktree**, or **(c)** **fully opaque** (`$(…)`/backticks/an inherited `$VAR`) for
+  the **arbitrary-destination verbs** (`cp`/`install`/`ln`/`dd`/`mv`/`sed -i`/
+  `truncate`). A destination that resolves to a **plain worktree-relative path** —
+  including `> "$out"` where `$out` is a relative artifact path — is **NOT** deferred,
+  so ordinary computed-path writes stay GREEN. *Declared residual: an
+  inherited-`$VAR` **redirection** (`>`/`>>`) to a control-plane path is not caught at
+  the redirect layer (narrow; the realpath check still catches inline/expandable
+  forms).* **F6 caveat:** this protects against a worker's *direct* tool calls only —
+  a write performed by code inside an allowlisted interpreter is invisible to the hook
+  (see Threat Model).
 - **`Bash`** → classify the command string. Category-specific:
   - *Outward / irreversible (allowlist-deny, default-DEFER):* external sends
     (curl/wget to a non-localhost host; `nc`/`ssh`/`scp`/`rsync`; `gh api`/`gh
@@ -239,13 +272,19 @@ when inside a subagent) and the sentinel for run context. Disposition:
     force-push** to a remote-tracked shared branch. (A **local** `git merge --no-ff`
     onto `original_branch` with no push is **GREEN** — F5; that is the
     swarm-runner's normal terminal action.) Errs toward defer.
-  - *Indirection (default-DEFER unless allowlisted — F2):* `bash <file>`, `sh`,
+  - *Indirection (default-DEFER unless allowlisted — F2 + F7):* `bash <file>`, `sh`,
     `eval`, `source`/`.`, `npm run`, `make`, `base64 -d | sh`, **interpreters**
     (`python`/`python3`/`.venv/bin/*`, `node`, `ruby`, `perl`), and **direct script
     execution** (`./x.sh`, `/abs/script`, `path/to/script`). **Allow** only when the
-    (interpreter + target) is on the sentinel's `test_allowlist` (the run's known
-    test/build commands). *Declared residual: a RED action inside an allowlisted
-    runner still executes.*
+    command **structurally matches the hardcoded `KNOWN_TEST_FRAMEWORKS`** safe-set
+    (F7) — direct framework invocations only: `pytest [args]`, `python -m pytest`,
+    `python -m unittest`, `go test …`, `cargo test`, `rspec`, `jest`, `vitest`; no
+    shell metacharacters, no arbitrary `<script>.py`/`./script` target;
+    **`npm run`/`make` are NOT auto-allowed.** The sentinel's `test_allowlist` only
+    **selects among** these recognized shapes — it can never inject an arbitrary
+    plan-supplied runner string (so a bad plan cannot whitelist `python3 deploy.py`).
+    *Declared residual (F6): a RED action inside an allowlisted framework still
+    executes — see Threat Model.*
   - *Local / build (default-allow):* everything else local in the worktree (tests
     via the allowlist, local commits, local-only git, reads).
   - *Git normalization (R4a):* strip/resolve `git -C`/`--git-dir`/`--work-tree`/`-c`
@@ -259,7 +298,11 @@ when inside a subagent) and the sentinel for run context. Disposition:
   escape** and the project key **pinned to the run**, **and** (b) the caller is a
   **learnings-writer identity** — the **orchestrator** or **`tail-runner`** (by
   `agent_type`; NOT "no `agent_id`", because the tail-runner is itself a subagent —
-  this was the P0-2 break). `sentinel.phase` (set to `tail` before the tail-runner
+  this was the P0-2 break). **Note the carve-out set ⊂ the control-plane trusted set
+  on purpose:** `swarm-runner` is trusted for control-plane writes (assembly access)
+  but is **deliberately NOT** a learnings-writer (it does assembly, not learnings —
+  learnings live in the tail-runner). Do not widen the carve-out to swarm-runner.
+  `sentinel.phase` (set to `tail` before the tail-runner
   spawns) is a defense-in-depth secondary signal, not the primary gate. **And**
   (c) the op is write/append (a **delete** is still RED). On any failing condition
   the classifier logs WHICH failed (target / identity / op) so a missed mandatory
@@ -274,11 +317,11 @@ Deny output: `exit 2` + a stderr line, or the JSON form
 
 | Category | Detection | RED patterns |
 |----------|-----------|--------------|
-| **Control-plane writes (F1+F5)** | target realpath + untrusted identity | Write/Edit/`rm`/`mv`/`cp`/`install`/`ln -sf`/`dd`/`truncate`/`tee`/`sed -i`/`>`/`>>`/heredoc to `~/.claude/settings.json`, `.claude/hooks/firebreak-*.{py,sh}`, `.claude/firebreak-active.json`, `todos/approvals/**` — **from a worker** (trusted: orchestrator / swarm-runner / tail-runner = allowed) |
+| **Control-plane writes (F1+F5+F9)** | target realpath + untrusted identity; **non-worktree/opaque dest → defer** | Write/Edit/`rm`/`mv`/`cp`/`install`/`ln -sf`/`dd`/`truncate`/`tee`/`sed -i`/`>`/`>>`/heredoc to `~/.claude/settings.json`, `.claude/hooks/firebreak-*.{py,sh}`, `.claude/firebreak-active.json`, `todos/approvals/**` — **from a worker**; **also any such verb whose destination is control-plane / absolute / `..`-escaping / opaque** (F9 scoped — plain worktree-relative dests incl. `> "$out"` stay GREEN). Trusted (orchestrator/swarm-runner/tail-runner) = allowed. *Direct tool calls only — F6.* |
 | External sends | host + allowlist | curl/wget to non-localhost; `nc`/`ssh`/`scp`/`rsync`; `gh api`/`gh release`/`gh pr`; email/webhook |
 | Deploy | cmd patterns | `vercel`/`railway`/`fly`/`netlify` deploy/promote |
 | Packages | cmd patterns | `pip uninstall`; `npm uninstall`/`remove`; `npm publish` |
-| **Indirection (F2)** | interpreter/script + allowlist | `bash <file>`/`sh`/`eval`/`source`/`.`; `npm run`/`make`; `python`/`python3`/`.venv/bin/*`/`node`/`ruby`/`perl` on a non-allowlisted target; `./script`/`/abs/script` exec — **defer unless on `test_allowlist`** |
+| **Indirection (F2+F7)** | structural framework safe-set | `bash <file>`/`sh`/`eval`/`source`/`.`; `npm run`/`make`; `python`/`python3`/`.venv/bin/*`/`node`/`ruby`/`perl` on a non-framework target; `./script`/`/abs/script` exec — **defer unless it structurally matches `KNOWN_TEST_FRAMEWORKS`** (pytest / `python -m pytest`·`unittest` / `go test` / `cargo test` / rspec / jest / vitest). `test_allowlist` only selects among these; no arbitrary plan strings (F7). |
 | Git force / shared-push | normalized cmd | `git push --force`/`-f`/`--force-with-lease`; **`git push`** to a remote-tracked shared branch; amend/rebase/`filter-repo`/`filter-branch` of pushed commits (after `-C`/`--git-dir`/`-c` normalization). **NOT** a local `git merge --no-ff` with no push — that is **GREEN** (F5; swarm-runner's terminal merge). |
 | Data | path + cmd | DROP/DELETE/`rm` against a real `*.db` outside `/tmp` |
 | Out-of-repo deletes | realpath + `~`/`$HOME` expand | `rm`/`rm -rf`/`unlink`/`truncate`/`find -delete`/`mv`-as-delete/`>`-truncation targeting any path **outside the repo worktree** and not `/tmp`; deferred if the target can't be statically resolved inside the worktree |
@@ -305,11 +348,24 @@ learnings carve-out.
   at run start, removed at run end. The orchestrator **updates `phase` → `tail`
   before spawning the tail-runner** (F5 defense-in-depth for the carve-out; the
   primary carve-out gate is the tail-runner `agent_type`, not `phase`).
+  `test_allowlist` is a **set of flags selecting among the classifier's hardcoded
+  `KNOWN_TEST_FRAMEWORKS`** (F7), **not** a free-form command string — the
+  orchestrator cannot inject an arbitrary runner via the sentinel.
 - **Positive-control probe (R1 + F1):** at run start, after writing the hook +
   sentinel, the orchestrator **spawns a real `isolation:"worktree"` +
   `mode:"bypassPermissions"` agent** that attempts (a) a known denylisted command
   and (b) a control-plane write. If **either** is not denied → **ABORT the run**
   (the firebreak is not actually live; do not proceed silently).
+- **Blanket-deny fallback invariant (F8 / 3rd-review P1).** If the Step-0 identity
+  contract can't be confirmed, the firebreak **blanket-denies control-plane writes
+  for ALL actors while the sentinel is present**. This is consistent with the
+  sentinel lifecycle precisely because: (i) the orchestrator's **sentinel-CREATE**
+  write happens **before** the sentinel exists → the firebreak is not yet active →
+  the create is never denied; (ii) the **sentinel-REMOVE** at run end is the single
+  carved exception — the **orchestrator identity** writing **only** the sentinel path
+  is permitted even under blanket-deny, so run teardown can deactivate the firebreak.
+  No other control-plane write is allowed in fallback mode. (Without this invariant
+  the fallback would either deadlock teardown or be fail-open on the sentinel.)
 
 ### 3. The approvals queue (`todos/approvals/`)
 
@@ -357,8 +413,11 @@ also blocking subagent writes to the dir, this is defense-in-depth from both sid
 - **A worker hits a RED action mid-build:** deferred + denied; the worker records
   it in its phase report and continues GREEN work. If essential to its blueprint,
   the blueprint is partial and the existing cross-worker structural scan flags it.
-- **Control-plane write attempt by a worker (F1):** denied; recorded as a RED
-  deferral; surfaces as a tamper signal (a worker should never attempt this).
+- **Control-plane write attempt by a worker (F1+F9):** a **direct tool call**
+  (Write/Edit/Bash write verb, incl. env-indirected/non-resolvable destinations) is
+  denied + recorded as a tamper signal. **F6 bound:** a write performed by code
+  inside an allowlisted interpreter is **not** seen by the hook — that residual is
+  declared in the Threat Model, not closed in v1.
 - **Approval-record write failure:** fail-closed — deny anyway + loud
   `FIREBREAK_WRITE_FAILED` marker.
 - **Shared-`master` merge target:** deferred like any other RED action (one HANDOFF
@@ -382,13 +441,23 @@ Do NOT build the classifier until green.
 - **Real-spawn probe (F1):** spawn an Agent with `isolation:"worktree"` +
   `mode:"bypassPermissions"` that attempts (a) the denylisted command and (b) a
   write to a control-plane path. **Pass = both denied.**
-- **Identity assertion (F5 / 2nd-review P1-3):** confirm the worktree subagent's
-  PreToolUse JSON actually carries a **non-empty `agent_id`/`agent_type` distinct
-  from the orchestrator's**, and that a worker cannot cause its calls to arrive
-  **without** `agent_id`. If `agent_id` is absent or forgeable for worktree
-  subagents, the trusted-identity model is **fail-OPEN** → fall back to **blanket
-  control-plane deny during an active run** (orchestrator manages the sentinel only
-  outside the active window). This assertion gates F1/F3/F5.
+- **Identity assertion — ALL trusted roles (F5+F8 / 2nd-review P1-3):** observe and
+  record the PreToolUse hook metadata for **all four** actors — the **orchestrator**
+  (no `agent_id`), **`swarm-runner`**, **`tail-runner`**, and a **worker**
+  (`swarm-<run>-<role>`) — and confirm each presents the **expected, distinct, stable
+  `agent_type`**, and that a worker cannot cause its calls to arrive **without**
+  `agent_id` or **with** a trusted `agent_type`. **This is an empirical check of a
+  HARNESS-CONTRACT ASSUMPTION (the harness sets `agent_type` honestly and a worker
+  cannot alter its own hook metadata) — NOT a proof of cryptographic
+  unforgeability.** If the contract cannot be confirmed for all roles, the
+  trusted-identity model is **fail-OPEN** → fall back to **blanket control-plane deny
+  during an active run** (orchestrator manages the sentinel only outside the active
+  window). This assertion gates F1/F3/F5/F9. **How to elicit each role's event:** the
+  orchestrator's own metadata is observed directly; the worker's via the real-spawn
+  probe; **swarm-runner and tail-runner must each be spawned by `subagent_type` and
+  made to emit one classified Bash call** so their PreToolUse `agent_type` is observed
+  (the worker-shaped `isolation:"worktree"` probe does not cover them — swarm-runner
+  has no Agent tool, tail-runner runs without worktree isolation).
 - **Fast-path sub-test (R6):** the entry gate (token/path grep → `exec` python) is
   a single command that blocks and does **not** itself trip the bypass heuristics.
 - If global placement fails to govern the worktree subagent → fall back to
@@ -442,11 +511,12 @@ Do NOT build the classifier until green.
 ### Q1 — How does approval resolve? → **A glob-isolated, gitignored `todos/approvals/` queue; the human reads each record and runs the recorded command. No `/approve` skill in v1.**
 
 Rejected: extending `resolve-todos` (it runs unattended; folding approval in would
-let it auto-execute RED actions). The human-only property is held by **three**
-independent mechanisms: the non-recursive glob, the `resolve-todos` guard, and the
-F1 control-plane protection (workers can't even write the queue). A `/approve`
-skill is **v2** (R8) — a faithful-replay executor is a new RED-executing surface and
-isn't worth it until manual approval proves annoying.
+let it auto-execute RED actions). The human-only property is held by **two
+unconditional mechanisms** — the non-recursive glob and the `resolve-todos` guard —
+**plus F1 control-plane protection, which holds for direct worker tool calls only**
+(the allowlisted-interpreter path can still overwrite the queue — declared F6
+residual). A `/approve` skill is **v2** (R8) — a faithful-replay executor is a new
+RED-executing surface and isn't worth it until manual approval proves annoying.
 
 ### Q2 — Deferred-merge × Required-Artifacts ordering. → **Not a v1 problem.**
 
@@ -504,10 +574,12 @@ to be built only if autopilot ever starts auto-pushing/auto-merging to a shared
   `ruby task.rb`, `./deploy.sh`, `bash deploy.sh`, `eval "$(cat cmd)"`) THE SYSTEM
   SHALL defer (F2).
   - Verify: `echo '{"tool_name":"Bash","tool_input":{"command":"python3 deploy.py"},"agent_id":"w1"}' | python3 .claude/hooks/firebreak-classify.py` → `deny`.
-- WHEN an interpreter runs an ALLOWLISTED test/build target (`pytest -q`,
-  `python3 -m pytest`, the run's declared test command) THE SYSTEM SHALL allow it
-  (F2 — declared residual: RED inside the runner is not caught).
-  - Verify: feed each allowlisted shape → `allow`.
+- WHEN an interpreter command structurally matches `KNOWN_TEST_FRAMEWORKS`
+  (`pytest -q`, `python -m pytest`, `go test ./...`) THE SYSTEM SHALL allow it; WHEN
+  the plan names a **non-framework** runner as its "test command" (`python3 deploy.py`,
+  `node release.js`, `npm run ship`) THE SYSTEM SHALL still **defer** it — the
+  `test_allowlist` cannot whitelist an arbitrary plan-supplied runner (F7).
+  - Verify: `pytest -q` → `allow`; `python3 deploy.py` (even if plan-named "test") → `deny`.
 - WHEN a **worker** (untrusted identity) attempts to Write/Edit/Delete a
   control-plane path (`~/.claude/settings.json`, `.claude/hooks/firebreak-*.{py,sh}`,
   `.claude/firebreak-active.json`, `todos/approvals/**`) — including obfuscated
@@ -517,15 +589,29 @@ to be built only if autopilot ever starts auto-pushing/auto-merging to a shared
   - Verify: input with a worker `agent_type` + a control-plane `file_path` (or
     `cp evil ~/.claude/settings.json`) → `deny`; same with `agent_type: tail-runner`
     or no `agent_id` → `allow`.
+- WHEN a worker uses an **env-indirected or non-statically-resolvable** destination
+  for a control-plane-capable write verb (`DEST=$HOME/.claude/settings.json cp evil
+  "$DEST"`, `tee "$(cat path)"`) THE SYSTEM SHALL defer it (F9, fail-closed — it
+  cannot prove the target is outside the control plane).
+  - Verify: `{"tool_name":"Bash","tool_input":{"command":"DEST=$HOME/.claude/settings.json cp evil \"$DEST\""},"agent_type":"swarm-072-api"}` → `deny`.
 - WHEN a worker Writes/Edits a **non-control-plane** worktree file THE SYSTEM SHALL
   exit at the entry gate with **no python process spawned** (R6 fast-path preserved
   despite the Write/Edit matcher — 2nd-review P2-1).
   - Verify: the gate returns `exit 0` on a normal worktree `Write` without exec'ing python.
-- WHEN Step 0 runs THE SYSTEM SHALL assert the worktree subagent's PreToolUse JSON
-  carries a non-empty `agent_id`/`agent_type` distinct from the orchestrator's, else
-  the build does not proceed on the trusted-identity model (F5/P1-3).
-  - Verify: the Step-0 probe logs the observed `agent_id`/`agent_type` for the
-    worktree subagent and confirms it is present and ≠ orchestrator.
+- WHEN Step 0 runs THE SYSTEM SHALL observe and record the PreToolUse metadata for
+  **all four actors** (orchestrator, swarm-runner, tail-runner, worker), confirm each
+  presents the expected, distinct, stable `agent_type`, and treat this as a
+  **harness-contract check, NOT proof of unforgeability** — if it cannot be confirmed
+  for all roles, the build falls back to blanket control-plane deny (F8/F5/P1-3).
+  - Verify: the Step-0 report logs the four observed `agent_type` values; the worker's
+    is present, ≠ swarm-runner/tail-runner, and the orchestrator's `agent_id` is absent.
+- WHEN the Step-0 identity contract cannot be confirmed THE SYSTEM SHALL enter
+  fallback mode: **blanket-deny control-plane writes for ALL actors while the sentinel
+  is present**, WHILE still permitting the **orchestrator** to write **only** the
+  sentinel path (so run teardown can remove it) — F8/3rd-review-P1 invariant.
+  - Verify: in fallback mode, a control-plane write from any non-orchestrator identity
+    → `deny`; the orchestrator writing/removing only `.claude/firebreak-active.json`
+    → `allow`; an orchestrator write to `~/.claude/settings.json` → `deny`.
 - WHEN a learnings-path write comes from a worker subagent, or targets a
   `..`/symlink-escaped or wrong-project-key path THE SYSTEM SHALL NOT apply the
   carve-out (defer/deny), and SHALL log which condition failed (F3).
@@ -565,6 +651,10 @@ echo '{"tool_name":"Bash","tool_input":{"command":"git push --force origin maste
 echo '{"tool_name":"Write","tool_input":{"file_path":".claude/firebreak-active.json"},"agent_id":"w1","agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
 echo '{"tool_name":"Bash","tool_input":{"command":"cp evil $HOME/.claude/settings.json"},"agent_id":"w1","agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
 echo '{"tool_name":"Write","tool_input":{"file_path":".claude/firebreak-active.json"},"agent_type":"tail-runner"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect allow)"
+# F9 env-indirected control-plane dest (non-resolvable) → defer
+echo '{"tool_name":"Bash","tool_input":{"command":"DEST=$HOME/.claude/settings.json cp evil \"$DEST\""},"agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
+# F7 plan-named non-framework "test" → defer (allowlist can't inject it)
+echo '{"tool_name":"Bash","tool_input":{"command":"python3 deploy.py"},"agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
 # no-op without sentinel
 rm -f .claude/firebreak-active.json; echo '{"tool_name":"Bash","tool_input":{"command":"vercel deploy"},"agent_id":"w1"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect allow)"
 # queue isolation
@@ -576,22 +666,37 @@ ls todos/approvals/ 2>/dev/null
 ## Dependencies & Risks (v1)
 
 - **Step 0 must pass** — the F1 real-spawn probe (worktree subagent governed) **and
-  the F5 identity assertion** (the worktree subagent's PreToolUse JSON carries a
-  present, unforgeable `agent_id`/`agent_type`). If the identity model is fail-open,
-  fall back to blanket control-plane deny during an active run. Ordered fallbacks defined.
-- **Trusted-identity model (F5) is load-bearing:** the entire control-plane + carve-out
-  authority rests on `agent_type` being harness-supplied and unforgeable, and on the
-  orchestrator setting `phase → tail`. Verified in Step 0 + Phase-1 tests.
+  the F8 all-roles identity assertion** (orchestrator / swarm-runner / tail-runner /
+  worker each present the expected, distinct, stable `agent_type`). If the harness
+  contract can't be confirmed, fall back to blanket control-plane deny during an
+  active run. Ordered fallbacks defined.
+- **Trusted-identity is a HARNESS-CONTRACT ASSUMPTION (F5+F8), not unforgeability:**
+  the entire control-plane + carve-out authority rests on the harness setting
+  `agent_type` honestly and workers being unable to alter their own hook metadata.
+  v1 **empirically checks** this in Step 0; it is **not** cryptographically proven.
+  If a worker could forge `agent_type`, the model fails — the explicit fallback is
+  blanket control-plane deny.
+- **F6 — every guarantee is bounded to DIRECT worker tool calls:** the PreToolUse
+  hook cannot see raw file I/O inside a process, so an allowlisted interpreter
+  running worker-authored code can break **both** the outward bound **and**
+  control-plane integrity. v1 does **not** sandbox test execution (real isolation
+  needs OS/network egress control — out of scope).
+- **F7 — `test_allowlist` is a fixed structural safe-set**, not arbitrary plan text:
+  only direct `KNOWN_TEST_FRAMEWORKS` invocations are allowlistable, so a bad plan
+  cannot whitelist `python3 deploy.py` as a "test." This closes the **plan-text
+  injection** vector; it does **not** shrink the **F6 interpreter** vector (once a
+  framework is allowlisted, worker-authored test code still runs). Keep the framework
+  set minimal.
+- **F9 — env-indirected control-plane writes (scoped):** a control-plane-capable
+  write verb defers only when its destination is control-plane / absolute / `..`-
+  escaping / opaque — **plain worktree-relative computed writes stay GREEN**, so no
+  throughput regression (3rd-review P1). The realpath check still can't see through
+  an inherited-`$VAR` redirection (declared residual).
 - **Bash Command Rules bind the hook itself** (P0): single command / `exec`, no
   chaining, no `python3 -c`. (`docs/solutions/2026-04-09-compound-bash-instruction-refactor.md`)
-- **Declared residual (F2 / 2nd-review P1-2) — PROMINENT:** an allowlisted
-  interpreter (pytest) runs worker-authored files = an **unbounded egress/RED-exec
-  escape**. The outward bound holds for **direct** worker calls only; v1 does **not**
-  sandbox test execution (real isolation needs OS/network egress control — out of
-  scope). Keep `test_allowlist` tight.
 - **Gate coverage (2nd-review P1-1):** the cheap entry gate must forward-on-suspicion
-  (all write verbs + `~`/`$HOME`/`..`/symlink tokens) or the R6 fast-path becomes an
-  auto-allow hole for obfuscated control-plane writes.
+  (all write verbs + `~`/`$HOME`/`..`/symlink + env-indirection tokens) or the R6
+  fast-path becomes an auto-allow hole for obfuscated control-plane writes.
 - **Deterministic-only authority** (P0): no LLM in the dispose path
   (`project_deterministic-pre-filters`; spec-eval judge demotion precedent).
 
@@ -617,11 +722,14 @@ stateDiagram-v2
 - **Rejected alternatives:** project-tracked hook (R1); extending `resolve-todos`
   for approvals (R8); a `/approve` executor in v1 (R8); command-shape matching for
   the learnings carve-out (F3); an LLM classifier (spec-eval ~0% precedent).
-- **Least confident:** (1) that `agent_id`/`agent_type` is **present + unforgeable**
-  for the real worktree-subagent path — the whole F5 trusted-identity model and the
-  Step-0 probe rest on it; if it fails, fall back to blanket control-plane deny.
-  (2) That the F2 interpreter escape (an allowlisted pytest running worker-authored
-  files) is an acceptable **declared** residual for the intended honest-agent threat
+- **Least confident:** (1) that the **harness-contract assumption** holds — that
+  `agent_type` is honestly set for all four roles and a worker cannot forge it (F5+F8).
+  Step 0 checks it empirically across all roles, but it is **not** cryptographically
+  proven; if it fails, fall back to blanket control-plane deny.
+  (2) That the **F6 unified residual** — an allowlisted framework running
+  worker-authored files can break **both** outward containment and control-plane
+  integrity (now shrunk by F7, not closed) — is an acceptable **declared** bound for
+  the intended honest-agent threat
   model — resisting an adversarial worker would need network-layer egress control
   (out of scope). Both are stated bounds, not silent assumptions.
 
@@ -669,27 +777,33 @@ demoted to advisory: `docs/solutions/2026-06-07-autopilot-orchestration-hardenin
 Review this plan as an adversarial second reader (fresh context):
 docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
 
-Read the "Deepening Review — Changelog" (R1–R8, F1–F5) and the "Threat Model"
+Read the "Deepening Review — Changelog" (R1–R8, F1–F9) and the "Threat Model"
 FIRST. v1 = Step 0 → Phase 1 → Phase 2. All /approve / pointer-commit /
-PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix), NOT v1. Note F5 is the
-2nd-review root fix (trusted-identity allowlist, not agent_id presence).
+PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix), NOT v1. F5 = trusted-
+identity allowlist (not agent_id presence); F6 = every guarantee bounds to DIRECT
+tool calls (allowlisted-interpreter escape breaks outward AND control-plane); F7 =
+test_allowlist is a fixed framework safe-set; F8 = Step 0 checks all four roles as a
+harness-contract assumption; F9 = env-indirected control-plane dest defers.
 
 Scrutinize:
-1. CONTROL-PLANE (F1+F5): authority is keyed on a TRUSTED-IDENTITY allowlist
-   (orchestrator / swarm-runner / tail-runner by agent_type), not agent_id presence.
-   Can a worker still reach the hook config, hook scripts, sentinel, or
-   todos/approvals/ — via a vector the gate's forward-on-suspicion grep or the
-   classifier's realpath check misses (symlink, $HOME, redirection, `cp`/`install`/
-   `ln`, heredoc, env-redirected writes)? Can a worker FORGE `agent_type` to
-   impersonate swarm-runner/tail-runner, or clear it to impersonate the orchestrator?
-   Is the Step-0 identity assertion sufficient to prove it's unforgeable?
-2. INDIRECTION (F2): is the interpreter/direct-script defer set complete enough to
-   bound the OUTWARD blast radius, given the declared allowlisted-runner residual?
-   Any egress path that reaches the network/master via an allowlisted runner that
-   should NOT be allowlisted?
-3. CARVE-OUT (F3): can the target-realpath + caller-context gate either (a)
+1. CONTROL-PLANE (F1+F5+F9): authority keyed on a TRUSTED-IDENTITY allowlist
+   (orchestrator / swarm-runner / tail-runner by agent_type). Can a worker still
+   reach the hook config/scripts/sentinel/todos-approvals via a vector the gate's
+   forward-on-suspicion grep / realpath / env-indirection defer misses (symlink,
+   $HOME, `$(…)`, redirection, `cp`/`install`/`ln`, heredoc, declared-var)? Can a
+   worker FORGE agent_type? Is the F8 all-roles Step-0 check a sufficient
+   harness-contract assurance (the plan explicitly does NOT claim unforgeability)?
+2. F6 BOUND HONESTY: is it now correctly stated that an allowlisted interpreter
+   (pytest running worker-authored test files under swarm-runner) can break BOTH the
+   outward bound AND control-plane integrity — and is anything in the body still
+   overclaiming protection beyond direct tool calls?
+3. F7 ALLOWLIST: is KNOWN_TEST_FRAMEWORKS (pytest / python -m pytest·unittest /
+   go test / cargo test / rspec / jest / vitest; npm run & make excluded) tight
+   enough that a plan-supplied runner can't be promoted to a "test"? Any framework in
+   the set that itself runs arbitrary worker code as a feature (so F6 still bites)?
+4. CARVE-OUT (F3): can the target-realpath + tail-runner-identity gate either (a)
    silently DEFER a mandatory learnings write (breaking Required-Artifacts) or (b)
-   be abused as write-anywhere? Is sentinel.phase / agent_id a reliable caller signal?
+   be abused as write-anywhere?
 4. R2 CUT: does ANY autopilot path push or merge to a SHARED master (real remote)?
    If yes, R2 is wrong and v2.1 must be v1.
 5. R1 PLACEMENT + PROBE: global ~/.claude/settings.json governs all projects
