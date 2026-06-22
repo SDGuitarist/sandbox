@@ -49,13 +49,18 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
   merge to `master` with no push is GREEN — F5). Also: **protect the firebreak's own
   control plane** from workers' **direct** Write/Edit/Bash tool calls (F1) — see the
   F6 bound immediately below.
-- **Scope boundary in time (F10):** the firebreak's active window is **worker-spawn
-  → run-end**. Autopilot's only shared-remote push — the **pre-spawn spec-provenance
-  gate** *conditionally* pushing a spec-only commit to `origin/<default-branch>` (only
-  when origin is behind after a spec repair; SKILL.md Step 9w.9.5) — runs **before**
-  the window and is **not** governed by v1 (orchestrator-controlled, spec-only,
-  human-blessed via the spec-convergence loop). v1 does **not** claim "autopilot never
-  pushes"; it scopes that push out by ordering. Gating it is a v2 candidate.
+- **Scope boundary in time (F10):** the firebreak is **active whenever the sentinel
+  is present** — written **after** the pre-spawn provenance gate and **before** worker
+  spawn, removed at run end (active = **sentinel-write → run-end**). Within that, the
+  brief **sentinel-write → worker-spawn** slice is a **setup/probe interval** (the hook
+  is live so the positive-control probe can validate it; no governed worker runs yet);
+  the **governed worker window is worker-spawn → run-end**. Autopilot's only
+  shared-remote push — the pre-spawn spec-provenance gate *conditionally* pushing a
+  spec-only commit to `origin/<default-branch>` (only when origin is behind after a
+  spec repair; SKILL.md Step 9w.9.5) — runs **before the sentinel exists → firebreak
+  inactive → not classified** (orchestrator-controlled, spec-only, human-blessed via
+  the spec-convergence loop). v1 does **not** claim "autopilot never pushes"; it scopes
+  that push out by ordering. Gating it is a v2 candidate.
 - **Guards honest-agent mistakes + bounded blast radius — NOT adversarial-proof.**
   A worker that is actively trying to evade a deterministic string-level classifier
   can still do so. v1 covers the common indirection vectors and **declares** the
@@ -153,7 +158,7 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 
 | # | Fix | What changed |
 |---|-----|--------------|
-| **F10** | **Autopilot CAN push to a shared remote — name it, scope it, define the firebreak window.** The pre-spawn **spec-provenance gate** (SKILL.md Step 9w.9.5) commits a spec-only change to the default branch and **`git push`es it to `origin/<default-branch>` _conditionally_** — only when the local default branch is ahead of origin after a spec repair (SKILL.md:620, 670); on the clean `PROVENANCE_OK` path it pushes nothing. When it does fire it is a real unattended shared-remote push. **Invariant:** the firebreak's **active window = worker-spawn → run-end**; the orchestrator writes the **sentinel AFTER the provenance gate and just before the parallel worker spawn**, so the provenance push happens **while the firebreak is inactive** and is **not** governed by v1. v1 therefore **scopes the provenance push out by ordering** (orchestrator-controlled, spec-only docs, human-blessed via the spec-convergence loop, with its own abort/cleanup contract) — it does **not** claim autopilot never pushes. **v2 candidate:** gate/audit the provenance push itself. |
+| **F10** | **Autopilot CAN push to a shared remote — name it, scope it, define the firebreak window.** The pre-spawn **spec-provenance gate** (SKILL.md Step 9w.9.5) commits a spec-only change to the default branch and **`git push`es it to `origin/<default-branch>` _conditionally_** — only when the local default branch is ahead of origin after a spec repair (SKILL.md:620, 670); on the clean `PROVENANCE_OK` path it pushes nothing. When it does fire it is a real unattended shared-remote push. **Invariant:** the firebreak is **active while the sentinel is present (sentinel-write → run-end)**; the orchestrator writes the **sentinel AFTER the provenance gate and just before the parallel worker spawn**, so the provenance push happens **before the sentinel exists → firebreak inactive → not classified**. (The sentinel-write → worker-spawn slice is a setup/probe interval — hook live for validation; the **governed worker window** is worker-spawn → run-end.) v1 therefore **scopes the provenance push out by ordering** (orchestrator-controlled, spec-only docs, human-blessed via the spec-convergence loop, with its own abort/cleanup contract) — it does **not** claim autopilot never pushes. **v2 candidate:** gate/audit the provenance push itself. |
 | **F11** | **F6 has TWO declared direct-call/in-process residuals, not "a single residual."** (1) the **allowlisted-interpreter escape** (in-process file I/O the hook never sees — breaks outward AND control-plane); (2) the **inherited-`$VAR` redirection to a control-plane path** (F9's scoped rule allows opaque *relative* redirects, so a redirect through a var set to a control-plane path in an earlier GREEN call is a *direct* Bash call the redirect-layer static check can't resolve). The Threat Model now enumerates **both**; the "direct-call protection" claim is narrowed to "direct worker tool calls **except** these two named gaps." |
 | **F12** | **`KNOWN_TEST_FRAMEWORKS` is a recognized-framework allowlist (plan-text-injection control), NOT a "safe-set."** Frameworks like `pytest`/`jest` execute arbitrary project/test code **by design** — that *is* the F6 residual. The allowlist's only job is to stop a plan from **promoting an arbitrary runner** (`python3 deploy.py`) to "test" status; it makes **no** safety claim about what an allowlisted framework then runs. All "safe-set" language reworded accordingly. |
 
@@ -174,11 +179,12 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
 - A **sentinel** `.claude/firebreak-active.json` (gitignored — R5) that the
   autopilot orchestrator writes (with `run_id`, `repo_root`, `project_key`, `phase`,
   and the **vetted framework allowlist**) **after the pre-spawn spec-provenance gate
-  and just before worker spawn** (F10 — so the provenance push to `origin` is outside
-  the active window), and removes at run end. Its presence activates the firebreak
-  (manual sessions: no-op; active window = worker-spawn → run-end). A
-  **positive-control probe** spawns a real worktree subagent and **aborts the run**
-  if the firebreak isn't live (R1, F1).
+  and just before worker spawn** (F10 — so the provenance push to `origin` is before
+  the sentinel exists, hence not classified), and removes at run end. **Its presence
+  = firebreak active (sentinel-write → run-end);** the brief sentinel-write →
+  worker-spawn slice is a setup/probe interval, and the **governed worker window** is
+  worker-spawn → run-end (manual sessions: no-op). A **positive-control probe** spawns
+  a real worktree subagent and **aborts the run** if the firebreak isn't live (R1, F1).
 - A gitignored **`todos/approvals/` queue** of deferred RED actions, atomic
   collision-free filenames, classifier as the **intended sole writer**
   (direct-call-bounded — see §3 / F6 residual).
@@ -236,18 +242,19 @@ the worker path.
 ### Component map
 
 ```
-  orchestrator (main session) — firebreak NOT yet active
+  orchestrator (main session) — firebreak NOT yet active (no sentinel)
      │  pre-spawn spec-provenance gate (SKILL.md 9w.9.5)
      │     └─ MAY conditionally `git push` a spec-only commit to origin
-     │        (outside the firebreak window — F10; not classified)
+     │        (BEFORE the sentinel exists → firebreak inactive → not classified — F10)
      ▼
-  ── firebreak active window begins ──────────────────────────────
-     │  write .claude/firebreak-active.json
+  ══ write .claude/firebreak-active.json → FIREBREAK ACTIVE (sentinel present) ══
      │  {run_id, repo_root, project_key, phase, test_allowlist}   (gitignored)
+     │  [setup/probe interval — hook live for validation; NO governed worker yet]
      │  positive-control probe → spawn REAL worktree subagent that
      │     attempts a known-RED cmd + a control-plane write
-     │       └─ both DENIED?  no → ABORT RUN     yes → proceed to worker spawn
+     │       └─ both DENIED?  no → ABORT RUN     yes → proceed
      ▼
+  ── governed worker window begins (worker-spawn → run-end) ──────────────
   worker / tail subagent attempts a tool call (Bash | mcp__* | Write | Edit)
      │
      ▼
@@ -383,19 +390,23 @@ learnings carve-out.
 - **Sentinel** `.claude/firebreak-active.json` (gitignored — R5), read by the
   classifier via **absolute path** (worktree cwd irrelevant): `run_id`,
   `repo_root`, `project_key`, `phase`, `test_allowlist`. Written by the orchestrator
-  at run start, removed at run end. The orchestrator **updates `phase` → `tail`
+  **after the pre-spawn provenance gate and just before worker spawn**, removed at run
+  end (its presence = firebreak active). The orchestrator **updates `phase` → `tail`
   before spawning the tail-runner** (F5 defense-in-depth for the carve-out; the
   primary carve-out gate is the tail-runner `agent_type`, not `phase`).
   `test_allowlist` is a **set of flags selecting among the classifier's hardcoded
   `KNOWN_TEST_FRAMEWORKS`** (F7), **not** a free-form command string — the
   orchestrator cannot inject an arbitrary runner via the sentinel.
-- **Firebreak active window (F10):** the window is **worker-spawn → run-end**. The
+- **Firebreak active window (F10):** the firebreak is **active while the sentinel is
+  present = sentinel-write → run-end.** The **sentinel-write → worker-spawn** slice is
+  a **setup/probe interval** (hook live so the probe can validate it; no governed
+  worker yet); the **governed worker window** is **worker-spawn → run-end.** The
   orchestrator writes the sentinel **after** the pre-spawn spec-provenance gate
   (SKILL.md Step 9w.9.5, which **conditionally** `git push`es a spec-only commit to
   `origin/<default-branch>` only when origin is behind after a repair) and just
   **before** the parallel worker spawn. So the provenance push — a real but
   orchestrator-controlled, spec-only, human-blessed shared-remote push — happens
-  **while the firebreak is inactive** and is **not** classified by v1 (scoped out by
+  **before the sentinel exists → firebreak inactive → not classified** (scoped out by
   ordering; v2 may gate it). Ordering:
   *provenance gate (may push origin) → write sentinel → positive-control probe →
   spawn workers → … → remove sentinel.*
@@ -450,8 +461,12 @@ record and runs the recorded command** (R8); no skill executes it.
 Add a guard to `resolve-todos`: skip anything under `todos/approvals/` and any
 `kind: approval` todo. **Safety-critical:** `resolve-todos` runs *unattended*
 inside autopilot; without the guard an unattended pass would auto-execute queued
-RED actions and reintroduce exactly the autonomy the firebreak removes. (With F1
-also blocking subagent writes to the dir, this is defense-in-depth from both sides.)
+RED actions and reintroduce exactly the autonomy the firebreak removes. (F1 adds
+defense-in-depth by denying a **worker's direct tool-call** write under
+`todos/approvals/` — but note this is **not** blanket subagent-write protection: F5
+permits trusted subagents, and a worker routing through an allowlisted interpreter
+can still write the dir in-process — declared F6/F11 residual #1. The
+`resolve-todos` guard is the independent, unconditional half.)
 
 ---
 
@@ -471,9 +486,13 @@ also blocking subagent writes to the dir, this is defense-in-depth from both sid
   declared in the Threat Model, not closed in v1.
 - **Approval-record write failure:** fail-closed — deny anyway + loud
   `FIREBREAK_WRITE_FAILED` marker.
-- **Shared-`master` merge target:** deferred like any other RED action (one HANDOFF
-  line). Local feature-branch merges are GREEN and untouched. Never approved →
-  backlog item; no auto-expiry in v1.
+- **Merge / push to `master`:** a **local** `git merge --no-ff` onto `master` (or any
+  branch) with **no push** is **GREEN** — that is the swarm-runner's normal terminal
+  action and is never deferred (F5). Only a **shared-remote `git push` / force-push**
+  is RED; if one ever occurred inside the governed window it would defer like any
+  other RED action (one HANDOFF line; never approved → backlog item, no auto-expiry).
+  Autopilot's only push today is the pre-spawn provenance push, which is out of the
+  window (F10).
 - **Carve-out misfire risk (F3):** a learnings write from the wrong context defers;
   the classifier logs which condition failed (target / context / op) so a Phase-1
   test or a real run surfaces it loudly rather than silently dropping a mandatory write.
@@ -872,8 +891,8 @@ Scrutinize:
 5. R2/F10 PUSH SCOPE: autopilot's pre-spawn provenance gate pushes a spec-only commit
    to origin/<default-branch> (SKILL.md Step 9w.9.5). The plan scopes it out by
    ordering (sentinel written AFTER the provenance gate). Verify that invariant
-   actually holds in SKILL.md, and that NO other shared-remote push happens INSIDE
-   the firebreak window (worker-spawn → run-end). If one does, v2.1 must become v1.
+   actually holds in SKILL.md, and that NO other shared-remote push happens once the
+   firebreak is active (sentinel-write → run-end). If one does, v2.1 must become v1.
 6. R1 PLACEMENT + PROBE: global ~/.claude/settings.json governs all projects
    (mitigated by sentinel no-op + real-spawn probe). Any residual fail-open the
    probe wouldn't catch (e.g., a swarm launched without writing the sentinel)?
