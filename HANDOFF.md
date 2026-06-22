@@ -2,20 +2,23 @@
 
 **Date:** 2026-06-22
 **Branch:** `feat/g1-risk-tiered-firebreak` (working tree clean; **NOT pushed** — local only)
-**Phase:** **G1 risk-tiered firebreak — Plan GO ✅ → Step 0 PASS ✅ → Phase 1 CORE built + tested ✅. Checkpointed for review BEFORE activation.**
-Latest commit **`ceb8f50`**. Plan: `docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md` (1008 lines). Step 0 results: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`.
+**Phase:** **G1 risk-tiered firebreak — Plan GO ✅ → Step 0 PASS ✅ → Phase 1 CORE built + tested + HARDENED ✅ (2nd review done). Checkpointed for review BEFORE activation.**
+Latest commit **`a5e9975`**. Plan: `docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md` (1008 lines). Step 0: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`. 2nd review: `docs/reviews/2026-06-22-g1-phase1-second-review.md`.
 
-**What's built (committed on the feature branch — `66182d9`, `ceb8f50`):**
-- `.claude/hooks/firebreak-classify.py` — deterministic classifier, pure stdlib, full decision order (F13 opaque-word → control-plane/F9 → outward → indirection → mcp → fail-closed), Step-0 identity contract, atomic approval-record writer. **51/51** unit tests (`test_firebreak_classify.py`), one per EARS criterion + residual #3.
-- `.claude/hooks/firebreak-gate.sh` — cheap entry gate (R6). Fast-paths GREEN, forwards only on envelope-safe markers, carries the Step-0 brace/backslash constraint, inspects `file_path` not `content`. **10/10** tests (`test_firebreak_gate.py`), incl. proof the fast-path does not spawn python.
-- Run the suites: `python3 .claude/hooks/test_firebreak_classify.py` and `python3 .claude/hooks/test_firebreak_gate.py`.
+**What's built (committed on the feature branch — `66182d9`, `ceb8f50`, `a5e9975`):**
+- `.claude/hooks/firebreak-classify.py` — deterministic classifier, pure stdlib, full decision order (F13 opaque-word → control-plane/F9 → outward → indirection → mcp → fail-closed), Step-0 identity contract, atomic approval-record writer. Now also: nested `-c` command-string recursion (flock/sh/bash `-c`) and git config-alias resolution (`-c alias.*=push`, `git config alias.* push`, `!`-shell aliases). **62/62** unit tests.
+- `.claude/hooks/firebreak-gate.sh` — cheap entry gate (R6). Extracts tool_name + the Bash command and matches markers against the COMMAND (not raw JSON), so it safely forwards brace/backslash obfuscation (`c{u,}rl`, `\cu\rl`) and direct script-path argv0 (`./x`, `/abs/x`, `path/to/x`) without the raw-JSON `{` collision. Inspects `file_path` not `content`. **19/19** tests.
+- `.claude/hooks/test_firebreak_superset.py` — **gate-superset invariant**: asserts the gate forwards EVERY classifier denial over a 94-case corpus (0 unsafe gaps). Permanent drift guard; keep in the pre-activation gate.
+- Run all three: `python3 .claude/hooks/test_firebreak_classify.py` · `test_firebreak_gate.py` · `test_firebreak_superset.py`.
 
 **Phase 1 REMAINING — the activation layer (deliberately NOT done; user chose checkpoint-for-review):**
 1. Wire the gate into **global `~/.claude/settings.json`** `hooks.PreToolUse` (matcher `Bash|mcp__*|Write|Edit`, command `bash .claude/hooks/firebreak-gate.sh`). Step-0-locked placement; **global change** (no-op without a sentinel).
 2. **Orchestrator integration** (autopilot `SKILL.md`): write the sentinel after the provenance gate / before worker spawn, flip `phase→tail` before the tail-runner, run the **positive-control real-spawn probe** (abort if not live), remove the sentinel at run end.
 3. **Phase 2:** `.gitignore` (`.claude/firebreak-active.json`, `todos/approvals/`) + approvals-queue schema polish + `resolve-todos` guard.
 
-**Two bugs found & fixed during Phase-1 testing** (worth a reviewer's eye): a trusted learnings-writer could write an escaping path (`dev-notes/../.ssh/x`) — now denied for everyone outside the sanctioned set; the `bash` gate marker collided with the `"Bash"` tool name (every Bash call force-forwarded) — now requires a trailing space.
+**Three bugs found & fixed during Phase-1 testing/review** (worth a reviewer's eye): a trusted learnings-writer could write an escaping path (`dev-notes/../.ssh/x`) — now denied for everyone outside the sanctioned set; the `bash` gate marker collided with the `"Bash"` tool name (every Bash call force-forwarded) — now requires a trailing space; the gate had no `remove` marker so `npm/yarn/pnpm remove` fast-pathed unseen despite the classifier denying it — found by the superset test, now fixed.
+
+**Hardening pass (`a5e9975`) closed:** gate brace/backslash + direct-script-path forwarding (now a verified superset of classifier denials); classifier git config-alias evasion (`-c alias.*=push`, `git config alias.* push`, `!`-aliases) and listed exec-wrapper `-c` command strings (`flock /tmp/l -c 'curl ...'`). **Remaining residuals** (declared, see 2nd-review doc): #1 allowlisted-interpreter escape, #2 inherited-`$VAR` redirect, #3 unlisted dispatcher/wrapper — now incl. `npx <pkg>` (candidate to add to the F13 wrapper set) and pre-existing/externally-defined git aliases (in-run alias SETUP is denied, so only pre-dating aliases survive).
 
 ## Current State
 
@@ -199,7 +202,7 @@ majority unattended.
 
 ```
 You are reviewing Phase 1 of the G1 risk-tiered firebreak in the Sandbox repo,
-branch feat/g1-risk-tiered-firebreak (local, not pushed; latest commit ceb8f50).
+branch feat/g1-risk-tiered-firebreak (local, not pushed; latest commit a5e9975).
 
 CONTEXT (read these first):
 - Plan:  docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md — start with
@@ -207,29 +210,37 @@ CONTEXT (read these first):
   "Deepening Review — Changelog" (R1–R8, F1–F13).
 - Step 0 results: docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md
   (identity contract: orchestrator=no agent_id/type; trusted=agent_type in
-  {swarm-runner,tail-runner}; worker=else. Gate must match ONLY envelope-safe
-  markers; brace/backslash obfuscation handled in python, not raw-JSON grep).
+  {swarm-runner,tail-runner}; worker=else). The gate extracts the Bash COMMAND
+  value and matches markers against THAT (not raw JSON), so brace/backslash
+  obfuscation and direct script paths forward without the raw-JSON `{` collision.
 
 CODE UNDER REVIEW (only these — activation layer is intentionally NOT built yet):
 - .claude/hooks/firebreak-classify.py     (deterministic classifier)
 - .claude/hooks/firebreak-gate.sh         (cheap entry gate, R6)
-- .claude/hooks/test_firebreak_classify.py (51 cases)
-- .claude/hooks/test_firebreak_gate.py     (10 cases)
-Run: python3 .claude/hooks/test_firebreak_classify.py ; python3 .claude/hooks/test_firebreak_gate.py
-Both must print "N/N passed".
+- .claude/hooks/test_firebreak_classify.py (62 cases)
+- .claude/hooks/test_firebreak_gate.py     (19 cases)
+- .claude/hooks/test_firebreak_superset.py (gate-superset invariant, 94-case corpus)
+- docs/reviews/2026-06-22-g1-phase1-second-review.md (my 2nd review of the above)
+Run all three test files; classifier/gate must print "N/N passed", superset must
+print "PASS: ... superset invariant holds".
 
 REVIEW FOR (P0/P1/P2, with file:line and a failing input where possible):
 1. SOUNDNESS — can a WORKER get a RED action to ALLOW? Probe the decision order
    (F13 short-circuits first), the shell tokenizer (shell_words / resolve_argv0 —
-   exec-wrapper recursion, VAR= stripping, dispatcher-verb opacity), git
-   normalization (-C/-c/--git-dir), F9 escaping/opaque write dests, control-plane
-   realpath matching, the learnings carve-out (identity + sanctioned target + no
-   ../symlink escape), and mcp read-only allowlist. Find evasions.
+   exec-wrapper recursion, VAR= stripping, dispatcher-verb opacity), the nested
+   `-c` command-string recursion (classify_bash_command), git normalization
+   (-C/-c/--git-dir) AND the git config-alias resolver (git_outward_category —
+   `-c alias.*=push`, `git config alias.* push`, `!`-aliases), F9 escaping/opaque
+   write dests, control-plane realpath matching, the learnings carve-out (identity
+   + sanctioned target + no ../symlink escape), and mcp read-only allowlist. Find
+   evasions the existing tests miss.
 2. GATE COMPLETENESS — is the gate's marker set a true SUPERSET of classifier
-   denials? Any RED command/path the gate fast-paths (never forwards) so the
-   classifier never sees it? (We know the residual: an absolute non-home,
-   non-recognized-verb Bash write — is there worse?) Also check no other marker
-   collides with envelope structural fields the way `bash`→`"Bash"` did.
+   denials? test_firebreak_superset.py enforces this over a 94-case corpus (0 gaps)
+   — try to BREAK it: find a command the classifier denies but the gate fast-paths,
+   then add it to the corpus. Known residual: an absolute non-home, non-recognized-
+   verb Bash write, and `npx <pkg>`/pre-existing git aliases (classifier-side, see
+   2nd-review doc). Also confirm no marker collides with envelope structural fields
+   the way `bash`→`"Bash"` did (now mitigated by command extraction).
 3. FAIL-CLOSED & RECORD INTEGRITY — unparseable envelope, classifier exception,
    atomic write (temp+os.rename), filename RED-<run>-<cat>-<uuid>.md, deny still
    fires when the record write fails.
