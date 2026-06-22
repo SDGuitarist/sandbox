@@ -1,10 +1,10 @@
 # HANDOFF — Sandbox
 
-**Date:** 2026-06-21
+**Date:** 2026-06-22
 **Branch:** master (in sync with origin, working tree clean)
-**Phase:** **G1 risk-tiered firebreak — PLAN COMPLETE (deepened, v1 thinned, F1–F5 fixes applied), awaiting external Plan Review (Codex).**
-Next: paste the Codex handoff prompt (in the plan, "Codex Handoff Prompt" section; also on clipboard) into Codex → bring findings back → apply fixes → Claude second pass → `/workflows:work` on the thinned v1.
-Plan at commit `356b542` (master, pushed). Codex prompt updated for the F1–F5 design.
+**Phase:** **G1 risk-tiered firebreak — PLAN through 6 review passes (R1–R8, F1–F13); Codex NO-GO addressed; build-ready pending Step 0. Awaiting a confirming Codex GO/NO-GO.**
+Plan at commit **`4ed63fe`** (master, pushed), 1003 lines. Next: re-run the Codex GO/NO-GO (prompt below). If **GO** → `/workflows:work` on the plan (Step 0 spike FIRST). If **NO-GO** → triage the P0(s), fix, re-loop.
+**Do NOT skip Step 0** — it is the empirical gate for the whole identity model + worktree-firing + fast-path shape.
 
 ## Current State
 
@@ -98,6 +98,38 @@ majority unattended.
      on Step 0 proving `agent_type` is unforgeable; (b) the allowlisted-interpreter
      egress escape is a declared bound (real isolation needs OS/network egress
      control — out of scope for v1).
+8. **Third/fourth/fifth review passes → F6–F13 (commits `8696bae` / `1458f5a` /
+   `388cfaf` / `4ed63fe`), each driven by a Codex or self-run adversarial pass:**
+   - **F6** every v1 guarantee (outward AND control-plane) holds for **DIRECT worker
+     tool calls only** — an allowlisted interpreter runs worker-authored code
+     in-process, invisible to the PreToolUse hook.
+   - **F7/F12** `test_allowlist` = hardcoded `KNOWN_TEST_FRAMEWORKS`
+     recognized-framework allowlist (plan-text-injection control, NOT a safety claim;
+     a bad plan can't promote `python3 deploy.py` to a "test").
+   - **F8** Step 0 validates hook metadata for **all four roles** (orchestrator /
+     swarm-runner / tail-runner / worker) as an **empirical harness-contract check,
+     NOT cryptographic unforgeability**.
+   - **F9** env-indirected control-plane write destinations defer (scoped — plain
+     worktree-relative writes incl. `> "$out"` stay GREEN).
+   - **F10** **autopilot DOES push to a shared remote** — the pre-spawn
+     spec-provenance gate (SKILL.md 9w.9.5) **conditionally** `git push`es a spec-only
+     commit to `origin/<default-branch>`. Scoped out by ordering: firebreak active =
+     **sentinel-present (sentinel-write → run-end)**; sentinel written AFTER the
+     provenance gate → push not classified. (Replaced the false "never pushes" claim.)
+   - **F11** the direct-call boundary has **named residuals**, not absolute protection.
+   - **F13 (latest, Codex P0):** classifier **fail-closes on opaque command-word/verb**
+     (`$(printf curl)`, `git $(printf push)`, `sudo $(printf curl)`, `c{u,}rl`) —
+     shell-tokenize → defer if argv[0]/dispatcher-verb still contains an expansion;
+     recurse exec-wrappers. **Honest downgrade:** set enumeration is leaky → F13
+     *reduces, does not close*.
+   - **THREE declared direct-call residuals (the current honest threat model):**
+     #1 allowlisted-interpreter escape, #2 inherited-`$VAR` redirect to a control-plane
+     path, #3 F13 unlisted-dispatcher/exec-wrapper leak. All stated consistently.
+   - **Review trail:** Codex returned **NO-GO** once (F10 window contradiction +
+     resolve-todos overclaim + shared-master wording — all fixed) and a **P0** on the
+     opaque-command-word escape (→ F13). Self-run security reviews caught the F5
+     identity inversion and the F13 "closes" overclaim. Handoff record:
+     `docs/handoffs/2026-06-21-g1-firebreak-plan-claude-code-handoff.md`.
 
 ## Key Artifacts (this session)
 
@@ -105,7 +137,8 @@ majority unattended.
 |------|----------|
 | **G1 PLAN (deepened, v1 thinned)** | **docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md** |
 | **G1 spike (riskiest assumption, GREEN)** | **docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md** |
-| Codex Plan-Review prompt | "Codex Handoff Prompt" section in the plan above |
+| Codex Plan-Review prompt (GO/NO-GO) | "Codex Handoff Prompt" section in the plan above |
+| Codex NO-GO review record | docs/handoffs/2026-06-21-g1-firebreak-plan-claude-code-handoff.md |
 | G1 brainstorm (plan input) | docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md |
 | Governance scorecard (G1–G5) | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
 | Framework source PDF | docs/governance/three-layers-of-agent-security-deepmind-2026-06.pdf |
@@ -116,9 +149,10 @@ majority unattended.
 
 ## Deferred Backlog (priority order)
 
-0. **[ACTIVE → PLAN REVIEW] G1 risk-tiered firebreak** — plan done, deepened, v1
-   thinned. Next is external Plan Review (Codex prompt ready), then apply fixes →
-   Claude second pass → `/workflows:work` on v1 (Step 0 → Phase 1 → Phase 2).
+0. **[ACTIVE → CONFIRMING CODEX GO/NO-GO] G1 risk-tiered firebreak** — plan through
+   6 review passes (R1–R8, F1–F13), Codex NO-GO + P0 both addressed, build-ready
+   pending Step 0. Next: re-run Codex GO/NO-GO; on GO → `/workflows:work` on v1
+   (Step 0 → Phase 1 → Phase 2). Commit `4ed63fe`.
 1. **FC51 orchestrator rule** — ensure the converged spec is at the worktree base
    before swarm spawn (cherry-pick the spec-update commit into worktree bases, OR
    inline-inject spec sections into briefs). Live fragility that bit Run 070.
@@ -154,19 +188,30 @@ majority unattended.
 
 ```
 Read HANDOFF.md, then read docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
-(start with the "Deepening Review — Findings & v1 Revisions" table — the plan was
-revised R1–R8; review the thinned v1: Step 0 → Phase 1 → Phase 2).
+START with the "Deepening Review — Changelog" (R1–R8, F1–F13) and the "Threat Model"
+— the plan has been through 6 review passes. v1 = Step 0 → Phase 1 → Phase 2; all
+/approve / pointer-commit / PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix).
 
-This is Sandbox. The G1 PLAN phase is COMPLETE: spike GREEN, plan passed both
-gates, deepened by 5 reviewers, thinned to v1. The next phase is PLAN REVIEW.
+This is Sandbox (commit 4ed63fe). G1 plan is build-ready PENDING Step 0. A prior
+Codex pass returned NO-GO (F10 window contradiction, resolve-todos overclaim,
+shared-master wording) and a separate P0 (opaque command-word escape) — ALL fixed
+(F10, F13, honest 3-residual threat model). The current state is: awaiting a
+CONFIRMING Codex GO/NO-GO.
 
-If Codex review findings exist: triage them (P0/P1/P2), apply fixes to the plan,
-then do a Claude second pass (per ~/.claude/docs/mandatory-review-workflow.md).
-If not yet reviewed: the copy-paste Codex prompt is in the plan's "Codex Handoff
-Prompt" section — run it in Codex, bring findings back.
+DO THIS:
+1. If a fresh Codex GO/NO-GO verdict exists: triage it (P0/P1/P2), apply fixes,
+   re-run my own adversarial second pass (per ~/.claude/docs/mandatory-review-workflow.md),
+   commit+push, loop until GO.
+2. If not yet re-reviewed: the GO/NO-GO Codex prompt is in the plan's "Codex Handoff
+   Prompt" section — run it, bring the verdict back.
+3. On GO: /workflows:work on the plan's v1. STEP 0 FIRST (gating spike):
+   - global hook placement governs a REAL isolation:worktree + bypassPermissions agent;
+   - the F8 all-four-roles agent_type identity check holds (harness-contract);
+   - the token-grep fast-path + F13 brace/backslash forwarding survive the bypass heuristics.
+   Do NOT build v2-deferred items (graceful merge disposition, /approve skill, AI advisory).
 
-After Plan Review is clean: /workflows:work on the plan's v1 (Step 0 gating spike
-FIRST — global hook placement + the token-grep fast-path must pass before Phase 1).
-Don't build the v2-deferred items (graceful merge disposition, /approve skill, AI
-advisory pass).
+KEY HONESTY INVARIANTS to preserve (Codex will re-check): every guarantee is bounded
+to DIRECT worker tool calls with THREE declared residuals (#1 interpreter escape,
+#2 inherited-$VAR redirect, #3 F13 unlisted-dispatcher/wrapper leak); autopilot's only
+push is the pre-spawn provenance push (conditional, pre-sentinel, scoped out by ordering).
 ```
