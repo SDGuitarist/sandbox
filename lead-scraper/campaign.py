@@ -196,11 +196,10 @@ def _generate_opener(client, name: str, hook_text: str) -> str | None:
         response = client.messages.create(
             model="claude-haiku-4-5",
             max_tokens=200,
-            system=[{
-                "type": "text",
-                "text": _OPENER_SYSTEM_PROMPT,
-                "cache_control": {"type": "ephemeral"},
-            }],
+            # No cache_control: this prompt is ~574 tokens, below Haiku 4.5's
+            # 4,096-token cache minimum, so a cache_control marker is a silent
+            # no-op (verified via usage fields — both cache counters stayed 0).
+            system=_OPENER_SYSTEM_PROMPT,
             messages=[{
                 "role": "user",
                 "content": f"INPUT: Name: {name}, Hook: {hook_text}\nOUTPUT:",
