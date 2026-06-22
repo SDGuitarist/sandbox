@@ -88,3 +88,94 @@ viability question:
 ## Reproduce
 
 `/tmp/g1-spike/run.sh` and `/tmp/g1-spike/run2.sh` (rig is ephemeral under `/tmp`).
+
+---
+
+# Step 0 — Gating Spike Results (2026-06-22) — ✅ PASS
+
+Run on `feat/g1-risk-tiered-firebreak` (off master `fb0d7a1`). Closes the residual
+above: confirms a session/global-level PreToolUse hook governs the **real**
+`isolation:"worktree"` + `bypassPermissions` worker path, and validates the
+identity contract + fast-path shape the plan depends on.
+
+## Method (extends the prior rig)
+
+Isolated git repo at `/tmp/g1-step0/` (own commit history so worktrees can spawn).
+The throwaway hook was loaded via **`claude -p --settings /tmp/g1-step0/fb-settings.json
+--dangerously-skip-permissions`** — a **session-level** hook, cwd-independent, the same
+property as global `~/.claude/settings.json` placement — so the **real `~/.claude`
+global config was never modified.** The hook (`fb-hook.py`) logs the **full raw
+PreToolUse stdin** (to observe which identity fields actually exist — not assume them)
+and `exit 2` denies any command/path carrying a sentinel token (`STEP0_DENYME` /
+`STEP0_CONTROL_PLANE`). Four staged headless runs; ground truth = `hook-events.log`,
+not the agents' narration.
+
+## Results
+
+### Check 1 — hook governs the real worker path (F1 real-spawn probe) ✅
+
+| Stage | Actor | Action | Hook fired? | Blocked? |
+|------|-------|--------|:----------:|:--------:|
+| 1 | orchestrator (main session, bypass) | `echo STEP0_DENYME_main` (Bash) | yes | **yes** (`exit 2`) |
+| 2 | **`isolation:"worktree"` + bypass subagent** | `echo STEP0_DENYME_worker` (Bash) | yes | **yes** |
+| 2 | same worker | Write → `STEP0_CONTROL_PLANE.json` | yes | **yes** (file verified ABSENT afterward) |
+
+The Stage-2 worker ran in a genuinely separate worktree
+(`cwd: /private/tmp/g1-step0/.claude/worktrees/agent-a4eb300104213d807`). Both a
+denylisted **Bash** command and a **control-plane Write** were denied pre-execution —
+the F1 probe (denylisted cmd AND control-plane write both denied) **passes for the
+actual worker path**. → **Hook placement locked: global `~/.claude/settings.json`
+(session-level), matcher `Bash|mcp__*|Write|Edit`.** No fallback (agent-brief / tool
+wrapper) needed.
+
+### Check 2 — identity contract, all four roles (F5/F8) ✅
+
+Observed PreToolUse stdin per role:
+
+| Role | `agent_id` | `agent_type` | how spawned |
+|------|-----------|-------------|-------------|
+| orchestrator | **absent** | **absent** | top-level `claude -p` |
+| worker | `a4eb3001…` (present) | `general-purpose` | Task, `isolation:"worktree"` |
+| swarm-runner | `ad062…` (present) | **`swarm-runner`** | Task, `subagent_type` (via `--agents`) |
+| tail-runner | `ad515…` (present) | **`tail-runner`** | Task, `subagent_type` (via `--agents`) |
+
+All four are **present, distinct, and harness-stamped**: custom named subagents
+surface their **type name** as `agent_type`, and the orchestrator has neither field.
+This is what the trusted-identity allowlist keys on (orchestrator = no `agent_id`;
+trusted = `agent_type ∈ {swarm-runner, tail-runner}`; worker = anything else).
+**Framing honored:** this is an empirical **harness-contract** confirmation (the
+harness sets `agent_type` from the spawn; a worker cannot choose its own type without
+going through a governed Agent tool call) — **NOT** cryptographic unforgeability, per
+F8. The plan's blanket-deny fallback remains the stated mitigation if the contract
+ever fails. Also present on every event: `permission_mode: "bypassPermissions"`.
+
+### Check 3 — fast-path gate shape (R6) + F13 forward-on-suspicion ✅ (with one Phase-1 constraint)
+
+Hook command `bash /tmp/g1-step0/firebreak-gate.sh` (a **single** command — no
+`&&`/`;`, no `python3 -c`) is **legal under bypass and blocks correctly**. With the
+gate matching only envelope-safe markers (RED tokens / control-plane paths /
+`$(` / backtick / `${`):
+
+| Command | Forwarded to python? | Outcome |
+|---------|:--------------------:|---------|
+| `echo hello_green_gate` (GREEN) | **no** (fast-path `exit 0`) | ran |
+| `echo X$(printf Y)` (F13 `$(` opacity) | **yes** | forwarded, allowed (no RED token) |
+| `echo STEP0_DENYME_gate` (RED) | **yes** | forwarded + **blocked** |
+
+**Phase-1 constraint surfaced (valuable):** a first naive gate also matched `{`/`\`
+against the **raw JSON stdin** — but a JSON envelope **always** contains `{`, so the
+fast-path collapsed (python cold-started on *every* call, defeating R6's 7–12 min/run
+saving). **Resolution for Phase 1:** the cheap entry gate must restrict its grep to
+**envelope-safe markers** (RED tokens, control-plane paths, `$(`/backtick/`${`);
+**brace/backslash command-word obfuscation (`c{u,}rl`, `\cu\rl`) must be detected in
+the python classifier after the command value is isolated**, NOT by grepping raw
+JSON. (Adjusts the plan's gate description at "Phase 1 — firebreak-gate.sh" / the F13
+gate-forwarding line.)
+
+## Verdict — Step 0 PASS
+
+All three gating assertions hold for the real worker path. Cleared to build Phase 1
+(classifier + hook + sentinel + fast-path + control-plane), carrying the one
+brace/backslash gate constraint above. Rig is ephemeral under `/tmp/g1-step0/`
+(`run-stage1.sh`…`run-stage4.sh`, `fb-hook.py`, `fb-settings*.json`,
+`firebreak-gate.sh`); real `~/.claude/settings.json` was never modified.
