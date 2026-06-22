@@ -2,8 +2,9 @@
 
 **Date:** 2026-06-21
 **Branch:** master (in sync with origin, working tree clean)
-**Phase:** **G1 risk-tiered firebreak — PLAN COMPLETE (deepened, v1 thinned), awaiting external Plan Review (Codex).**
-Next: paste the Codex handoff prompt (in the plan, "Codex Handoff Prompt" section) into Codex → bring findings back → apply fixes → Claude second pass → `/workflows:work` on the thinned v1.
+**Phase:** **G1 risk-tiered firebreak — PLAN COMPLETE (deepened, v1 thinned, F1–F5 fixes applied), awaiting external Plan Review (Codex).**
+Next: paste the Codex handoff prompt (in the plan, "Codex Handoff Prompt" section; also on clipboard) into Codex → bring findings back → apply fixes → Claude second pass → `/workflows:work` on the thinned v1.
+Plan at commit `356b542` (master, pushed). Codex prompt updated for the F1–F5 design.
 
 ## Current State
 
@@ -70,6 +71,33 @@ majority unattended.
    status engineering for a deferred master-merge); next phase = Plan Review (Codex).
 6. **v1 scope = Step 0 → Phase 1 → Phase 2.** v2 (deferred, documented): graceful
    merge disposition, `/approve` skill, AI advisory pass.
+7. **Second-review pass (4 user-requested fixes + self-run review → F1–F5,
+   commit `0f79883`/`356b542`):**
+   - **F1** protect the firebreak **control plane** (hook config/scripts, sentinel,
+     `todos/approvals/`) from the workers it governs; matcher extended to
+     `Write`/`Edit`; positive-control probe spawns a **real** `isolation:"worktree"`
+     + `bypassPermissions` agent.
+   - **F2** cover interpreter/direct-script indirection
+     (`python`/`python3`/`.venv/bin/*`, `node`, `ruby`, `./script`) vs a vetted
+     `test_allowlist`; **declared residual** stated honestly (pytest runs
+     worker-authored files = unbounded egress escape; v1 ≠ adversarial sandbox).
+   - **F3** learnings carve-out re-keyed to **realpath target + learnings-writer
+     identity** (orchestrator/tail-runner), not command shape.
+   - **F4** all v2 merge-defer content (`/approve`, pointer commits,
+     `PIPELINE_PASS_WITH_DEFERRED_RISK`) **isolated** out of the v1 body into a v2
+     appendix.
+   - **F5 (root fix from the self-run 2nd review):** key authority on a
+     **TRUSTED-IDENTITY allowlist** (orchestrator/swarm-runner/tail-runner), **not
+     `agent_id` presence** — the original rule would have **denied the mandatory
+     learnings write** and **deferred the swarm-runner's local merge to `master`**
+     on every run. Struck "merge" from the shared-push RED row (local merge =
+     GREEN; only push/force-push is RED). Gate forwards-on-suspicion; **Step 0 now
+     asserts `agent_id`/`agent_type` is present + unforgeable** (else fall back to
+     blanket control-plane deny).
+   - **Residual risks (now explicit/gated):** (a) the trusted-identity model rests
+     on Step 0 proving `agent_type` is unforgeable; (b) the allowlisted-interpreter
+     egress escape is a declared bound (real isolation needs OS/network egress
+     control — out of scope for v1).
 
 ## Key Artifacts (this session)
 
