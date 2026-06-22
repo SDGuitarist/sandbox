@@ -88,12 +88,17 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
     **substantially reduces** the opaque-command-word escape — it fail-closes/defers
     when `argv[0]` or a **recognized** dispatcher's verb is opaque, recursing **listed**
     exec-wrappers — **but set enumeration is fundamentally leaky.** A worker can still
-    pass a literal `argv[0]` that is an **unlisted exec-wrapper** (`sudo $(printf curl)
-    …`, `flock … curl`, `find … -exec curl`, `xargs` reading the command from stdin) or
-    an **unlisted outward dispatcher** (`aws`/`gcloud`/`kubectl`/`heroku`/`wrangler`/
-    `terraform` with a literal or opaque verb). F13 raises the bar (the worker must use
-    something off the list, and the lists name the obvious offenders) but does **not
-    CLOSE** the class — same honest-agent-guard class as #1/#2.
+    pass a literal `argv[0]` that is a wrapper/dispatcher **omitted from the maintained
+    set** — an outward dispatcher NOT on the dispatcher list (`doctl`, `pulumi`,
+    `ansible`, or any newly-released deploy/cloud CLI performing its own outward action
+    under a literal or opaque verb), or an exec-wrapper NOT on the recursion list
+    (`op run -- "$CMD"`, `entr <script>`) that hides an opaque/unlisted inner command F13
+    never recurses into. F13 raises the bar — the worker must reach for something off the
+    maintained lists, which already name the obvious offenders (wrappers
+    `sudo`/`flock`/`xargs`/…; dispatchers `aws`/`gcloud`/`kubectl`/`terraform`/…, all of
+    which **are** listed and therefore deferred) — but does **not CLOSE** the class —
+    same honest-agent-guard class as #1/#2. The fix is to keep the lists current
+    (Phase-1 tests enumerate them; new outward tools are added as discovered).
 - **Deterministic-only authority.** No LLM in the dispose path (precedent: the
   spec-eval AI judge hit ~0% field precision and was demoted to advisory).
 
