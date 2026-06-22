@@ -49,23 +49,36 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
   merge to `master` with no push is GREEN — F5). Also: **protect the firebreak's own
   control plane** from workers' **direct** Write/Edit/Bash tool calls (F1) — see the
   F6 bound immediately below.
+- **Scope boundary in time (F10):** the firebreak's active window is **worker-spawn
+  → run-end**. Autopilot's only shared-remote push — the **pre-spawn spec-provenance
+  gate** *conditionally* pushing a spec-only commit to `origin/<default-branch>` (only
+  when origin is behind after a spec repair; SKILL.md Step 9w.9.5) — runs **before**
+  the window and is **not** governed by v1 (orchestrator-controlled, spec-only,
+  human-blessed via the spec-convergence loop). v1 does **not** claim "autopilot never
+  pushes"; it scopes that push out by ordering. Gating it is a v2 candidate.
 - **Guards honest-agent mistakes + bounded blast radius — NOT adversarial-proof.**
   A worker that is actively trying to evade a deterministic string-level classifier
   can still do so. v1 covers the common indirection vectors and **declares** the
-  residual rather than overclaiming "unevadable."
-- **Explicit, prominent residual — the allowlisted interpreter is an unbounded
-  escape for BOTH outward AND control-plane integrity (F2/F6 / 2nd-review P1-2).** An
-  allowlisted runner (`pytest`, `python -m pytest`) **collects and executes
-  worker-authored files** (a worker writing `tests/test_x.py` is GREEN), run by the
-  swarm-runner (a trusted identity). That test body does raw file I/O / `subprocess`
-  — **not tool calls** — so the PreToolUse hook never sees it. It can therefore (a)
-  perform any outward action (egress, deploy, force-push) **and** (b) overwrite the
-  firebreak's own control plane (`~/.claude/settings.json`, the sentinel,
-  `todos/approvals/`). **Every v1 guarantee — outward bound and control-plane
-  integrity alike — holds for DIRECT worker tool calls only.** v1 does **not**
-  sandbox test execution (real isolation needs OS/network-layer egress control —
-  out of scope). Stated as prominently as the in-scope claim so neither bound is
-  overclaimed. (F7 narrows what can be allowlisted, shrinking — not closing — this.)
+  residuals rather than overclaiming "unevadable."
+- **Explicit, prominent residuals — every v1 guarantee holds for DIRECT worker tool
+  calls, and even there with TWO named gaps (see F6/F11).** v1 does **not** sandbox test
+  execution (real isolation needs OS/network-layer egress control — out of scope).
+  The two declared gaps:
+  - **(1) Allowlisted-interpreter escape (F2/F6 / 2nd-review P1-2).** An allowlisted
+    runner (`pytest`, `python -m pytest`) **collects and executes worker-authored
+    files** (a worker writing `tests/test_x.py` is GREEN), run by the swarm-runner (a
+    trusted identity). That test body does raw file I/O / `subprocess` — **not tool
+    calls** — so the hook never sees it. It can perform any outward action (egress,
+    deploy, force-push) **and** overwrite the firebreak's own control plane
+    (`~/.claude/settings.json`, the sentinel, `todos/approvals/`). F12's recognized-
+    framework allowlist only stops a plan from *promoting an arbitrary runner* to a
+    "test" — it makes **no** safety claim about what an allowlisted framework runs.
+  - **(2) Inherited-`$VAR` redirect to a control-plane path (F9/F11).** F9 is scoped
+    so opaque *relative* redirects stay GREEN; a redirect (`>>`/`>`) through a var set
+    to a control-plane path in an earlier GREEN call is a **direct Bash call** the
+    redirect-layer static check can't resolve. Narrow, but it is a direct-call gap,
+    so the direct-call control-plane claim is **"complete except this redirect case
+    and the interpreter escape,"** not absolute.
 - **Deterministic-only authority.** No LLM in the dispose path (precedent: the
   spec-eval AI judge hit ~0% field precision and was demoted to advisory).
 
@@ -99,7 +112,7 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 | # | Revision | Why (reviewers) |
 |---|----------|------------------|
 | **R1** | Hook placement → **GLOBAL `~/.claude/settings.json`** is the default + a **positive-control probe** (abort the run if the firebreak isn't actually live). | Project-tracked hook leaks into manual sessions and is *most likely to fail* for worktree subagents (root on `origin/master`, not the feature branch). Sentinel was a fail-open gate; probe closes it. (architecture P0; security P1-3) |
-| **R2** | **CUT graceful deferred-merge wiring from v1.** The swarm-runner `git merge --no-ff` lands on `original_branch` **locally** and **autopilot never pushes** — reversible, not irreversible. v1 merge-RED fires **only on a shared `master`/`main` target** and just defers. | 3 agents converged; data-integrity proved the pointer commit reproduces FC51 base-drift and the self-audit marker risks a silent false-`PIPELINE_PASS`. (architecture P0/P1; simplicity #1/#2; data-integrity P0-1/P0-2/P1-1/P2) |
+| **R2** | **CUT graceful deferred-merge wiring from v1.** The swarm-runner's terminal `git merge --no-ff` lands on `original_branch` **locally with no push** (verified: swarm-runner.md has no `git push`) — reversible, so the BUILD merge is GREEN and the graceful disposition machinery isn't needed. **Correction (4th review): autopilot is NOT push-free** — the **pre-spawn spec-provenance gate** (SKILL.md Step 9w.9.5) commits a spec-only change to the default branch and, **only when origin is behind the local default branch after a spec repair, pushes it to `origin/<default-branch>`** (on the clean `PROVENANCE_OK` path it pushes nothing). That push is the **orchestrator** (trusted), **spec-only** (docs/plans), has its own abort/cleanup contract, and runs **before the firebreak's active window** (see F10) — so v1 deliberately scopes it out, but the plan no longer claims "never pushes." | 3 agents converged; data-integrity proved the pointer commit reproduces FC51 base-drift and the self-audit marker risks a silent false-`PIPELINE_PASS`. (architecture P0/P1; simplicity #1/#2; data-integrity P0-1/P0-2/P1-1/P2; 4th-review factual) |
 | **R3** | **Threat model restated honestly** (guards honest mistakes + bounds outward blast radius; not adversarial-proof). | `git -C <path>` (repo's own mandated form) bypassed every git pattern; `Write deploy.sh` then `bash deploy.sh` defeats string matching. (security P0-1/2/3) |
 | **R4** | **Evasion hardening (outward tier):** git normalization (`-C`/`--git-dir`/`--work-tree`/`-c`); indirection-defer; outward **allowlist-deny** incl. `gh api`/`npm publish`/`nc`/`ssh`/`scp`/`rsync`; `mcp__*` **read-only allowlist** → everything else defers. | Same security findings. (security P0-1/2/3, P2-3) |
 | **R5** | **Approvals queue hardened:** gitignore `todos/approvals/` + `.claude/firebreak-active.json`; collision-free **atomic** filenames `RED-<run_id>-<category>-<uuid>.md`; record assembly/base SHAs. | `todos/` is tracked (secrets would commit); `NNN` sequence **races across 31 workers → lost record = silent unguarded RED action.** (performance P1; data-integrity P1-1/P2-1; security P2-1) |
@@ -131,10 +144,18 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 
 | # | Fix | What changed |
 |---|-----|--------------|
-| **F6** | **Honest, unified bound — every v1 guarantee holds for DIRECT worker tool calls only.** The firebreak is a **PreToolUse hook**; it sees *tool calls*, not raw file I/O inside a process. So code executing under an **allowlisted interpreter** (e.g. a worker-authored `test_*.py` collected by `pytest`, which the swarm-runner runs as a trusted identity) does `open(...,'w')` / `subprocess` directly — **the hook never fires.** That path can break **not only the outward bound but also control-plane integrity** (it can overwrite `~/.claude/settings.json`, the sentinel, or `todos/approvals/`). v1's control-plane *and* outward guarantees are therefore **bounded to direct worker tool calls**; the allowlisted-interpreter escape is the single residual that bounds them both. Stated plainly in the Threat Model — the F1 "protects the control plane" claim is **narrowed** accordingly. |
-| **F7** | **`test_allowlist` is synthesized from a fixed structural safe-set, NOT arbitrary plan text.** The live swarm-runner derives the test command from the plan, so a bad plan could name `python3 deploy.py` / `node release.js` as the "test command." The classifier ships a **hardcoded `KNOWN_TEST_FRAMEWORKS`** structural matcher — direct framework invocations only: `pytest [args]`, `python -m pytest`, `python -m unittest`, `go test …`, `cargo test`, `rspec`, `jest`, `vitest` (no shell metacharacters, no arbitrary `<script>.py`/`./script` target, **`npm run`/`make` excluded** — those stay in the indirection-defer set). The sentinel's `test_allowlist` can only **select among** these recognized shapes; a plan-supplied runner string that doesn't structurally match defers (the human/plan must use a recognized framework or approve). A bad plan can no longer whitelist a deploy/exfil command as a "test." |
+| **F6** | **Honest, unified bound — every v1 guarantee holds for DIRECT worker tool calls only.** The firebreak is a **PreToolUse hook**; it sees *tool calls*, not raw file I/O inside a process. So code executing under an **allowlisted interpreter** (e.g. a worker-authored `test_*.py` collected by `pytest`, which the swarm-runner runs as a trusted identity) does `open(...,'w')` / `subprocess` directly — **the hook never fires.** That path can break **not only the outward bound but also control-plane integrity** (it can overwrite `~/.claude/settings.json`, the sentinel, or `todos/approvals/`). v1's control-plane *and* outward guarantees are therefore **bounded to direct worker tool calls** — and even there with **two named gaps** (the allowlisted-interpreter escape; the inherited-`$VAR` redirect of F11). Stated plainly in the Threat Model — the F1 "protects the control plane" claim is **narrowed** accordingly. |
+| **F7** | **`test_allowlist` is a hardcoded recognized-framework allowlist, NOT arbitrary plan text** (a plan-text-injection control — see F12 for the explicit non-safety caveat). The live swarm-runner derives the test command from the plan, so a bad plan could name `python3 deploy.py` / `node release.js` as the "test command." The classifier ships a **hardcoded `KNOWN_TEST_FRAMEWORKS`** structural matcher — direct framework invocations only: `pytest [args]`, `python -m pytest`, `python -m unittest`, `go test …`, `cargo test`, `rspec`, `jest`, `vitest` (no shell metacharacters, no arbitrary `<script>.py`/`./script` target, **`npm run`/`make` excluded** — those stay in the indirection-defer set). The sentinel's `test_allowlist` can only **select among** these recognized shapes; a plan-supplied runner that doesn't structurally match defers. A bad plan can no longer promote a deploy/exfil command to a "test" — but an allowlisted framework still runs arbitrary project code (the F6 residual). |
 | **F8** | **Step 0 validates hook metadata for ALL trusted roles, and is framed as a harness-contract check — not a proof of unforgeability.** Observing "present + distinct" `agent_id`/`agent_type` on **one** worker is insufficient. Step 0 must observe and record the metadata for **all four** actors — **orchestrator** (no `agent_id`), **`swarm-runner`**, **`tail-runner`**, and a **worker** — and confirm each presents the expected, distinct, stable `agent_type`. The plan states explicitly: **this is an empirical check of a harness-contract assumption** (the harness sets `agent_type` honestly and a worker cannot alter its own hook metadata), **NOT** cryptographic unforgeability. If the contract can't be confirmed for all roles → fall back to blanket control-plane deny during an active run. |
 | **F9** | **Close the env-indirected control-plane write hole — scoped to avoid GREEN over-defer.** Realpath + `~`/`$HOME` expansion does **not** cover a destination hidden behind an env var (`DEST=~/.claude/settings.json cp evil "$DEST"`) or command substitution. Rule: a **control-plane-capable write verb** defers for workers when its destination, after best-effort expansion, is **(a)** a control-plane path, **(b)** absolute/`~`/`$HOME`-rooted/`..`-escaping and not provably in-worktree, or **(c)** fully opaque (`$(…)`/inherited `$VAR`) for the arbitrary-destination verbs (`cp`/`install`/`ln`/`dd`/`mv`/`sed -i`/`truncate`). **Plain worktree-relative destinations (incl. `> "$out"`) stay GREEN** — so this does not regress throughput (3rd-review P1). Declared residual: an inherited-`$VAR` redirection to a control-plane path isn't caught at the redirect layer. |
+
+### Fourth pass — F10–F12 (push factuality, residual honesty, allowlist wording)
+
+| # | Fix | What changed |
+|---|-----|--------------|
+| **F10** | **Autopilot CAN push to a shared remote — name it, scope it, define the firebreak window.** The pre-spawn **spec-provenance gate** (SKILL.md Step 9w.9.5) commits a spec-only change to the default branch and **`git push`es it to `origin/<default-branch>` _conditionally_** — only when the local default branch is ahead of origin after a spec repair (SKILL.md:620, 670); on the clean `PROVENANCE_OK` path it pushes nothing. When it does fire it is a real unattended shared-remote push. **Invariant:** the firebreak's **active window = worker-spawn → run-end**; the orchestrator writes the **sentinel AFTER the provenance gate and just before the parallel worker spawn**, so the provenance push happens **while the firebreak is inactive** and is **not** governed by v1. v1 therefore **scopes the provenance push out by ordering** (orchestrator-controlled, spec-only docs, human-blessed via the spec-convergence loop, with its own abort/cleanup contract) — it does **not** claim autopilot never pushes. **v2 candidate:** gate/audit the provenance push itself. |
+| **F11** | **F6 has TWO declared direct-call/in-process residuals, not "a single residual."** (1) the **allowlisted-interpreter escape** (in-process file I/O the hook never sees — breaks outward AND control-plane); (2) the **inherited-`$VAR` redirection to a control-plane path** (F9's scoped rule allows opaque *relative* redirects, so a redirect through a var set to a control-plane path in an earlier GREEN call is a *direct* Bash call the redirect-layer static check can't resolve). The Threat Model now enumerates **both**; the "direct-call protection" claim is narrowed to "direct worker tool calls **except** these two named gaps." |
+| **F12** | **`KNOWN_TEST_FRAMEWORKS` is a recognized-framework allowlist (plan-text-injection control), NOT a "safe-set."** Frameworks like `pytest`/`jest` execute arbitrary project/test code **by design** — that *is* the F6 residual. The allowlist's only job is to stop a plan from **promoting an arbitrary runner** (`python3 deploy.py`) to "test" status; it makes **no** safety claim about what an allowlisted framework then runs. All "safe-set" language reworded accordingly. |
 
 **RESOLVED (user, 2026-06-21): fully cut — no status-mapping sliver in v1.** A
 deferred shared-`master` merge reports its natural non-clean status (honest: the
@@ -151,9 +172,11 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
   cheap entry gate `.claude/hooks/firebreak-gate.sh` (R6). Matcher: `Bash`,
   `mcp__*`, `Write`, `Edit` (F1).
 - A **sentinel** `.claude/firebreak-active.json` (gitignored — R5) that the
-  autopilot orchestrator writes at run start (with `run_id`, `repo_root`,
-  `project_key`, `phase`, and the **vetted test/build allowlist**) and removes at
-  run end. Its presence activates the firebreak (manual sessions: no-op). A
+  autopilot orchestrator writes (with `run_id`, `repo_root`, `project_key`, `phase`,
+  and the **vetted framework allowlist**) **after the pre-spawn spec-provenance gate
+  and just before worker spawn** (F10 — so the provenance push to `origin` is outside
+  the active window), and removes at run end. Its presence activates the firebreak
+  (manual sessions: no-op; active window = worker-spawn → run-end). A
   **positive-control probe** spawns a real worktree subagent and **aborts the run**
   if the firebreak isn't live (R1, F1).
 - A gitignored **`todos/approvals/` queue** of deferred RED actions, atomic
@@ -176,7 +199,9 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
   (incl. `> "$out"`) stay GREEN (see F9 scoping).
 - Manual-session behavior: no sentinel → no-op.
 - The assembly/tail flow — **unchanged** (v1 does not touch the merge wiring; the
-  shared-`master` merge case simply defers like any other RED action).
+  swarm-runner's local merge to `master` stays GREEN — only a hypothetical
+  shared-remote `git push` would defer, and autopilot's only push is the pre-spawn,
+  out-of-window provenance push of F10).
 
 **3. How will we know it worked?**
 See `## Acceptance Tests (EARS)`. In short: outward/irreversible RED actions land
@@ -276,8 +301,10 @@ when inside a subagent) and the sentinel for run context. Disposition:
     `eval`, `source`/`.`, `npm run`, `make`, `base64 -d | sh`, **interpreters**
     (`python`/`python3`/`.venv/bin/*`, `node`, `ruby`, `perl`), and **direct script
     execution** (`./x.sh`, `/abs/script`, `path/to/script`). **Allow** only when the
-    command **structurally matches the hardcoded `KNOWN_TEST_FRAMEWORKS`** safe-set
-    (F7) — direct framework invocations only: `pytest [args]`, `python -m pytest`,
+    command **structurally matches the hardcoded `KNOWN_TEST_FRAMEWORKS`**
+    recognized-framework allowlist (F7 — a plan-text-injection control, **not** a
+    safety claim: the framework still runs arbitrary code = the F6 residual) —
+    direct framework invocations only: `pytest [args]`, `python -m pytest`,
     `python -m unittest`, `go test …`, `cargo test`, `rspec`, `jest`, `vitest`; no
     shell metacharacters, no arbitrary `<script>.py`/`./script` target;
     **`npm run`/`make` are NOT auto-allowed.** The sentinel's `test_allowlist` only
@@ -321,7 +348,7 @@ Deny output: `exit 2` + a stderr line, or the JSON form
 | External sends | host + allowlist | curl/wget to non-localhost; `nc`/`ssh`/`scp`/`rsync`; `gh api`/`gh release`/`gh pr`; email/webhook |
 | Deploy | cmd patterns | `vercel`/`railway`/`fly`/`netlify` deploy/promote |
 | Packages | cmd patterns | `pip uninstall`; `npm uninstall`/`remove`; `npm publish` |
-| **Indirection (F2+F7)** | structural framework safe-set | `bash <file>`/`sh`/`eval`/`source`/`.`; `npm run`/`make`; `python`/`python3`/`.venv/bin/*`/`node`/`ruby`/`perl` on a non-framework target; `./script`/`/abs/script` exec — **defer unless it structurally matches `KNOWN_TEST_FRAMEWORKS`** (pytest / `python -m pytest`·`unittest` / `go test` / `cargo test` / rspec / jest / vitest). `test_allowlist` only selects among these; no arbitrary plan strings (F7). |
+| **Indirection (F2+F7)** | recognized-framework allowlist | `bash <file>`/`sh`/`eval`/`source`/`.`; `npm run`/`make`; `python`/`python3`/`.venv/bin/*`/`node`/`ruby`/`perl` on a non-framework target; `./script`/`/abs/script` exec — **defer unless it structurally matches `KNOWN_TEST_FRAMEWORKS`** (pytest / `python -m pytest`·`unittest` / `go test` / `cargo test` / rspec / jest / vitest). `test_allowlist` only selects among these; no arbitrary plan strings (F7) — but an allowlisted framework still runs arbitrary code (F6 residual). |
 | Git force / shared-push | normalized cmd | `git push --force`/`-f`/`--force-with-lease`; **`git push`** to a remote-tracked shared branch; amend/rebase/`filter-repo`/`filter-branch` of pushed commits (after `-C`/`--git-dir`/`-c` normalization). **NOT** a local `git merge --no-ff` with no push — that is **GREEN** (F5; swarm-runner's terminal merge). |
 | Data | path + cmd | DROP/DELETE/`rm` against a real `*.db` outside `/tmp` |
 | Out-of-repo deletes | realpath + `~`/`$HOME` expand | `rm`/`rm -rf`/`unlink`/`truncate`/`find -delete`/`mv`-as-delete/`>`-truncation targeting any path **outside the repo worktree** and not `/tmp`; deferred if the target can't be statically resolved inside the worktree |
@@ -351,6 +378,16 @@ learnings carve-out.
   `test_allowlist` is a **set of flags selecting among the classifier's hardcoded
   `KNOWN_TEST_FRAMEWORKS`** (F7), **not** a free-form command string — the
   orchestrator cannot inject an arbitrary runner via the sentinel.
+- **Firebreak active window (F10):** the window is **worker-spawn → run-end**. The
+  orchestrator writes the sentinel **after** the pre-spawn spec-provenance gate
+  (SKILL.md Step 9w.9.5, which **conditionally** `git push`es a spec-only commit to
+  `origin/<default-branch>` only when origin is behind after a repair) and just
+  **before** the parallel worker spawn. So the provenance push — a real but
+  orchestrator-controlled, spec-only, human-blessed shared-remote push — happens
+  **while the firebreak is inactive** and is **not** classified by v1 (scoped out by
+  ordering; v2 may gate it). Ordering:
+  *provenance gate (may push origin) → write sentinel → positive-control probe →
+  spawn workers → … → remove sentinel.*
 - **Positive-control probe (R1 + F1):** at run start, after writing the hook +
   sentinel, the orchestrator **spawns a real `isolation:"worktree"` +
   `mode:"bypassPermissions"` agent** that attempts (a) a known denylisted command
@@ -520,16 +557,26 @@ RED-executing surface and isn't worth it until manual approval proves annoying.
 
 ### Q2 — Deferred-merge × Required-Artifacts ordering. → **Not a v1 problem.**
 
-v1 does **not** touch the merge/tail wiring (R2). The swarm-runner's
-`git merge --no-ff` onto `original_branch` is **local** and autopilot **never
-pushes**, so it is reversible — **GREEN, even when `original_branch` is `master`**
-(F5; this is the swarm-runner's normal terminal action and must not defer). Only a
-**`git push` / force-push** to a remote-tracked shared branch is RED — which
-autopilot does not do today — and that would defer like any other RED action (one
-HANDOFF line, no status engineering). The graceful disposition machinery
-(`PIPELINE_PASS_WITH_DEFERRED_RISK`, self-audit WARN, tail retargeting) is **v2**,
-to be built only if autopilot ever starts auto-pushing/auto-merging to a shared
-`master`.
+v1 does **not** touch the merge/tail wiring (R2). The swarm-runner's terminal
+`git merge --no-ff` onto `original_branch` is a **local merge with no push**
+(verified: swarm-runner.md has no `git push`), so it is reversible — **GREEN, even
+when `original_branch` is `master`** (F5; this is the swarm-runner's normal terminal
+action and must not defer). A **`git push` / force-push** to a remote-tracked shared
+branch IS RED.
+
+**Autopilot can push to a shared remote (F10), but outside the v1 firebreak
+window.** The pre-spawn spec-provenance gate (SKILL.md Step 9w.9.5) **conditionally**
+`git push`es a spec-only commit to `origin/<default-branch>` (only when origin is
+behind the local default branch after a spec repair; SKILL.md:620, 670 — the clean
+path pushes nothing). v1 **scopes this out by ordering** — the sentinel (which
+activates the firebreak) is
+written **after** the provenance gate and just **before** worker spawn, so this push
+is never classified. It is orchestrator-controlled, spec-only, human-blessed (the
+spec-convergence loop), and has its own abort/cleanup contract. Gating/auditing the
+provenance push is a **v2 candidate**, not a v1 gap. (If a future autopilot change
+moved a shared-remote push **inside** the active window, the graceful disposition
+machinery — `PIPELINE_PASS_WITH_DEFERRED_RISK`, self-audit WARN, tail retargeting —
+would become v1; that machinery stays v2 today.)
 
 ---
 
@@ -681,12 +728,12 @@ ls todos/approvals/ 2>/dev/null
   running worker-authored code can break **both** the outward bound **and**
   control-plane integrity. v1 does **not** sandbox test execution (real isolation
   needs OS/network egress control — out of scope).
-- **F7 — `test_allowlist` is a fixed structural safe-set**, not arbitrary plan text:
-  only direct `KNOWN_TEST_FRAMEWORKS` invocations are allowlistable, so a bad plan
-  cannot whitelist `python3 deploy.py` as a "test." This closes the **plan-text
-  injection** vector; it does **not** shrink the **F6 interpreter** vector (once a
-  framework is allowlisted, worker-authored test code still runs). Keep the framework
-  set minimal.
+- **F7/F12 — `test_allowlist` is a hardcoded recognized-framework allowlist**, not a
+  "safe-set" and not arbitrary plan text: only direct `KNOWN_TEST_FRAMEWORKS`
+  invocations are allowlistable, so a bad plan cannot promote `python3 deploy.py` to
+  a "test." This closes the **plan-text injection** vector only; it makes **no**
+  safety claim about an allowlisted framework, which still runs arbitrary code (the
+  **F6 interpreter** residual). Keep the framework set minimal.
 - **F9 — env-indirected control-plane writes (scoped):** a control-plane-capable
   write verb defers only when its destination is control-plane / absolute / `..`-
   escaping / opaque — **plain worktree-relative computed writes stay GREEN**, so no
@@ -777,13 +824,17 @@ demoted to advisory: `docs/solutions/2026-06-07-autopilot-orchestration-hardenin
 Review this plan as an adversarial second reader (fresh context):
 docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
 
-Read the "Deepening Review — Changelog" (R1–R8, F1–F9) and the "Threat Model"
+Read the "Deepening Review — Changelog" (R1–R8, F1–F12) and the "Threat Model"
 FIRST. v1 = Step 0 → Phase 1 → Phase 2. All /approve / pointer-commit /
 PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix), NOT v1. F5 = trusted-
 identity allowlist (not agent_id presence); F6 = every guarantee bounds to DIRECT
-tool calls (allowlisted-interpreter escape breaks outward AND control-plane); F7 =
-test_allowlist is a fixed framework safe-set; F8 = Step 0 checks all four roles as a
-harness-contract assumption; F9 = env-indirected control-plane dest defers.
+tool calls (allowlisted-interpreter escape breaks outward AND control-plane); F7/F12
+= test_allowlist is a recognized-framework allowlist (plan-text-injection control,
+NOT a safety claim); F8 = Step 0 checks all four roles as a harness-contract
+assumption; F9 = env-indirected control-plane dest defers; F10 = autopilot DOES push
+to origin in the pre-spawn provenance gate, scoped out by the firebreak active
+window; F11 = TWO named direct-call residuals (interpreter escape + inherited-var
+redirect).
 
 Scrutinize:
 1. CONTROL-PLANE (F1+F5+F9): authority keyed on a TRUSTED-IDENTITY allowlist
@@ -804,9 +855,12 @@ Scrutinize:
 4. CARVE-OUT (F3): can the target-realpath + tail-runner-identity gate either (a)
    silently DEFER a mandatory learnings write (breaking Required-Artifacts) or (b)
    be abused as write-anywhere?
-4. R2 CUT: does ANY autopilot path push or merge to a SHARED master (real remote)?
-   If yes, R2 is wrong and v2.1 must be v1.
-5. R1 PLACEMENT + PROBE: global ~/.claude/settings.json governs all projects
+5. R2/F10 PUSH SCOPE: autopilot's pre-spawn provenance gate pushes a spec-only commit
+   to origin/<default-branch> (SKILL.md Step 9w.9.5). The plan scopes it out by
+   ordering (sentinel written AFTER the provenance gate). Verify that invariant
+   actually holds in SKILL.md, and that NO other shared-remote push happens INSIDE
+   the firebreak window (worker-spawn → run-end). If one does, v2.1 must become v1.
+6. R1 PLACEMENT + PROBE: global ~/.claude/settings.json governs all projects
    (mitigated by sentinel no-op + real-spawn probe). Any residual fail-open the
    probe wouldn't catch (e.g., a swarm launched without writing the sentinel)?
 Return findings as P0/P1/P2 with the exact section (and R/F number) to change.
@@ -822,7 +876,8 @@ Return findings as P0/P1/P2 with the exact section (and R/F number) to change.
 - **Spike (verify-first):** docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md (GREEN)
 
 ### Internal references (file:line)
-- `.claude/agents/swarm-runner.md:174-177` — the local `git merge --no-ff` (Step 7); no `git push` exists.
+- `.claude/agents/swarm-runner.md:174-177` — the local `git merge --no-ff` (Step 7); no `git push` in swarm-runner.
+- `.claude/skills/autopilot/SKILL.md:618-625, 644-670` — the pre-spawn spec-provenance gate that **conditionally `git push`es a spec-only commit to `origin/<default-branch>`** (only when origin is behind the local default branch after a repair — SKILL.md:620, 670; the real autopilot shared-remote push — F10; outside the firebreak window).
 - `.claude/skills/autopilot/SKILL.md:739-746` — worktree worker spawn (`isolation:"worktree"`, `bypassPermissions`).
 - `.claude/skills/autopilot/SKILL.md:30-38, 422-425` — bypass mandate; "security heuristics fire above bypass".
 - `.claude/skills/resolve-todos/SKILL.md:16` — glob `todos/*-pending-*.md` (non-recursive; approvals safe).
