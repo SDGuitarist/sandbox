@@ -669,9 +669,10 @@ demoted to advisory: `docs/solutions/2026-06-07-autopilot-orchestration-hardenin
 Review this plan as an adversarial second reader (fresh context):
 docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
 
-Read the "Deepening Review — Changelog" (R1–R8, F1–F4) and the "Threat Model"
+Read the "Deepening Review — Changelog" (R1–R8, F1–F5) and the "Threat Model"
 FIRST. v1 = Step 0 → Phase 1 → Phase 2. All /approve / pointer-commit /
-PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix), NOT v1.
+PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix), NOT v1. Note F5 is the
+2nd-review root fix (trusted-identity allowlist, not agent_id presence).
 
 Scrutinize:
 1. CONTROL-PLANE (F1+F5): authority is keyed on a TRUSTED-IDENTITY allowlist
