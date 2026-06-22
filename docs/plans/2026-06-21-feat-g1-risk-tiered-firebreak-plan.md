@@ -66,9 +66,9 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
   can still do so. v1 covers the common indirection vectors and **declares** the
   residuals rather than overclaiming "unevadable."
 - **Explicit, prominent residuals — every v1 guarantee holds for DIRECT worker tool
-  calls, and even there with TWO named gaps (see F6/F11).** v1 does **not** sandbox test
-  execution (real isolation needs OS/network-layer egress control — out of scope).
-  The two declared gaps:
+  calls, and even there with THREE named gaps (F6/F11/F13).** v1 does **not** sandbox
+  test execution (real isolation needs OS/network-layer egress control — out of scope).
+  The three declared gaps:
   - **(1) Allowlisted-interpreter escape (F2/F6 / 2nd-review P1-2).** An allowlisted
     runner (`pytest`, `python -m pytest`) **collects and executes worker-authored
     files** (a worker writing `tests/test_x.py` is GREEN), run by the swarm-runner (a
@@ -82,8 +82,18 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
     so opaque *relative* redirects stay GREEN; a redirect (`>>`/`>`) through a var set
     to a control-plane path in an earlier GREEN call is a **direct Bash call** the
     redirect-layer static check can't resolve. Narrow, but it is a direct-call gap,
-    so the direct-call control-plane claim is **"complete except this redirect case
-    and the interpreter escape,"** not absolute.
+    so the direct-call control-plane claim is **"complete except this redirect case,
+    the interpreter escape, and the F13 set-enumeration leak,"** not absolute.
+  - **(3) Unlisted-dispatcher / exec-wrapper opaque execution (F13 residual).** F13
+    **substantially reduces** the opaque-command-word escape — it fail-closes/defers
+    when `argv[0]` or a **recognized** dispatcher's verb is opaque, recursing **listed**
+    exec-wrappers — **but set enumeration is fundamentally leaky.** A worker can still
+    pass a literal `argv[0]` that is an **unlisted exec-wrapper** (`sudo $(printf curl)
+    …`, `flock … curl`, `find … -exec curl`, `xargs` reading the command from stdin) or
+    an **unlisted outward dispatcher** (`aws`/`gcloud`/`kubectl`/`heroku`/`wrangler`/
+    `terraform` with a literal or opaque verb). F13 raises the bar (the worker must use
+    something off the list, and the lists name the obvious offenders) but does **not
+    CLOSE** the class — same honest-agent-guard class as #1/#2.
 - **Deterministic-only authority.** No LLM in the dispose path (precedent: the
   spec-eval AI judge hit ~0% field precision and was demoted to advisory).
 
@@ -149,7 +159,7 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 
 | # | Fix | What changed |
 |---|-----|--------------|
-| **F6** | **Honest, unified bound — every v1 guarantee holds for DIRECT worker tool calls only.** The firebreak is a **PreToolUse hook**; it sees *tool calls*, not raw file I/O inside a process. So code executing under an **allowlisted interpreter** (e.g. a worker-authored `test_*.py` collected by `pytest`, which the swarm-runner runs as a trusted identity) does `open(...,'w')` / `subprocess` directly — **the hook never fires.** That path can break **not only the outward bound but also control-plane integrity** (it can overwrite `~/.claude/settings.json`, the sentinel, or `todos/approvals/`). v1's control-plane *and* outward guarantees are therefore **bounded to direct worker tool calls** — and even there with **two named gaps** (the allowlisted-interpreter escape; the inherited-`$VAR` redirect of F11). Stated plainly in the Threat Model — the F1 "protects the control plane" claim is **narrowed** accordingly. |
+| **F6** | **Honest, unified bound — every v1 guarantee holds for DIRECT worker tool calls only.** The firebreak is a **PreToolUse hook**; it sees *tool calls*, not raw file I/O inside a process. So code executing under an **allowlisted interpreter** (e.g. a worker-authored `test_*.py` collected by `pytest`, which the swarm-runner runs as a trusted identity) does `open(...,'w')` / `subprocess` directly — **the hook never fires.** That path can break **not only the outward bound but also control-plane integrity** (it can overwrite `~/.claude/settings.json`, the sentinel, or `todos/approvals/`). v1's control-plane *and* outward guarantees are therefore **bounded to direct worker tool calls** — and even there with **three named gaps** (the allowlisted-interpreter escape; the inherited-`$VAR` redirect of F11; the F13 unlisted-dispatcher/exec-wrapper leak). Stated plainly in the Threat Model — the F1 "protects the control plane" claim is **narrowed** accordingly. |
 | **F7** | **`test_allowlist` is a hardcoded recognized-framework allowlist, NOT arbitrary plan text** (a plan-text-injection control — see F12 for the explicit non-safety caveat). The live swarm-runner derives the test command from the plan, so a bad plan could name `python3 deploy.py` / `node release.js` as the "test command." The classifier ships a **hardcoded `KNOWN_TEST_FRAMEWORKS`** structural matcher — direct framework invocations only: `pytest [args]`, `python -m pytest`, `python -m unittest`, `go test …`, `cargo test`, `rspec`, `jest`, `vitest` (no shell metacharacters, no arbitrary `<script>.py`/`./script` target, **`npm run`/`make` excluded** — those stay in the indirection-defer set). The sentinel's `test_allowlist` can only **select among** these recognized shapes; a plan-supplied runner that doesn't structurally match defers. A bad plan can no longer promote a deploy/exfil command to a "test" — but an allowlisted framework still runs arbitrary project code (the F6 residual). |
 | **F8** | **Step 0 validates hook metadata for ALL trusted roles, and is framed as a harness-contract check — not a proof of unforgeability.** Observing "present + distinct" `agent_id`/`agent_type` on **one** worker is insufficient. Step 0 must observe and record the metadata for **all four** actors — **orchestrator** (no `agent_id`), **`swarm-runner`**, **`tail-runner`**, and a **worker** — and confirm each presents the expected, distinct, stable `agent_type`. The plan states explicitly: **this is an empirical check of a harness-contract assumption** (the harness sets `agent_type` honestly and a worker cannot alter its own hook metadata), **NOT** cryptographic unforgeability. If the contract can't be confirmed for all roles → fall back to blanket control-plane deny during an active run. |
 | **F9** | **Close the env-indirected control-plane write hole — scoped to avoid GREEN over-defer.** Realpath + `~`/`$HOME` expansion does **not** cover a destination hidden behind an env var (`DEST=~/.claude/settings.json cp evil "$DEST"`) or command substitution. Rule: a **control-plane-capable write verb** defers for workers when its destination, after best-effort expansion, is **(a)** a control-plane path, **(b)** absolute/`~`/`$HOME`-rooted/`..`-escaping and not provably in-worktree, or **(c)** fully opaque (`$(…)`/inherited `$VAR`) for the arbitrary-destination verbs (`cp`/`install`/`ln`/`dd`/`mv`/`sed -i`/`truncate`). **Plain worktree-relative destinations (incl. `> "$out"`) stay GREEN** — so this does not regress throughput (3rd-review P1). Declared residual: an inherited-`$VAR` redirection to a control-plane path isn't caught at the redirect layer. |
@@ -159,8 +169,14 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 | # | Fix | What changed |
 |---|-----|--------------|
 | **F10** | **Autopilot CAN push to a shared remote — name it, scope it, define the firebreak window.** The pre-spawn **spec-provenance gate** (SKILL.md Step 9w.9.5) commits a spec-only change to the default branch and **`git push`es it to `origin/<default-branch>` _conditionally_** — only when the local default branch is ahead of origin after a spec repair (SKILL.md:620, 670); on the clean `PROVENANCE_OK` path it pushes nothing. When it does fire it is a real unattended shared-remote push. **Invariant:** the firebreak is **active while the sentinel is present (sentinel-write → run-end)**; the orchestrator writes the **sentinel AFTER the provenance gate and just before the parallel worker spawn**, so the provenance push happens **before the sentinel exists → firebreak inactive → not classified**. (The sentinel-write → worker-spawn slice is a setup/probe interval — hook live for validation; the **governed worker window** is worker-spawn → run-end.) v1 therefore **scopes the provenance push out by ordering** (orchestrator-controlled, spec-only docs, human-blessed via the spec-convergence loop, with its own abort/cleanup contract) — it does **not** claim autopilot never pushes. **v2 candidate:** gate/audit the provenance push itself. |
-| **F11** | **F6 has TWO declared direct-call/in-process residuals, not "a single residual."** (1) the **allowlisted-interpreter escape** (in-process file I/O the hook never sees — breaks outward AND control-plane); (2) the **inherited-`$VAR` redirection to a control-plane path** (F9's scoped rule allows opaque *relative* redirects, so a redirect through a var set to a control-plane path in an earlier GREEN call is a *direct* Bash call the redirect-layer static check can't resolve). The Threat Model now enumerates **both**; the "direct-call protection" claim is narrowed to "direct worker tool calls **except** these two named gaps." |
+| **F11** | **F6's "single residual" was wrong — there are multiple declared direct-call residuals** (this pass named the second; F13 later named the third). (1) the **allowlisted-interpreter escape** (in-process file I/O the hook never sees — breaks outward AND control-plane); (2) the **inherited-`$VAR` redirection to a control-plane path** (F9's scoped rule allows opaque *relative* redirects, so a redirect through a var set to a control-plane path in an earlier GREEN call is a *direct* Bash call the redirect-layer static check can't resolve). The Threat Model now enumerates all three; the "direct-call protection" claim is narrowed to "direct worker tool calls **except** the named gaps." (The opaque command-word/verb escape is **substantially reduced by F13** but **not closed** — set enumeration is leaky — so it is **residual #3**, see F13.) |
 | **F12** | **`KNOWN_TEST_FRAMEWORKS` is a recognized-framework allowlist (plan-text-injection control), NOT a "safe-set."** Frameworks like `pytest`/`jest` execute arbitrary project/test code **by design** — that *is* the F6 residual. The allowlist's only job is to stop a plan from **promoting an arbitrary runner** (`python3 deploy.py`) to "test" status; it makes **no** safety claim about what an allowlisted framework then runs. All "safe-set" language reworded accordingly. |
+
+### Fifth pass — F13 (opaque command-word / verb execution)
+
+| # | Fix | What changed |
+|---|-----|--------------|
+| **F13** | **Fail-closed on opaque command-word / outward-critical verb slots (addresses the 5th-review P0 — substantially REDUCES, does not close; residual #3 declared).** The classifier matched literal tokens, so a worker could hide the command/verb behind shell expansion and evade every outward/RED pattern as a **plain Bash tool call** (not an interpreter escape, not the redirect residual): `$(printf curl) https://x`, `$(printf git) push origin master`, `git $(printf push) origin master`, or an inherited `$VAR`/`${...}` in `argv[0]`. **New rule:** for a worker, **defer** any Bash command where (a) the shell-tokenized **`argv[0]` still CONTAINS** a command-substitution (`$(…)`/backtick) or unresolved `$VAR`/`${…}` (incl. *partial* opacity `cur$(printf l)`); or (b) for a **recognized dispatcher** the **verb token is opaque**. Dispatcher set: `git`/`gh`/`npm`/`pnpm`/`yarn`/`pip`/`pipx`/`docker`/`cargo`/`go` **+ `aws`/`gcloud`/`kubectl`/`heroku`/`flyctl`/`wrangler`/`terraform`/`rsync`**. **Recurse through exec-wrappers**: `env`/`nice`/`nohup`/`timeout`/`xargs`/`command`/`exec`/`setsid`/`stdbuf`/`time` **+ `sudo`/`doas`/`chroot`/`unshare`/`flock`/`script`/`setarch`/`watch`/`parallel`**. The classifier resolves trivial inline `VAR=…` assignments + sentinel-provided runner paths; otherwise fail-closed. **Scoped to avoid over-defer:** opacity in a *non-critical argument* stays **GREEN** (`git commit -m "$(date)"`, `pytest "$F"`). The entry gate forwards to python whenever the **first token** or a **dispatcher's verb token** contains `$(`/backtick/`$`/`${` **or a brace `{`/backslash-escape** (so brace/backslash command-word obfuscation `c{u,}rl`/`\cu\rl` can't auto-allow). **HONEST BOUND (5th-review must-fix):** set enumeration is leaky — this **substantially reduces** the opaque-execution escape but does **not CLOSE** it; an **unlisted** dispatcher/wrapper with a literal `argv[0]` (e.g. a tool not on either list) remains **residual #3** (F11). The two prior F11 residuals are unchanged. |
 
 **RESOLVED (user, 2026-06-21): fully cut — no status-mapping sliver in v1.** A
 deferred shared-`master` merge reports its natural non-clean status (honest: the
@@ -308,6 +324,26 @@ when inside a subagent) and the sentinel for run context. Disposition:
   a write performed by code inside an allowlisted interpreter is invisible to the hook
   (see Threat Model).
 - **`Bash`** → classify the command string. Category-specific:
+  - *Opaque command-word / verb — check FIRST, fail-closed (F13):* **shell-tokenize**
+    the command (split + strip quotes + unescape + brace-expand) FIRST, then before any
+    pattern matching, **defer** (for a worker) if the resolved **`argv[0]` still
+    CONTAINS** a command-substitution (`$(…)`/backtick) or an unresolved `$VAR`/`${…}` —
+    including *partial* opacity like `cur$(printf l)` or `${X}curl` — **or** a
+    **recognized dispatcher** has a verb token that still contains such an expansion.
+    **Dispatcher set:** `git`/`gh`/`npm`/`pnpm`/`yarn`/`pip`/`pipx`/`docker`/`cargo`/`go`
+    **+ `aws`/`gcloud`/`kubectl`/`heroku`/`flyctl`/`wrangler`/`terraform`/`rsync`**.
+    **Recurse through exec-wrappers:** `env`/`nice`/`nohup`/`timeout`/`xargs`/`command`/
+    `exec`/`setsid`/`stdbuf`/`time` **+ `sudo`/`doas`/`chroot`/`unshare`/`flock`/`script`/
+    `setarch`/`watch`/`parallel`** to the real command word. **Over-defer guard:**
+    resolve `argv[0]` to GREEN when it matches (a) a sentinel-provided interpreter/runner
+    path, (b) `$(which <literal-interpreter>)`, or (c) `python$VAR`-version with a
+    `KNOWN_TEST_FRAMEWORKS` verb (`-m pytest`/`-m unittest`); otherwise fail-closed.
+    Opacity in a **non-critical argument** (literal `argv[0]` + literal dispatcher verb —
+    `git commit -m "$(date)"`, `pytest "$F"`) is **GREEN**. **Precedence:** an F13 defer
+    **short-circuits before** F9/F2/outward matching, so an opaque command word never
+    falls through into a GREEN branch. **Residual #3 (honest):** an **unlisted**
+    dispatcher/exec-wrapper with a literal `argv[0]` still evades — F13 reduces, does not
+    close, the class (see Threat Model / F11).
   - *Outward / irreversible (allowlist-deny, default-DEFER):* external sends
     (curl/wget to a non-localhost host; `nc`/`ssh`/`scp`/`rsync`; `gh api`/`gh
     release`/`gh pr`); deploy (`vercel`/`railway`/`fly`/`netlify`); package removal
@@ -362,9 +398,10 @@ Deny output: `exit 2` + a stderr line, or the JSON form
 
 | Category | Detection | RED patterns |
 |----------|-----------|--------------|
+| **Opaque command-word / verb (F13)** | argv[0] / dispatcher-verb opacity → defer (checked first; short-circuits) | shell-tokenized `argv[0]` still contains `$(…)`/backtick/`$VAR`/`${…}` (incl. partial `cur$(printf l)`); or a dispatcher (`git`/`gh`/`npm`/`pip`/`docker`/`cargo`/`go` + `aws`/`gcloud`/`kubectl`/`heroku`/`flyctl`/`wrangler`/`terraform`/`rsync`) with an opaque verb — e.g. `$(printf curl) https://x`, `git $(printf push) origin master`. Recurse exec-wrappers (`env`/`xargs`/`timeout`/`sudo`/`doas`/`flock`/`script`/`watch`/`parallel`/…). **GREEN:** non-critical-arg opacity (`git commit -m "$(date)"`, `pytest "$F"`). **Residual #3:** unlisted dispatcher/wrapper with literal argv[0] (set enumeration is leaky — reduces, not closes). |
 | **Control-plane writes (F1+F5+F9)** | target realpath + untrusted identity; **non-worktree/opaque dest → defer** | Write/Edit/`rm`/`mv`/`cp`/`install`/`ln -sf`/`dd`/`truncate`/`tee`/`sed -i`/`>`/`>>`/heredoc to `~/.claude/settings.json`, `.claude/hooks/firebreak-*.{py,sh}`, `.claude/firebreak-active.json`, `todos/approvals/**` — **from a worker**; **also any such verb whose destination is control-plane / absolute / `..`-escaping / opaque** (F9 scoped — plain worktree-relative dests incl. `> "$out"` stay GREEN). Trusted (orchestrator/swarm-runner/tail-runner) = allowed. *Direct tool calls only — F6.* |
-| External sends | host + allowlist | curl/wget to non-localhost; `nc`/`ssh`/`scp`/`rsync`; `gh api`/`gh release`/`gh pr`; email/webhook |
-| Deploy | cmd patterns | `vercel`/`railway`/`fly`/`netlify` deploy/promote |
+| External sends | host + allowlist | curl/wget to non-localhost; `nc`/`ssh`/`scp`/`rsync`; `gh api`/`gh release`/`gh pr`; `aws`/`gcloud`/`kubectl`/`heroku` (any verb); email/webhook |
+| Deploy | cmd patterns | `vercel`/`railway`/`fly`/`flyctl`/`netlify`/`wrangler`/`terraform apply`/`kubectl apply` deploy/promote |
 | Packages | cmd patterns | `pip uninstall`; `npm uninstall`/`remove`; `npm publish` |
 | **Indirection (F2+F7)** | recognized-framework allowlist | `bash <file>`/`sh`/`eval`/`source`/`.`; `npm run`/`make`; `python`/`python3`/`.venv/bin/*`/`node`/`ruby`/`perl` on a non-framework target; `./script`/`/abs/script` exec — **defer unless it structurally matches `KNOWN_TEST_FRAMEWORKS`** (pytest / `python -m pytest`·`unittest` / `go test` / `cargo test` / rspec / jest / vitest). `test_allowlist` only selects among these; no arbitrary plan strings (F7) — but an allowlisted framework still runs arbitrary code (F6 residual). |
 | Git force / shared-push | normalized cmd | `git push --force`/`-f`/`--force-with-lease`; **`git push`** to a remote-tracked shared branch; amend/rebase/`filter-repo`/`filter-branch` of pushed commits (after `-C`/`--git-dir`/`-c` normalization). **NOT** a local `git merge --no-ff` with no push — that is **GREEN** (F5; swarm-runner's terminal merge). |
@@ -537,19 +574,22 @@ Do NOT build the classifier until green.
 
 ### Phase 1 — Classifier + hook + sentinel + fast-path + control-plane (foundation)
 
-- `.claude/hooks/firebreak-classify.py` — git normalization (R4a),
-  indirection-defer incl. interpreters/direct-scripts vs the `test_allowlist` (F2),
-  outward allowlist-deny incl. `gh api`/`npm publish`/`nc`/`ssh`/`scp`/`rsync`
-  (R4c), `mcp__*` read-only allowlist (R4d), **control-plane protection keyed on
-  the trusted-identity allowlist** (F1+F5), **learnings carve-out keyed on
-  realpath-target + learnings-writer identity** (F3+F5), fail-closed. Pure stdlib,
-  one file.
+- `.claude/hooks/firebreak-classify.py` — **opaque command-word/verb fail-closed
+  defer (F13, checked first)**, git normalization (R4a), indirection-defer incl.
+  interpreters/direct-scripts vs the `test_allowlist` (F2), outward allowlist-deny
+  incl. `gh api`/`npm publish`/`nc`/`ssh`/`scp`/`rsync` (R4c), `mcp__*` read-only
+  allowlist (R4d), **control-plane protection keyed on the trusted-identity
+  allowlist** (F1+F5), **learnings carve-out keyed on realpath-target +
+  learnings-writer identity** (F3+F5), fail-closed. Pure stdlib, one file.
 - `.claude/hooks/firebreak-gate.sh` — cheap entry: RED-token grep for `Bash`,
   control-plane-path grep for `Write`/`Edit`; **also forwards to python on any Bash
   write verb (`cp`/`install`/`ln`/`dd`/`tee`/`sed -i`/`truncate`/redirection/heredoc)
-  or any `~`/`$HOME`/`..`/symlink-suspect token** so an obfuscated control-plane
-  write can't slip past the cheap grep (2nd-review P1-1); `exec`s python only on a
-  hit (R6, F1).
+  or any `~`/`$HOME`/`..`/symlink-suspect token** (2nd-review P1-1) **and whenever the
+  first token, or a recognized dispatcher's verb token, contains `$(`/backtick/`$`/`${`
+  OR a brace `{` / backslash-escape / quote-split** (F13 — opaque or obfuscated
+  command-word/verb, incl. `c{u,}rl`/`\cu\rl`), so neither an obfuscated control-plane
+  write nor an opaque/obfuscated command word can slip past the cheap grep; `exec`s
+  python only on a hit (R6, F1, F13).
 - `hooks.PreToolUse` in **global settings** (R1), matcher `Bash`+`mcp__*`+`Write`+`Edit`.
 - Sentinel `.claude/firebreak-active.json` (gitignored — R5) with `run_id`,
   `repo_root`, `project_key`, `phase`, `test_allowlist`; orchestrator writes/removes
@@ -649,6 +689,24 @@ would become v1; that machinery stays v2 today.)
 - WHEN a worker emits a normalized git evasion (`git -C <path> push --force`,
   `git --git-dir=… push`, `git -c … push`) THE SYSTEM SHALL normalize and defer it (R4a).
   - Verify: feed each → `deny`.
+- WHEN a worker hides the command word or an outward verb behind shell expansion or
+  obfuscation — `$(printf curl) https://x`, `$(printf git) push origin master`,
+  `git $(printf push) origin master`, `` `printf curl` https://x ``, an inherited
+  `$VAR` in `argv[0]`, a **listed exec-wrapper** wrapping it (`sudo $(printf curl) …`,
+  `flock /tmp/x curl …`), or **brace/backslash** forms (`c{u,}rl https://x`,
+  `\cu\rl https://x`) — THE SYSTEM SHALL defer it (F13, fail-closed), even with no
+  literal RED token.
+  - Verify: feed each → `deny` (e.g. `$(printf curl) https://x`,
+    `git $(printf push) origin master`, `sudo $(printf curl) https://x`,
+    `c{u,}rl https://x` → `deny`).
+- WHEN a worker uses an **unlisted** dispatcher/exec-wrapper with a **literal** `argv[0]`
+  (e.g. a tool on neither F13 set) THE SYSTEM **MAY NOT** defer it — this is **declared
+  residual #3** (set-enumeration leak), a stated bound of the honest-agent threat model,
+  not a guarantee. Newly-discovered outward tools are added to the sets.
+- WHEN opacity is confined to a **non-critical argument** (literal `argv[0]` + literal
+  dispatcher verb) — `git commit -m "$(date)"`, `pytest "$F"`, `echo "$HOME"` — THE
+  SYSTEM SHALL allow it (F13 — no GREEN over-defer).
+  - Verify: `git commit -m "$(date)"` → `allow`; `pytest "$F"` → `allow`.
 - WHEN a worker uses interpreter/direct-script indirection on a NON-allowlisted
   target (`python3 deploy.py`, `.venv/bin/python ship.py`, `node release.js`,
   `ruby task.rb`, `./deploy.sh`, `bash deploy.sh`, `eval "$(cat cmd)"`) THE SYSTEM
@@ -722,7 +780,12 @@ would become v1; that machinery stays v2 today.)
 echo '{"tool_name":"Bash","tool_input":{"command":"git -C /repo push --force origin master"},"agent_id":"w1"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$?"
 echo '{"tool_name":"Bash","tool_input":{"command":"python3 deploy.py"},"agent_id":"w1"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$?"
 echo '{"tool_name":"Bash","tool_input":{"command":"gh api --method POST /repos/x"},"agent_id":"w1"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$?"
-# GREEN: allowlisted runner; trusted swarm-runner local merge to master
+# RED: opaque command-word / verb (F13) — no literal RED token present
+echo '{"tool_name":"Bash","tool_input":{"command":"$(printf curl) https://x"},"agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
+echo '{"tool_name":"Bash","tool_input":{"command":"$(printf git) push origin master"},"agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
+echo '{"tool_name":"Bash","tool_input":{"command":"git $(printf push) origin master"},"agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect deny)"
+# GREEN: non-critical-arg opacity (F13 no over-defer); allowlisted runner; trusted local merge
+echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"$(date)\""},"agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect allow)"
 echo '{"tool_name":"Bash","tool_input":{"command":"pytest -q"},"agent_id":"w1","agent_type":"swarm-072-api"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect allow)"
 echo '{"tool_name":"Bash","tool_input":{"command":"git merge --no-ff swarm-072-assembly"},"agent_type":"swarm-runner"}' | python3 .claude/hooks/firebreak-classify.py; echo "exit=$? (expect allow)"
 # RED: push-force to shared master
@@ -774,9 +837,21 @@ ls todos/approvals/ 2>/dev/null
   an inherited-`$VAR` redirection (declared residual).
 - **Bash Command Rules bind the hook itself** (P0): single command / `exec`, no
   chaining, no `python3 -c`. (`docs/solutions/2026-04-09-compound-bash-instruction-refactor.md`)
-- **Gate coverage (2nd-review P1-1):** the cheap entry gate must forward-on-suspicion
-  (all write verbs + `~`/`$HOME`/`..`/symlink + env-indirection tokens) or the R6
-  fast-path becomes an auto-allow hole for obfuscated control-plane writes.
+- **F13 — opaque command-word/verb (substantially reduces 5th-review P0; residual #3):**
+  the classifier fail-closes/defers when the tokenized `argv[0]` or a recognized
+  dispatcher's verb still contains an expansion, recursing through the listed
+  exec-wrappers (incl. `sudo`/`doas`/`flock`/`script`/…) and dispatchers (incl.
+  `aws`/`gcloud`/`kubectl`/…). Non-critical-arg opacity stays GREEN. **Set enumeration
+  is fundamentally leaky** — an **unlisted** dispatcher/wrapper with a literal `argv[0]`
+  still evades, so this is **residual #3**, NOT a closed gap (same honest-agent-guard
+  class as the interpreter escape / inherited-var redirect). The dispatcher/wrapper
+  sets and the gate's forward-on-suspicion charset (incl. brace/backslash) must be kept
+  current — Phase-1 tests enumerate them; new outward tools are added as discovered.
+- **Gate coverage (2nd-review P1-1 + F13):** the cheap entry gate must
+  forward-on-suspicion (all write verbs + `~`/`$HOME`/`..`/symlink + env-indirection
+  tokens, **and any `$(`/backtick/`$`/`${` in the first or dispatcher-verb token**) or
+  the R6 fast-path becomes an auto-allow hole for obfuscated control-plane writes or
+  opaque command words.
 - **Deterministic-only authority** (P0): no LLM in the dispose path
   (`project_deterministic-pre-filters`; spec-eval judge demotion precedent).
 
@@ -806,12 +881,12 @@ stateDiagram-v2
   `agent_type` is honestly set for all four roles and a worker cannot forge it (F5+F8).
   Step 0 checks it empirically across all roles, but it is **not** cryptographically
   proven; if it fails, fall back to blanket control-plane deny.
-  (2) That the **F6 unified residual** — an allowlisted framework running
-  worker-authored files can break **both** outward containment and control-plane
-  integrity (now shrunk by F7, not closed) — is an acceptable **declared** bound for
-  the intended honest-agent threat
-  model — resisting an adversarial worker would need network-layer egress control
-  (out of scope). Both are stated bounds, not silent assumptions.
+  (2) That the **three declared direct-call residuals** — the allowlisted-interpreter
+  escape (F6), the inherited-`$VAR` redirect (F11), and the **F13 set-enumeration leak**
+  (an unlisted dispatcher/exec-wrapper with a literal `argv[0]`) — are acceptable
+  **declared** bounds for the intended honest-agent threat model. Resisting an
+  adversarial worker would need network-layer egress control (out of scope). All three
+  are stated bounds, not silent assumptions.
 
 ---
 
@@ -857,7 +932,7 @@ demoted to advisory: `docs/solutions/2026-06-07-autopilot-orchestration-hardenin
 Review this plan as an adversarial second reader (fresh context):
 docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
 
-Read the "Deepening Review — Changelog" (R1–R8, F1–F12) and the "Threat Model"
+Read the "Deepening Review — Changelog" (R1–R8, F1–F13) and the "Threat Model"
 FIRST. v1 = Step 0 → Phase 1 → Phase 2. All /approve / pointer-commit /
 PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix), NOT v1. F5 = trusted-
 identity allowlist (not agent_id presence); F6 = every guarantee bounds to DIRECT
@@ -867,7 +942,9 @@ NOT a safety claim); F8 = Step 0 checks all four roles as a harness-contract
 assumption; F9 = env-indirected control-plane dest defers; F10 = autopilot DOES push
 to origin in the pre-spawn provenance gate, scoped out by the firebreak active
 window; F11 = TWO named direct-call residuals (interpreter escape + inherited-var
-redirect).
+redirect); F13 = fail-closed defer on opaque command-word/verb (`$(printf curl)`,
+`git $(printf push)`) — substantially reduces but does NOT close it (set enumeration
+is leaky → residual #3 = unlisted dispatcher/exec-wrapper with a literal argv[0]).
 
 Scrutinize:
 1. CONTROL-PLANE (F1+F5+F9): authority keyed on a TRUSTED-IDENTITY allowlist
