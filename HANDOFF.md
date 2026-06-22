@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-21
 **Branch:** master (in sync with origin, working tree clean)
-**Phase:** **G1 risk-tiered firebreak — BRAINSTORM COMPLETE, ready for PLAN phase.**
-Start a fresh session for planning (this handoff is the kickoff).
+**Phase:** **G1 risk-tiered firebreak — PLAN COMPLETE (deepened, v1 thinned), awaiting external Plan Review (Codex).**
+Next: paste the Codex handoff prompt (in the plan, "Codex Handoff Prompt" section) into Codex → bring findings back → apply fixes → Claude second pass → `/workflows:work` on the thinned v1.
 
 ## Current State
 
@@ -37,26 +37,47 @@ majority unattended.
   + package removal. **GREEN** = everything local in the worktree **+ the sanctioned
   learnings-propagation out-of-repo writes** (carve-out — must not be deferred).
 
-## What the PLAN phase must do (read the brainstorm first)
+## PLAN phase output (2026-06-21, session 2 — DONE)
 
-1. **Spike FIRST (the Feed-Forward "least confident" item):** verify a
-   **PreToolUse hook actually fires when `dangerouslySkipPermissions` is true.**
-   The whole mechanism depends on intercepting *above* the bypass. Encouraging
-   signal: CLAUDE.md already notes "security heuristics fire above
-   dangerouslySkipPermissions" — but confirm it for `PreToolUse` hooks
-   specifically before building anything. If it doesn't fire, the mechanism must
-   move (agent-brief contract or a wrapper around the risky tools).
-2. Resolve the 2 open questions in the brainstorm: (a) how approval resolves
-   (extend `resolve-todos` vs new `/approve`; auto-merge vs unblock); (b) the
-   deferred-merge × Required-Artifacts phase ordering (run reports `PIPELINE_PASS`
-   with merge pending — must not trip the "run completes" / self-audit contract).
-3. Honor the Plan Quality Gate (4 questions) + **EARS acceptance tests** translated
-   from the brainstorm's "What success looks like" bullets.
+1. **Spike GREEN (riskiest assumption verified first).** Empirically confirmed on
+   claude 2.1.173 that a **PreToolUse hook fires AND blocks above
+   `dangerouslySkipPermissions`** — for both the main session and a Task-spawned
+   subagent. Mechanism viable; no fallback (agent-brief/tool-wrapper) needed.
+   Residual = worktree-subagent firing + hook placement → gated as Step 0.
+   Proof: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`.
+2. **Plan written, passed both gates** (plan-quality-gate = GO, ears-validator =
+   PASS), then **deepened by 5 adversarial reviewers** (security, architecture,
+   simplicity, data-integrity, performance) and **thinned to a safety-complete v1**.
+3. **Both brainstorm open questions resolved:** (Q1) human-only approval via a
+   glob-isolated `todos/approvals/` queue (NOT extending `resolve-todos`, which runs
+   unattended); (Q2) no new run status needed.
+4. **Deepening Review changed the design** (table R1–R8 at top of plan):
+   - **R1** hook placement flipped **project → GLOBAL** + positive-control probe.
+   - **R2** the graceful **deferred-merge wiring CUT from v1** — the swarm-runner
+     merge is LOCAL and autopilot never pushes, so "merge-to-main" wasn't actually
+     irreversible; the draft's pointer-commit reproduced FC51 base-drift and risked
+     a silent false-`PIPELINE_PASS`. v1 merge-RED fires only on a `master`/shared
+     target and just defers + one HANDOFF line.
+   - **R3/R4** threat model restated honestly (guards honest mistakes + bounds
+     outward blast radius, NOT adversarial-proof) + evasion hardening (git `-C`
+     normalization, indirection-defer, outward allowlist incl. `gh api`/`npm
+     publish`/`nc`/`ssh`, `mcp__*` read-only allowlist).
+   - **R5** queue hardened: gitignore `todos/approvals/`, collision-free atomic
+     uuid filenames (the `NNN` sequence races across 31 workers).
+   - **R6** token-grep fast-path (python cold-start tax ≈ 7–12 min/run).
+   - **R8** `/approve` skill deferred to v2; `resolve-todos` guard stays.
+5. **User decisions (2026-06-21):** fully cut the status-mapping sliver (no v1
+   status engineering for a deferred master-merge); next phase = Plan Review (Codex).
+6. **v1 scope = Step 0 → Phase 1 → Phase 2.** v2 (deferred, documented): graceful
+   merge disposition, `/approve` skill, AI advisory pass.
 
 ## Key Artifacts (this session)
 
 | Item | Location |
 |------|----------|
+| **G1 PLAN (deepened, v1 thinned)** | **docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md** |
+| **G1 spike (riskiest assumption, GREEN)** | **docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md** |
+| Codex Plan-Review prompt | "Codex Handoff Prompt" section in the plan above |
 | G1 brainstorm (plan input) | docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md |
 | Governance scorecard (G1–G5) | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
 | Framework source PDF | docs/governance/three-layers-of-agent-security-deepmind-2026-06.pdf |
@@ -67,8 +88,9 @@ majority unattended.
 
 ## Deferred Backlog (priority order)
 
-0. **[ACTIVE → PLAN] G1 risk-tiered firebreak** — brainstorm done; next is
-   `/workflows:plan` (see "What the PLAN phase must do" above).
+0. **[ACTIVE → PLAN REVIEW] G1 risk-tiered firebreak** — plan done, deepened, v1
+   thinned. Next is external Plan Review (Codex prompt ready), then apply fixes →
+   Claude second pass → `/workflows:work` on v1 (Step 0 → Phase 1 → Phase 2).
 1. **FC51 orchestrator rule** — ensure the converged spec is at the worktree base
    before swarm spawn (cherry-pick the spec-update commit into worktree bases, OR
    inline-inject spec sections into briefs). Live fragility that bit Run 070.
@@ -103,21 +125,20 @@ majority unattended.
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md, then read docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md
-and the G1 item in docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md.
+Read HANDOFF.md, then read docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
+(start with the "Deepening Review — Findings & v1 Revisions" table — the plan was
+revised R1–R8; review the thinned v1: Step 0 → Phase 1 → Phase 2).
 
-This is Sandbox on master (clean). The G1 risk-tiered firebreak brainstorm is
-complete and plan-ready; all key decisions are locked (see the handoff). Run the
-PLAN phase: /workflows:plan on the G1 brainstorm.
+This is Sandbox. The G1 PLAN phase is COMPLETE: spike GREEN, plan passed both
+gates, deepened by 5 reviewers, thinned to v1. The next phase is PLAN REVIEW.
 
-Lead the plan with a SPIKE that verifies the riskiest assumption — that a
-PreToolUse hook fires when dangerouslySkipPermissions is true (intercepting above
-the bypass). Do not design the rest until that's confirmed; if it fails, the
-mechanism moves to the agent-brief contract or a tool wrapper.
+If Codex review findings exist: triage them (P0/P1/P2), apply fixes to the plan,
+then do a Claude second pass (per ~/.claude/docs/mandatory-review-workflow.md).
+If not yet reviewed: the copy-paste Codex prompt is in the plan's "Codex Handoff
+Prompt" section — run it in Codex, bring findings back.
 
-Then resolve the brainstorm's 2 open questions, honor the Plan Quality Gate (4
-questions), and write EARS acceptance tests from the brainstorm's "What success
-looks like" bullets. Relevant files: .claude/skills/autopilot/SKILL.md (spawn +
-bypassPermissions injection), .claude/settings.local.json, todos/ + resolve-todos
-skill, CLAUDE.md (Forbidden Actions). Don't change code in the plan phase.
+After Plan Review is clean: /workflows:work on the plan's v1 (Step 0 gating spike
+FIRST — global hook placement + the token-grep fast-path must pass before Phase 1).
+Don't build the v2-deferred items (graceful merge disposition, /approve skill, AI
+advisory pass).
 ```
