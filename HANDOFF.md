@@ -250,15 +250,32 @@ REVIEW FOR (P0/P1/P2, with file:line and a failing input where possible):
 5. The two fixes made during testing (escaping learnings path; `bash ` marker) —
    are they correct and complete, or do they mask a deeper issue?
 
+DECISION TO CONFIRM (held pending your verdict — do NOT assume; rule on it):
+- `npx`/`bunx` are package-runner wrappers that directly exec a command, so
+  `npx vercel deploy` currently resolves argv0 to `npx`, matches nothing, and is
+  ALLOWED (a real outward bypass; the gate forwards it via the `vercel` marker but
+  the classifier permits it). PROPOSED Phase-1 fix: add `npx`,`bunx` to the F13
+  exec-wrapper set so argv0 recurses to the real command (`npx vercel`→`vercel`→
+  deny); `npx -c '…'` is already covered by the nested-`-c` recursion. Two-token
+  runners (`pnpm dlx`,`yarn dlx`,`pipx run`,`deno run`) + arbitrary custom runners
+  would stay declared residual #3. QUESTION: is adding `npx`/`bunx` a Phase-1
+  must-fix, or acceptable as a v2 residual given the honest #3 declaration? The
+  author RECOMMENDS adding it now (npx is the most likely real instance in this
+  JS-heavy env and it enables exactly the deploy/publish actions the firebreak
+  exists to stop); deferred pending your call.
+
 OUT OF SCOPE: global ~/.claude/settings.json wiring, the orchestrator/SKILL.md
 sentinel+probe integration, Phase 2 (.gitignore + resolve-todos guard). Those are
 the post-review activation steps.
 
-Return: verdict (GO / GO-WITH-FIXES / NO-GO) + a P0/P1/P2 findings table.
+Return: verdict (GO / GO-WITH-FIXES / NO-GO) + a P0/P1/P2 findings table + an
+explicit ruling on the npx/bunx decision above.
 ```
 
-After Codex returns: triage P0/P1/P2, apply fixes (re-run BOTH suites green),
-run my own adversarial second pass (~/.claude/docs/mandatory-review-workflow.md),
-THEN proceed to the activation layer (global wire + orchestrator integration)
-as a separate, explicitly-approved step. Decision to push the branch is the
-user's — not pushed yet.
+After Codex returns: triage P0/P1/P2, apply fixes (re-run ALL THREE suites green),
+**implement the npx/bunx wrapper fix IF Codex confirms it** (held at user request
+until then — proposed change + tests already scoped in the 2nd-review doc), run my
+own adversarial second pass (~/.claude/docs/mandatory-review-workflow.md), THEN
+proceed to the activation layer (global wire + orchestrator integration) as a
+separate, explicitly-approved step. Decision to push the branch is the user's —
+not pushed yet.
