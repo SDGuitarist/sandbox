@@ -10,6 +10,13 @@ workers will never read (FC52: gate/use provenance drift). Run 070: all 16
 workers read a 2010-line stale spec while the gates validated the 2295-line
 converged one -- missed only by luck.
 
+Run 071 added the baseRef-fresh facet (FC52-BASEREF-FRESH-071): under Agent
+isolation worktrees with baseRef=fresh, workers root on origin/<default>, not
+the LOCAL default branch. A gate that verifies the local branch can issue a
+false PROVENANCE_OK while workers consume a stale origin. When origin/<default>
+exists, this detector resolves the comparison base to that remote-tracking ref
+and warns when the local branch has unpushed commits.
+
 This is the DETECTION half of autopilot SKILL Step 9w.9.5. It compares the spec's
 git blob SHA on the two branches. It does NOT repair (the inline-injection repair
 is agent judgment) -- it reports OK vs DRIFT so the orchestrator decides.
@@ -68,6 +75,28 @@ def _blob_sha(repo: str, branch: str, spec_path: str) -> str | None:
     return cp.stdout.strip() if cp.returncode == 0 else None
 
 
+def _resolve_base_ref(repo: str, default_branch: str):
+    """Return (base_ref, warning) -- the ref worker worktrees actually root on.
+
+    Under Agent isolation:"worktree" with baseRef=fresh, worktrees root on
+    origin/<default>, NOT the local branch (FC52-BASEREF-FRESH-071). When the
+    remote-tracking ref exists it is authoritative and the comparison runs
+    against it. Falls back to the local branch when no remote-tracking ref
+    exists (e.g. fixture repos with no remote -- keeps F-D1 behavior unchanged).
+    """
+    origin_ref = f"origin/{default_branch}"
+    if not _branch_exists(repo, origin_ref):
+        return default_branch, None
+    warn = None
+    local_tip = _git(repo, "rev-parse", default_branch).stdout.strip()
+    origin_tip = _git(repo, "rev-parse", origin_ref).stdout.strip()
+    if local_tip != origin_tip:
+        warn = (f"local {default_branch} ({local_tip[:7]}) != {origin_ref} "
+                f"({origin_tip[:7]}) -- unpushed local commits; workers consume "
+                f"{origin_ref} under baseRef=fresh. Push before spawn.")
+    return origin_ref, warn
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _Parser(description="Detect spec-provenance drift before swarm spawn.")
     parser.add_argument("--default-branch", required=True,
@@ -87,7 +116,10 @@ def main(argv: list[str] | None = None) -> int:
             sys.stderr.write(f"STATUS: ERROR -- branch not found: {branch}\n")
             return EXIT_ERROR
 
-    base_sha = _blob_sha(args.repo, args.default_branch, args.spec_path)
+    base_ref, base_warn = _resolve_base_ref(args.repo, args.default_branch)
+    if base_warn:
+        sys.stderr.write(f"WARNING: {base_warn}\n")
+    base_sha = _blob_sha(args.repo, base_ref, args.spec_path)
     feat_sha = _blob_sha(args.repo, args.original_branch, args.spec_path)
 
     if base_sha is None and feat_sha is None:
@@ -101,12 +133,12 @@ def main(argv: list[str] | None = None) -> int:
     # would read a missing/different file than the gates validated).
     if base_sha == feat_sha:
         print(f"STATUS: PROVENANCE_OK -- {args.spec_path}")
-        print(f"default({args.default_branch})={base_sha} == "
+        print(f"default({base_ref})={base_sha} == "
               f"original({args.original_branch})={feat_sha}")
         return EXIT_OK
 
     print(f"STATUS: PROVENANCE_DRIFT -- {args.spec_path}")
-    print(f"default({args.default_branch})={base_sha or 'ABSENT'} != "
+    print(f"default({base_ref})={base_sha or 'ABSENT'} != "
           f"original({args.original_branch})={feat_sha or 'ABSENT'}")
     return EXIT_DRIFT
 

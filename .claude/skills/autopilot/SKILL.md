@@ -615,6 +615,14 @@ The worktree base is harness-opaque, so run this gate as a strict sequence —
 detect, repair, re-verify (the proof), then record. Never spawn until the
 re-verify passes (cherry-pick channel) or the fallback is recorded:
 
+0. **Pre-check (FC52-BASEREF-FRESH-071).** Worker worktrees under `baseRef=fresh`
+   root on `origin/<default-branch>`, NOT the local branch. Run
+   `git rev-parse <default-branch> origin/<default-branch>` and require the two
+   hashes EQUAL before proceeding. If local is ahead (e.g. a spec repair was
+   committed locally), PUSH to origin first -- a local-only commit makes any
+   local verdict a potential false PASS. The detector below also self-resolves
+   to `origin/<default-branch>` when it exists and prints a WARNING on
+   divergence -- treat that warning as a STOP, not advice.
 1. **Detect (run the shared detector).** Run:
    `python tools/check_spec_provenance.py --default-branch <default-branch> --original-branch <original_branch> --spec-path docs/plans/<spec>.md`
    (use the actual default branch name; `<original_branch>` is the orchestrator's
@@ -656,9 +664,10 @@ re-verify passes (cherry-pick channel) or the fallback is recorded:
    - **Cherry-pick channel:** re-run `tools/check_spec_provenance.py` with the same
      args. Require `STATUS: PROVENANCE_OK` (exit 0) before spawn. If it is anything
      else, ABORT the spawn — the repair did not close the drift. This re-run IS the
-     proof that all worktrees will read the converged spec (valid as long as
-     worktrees root on the default-branch HEAD in this same repo — the standing
-     assumption in this step; if that ever changes, this proof changes too).
+     proof that all worktrees will read the converged spec (valid because the
+     detector resolves against origin/<default-branch> when it exists — the ref
+     worktrees actually root on under baseRef=fresh, FC52-BASEREF-FRESH-071;
+     a local-only divergence is WARNED and must be pushed before spawn).
    - **Injection fallback:** the detector will still report `PROVENANCE_DRIFT` (file
      unchanged). Record an explicit **injected-section manifest** (the list of spec
      section titles injected, derived from the spec diff between base and feature).
