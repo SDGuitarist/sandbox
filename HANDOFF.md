@@ -1,10 +1,21 @@
 # HANDOFF — Sandbox
 
 **Date:** 2026-06-22
-**Branch:** master (in sync with origin, working tree clean)
-**Phase:** **G1 risk-tiered firebreak — PLAN through 6 review passes (R1–R8, F1–F13); Codex NO-GO addressed; build-ready pending Step 0. Awaiting a confirming Codex GO/NO-GO.**
-Plan at commit **`4ed63fe`** (master, pushed), 1003 lines. Next: re-run the Codex GO/NO-GO (prompt below). If **GO** → `/workflows:work` on the plan (Step 0 spike FIRST). If **NO-GO** → triage the P0(s), fix, re-loop.
-**Do NOT skip Step 0** — it is the empirical gate for the whole identity model + worktree-firing + fast-path shape.
+**Branch:** `feat/g1-risk-tiered-firebreak` (working tree clean; **NOT pushed** — local only)
+**Phase:** **G1 risk-tiered firebreak — Plan GO ✅ → Step 0 PASS ✅ → Phase 1 CORE built + tested ✅. Checkpointed for review BEFORE activation.**
+Latest commit **`ceb8f50`**. Plan: `docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md` (1008 lines). Step 0 results: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`.
+
+**What's built (committed on the feature branch — `66182d9`, `ceb8f50`):**
+- `.claude/hooks/firebreak-classify.py` — deterministic classifier, pure stdlib, full decision order (F13 opaque-word → control-plane/F9 → outward → indirection → mcp → fail-closed), Step-0 identity contract, atomic approval-record writer. **51/51** unit tests (`test_firebreak_classify.py`), one per EARS criterion + residual #3.
+- `.claude/hooks/firebreak-gate.sh` — cheap entry gate (R6). Fast-paths GREEN, forwards only on envelope-safe markers, carries the Step-0 brace/backslash constraint, inspects `file_path` not `content`. **10/10** tests (`test_firebreak_gate.py`), incl. proof the fast-path does not spawn python.
+- Run the suites: `python3 .claude/hooks/test_firebreak_classify.py` and `python3 .claude/hooks/test_firebreak_gate.py`.
+
+**Phase 1 REMAINING — the activation layer (deliberately NOT done; user chose checkpoint-for-review):**
+1. Wire the gate into **global `~/.claude/settings.json`** `hooks.PreToolUse` (matcher `Bash|mcp__*|Write|Edit`, command `bash .claude/hooks/firebreak-gate.sh`). Step-0-locked placement; **global change** (no-op without a sentinel).
+2. **Orchestrator integration** (autopilot `SKILL.md`): write the sentinel after the provenance gate / before worker spawn, flip `phase→tail` before the tail-runner, run the **positive-control real-spawn probe** (abort if not live), remove the sentinel at run end.
+3. **Phase 2:** `.gitignore` (`.claude/firebreak-active.json`, `todos/approvals/`) + approvals-queue schema polish + `resolve-todos` guard.
+
+**Two bugs found & fixed during Phase-1 testing** (worth a reviewer's eye): a trusted learnings-writer could write an escaping path (`dev-notes/../.ssh/x`) — now denied for everyone outside the sanctioned set; the `bash` gate marker collided with the `"Bash"` tool name (every Bash call force-forwarded) — now requires a trailing space.
 
 ## Current State
 
@@ -184,34 +195,59 @@ majority unattended.
 | `feat/film-production-pm` | `9b432bf` | 2nd-parent lineage of `49deb17` on master |
 | `test/fc52-9w95-rewire-real-swarm` | `998854e` | reflog / GC window (~30d) |
 
-## Prompt for Next Session
+## Codex Handoff Prompt — Phase 1 CODE REVIEW (run this next)
 
 ```
-Read HANDOFF.md, then read docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
-START with the "Deepening Review — Changelog" (R1–R8, F1–F13) and the "Threat Model"
-— the plan has been through 6 review passes. v1 = Step 0 → Phase 1 → Phase 2; all
-/approve / pointer-commit / PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix).
+You are reviewing Phase 1 of the G1 risk-tiered firebreak in the Sandbox repo,
+branch feat/g1-risk-tiered-firebreak (local, not pushed; latest commit ceb8f50).
 
-This is Sandbox (commit 4ed63fe). G1 plan is build-ready PENDING Step 0. A prior
-Codex pass returned NO-GO (F10 window contradiction, resolve-todos overclaim,
-shared-master wording) and a separate P0 (opaque command-word escape) — ALL fixed
-(F10, F13, honest 3-residual threat model). The current state is: awaiting a
-CONFIRMING Codex GO/NO-GO.
+CONTEXT (read these first):
+- Plan:  docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md — start with
+  "1. The classifier", "The RED tier — v1", "Acceptance Tests (EARS)", and the
+  "Deepening Review — Changelog" (R1–R8, F1–F13).
+- Step 0 results: docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md
+  (identity contract: orchestrator=no agent_id/type; trusted=agent_type in
+  {swarm-runner,tail-runner}; worker=else. Gate must match ONLY envelope-safe
+  markers; brace/backslash obfuscation handled in python, not raw-JSON grep).
 
-DO THIS:
-1. If a fresh Codex GO/NO-GO verdict exists: triage it (P0/P1/P2), apply fixes,
-   re-run my own adversarial second pass (per ~/.claude/docs/mandatory-review-workflow.md),
-   commit+push, loop until GO.
-2. If not yet re-reviewed: the GO/NO-GO Codex prompt is in the plan's "Codex Handoff
-   Prompt" section — run it, bring the verdict back.
-3. On GO: /workflows:work on the plan's v1. STEP 0 FIRST (gating spike):
-   - global hook placement governs a REAL isolation:worktree + bypassPermissions agent;
-   - the F8 all-four-roles agent_type identity check holds (harness-contract);
-   - the token-grep fast-path + F13 brace/backslash forwarding survive the bypass heuristics.
-   Do NOT build v2-deferred items (graceful merge disposition, /approve skill, AI advisory).
+CODE UNDER REVIEW (only these — activation layer is intentionally NOT built yet):
+- .claude/hooks/firebreak-classify.py     (deterministic classifier)
+- .claude/hooks/firebreak-gate.sh         (cheap entry gate, R6)
+- .claude/hooks/test_firebreak_classify.py (51 cases)
+- .claude/hooks/test_firebreak_gate.py     (10 cases)
+Run: python3 .claude/hooks/test_firebreak_classify.py ; python3 .claude/hooks/test_firebreak_gate.py
+Both must print "N/N passed".
 
-KEY HONESTY INVARIANTS to preserve (Codex will re-check): every guarantee is bounded
-to DIRECT worker tool calls with THREE declared residuals (#1 interpreter escape,
-#2 inherited-$VAR redirect, #3 F13 unlisted-dispatcher/wrapper leak); autopilot's only
-push is the pre-spawn provenance push (conditional, pre-sentinel, scoped out by ordering).
+REVIEW FOR (P0/P1/P2, with file:line and a failing input where possible):
+1. SOUNDNESS — can a WORKER get a RED action to ALLOW? Probe the decision order
+   (F13 short-circuits first), the shell tokenizer (shell_words / resolve_argv0 —
+   exec-wrapper recursion, VAR= stripping, dispatcher-verb opacity), git
+   normalization (-C/-c/--git-dir), F9 escaping/opaque write dests, control-plane
+   realpath matching, the learnings carve-out (identity + sanctioned target + no
+   ../symlink escape), and mcp read-only allowlist. Find evasions.
+2. GATE COMPLETENESS — is the gate's marker set a true SUPERSET of classifier
+   denials? Any RED command/path the gate fast-paths (never forwards) so the
+   classifier never sees it? (We know the residual: an absolute non-home,
+   non-recognized-verb Bash write — is there worse?) Also check no other marker
+   collides with envelope structural fields the way `bash`→`"Bash"` did.
+3. FAIL-CLOSED & RECORD INTEGRITY — unparseable envelope, classifier exception,
+   atomic write (temp+os.rename), filename RED-<run>-<cat>-<uuid>.md, deny still
+   fires when the record write fails.
+4. HONESTY — does the code match the plan's THREE declared residuals (interpreter
+   escape, inherited-$VAR redirect, F13 unlisted dispatcher/wrapper)? Any
+   guarantee that's broader in the comments than in the code?
+5. The two fixes made during testing (escaping learnings path; `bash ` marker) —
+   are they correct and complete, or do they mask a deeper issue?
+
+OUT OF SCOPE: global ~/.claude/settings.json wiring, the orchestrator/SKILL.md
+sentinel+probe integration, Phase 2 (.gitignore + resolve-todos guard). Those are
+the post-review activation steps.
+
+Return: verdict (GO / GO-WITH-FIXES / NO-GO) + a P0/P1/P2 findings table.
 ```
+
+After Codex returns: triage P0/P1/P2, apply fixes (re-run BOTH suites green),
+run my own adversarial second pass (~/.claude/docs/mandatory-review-workflow.md),
+THEN proceed to the activation layer (global wire + orchestrator integration)
+as a separate, explicitly-approved step. Decision to push the branch is the
+user's — not pushed yet.
