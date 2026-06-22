@@ -180,7 +180,8 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
   **positive-control probe** spawns a real worktree subagent and **aborts the run**
   if the firebreak isn't live (R1, F1).
 - A gitignored **`todos/approvals/` queue** of deferred RED actions, atomic
-  collision-free filenames, classifier as sole writer (R5).
+  collision-free filenames, classifier as the **intended sole writer**
+  (direct-call-bounded — see §3 / F6 residual).
 - A **`resolve-todos` guard** so the unattended resolver never touches the queue.
 - **Control-plane protection** (F1): worker subagents cannot Write/Edit/Delete the
   hook config, hook scripts, sentinel, or approvals queue **via a direct tool call**
@@ -190,8 +191,13 @@ hard-blocks the next run. Feature-branch merges are GREEN, so this rarely arises
 - The `resolve-todos` queue structure/behavior (reuse).
 - The Required-Artifacts contract (BUILD_TRACKING, solution doc, learnings,
   HANDOFF, self-audit) — all still produced.
-- The **sanctioned learnings-propagation writes** — GREEN via the F3 carve-out;
-  the firebreak must never defer them.
+- The **learnings-propagation writes** must never be deferred — but note the two
+  distinct paths: the **out-of-repo** targets (`~/.claude/docs/agent-pitfalls.md`,
+  `~/Documents/dev-notes/**`, `~/.claude/projects/<key>/memory/**`) are GREEN **only
+  via the F3 carve-out** (the carve-out exists for these out-of-repo targets and
+  nothing else); the **in-repo** learnings writes (`docs/solutions/*`, project-root
+  `compound-engineering.local.md`) are GREEN as **ordinary worktree writes**, not via
+  the carve-out.
 - GREEN throughput: **zero added deferrals** for local worktree work (file writes,
   local commits, tests, reads) — the fast-path keeps python off that path (R6). **One
   narrow exception (F9):** a control-plane-capable write verb aimed at a
@@ -230,12 +236,17 @@ the worker path.
 ### Component map
 
 ```
-  orchestrator (main session)
-     │  run start: write .claude/firebreak-active.json
+  orchestrator (main session) — firebreak NOT yet active
+     │  pre-spawn spec-provenance gate (SKILL.md 9w.9.5)
+     │     └─ MAY conditionally `git push` a spec-only commit to origin
+     │        (outside the firebreak window — F10; not classified)
+     ▼
+  ── firebreak active window begins ──────────────────────────────
+     │  write .claude/firebreak-active.json
      │  {run_id, repo_root, project_key, phase, test_allowlist}   (gitignored)
      │  positive-control probe → spawn REAL worktree subagent that
      │     attempts a known-RED cmd + a control-plane write
-     │       └─ both DENIED?  no → ABORT RUN     yes → proceed
+     │       └─ both DENIED?  no → ABORT RUN     yes → proceed to worker spawn
      ▼
   worker / tail subagent attempts a tool call (Bash | mcp__* | Write | Edit)
      │
@@ -411,8 +422,11 @@ learnings carve-out.
   `-pending-` token (defense-in-depth).
 - Filename **`RED-<run_id>-<category>-<uuid>.md`** (R5) — collision-free across
   concurrent workers; written **atomically** (temp-file + `os.rename()`). The
-  classifier is the **sole** writer (and F1 keeps workers from tampering with the
-  dir).
+  classifier is the **intended sole** writer: F1 denies a **worker's direct tool
+  call** that would Write/Edit/Delete under `todos/approvals/`. This is **bounded to
+  direct tool calls** — a worker routing through an allowlisted interpreter can still
+  write the dir in-process (declared F6/F11 residual #1), so "sole writer" is a
+  direct-call invariant, not an absolute one.
 - Frontmatter + body record the **replayable payload** and SHAs:
 
 ```yaml
