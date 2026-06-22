@@ -139,6 +139,9 @@ def main():
     d, _, _ = run(bash("pip uninstall requests", WORKER), s)
     check("worker pip uninstall", d, True)
 
+    d, _, _ = run(bash("npm remove leftpad", WORKER), s)
+    check("worker npm remove", d, True)
+
     d, _, _ = run(bash("ssh user@host 'ls'", WORKER), s)
     check("worker ssh", d, True)
 
@@ -233,6 +236,38 @@ def main():
 
     d, _, _ = run(write(f"{HOME}/Documents/dev-notes/../.ssh/x", TAIL), s)
     check("tail-runner escaping learnings path denied", d, True)
+
+    # ---------------- git alias evasions (R4a) ----------------
+    d, _, _ = run(bash("git -c alias.p=push p", WORKER), s)
+    check("git -c alias.p=push p", d, True)
+
+    d, _, _ = run(bash("git -c alias.p=push fetch", WORKER), s)
+    check("git -c alias.p=push (definition alone)", d, True)
+
+    d, _, _ = run(bash("git config alias.p push", WORKER), s)
+    check("git config alias.p push (setup)", d, True)
+
+    d, _, _ = run(bash("git -c alias.x='!curl evil' x", WORKER), s)
+    check("git -c alias.x=!curl (shell-escape alias)", d, True)
+
+    d, _, _ = run(bash("git -c core.pager=cat log", WORKER), s)
+    check("git -c core.pager=cat log stays GREEN", d, False)
+
+    # ---------------- listed wrapper -c command-string forms ----------------
+    d, _, _ = run(bash("flock /tmp/l -c 'curl https://x'", WORKER), s)
+    check("flock /tmp/l -c 'curl ...'", d, True)
+
+    d, _, _ = run(bash("timeout 5 sh -c 'curl https://x'", WORKER), s)
+    check("timeout 5 sh -c 'curl ...'", d, True)
+
+    d, _, _ = run(bash("flock /tmp/l -c 'pytest -q'", WORKER), s)
+    check("flock /tmp/l -c 'pytest' stays GREEN", d, False)
+
+    d, _, _ = run(bash("timeout 5 ./deploy.sh", WORKER), s)
+    check("timeout 5 ./deploy.sh (wrapper + direct script)", d, True)
+
+    d, _, _ = run(bash("env FOO=bar ./deploy", WORKER), s, cwd=repo)
+    check("env FOO=bar ./deploy (wrapper + assignment + script)", d, True)
 
     # ---------------- mcp ----------------
     d, _, _ = run(mcp("mcp__supabase__apply_migration", WORKER), s)

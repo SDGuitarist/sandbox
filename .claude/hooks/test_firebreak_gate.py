@@ -99,6 +99,40 @@ def main():
         {"tool_name": "mcp__supabase__get_project", "tool_input": {}, **WORKER})
     check("mcp get_project forwarded but allowed", spawned and not deny)
 
+    # Brace/backslash command-word obfuscation -- matched against the extracted
+    # COMMAND (not raw JSON), so the envelope's `{` no longer collapses this.
+    spawned, deny, _ = run_gate(bash("c{u,}rl https://x"))
+    check("F13 brace 'c{u,}rl' forwarded + denied", spawned and deny)
+
+    spawned, deny, _ = run_gate(bash(r"\cu\rl https://x"))
+    check("F13 backslash '\\cu\\rl' forwarded + denied", spawned and deny)
+
+    # Direct script-path argv0 (./x, path/to/x, /abs/x) -- forwarded + denied.
+    spawned, deny, _ = run_gate(bash("./deploy"))
+    check("direct './deploy' forwarded + denied", spawned and deny)
+
+    spawned, deny, _ = run_gate(bash("scripts/deploy --prod"))
+    check("path 'scripts/deploy' forwarded + denied", spawned and deny)
+
+    spawned, deny, _ = run_gate(bash("/usr/local/bin/ship"))
+    check("abs '/usr/local/bin/ship' forwarded + denied", spawned and deny)
+
+    # $HOME-rooted Write path -> forwarded + denied (out-of-worktree).
+    spawned, deny, _ = run_gate(write("$HOME/evil.txt"))
+    check("$HOME Write path forwarded + denied", spawned and deny)
+
+    # npm remove (superset gap found in 2nd review) -> forwarded + denied.
+    spawned, deny, _ = run_gate(bash("npm remove leftpad"))
+    check("npm remove forwarded + denied", spawned and deny)
+
+    # GREEN over-forward guards: a quoted arg (JSON-escaped \") and a path ARG must
+    # NOT trip brace/backslash/script-path -> stay fast-path.
+    spawned, deny, _ = run_gate(bash('git commit -m "wip fix"'))
+    check("GREEN quoted-arg commit stays fast-path", not spawned and not deny)
+
+    spawned, deny, _ = run_gate(bash("cat src/module/file.py"))
+    check("GREEN 'cat src/..' path-ARG stays fast-path", not spawned and not deny)
+
     total = len(_results)
     passed = sum(1 for _, ok in _results if ok)
     print(f"\n{passed}/{total} passed")

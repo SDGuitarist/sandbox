@@ -324,6 +324,92 @@ def git_normalized_rest(rest):
     return out
 
 
+# Git subcommands that are outward / irreversible (push + history rewrite).
+GIT_OUTWARD_VERBS = ("push", "filter-repo", "filter-branch")
+
+
+def extract_nested_commands(words):
+    """Command strings handed to a `-c` flag -- `sh -c '<cmd>'`, `bash -c`,
+    `flock /tmp/l -c '<cmd>'`, `timeout 5 sh -c '<cmd>'`, etc. The real action
+    lives inside the string, so the classifier must recurse into it. (`python -c`
+    runs python, not a shell command, but the top-level interpreter check already
+    defers it -- a harmless extra recursion.)"""
+    out = []
+    for i in range(len(words) - 1):
+        if strip_quotes(words[i]) == "-c":
+            out.append(strip_quotes(words[i + 1]))
+    return out
+
+
+def git_alias_defs(rest):
+    """Inline `-c alias.NAME=VALUE` definitions (git config-alias evasion of the
+    push denylist: `git -c alias.p=push p`)."""
+    defs, i = {}, 0
+    while i < len(rest):
+        w, val = rest[i], None
+        if w == "-c" and i + 1 < len(rest):
+            val = strip_quotes(rest[i + 1])
+            i += 2
+        elif w.startswith("-c") and len(w) > 2:
+            val = w[2:]
+            i += 1
+        else:
+            i += 1
+            continue
+        m = re.match(r"alias\.([^=]+)=(.*)", val)
+        if m:
+            defs[m.group(1)] = m.group(2)
+    return defs
+
+
+def git_alias_value_category(value, identity, repo_root, sentinel, depth):
+    """A git alias/config VALUE -> RED category or None. `!<shell>` runs a shell
+    command (classify it; a bare `!`-escape is outward by default); otherwise the
+    value is a git subcommand whose first word is checked against the denylist."""
+    v = strip_quotes(value).strip()
+    if not v:
+        return None
+    if v.startswith("!"):
+        return classify_bash_command(v[1:].strip(), identity, repo_root,
+                                     sentinel, depth + 1) or "external-send"
+    if v.split()[0] in GIT_OUTWARD_VERBS:
+        return "shared-push"
+    return None
+
+
+def git_outward_category(rest, identity, repo_root, sentinel, depth):
+    """git push / history-rewrite, resolving inline aliases and config-alias setup.
+    A LOCAL `git merge --no-ff` (no push) stays GREEN (F5)."""
+    nrest = git_normalized_rest(rest)
+    verb = nrest[0] if nrest else None
+    aliases = git_alias_defs(rest)
+    # 1. any inline alias DEFINITION whose value is outward -> defer (whether or
+    #    not it is invoked in this same command).
+    for val in aliases.values():
+        c = git_alias_value_category(val, identity, repo_root, sentinel, depth)
+        if c:
+            return c
+    # 2. resolve the invoked verb THROUGH an inline alias, then check.
+    effective = aliases.get(verb, verb)
+    if effective:
+        c = git_alias_value_category(effective, identity, repo_root, sentinel, depth)
+        if c:
+            return c
+    # 3. `git config alias.NAME <outward...>` -- setting a dangerous alias.
+    if verb == "config":
+        joined = " ".join(strip_quotes(t) for t in nrest[1:])
+        m = re.match(r"alias\.[^\s=]+[\s=]+(.*)", joined)
+        if m:
+            c = git_alias_value_category(m.group(1), identity, repo_root,
+                                         sentinel, depth)
+            if c:
+                return c
+    # 4. plain push / history rewrite.
+    if verb in GIT_OUTWARD_VERBS:
+        return "shared-push"
+    return None
+
+
 # --------------------------------------------------------------------------- #
 # Bash categories
 # --------------------------------------------------------------------------- #
@@ -419,7 +505,7 @@ def bash_destructive(words, cmd, repo_root, sentinel):
     return None
 
 
-def bash_outward(words, sentinel):
+def bash_outward(words, sentinel, identity, repo_root, depth):
     """Outward / irreversible (allowlist-deny). Local git merge stays GREEN."""
     argv0, rest = resolve_argv0(words, sentinel)
     if argv0 is None:
@@ -465,14 +551,9 @@ def bash_outward(words, sentinel):
         if first_verb(rest) in ("uninstall", "remove", "rm", "publish"):
             return "package"
 
-    # git push / force / history rewrite of (possibly) pushed commits
+    # git push / force / history rewrite (resolves inline `-c alias.*` evasion)
     if a0 == "git":
-        nrest = git_normalized_rest(rest)
-        verb = nrest[0] if nrest else None
-        if verb == "push":
-            return "shared-push"
-        if verb in ("filter-repo", "filter-branch"):
-            return "shared-push"
+        return git_outward_category(rest, identity, repo_root, sentinel, depth)
     return None
 
 
@@ -518,6 +599,36 @@ def _matches_known_test_framework(a0, raw0, rest):
     if a0 == "cargo":
         return len(rl) >= 1 and rl[0] == "test"
     return False
+
+
+def classify_bash_command(cmd, identity, repo_root, sentinel, depth=0):
+    """Full Bash classification -> RED category or None. Recurses into nested
+    `-c` command strings (sh/bash/flock -c '<cmd>') and git `!`-aliases so the
+    real action behind a listed exec-wrapper or alias cannot evade the denylist."""
+    if depth > 4:                       # runaway nesting -> fail closed
+        return "fail-closed"
+    words = shell_words(cmd)
+    for inner in extract_nested_commands(words):
+        c = classify_bash_command(inner, identity, repo_root, sentinel, depth + 1)
+        if c:
+            return c
+    if identity == "worker":            # F13 first -- short-circuits
+        c = f13_opaque_defer(words, sentinel)
+        if c:
+            return c
+    c = bash_control_plane(words, cmd, identity, repo_root, sentinel)
+    if c:
+        return c
+    c = bash_destructive(words, cmd, repo_root, sentinel)
+    if c:
+        return c
+    c = bash_outward(words, sentinel, identity, repo_root, depth)
+    if c:
+        return c
+    c = bash_indirection(words, cmd, sentinel)
+    if c:
+        return c
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -577,34 +688,9 @@ def classify(env, sentinel):
     # ---- Bash -------------------------------------------------------------
     if tool == "Bash":
         cmd = tin.get("command", "") or ""
-        words = shell_words(cmd)
-
-        # F13 FIRST -- short-circuits before any GREEN branch (worker-scoped)
-        if identity == "worker":
-            cat = f13_opaque_defer(words, sentinel)
-            if cat:
-                return "deny", cat, f"opaque command word/verb: {cmd}"
-
-        # control-plane / out-of-repo / opaque write verb (F1 + F9)
-        cat = bash_control_plane(words, cmd, identity, repo_root, sentinel)
+        cat = classify_bash_command(cmd, identity, repo_root, sentinel, 0)
         if cat:
-            return "deny", cat, f"control-plane/escaping write: {cmd}"
-
-        # data / out-of-repo deletes
-        cat = bash_destructive(words, cmd, repo_root, sentinel)
-        if cat:
-            return "deny", cat, f"destructive/out-of-repo: {cmd}"
-
-        # outward / irreversible
-        cat = bash_outward(words, sentinel)
-        if cat:
-            return "deny", cat, f"outward/irreversible: {cmd}"
-
-        # indirection (allowlist KNOWN_TEST_FRAMEWORKS)
-        cat = bash_indirection(words, cmd, sentinel)
-        if cat:
-            return "deny", cat, f"indirection (not an allowlisted framework): {cmd}"
-
+            return "deny", cat, f"bash RED ({cat}): {cmd}"
         return "allow", None, "local/build"
 
     # ---- mcp__* -----------------------------------------------------------
