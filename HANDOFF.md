@@ -1,82 +1,123 @@
 # HANDOFF — Sandbox
 
-**Date:** 2026-06-09
-**Branch:** master
-**Phase:** Run 070 + orchestration-hardening + fixture suite **SHIPPED TO MASTER**.
-NEXT: deferred backlog, starting with the **FC51 orchestrator rule** (#3 below).
+**Date:** 2026-06-21
+**Branch:** master (in sync with origin, working tree clean)
+**Phase:** **G1 risk-tiered firebreak — BRAINSTORM COMPLETE, ready for PLAN phase.**
+Start a fresh session for planning (this handoff is the kickoff).
 
 ## Current State
 
-The 120-commit `feat/film-production-pm` line is **merged into master** via a
-`--no-ff` merge commit (**`49deb17`**) and **pushed to origin**. Local and remote
-`master` are in sync. The feature branch (local + remote) and the throwaway
-`test/fc52-9w95-rewire-real-swarm` branch have been **deleted** (all commits are
-preserved in master's history).
+Today's session (manual) produced three governance/knowledge artifacts and one
+completed brainstorm, all committed and pushed to master:
 
-What shipped:
-- **Run 070 Film Production PM** app (16-agent swarm, validate-on-real-build vehicle).
-- **All 3 orchestration-hardening tracks** — A (cherry-pick assembly / FC51),
-  B (orchestration-entrypoint presence guard / FC50), C (spec-eval demotion).
-- **Orchestration-hardening fixture suite** (`eval-harness/validate_hardening.py`)
-  — negative-test regression net; honest fidelity vocabulary
-  (EXERCISED / SPIKE-VALIDATED / PROSE-ASSERTED / MIRRORED).
-- **FC52 spec-provenance detector** (`tools/check_spec_provenance.py`) +
-  SKILL 9w.9.5 share-not-fork rewire.
-- Meta-analysis + 4 solution docs + learnings propagation.
+1. **Master extraction** of all unattended-swarm/autopilot/guardrails/evals work —
+   `docs/solutions/2026-06-21-unattended-swarm-autopilot-master-extraction.md`.
+2. **Governance analysis** scoring the autopilot system against Google DeepMind's
+   *Three Layers of Agent Security* (June 2026) — surfaced 5 gaps (G1–G5) —
+   `docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`
+   (+ source PDF in the same dir).
+3. **G1 brainstorm** (refined, 2 review passes, plan-ready) —
+   `docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md`.
 
-All gates were GREEN at merge: 3 Codex rounds (R1/R2/R3 GO), 9w.9.5 rewire
-scoped-validated, pre-merge safety check CLEAN, merge fast-forward-safe (zero
-conflicts).
+**G1 in one line:** a risk-tiered firebreak that enforces CLAUDE.md's existing
+"Forbidden Actions" contract (currently unenforced under
+`dangerouslySkipPermissions`) by classifying actions and **deferring** the
+binding/irreversible tail to the `todos/` approval queue, keeping the safe
+majority unattended.
 
-## Recovery SHAs (if ever needed)
+## Decisions already locked in the G1 brainstorm
+
+- **Escalation = defer-and-continue** via the existing `todos/` + `resolve-todos`
+  queue (human = async batch reviewer, not a 2am babysitter).
+- **Classifier = deterministic denylist (v1) → hybrid w/ AI advisory (Phase 2).**
+  Deterministic always dispositive; AI only ever flags blind spots.
+- **Merge-to-`main` = RED** (deferred for approval; v1 does NOT redesign assembly).
+- **RED tier** = git force/shared-push + merge-to-main + prod-DB destructive +
+  out-of-repo deletes + external sends + deploy + external-MCP-writes (default-deny)
+  + package removal. **GREEN** = everything local in the worktree **+ the sanctioned
+  learnings-propagation out-of-repo writes** (carve-out — must not be deferred).
+
+## What the PLAN phase must do (read the brainstorm first)
+
+1. **Spike FIRST (the Feed-Forward "least confident" item):** verify a
+   **PreToolUse hook actually fires when `dangerouslySkipPermissions` is true.**
+   The whole mechanism depends on intercepting *above* the bypass. Encouraging
+   signal: CLAUDE.md already notes "security heuristics fire above
+   dangerouslySkipPermissions" — but confirm it for `PreToolUse` hooks
+   specifically before building anything. If it doesn't fire, the mechanism must
+   move (agent-brief contract or a wrapper around the risky tools).
+2. Resolve the 2 open questions in the brainstorm: (a) how approval resolves
+   (extend `resolve-todos` vs new `/approve`; auto-merge vs unblock); (b) the
+   deferred-merge × Required-Artifacts phase ordering (run reports `PIPELINE_PASS`
+   with merge pending — must not trip the "run completes" / self-audit contract).
+3. Honor the Plan Quality Gate (4 questions) + **EARS acceptance tests** translated
+   from the brainstorm's "What success looks like" bullets.
+
+## Key Artifacts (this session)
+
+| Item | Location |
+|------|----------|
+| G1 brainstorm (plan input) | docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md |
+| Governance scorecard (G1–G5) | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
+| Framework source PDF | docs/governance/three-layers-of-agent-security-deepmind-2026-06.pdf |
+| Master extraction (system reference) | docs/solutions/2026-06-21-unattended-swarm-autopilot-master-extraction.md |
+| Existing approval-queue pattern | todos/ + .claude/skills/resolve-todos/ |
+| Permission bypass switch | .claude/settings.local.json (`dangerouslySkipPermissions`) |
+| Forbidden Actions contract | CLAUDE.md ("Forbidden Actions", "Bash Command Rules") |
+
+## Deferred Backlog (priority order)
+
+0. **[ACTIVE → PLAN] G1 risk-tiered firebreak** — brainstorm done; next is
+   `/workflows:plan` (see "What the PLAN phase must do" above).
+1. **FC51 orchestrator rule** — ensure the converged spec is at the worktree base
+   before swarm spawn (cherry-pick the spec-update commit into worktree bases, OR
+   inline-inject spec sections into briefs). Live fragility that bit Run 070.
+   (Partly addressed by the 2026-06-21 `check_spec_provenance.py` BASEREF-FRESH
+   change — that's the *detection* half; the orchestrator *repair* rule remains.)
+2. **Track A `P-extract`** — refactor `swarm-runner.md` cherry-pick prose into a
+   shared callable so Track A (FC51) earns a real EXERCISED fixture row. Overlaps #1.
+3. **Suite adoption decision** — wire `validate_hardening.py` in as a blocking gate.
+   Proposal: docs/proposals/validate-hardening-on-fixtures.md.
+4. **Eval-harness ↔ catalog FC drift** — harness covers 47 FCs; catalog is at
+   FC1–FC57. Add scenarios/judges for FC48–FC57. (Surfaced 2026-06-21.)
+5. **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in
+   `callsheets.generate`. File: todos/070-pending-p2-callsheets-generate-redundant-double-query.md
+6. **G2–G5** (from the governance scorecard) — in-flight AI monitor (G2),
+   monoculture mitigation in verification roles (G3), per-run-nonce ledger
+   hardening (G4), delegation-as-authority-transfer (G5).
+
+## Stashes (untouched, local)
+
+3 stashes on `master`: `stash@{0}`/`{1}` are superseded cpaa WIP (safe to drop);
+`stash@{2}` is unmerged venue-scraper proxy/`html_mode` work for
+`feat/lead-scraper-expansion` (keeper — fix `claude-sonnet-4-20250514` →
+`claude-sonnet-4-6` on revival).
+
+## Recovery SHAs (older, if ever needed)
 
 | Ref (deleted) | Tip SHA | Where it lives now |
 |---------------|---------|--------------------|
 | `feat/film-production-pm` | `9b432bf` | 2nd-parent lineage of `49deb17` on master |
-| `test/fc52-9w95-rewire-real-swarm` | `998854e` | reflog / GC window (~30d); narrative in git history |
-
-## Key Artifacts
-
-| Phase | Location |
-|-------|----------|
-| Plan (fixture suite) | docs/plans/2026-06-08-feat-hardening-fixture-suite-plan.md |
-| Solution (fixture suite) | docs/solutions/2026-06-09-orchestration-hardening-fixture-suite.md |
-| Solution (hardening) | docs/solutions/2026-06-07-autopilot-orchestration-hardening.md |
-| Solution (Run 070) | docs/solutions/2026-06-08-film-production-pm-run-070-swarm-build.md |
-| Runner + all fixture logic | eval-harness/validate_hardening.py |
-| Fixtures + README (fidelity contract) | eval-harness/fixtures/ |
-| Shipped FC52 detector | tools/check_spec_provenance.py |
-| Live gate rewire | .claude/skills/autopilot/SKILL.md (Step 9w.9.5) |
-
-## Deferred Backlog (priority order)
-
-1. **[NEXT] FC51 orchestrator rule** — ensure the converged spec is at the
-   worktree base before swarm spawn (cherry-pick the spec-update commit into each
-   worktree base, OR inline-inject spec sections into briefs). This is a **live
-   fragility that already bit Run 070** (brief-injection is fragile; orchestrator
-   must pre-load the converged spec into worktrees). Highest value — it's a real
-   defect, not a coverage gap. Lives in the autopilot skill orchestration path.
-2. **Track A `P-extract`** — refactor `swarm-runner.md:76-138` cherry-pick prose
-   into a shared callable so Track A (FC51) earns a real EXERCISED fixture row
-   instead of agent-prose. Needs its own real-build validation. (Note: overlaps
-   with #1 — doing #1 may reshape what gets extracted here.)
-3. **Suite adoption decision (operator)** — wire `validate_hardening.py` into the
-   autopilot pipeline as a blocking gate. Proposal: docs/proposals/validate-hardening-on-fixtures.md.
-4. **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in
-   `callsheets.generate`; pass pre-fetched entries as optional param.
-   File: todos/070-pending-p2-callsheets-generate-redundant-double-query.md
-5. **F-C1 scorer timeout bound (P3, LOW)** — 420s `--with-api` timeout could
-   false-`TIMEOUT` a slow-but-healthy scorer. Non-blocking, opt-in path only.
-   Revisit only if real `--with-api` runs flake on timeout.
+| `test/fc52-9w95-rewire-real-swarm` | `998854e` | reflog / GC window (~30d) |
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is Sandbox, on master (49deb17) — the Run 070 + hardening
-+ fixture suite line is shipped. Working the deferred backlog, starting with #1:
-the FC51 orchestrator rule. Goal: guarantee the converged spec is at the worktree
-base before swarm spawn (cherry-pick the spec commit into worktree bases, or
-inline-inject spec sections into briefs), so the Run-070 brief-injection fragility
-can't recur. Start by locating the spawn path in .claude/skills/autopilot/SKILL.md
-and how worktrees are created, then brainstorm the fix before changing anything.
+Read HANDOFF.md, then read docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md
+and the G1 item in docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md.
+
+This is Sandbox on master (clean). The G1 risk-tiered firebreak brainstorm is
+complete and plan-ready; all key decisions are locked (see the handoff). Run the
+PLAN phase: /workflows:plan on the G1 brainstorm.
+
+Lead the plan with a SPIKE that verifies the riskiest assumption — that a
+PreToolUse hook fires when dangerouslySkipPermissions is true (intercepting above
+the bypass). Do not design the rest until that's confirmed; if it fails, the
+mechanism moves to the agent-brief contract or a tool wrapper.
+
+Then resolve the brainstorm's 2 open questions, honor the Plan Quality Gate (4
+questions), and write EARS acceptance tests from the brainstorm's "What success
+looks like" bullets. Relevant files: .claude/skills/autopilot/SKILL.md (spawn +
+bypassPermissions injection), .claude/settings.local.json, todos/ + resolve-todos
+skill, CLAUDE.md (Forbidden Actions). Don't change code in the plan phase.
 ```
