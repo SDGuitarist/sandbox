@@ -686,6 +686,10 @@ def emit_deny(reason_text):
 
 
 def main():
+    if os.environ.get("FIREBREAK_TRACE"):
+        # Test hook: lets the gate's unit test prove the fast-path did NOT
+        # spawn python on a GREEN call. No effect in production (unset).
+        sys.stderr.write("CLASSIFIER_RAN\n")
     raw = sys.stdin.read()
     try:
         env = json.loads(raw) if raw.strip() else {}
