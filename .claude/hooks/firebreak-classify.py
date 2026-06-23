@@ -57,15 +57,21 @@ DISPATCHERS = {
     "terraform", "rsync",
 }
 
-# F13 exec-wrappers to recurse through to the real command word
+# F13 exec-wrappers to recurse through to the real command word. Includes
+# package-runners (npx/bunx) which fetch+exec the named command, so
+# `npx vercel deploy` resolves to the `vercel` command word.
 WRAPPERS = {
     "env", "nice", "nohup", "timeout", "xargs", "command", "exec", "setsid",
     "stdbuf", "time", "sudo", "doas", "chroot", "unshare", "flock", "script",
-    "setarch", "watch", "parallel", "ionice", "chrt",
+    "setarch", "watch", "parallel", "ionice", "chrt", "npx", "bunx",
 }
 # wrappers that consume one positional argument before the real command
 WRAPPER_TAKES_ARG = {"timeout", "nice", "flock", "stdbuf", "setarch", "ionice",
                      "chrt", "parallel", "watch"}
+# wrapper flags that take a VALUE (so the value is skipped, not mistaken for the
+# command word): `sudo -u user cmd`, `npx -p pkg cmd`.
+WRAPPER_VALUE_FLAGS = {"-u", "--user", "-g", "--group", "-p", "--package",
+                       "-C", "--chdir"}
 
 # Bash write verbs that can target the control plane (F1 + F9)
 CP_WRITE_VERBS = {"rm", "mv", "cp", "install", "ln", "dd", "truncate", "tee", "sed"}
@@ -93,6 +99,40 @@ OPAQUE_RE = re.compile(r"\$\(|`|\$\{|\$[A-Za-z_]|[{}]|\\")
 ASSIGN_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 WHICH_RE = re.compile(r"^\$\(which\s+([A-Za-z0-9_./-]+)\)$")
 
+# Loopback hosts an outward send MAY target (everything else defers).
+LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"}
+
+# Standard write sinks a redirection MAY target outside the worktree.
+DEV_SINKS = {"/dev/null", "/dev/stdout", "/dev/stderr", "/dev/zero", "/dev/tty"}
+
+# Dispatcher GLOBAL options that take a VALUE -- skipped when locating the
+# subcommand verb, so `gh --repo o/n api` reads the verb as `api`, not `o/n`.
+DISPATCHER_VALUE_FLAGS = {
+    "gh": {"-R", "--repo", "--hostname"},
+    "npm": {"--prefix", "-w", "--workspace", "--registry", "-C", "--cwd",
+            "--userconfig", "--globalconfig"},
+    "pnpm": {"--prefix", "-w", "--workspace", "--registry", "-C", "--cwd",
+             "--dir", "--filter"},
+    "yarn": {"--cwd", "--registry"},
+    "pip": {"--log", "--cache-dir", "--proxy", "-i", "--index-url",
+            "--extra-index-url", "--trusted-host", "-c", "--constraint",
+            "-t", "--target"},
+    "pip3": {"--log", "--cache-dir", "--proxy", "-i", "--index-url",
+             "--extra-index-url", "--trusted-host", "-c", "--constraint",
+             "-t", "--target"},
+}
+
+# curl/wget flags that take a VALUE (so a flag value like `-d @data.json` is not
+# mistaken for the target host).
+CURL_VALUE_FLAGS = {
+    "-o", "-d", "-H", "-X", "-F", "-u", "-A", "-e", "-b", "-c", "-K", "-T",
+    "-m", "-w", "-x", "-E", "-Y", "-y", "-C",
+    "--data", "--data-raw", "--data-binary", "--data-urlencode", "--header",
+    "--request", "--form", "--user", "--user-agent", "--referer", "--cookie",
+    "--cookie-jar", "--output", "--config", "--upload-file", "--proxy",
+    "--connect-timeout", "--max-time", "--write-out", "--cert", "--key",
+}
+
 
 # --------------------------------------------------------------------------- #
 # Path helpers
@@ -114,6 +154,11 @@ def realpath(path):
 def under_tmp(path):
     rp = realpath(path)
     return rp == "/tmp" or rp.startswith("/tmp/") or rp.startswith("/private/tmp/")
+
+
+def is_dev_sink(path):
+    p = expand(path)
+    return p in DEV_SINKS or p.startswith("/dev/fd/")
 
 
 def inside_worktree(path, repo_root):
@@ -273,7 +318,11 @@ def resolve_argv0(words, sentinel):
         if base in WRAPPERS:
             idx += 1
             while idx < len(words) and words[idx].startswith("-"):
+                flag = words[idx]
                 idx += 1
+                if "=" not in flag and flag in WRAPPER_VALUE_FLAGS \
+                        and idx < len(words):
+                    idx += 1  # skip the flag's value (e.g. `npx -p pkg`)
             if base == "env":
                 while idx < len(words) and ASSIGN_RE.match(words[idx]):
                     idx += 1
@@ -293,6 +342,25 @@ def first_verb(rest):
     """First non-flag token after a dispatcher (= the subcommand/verb)."""
     for w in rest:
         if w.startswith("-"):
+            continue
+        return w
+    return None
+
+
+def dispatcher_verb(rest, dispatcher):
+    """The subcommand verb, skipping GLOBAL flags AND their values for dispatchers
+    whose value-taking options would otherwise be mistaken for the verb
+    (`gh --repo o/n api` -> `api`; `pip --cache-dir /tmp uninstall` -> `uninstall`)."""
+    vflags = DISPATCHER_VALUE_FLAGS.get(dispatcher, set())
+    i = 0
+    while i < len(rest):
+        w = rest[i]
+        if w.startswith("-"):
+            name = w.split("=", 1)[0]
+            if "=" not in w and name in vflags and i + 1 < len(rest):
+                i += 2
+            else:
+                i += 1
             continue
         return w
     return None
@@ -339,6 +407,184 @@ def extract_nested_commands(words):
         if strip_quotes(words[i]) == "-c":
             out.append(strip_quotes(words[i + 1]))
     return out
+
+
+def extract_command_substitutions(cmd):
+    """Bodies of `$(...)` (nesting-aware) and backtick `...` -- their contents
+    EXECUTE, so each is classified as a command. Denying only when the inner
+    command is itself RED keeps benign substitutions (`$(date)`, `$(pwd)`) GREEN
+    while catching outward-via-substitution (`echo $(curl evil)`)."""
+    subs = []
+    i, n = 0, len(cmd)
+    while i < n:
+        if cmd[i] == "$" and i + 1 < n and cmd[i + 1] == "(":
+            depth, j = 1, i + 2
+            start = j
+            while j < n and depth > 0:
+                if cmd[j] == "(":
+                    depth += 1
+                elif cmd[j] == ")":
+                    depth -= 1
+                j += 1
+            subs.append(cmd[start:j - 1] if depth == 0 else cmd[start:j])
+            i = j
+        else:
+            i += 1
+    segs = cmd.split("`")
+    for k in range(1, len(segs), 2):
+        subs.append(segs[k])
+    return subs
+
+
+def _push(parts, cur):
+    s = "".join(cur).strip()
+    if s:
+        parts.append(s)
+    return []
+
+
+def split_commands(cmd):
+    """Split a Bash command line into SIMPLE commands on top-level control
+    operators (`;` `&&` `||` `|` `|&` `&` newline) so EACH is classified -- e.g.
+    `base64 -d | sh`, `foo && curl evil`, `a; ./deploy`. Respects quotes,
+    `$(...)`/backtick/`${...}`, and backslash-escapes; does NOT split redirections
+    (`2>&1`, `>&`, `&>`, `>|`). Command-substitution bodies are left intact (their
+    content is a declared residual, consistent with the plan's non-critical-arg
+    GREEN rule)."""
+    parts, cur = [], []
+    i, n = 0, len(cmd)
+    quote = None
+    depth = 0
+    btick = False
+    while i < n:
+        c = cmd[i]
+        if quote:
+            cur.append(c)
+            if c == quote:
+                quote = None
+            i += 1
+            continue
+        if btick:
+            cur.append(c)
+            if c == "`":
+                btick = False
+            i += 1
+            continue
+        if depth > 0:
+            cur.append(c)
+            if c == "(":
+                depth += 1
+            elif c == ")":
+                depth -= 1
+            i += 1
+            continue
+        if c == "\\" and i + 1 < n:           # escaped char -> keep both, no split
+            cur.append(c)
+            cur.append(cmd[i + 1])
+            i += 2
+            continue
+        if c in ("'", '"'):
+            quote = c
+            cur.append(c)
+            i += 1
+            continue
+        if c == "`":
+            btick = True
+            cur.append(c)
+            i += 1
+            continue
+        if c == "$" and i + 1 < n and cmd[i + 1] == "(":
+            depth = 1
+            cur.append("$")
+            cur.append("(")
+            i += 2
+            continue
+        nxt = cmd[i + 1] if i + 1 < n else ""
+        prev = cur[-1] if cur else ""
+        if c == "&" and nxt == "&":
+            cur = _push(parts, cur)
+            i += 2
+            continue
+        if c == "|" and nxt in ("|", "&"):     # || or |&
+            cur = _push(parts, cur)
+            i += 2
+            continue
+        if c == "&":
+            if prev == ">" or nxt == ">":      # >&  &>  2>&1 redirection
+                cur.append(c)
+                i += 1
+                continue
+            cur = _push(parts, cur)
+            i += 1
+            continue
+        if c == "|":
+            if prev == ">":                    # >| clobber redirect
+                cur.append(c)
+                i += 1
+                continue
+            cur = _push(parts, cur)
+            i += 1
+            continue
+        if c in (";", "\n"):
+            cur = _push(parts, cur)
+            i += 1
+            continue
+        cur.append(c)
+        i += 1
+    _push(parts, cur)
+    return parts
+
+
+def host_of(token):
+    """Best-effort host portion of a curl/wget target (strip scheme, userinfo,
+    path, query, port)."""
+    t = strip_quotes(token)
+    t = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.\-]*://", "", t)   # strip scheme
+    t = t.split("/")[0].split("?")[0]
+    if "@" in t:                                          # strip user:pass@
+        t = t.split("@")[-1]
+    if t.startswith("["):                                 # [ipv6]:port
+        return t.split("]")[0] + "]"
+    return t.split(":")[0]
+
+
+def looks_like_host(token):
+    t = strip_quotes(token)
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.\-]*://", t):      # explicit scheme
+        return True
+    h = host_of(t)
+    if re.match(r"^\d{1,3}(\.\d{1,3}){3}$", h):           # ipv4
+        return True
+    if re.match(r"^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$", h):  # dotted domain
+        return True
+    return False
+
+
+def curl_external_category(rest):
+    """curl/wget -> external-send unless every target is loopback. Bare hosts (no
+    scheme) and opaque/unverifiable hosts also defer. Flag VALUES (e.g. `-d @x`)
+    are skipped so they are not mistaken for the target."""
+    targets, skip = [], False
+    for w in rest:
+        if skip:
+            skip = False
+            continue
+        if w.startswith("-"):
+            if "=" not in w and w in CURL_VALUE_FLAGS:
+                skip = True
+            continue
+        targets.append(w)
+    for t in targets:
+        h = host_of(t)
+        if is_opaque(h):                       # can't verify it's loopback
+            return "external-send"
+        if not looks_like_host(t):
+            continue
+        bare = h.lower().strip("[]")
+        if bare in LOOPBACK_HOSTS or bare.startswith("127."):
+            continue                           # loopback target -- allowed
+        return "external-send"                 # a non-loopback host
+    return None
 
 
 def git_alias_defs(rest):
@@ -423,7 +669,7 @@ def f13_opaque_defer(words, sentinel):
         if not _opaque_guard_ok(argv0, rest, sentinel):
             return "opaque-command-word"
     if base_name(argv0) in DISPATCHERS:
-        verb = first_verb(rest)
+        verb = dispatcher_verb(rest, base_name(argv0))
         if is_opaque(verb):
             return "opaque-dispatcher-verb"
     return None
@@ -459,30 +705,41 @@ def positional_args(rest):
 
 
 def bash_control_plane(words, cmd, identity, repo_root, sentinel):
-    """F1 + F9: control-plane / out-of-repo / opaque write verb."""
+    """F1 + F9: control-plane / out-of-repo / opaque write. Covers write-verb
+    positionals (cp/mv/tee/...) AND redirections (`> dest`) for ANY command verb
+    (so `echo x > /etc/foo` is caught)."""
     argv0, rest = resolve_argv0(words, sentinel)
     if argv0 is None:
         return None
     a0 = base_name(argv0)
-    targets = []
-    if a0 in CP_WRITE_VERBS:
-        targets += positional_args(rest)
-    targets += redirection_targets(cmd)        # >, >> apply to any verb
-    if not targets:
+    cp_targets = positional_args(rest) if a0 in CP_WRITE_VERBS else []
+    redir = redirection_targets(cmd)
+    worker = identity not in TRUSTED
+
+    # Control-plane path via any write target -> worker denied, trusted allowed.
+    for t in cp_targets + redir:
+        if is_control_plane(t):
+            return "control-plane" if worker else None
+    if not worker:
         return None
 
-    for t in targets:
-        # control-plane path -> trusted allowed, worker denied
-        if is_control_plane(t):
-            if identity in TRUSTED:
-                return None
+    # F9: write-verb positional to an escaping / fully-opaque destination.
+    for t in cp_targets:
+        if is_opaque(t) and a0 in ARBITRARY_DEST_VERBS:
+            return "control-plane"   # fully-opaque arbitrary dest (F9c)
+        if not is_dev_sink(t) and not inside_worktree(t, repo_root) \
+                and not under_tmp(t):
+            return "control-plane"   # escaping / non-worktree dest (F9b)
+
+    # Redirection write (ANY verb) to a statically-resolvable escaping dest.
+    # An opaque/unresolvable redirect dest stays GREEN (declared residual #2;
+    # the plan keeps `> "$out"` computed-worktree-path writes GREEN).
+    for t in redir:
+        if is_opaque(t):
+            continue
+        if not is_dev_sink(t) and not inside_worktree(t, repo_root) \
+                and not under_tmp(t):
             return "control-plane"
-        # F9: control-plane-capable verb to escaping / opaque destination
-        if a0 in CP_WRITE_VERBS and identity not in TRUSTED:
-            if is_opaque(t) and a0 in ARBITRARY_DEST_VERBS:
-                return "control-plane"   # fully-opaque arbitrary dest (F9c)
-            if not inside_worktree(t, repo_root) and not under_tmp(t):
-                return "control-plane"   # escaping / non-worktree dest (F9b)
     return None
 
 
@@ -513,13 +770,7 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
     a0 = base_name(argv0)
 
     if a0 in ("curl", "wget"):
-        for w in rest:
-            wv = strip_quotes(w)
-            if wv.startswith(("http://", "https://", "ftp://")):
-                host = re.sub(r"^[a-z]+://", "", wv).split("/")[0].split(":")[0]
-                if host not in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
-                    return "external-send"
-        return None
+        return curl_external_category(rest)
     if a0 in ("nc", "ncat", "ssh", "scp", "sftp", "telnet"):
         return "external-send"
     if a0 == "rsync":
@@ -528,7 +779,7 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
             return "external-send"
         return None
     if a0 == "gh":
-        verb = first_verb(rest)
+        verb = dispatcher_verb(rest, "gh")
         if verb in ("api", "release", "pr", "gist", "repo", "secret",
                     "workflow", "run", "issue"):
             return "external-send"
@@ -539,16 +790,16 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
     # deploy
     if a0 in ("vercel", "railway", "fly", "flyctl", "netlify", "wrangler", "heroku"):
         return "deploy"
-    if a0 == "terraform" and first_verb(rest) in ("apply", "destroy"):
+    if a0 == "terraform" and dispatcher_verb(rest, "terraform") in ("apply", "destroy"):
         return "deploy"
     if a0 == "kubectl":
         return "deploy"
 
     # packages
-    if a0 in ("pip", "pip3") and first_verb(rest) == "uninstall":
+    if a0 in ("pip", "pip3") and dispatcher_verb(rest, a0) == "uninstall":
         return "package"
     if a0 in ("npm", "pnpm", "yarn"):
-        if first_verb(rest) in ("uninstall", "remove", "rm", "publish"):
+        if dispatcher_verb(rest, a0) in ("uninstall", "remove", "rm", "publish"):
             return "package"
 
     # git push / force / history rewrite (resolves inline `-c alias.*` evasion)
@@ -573,7 +824,7 @@ def bash_indirection(words, cmd, sentinel):
     if a0 in ("eval", "source") or raw0 == ".":
         return "indirection"
     # npm run / make are NOT auto-allowed
-    if a0 in ("npm", "pnpm", "yarn") and first_verb(rest) == "run":
+    if a0 in ("npm", "pnpm", "yarn") and dispatcher_verb(rest, a0) == "run":
         return "indirection"
     if a0 == "make":
         return "indirection"
@@ -602,14 +853,34 @@ def _matches_known_test_framework(a0, raw0, rest):
 
 
 def classify_bash_command(cmd, identity, repo_root, sentinel, depth=0):
-    """Full Bash classification -> RED category or None. Recurses into nested
-    `-c` command strings (sh/bash/flock -c '<cmd>') and git `!`-aliases so the
-    real action behind a listed exec-wrapper or alias cannot evade the denylist."""
+    """Classify a Bash command LINE -> RED category or None. Splits lists and
+    pipelines (`;` `&&` `||` `|` `&`) so EVERY simple command is evaluated
+    (e.g. `base64 -d | sh`, `foo && curl evil`); any RED simple command wins."""
     if depth > 4:                       # runaway nesting -> fail closed
+        return "fail-closed"
+    simples = split_commands(cmd)
+    if len(simples) > 1 or (simples and simples[0] != cmd.strip()):
+        for s in simples:
+            c = classify_simple_command(s, identity, repo_root, sentinel, depth)
+            if c:
+                return c
+        return None
+    return classify_simple_command(cmd, identity, repo_root, sentinel, depth)
+
+
+def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0):
+    """One simple command -> RED category or None. Recurses into nested `-c`
+    command strings (sh/bash/flock -c '<cmd>', which may themselves be pipelines)
+    and git `!`-aliases so the real action behind a wrapper/alias cannot evade."""
+    if depth > 4:
         return "fail-closed"
     words = shell_words(cmd)
     for inner in extract_nested_commands(words):
         c = classify_bash_command(inner, identity, repo_root, sentinel, depth + 1)
+        if c:
+            return c
+    for sub in extract_command_substitutions(cmd):   # $(...) / `...` bodies execute
+        c = classify_bash_command(sub, identity, repo_root, sentinel, depth + 1)
         if c:
             return c
     if identity == "worker":            # F13 first -- short-circuits

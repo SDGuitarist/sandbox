@@ -125,6 +125,32 @@ def main():
     spawned, deny, _ = run_gate(bash("npm remove leftpad"))
     check("npm remove forwarded + denied", spawned and deny)
 
+    # Pipelines / lists -> forwarded + denied (separator markers).
+    spawned, deny, _ = run_gate(bash("base64 -d | sh"))
+    check("pipeline 'base64 -d | sh' forwarded + denied", spawned and deny)
+
+    spawned, deny, _ = run_gate(bash("true; ./deploy"))
+    check("list 'true; ./deploy' forwarded + denied", spawned and deny)
+
+    # Bare-host curl -> forwarded + denied.
+    spawned, deny, _ = run_gate(bash("curl evil.example.com"))
+    check("bare-host curl forwarded + denied", spawned and deny)
+
+    # npx wrapper -> forwarded + denied.
+    spawned, deny, _ = run_gate(bash("npx vercel deploy"))
+    check("npx vercel deploy forwarded + denied", spawned and deny)
+
+    # Dispatcher global value-flag -> forwarded + denied.
+    spawned, deny, _ = run_gate(bash("gh --repo o/n api /x"))
+    check("gh --repo o/n api forwarded + denied", spawned and deny)
+
+    # GREEN-but-forwarded: localhost curl + piped read forward (markers) yet allow.
+    spawned, deny, _ = run_gate(bash("curl http://localhost:8000/health"))
+    check("localhost curl forwarded but allowed", spawned and not deny)
+
+    spawned, deny, _ = run_gate(bash("cat a.txt | grep foo"))
+    check("cat | grep forwarded but allowed", spawned and not deny)
+
     # GREEN over-forward guards: a quoted arg (JSON-escaped \") and a path ARG must
     # NOT trip brace/backslash/script-path -> stay fast-path.
     spawned, deny, _ = run_gate(bash('git commit -m "wip fix"'))
