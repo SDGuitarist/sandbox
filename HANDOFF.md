@@ -2,14 +2,15 @@
 
 **Date:** 2026-06-22
 **Branch:** `feat/g1-risk-tiered-firebreak` (working tree clean; **NOT pushed** — local only)
-**Phase:** **G1 risk-tiered firebreak — Plan GO ✅ → Step 0 PASS ✅ → Phase 1 CORE built + tested + HARDENED ✅ (2nd review done). Checkpointed for review BEFORE activation.**
-Latest commit **`a5e9975`**. Plan: `docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md` (1008 lines). Step 0: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`. 2nd review: `docs/reviews/2026-06-22-g1-phase1-second-review.md`.
+**Phase:** **G1 risk-tiered firebreak — Plan GO ✅ → Step 0 PASS ✅ → Phase 1 CORE built + tested + HARDENED ✅ (3 review passes). Checkpointed for review BEFORE activation.**
+Latest commit **`44a4156`**. Plan: `docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md` (1008 lines). Step 0: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`. Reviews: `docs/reviews/2026-06-22-g1-phase1-second-review.md`, `docs/reviews/2026-06-23-g1-phase1-third-review.md`.
 
-**What's built (committed on the feature branch — `66182d9`, `ceb8f50`, `a5e9975`):**
-- `.claude/hooks/firebreak-classify.py` — deterministic classifier, pure stdlib, full decision order (F13 opaque-word → control-plane/F9 → outward → indirection → mcp → fail-closed), Step-0 identity contract, atomic approval-record writer. Now also: nested `-c` command-string recursion (flock/sh/bash `-c`) and git config-alias resolution (`-c alias.*=push`, `git config alias.* push`, `!`-shell aliases). **62/62** unit tests.
-- `.claude/hooks/firebreak-gate.sh` — cheap entry gate (R6). Extracts tool_name + the Bash command and matches markers against the COMMAND (not raw JSON), so it safely forwards brace/backslash obfuscation (`c{u,}rl`, `\cu\rl`) and direct script-path argv0 (`./x`, `/abs/x`, `path/to/x`) without the raw-JSON `{` collision. Inspects `file_path` not `content`. **19/19** tests.
-- `.claude/hooks/test_firebreak_superset.py` — **gate-superset invariant**: asserts the gate forwards EVERY classifier denial over a 94-case corpus (0 unsafe gaps). Permanent drift guard; keep in the pre-activation gate.
-- Run all three: `python3 .claude/hooks/test_firebreak_classify.py` · `test_firebreak_gate.py` · `test_firebreak_superset.py`.
+**What's built (committed — `66182d9`, `ceb8f50`, `a5e9975`, `44a4156`):**
+- `.claude/hooks/firebreak-classify.py` — deterministic classifier, pure stdlib. Decision order (F13 opaque-word → control-plane/F9 → outward → indirection → mcp → fail-closed), Step-0 identity contract, atomic approval-record writer. Splits lists/pipelines (`;`/`&&`/`||`/`|`/`&`) and classifies each simple command; recurses nested `-c` strings, `$(...)`/backtick substitution bodies, and git `!`-aliases; resolves git config-aliases and dispatcher global value-options; npx/bunx wrapper recursion; bare-host/opaque curl-wget defer; redirect-to-escaping-path for any verb. **100/100** unit tests.
+- `.claude/hooks/firebreak-gate.sh` — cheap entry gate (R6). Extracts tool_name + the Bash command, matches markers against the COMMAND (not raw JSON), forwards brace/backslash + direct-script-path argv0 + all lists/pipelines. Inspects `file_path` not `content`. **26/26** tests.
+- `.claude/hooks/test_firebreak_superset.py` — **gate-superset invariant** (gate forwards EVERY classifier denial; 112-case corpus, 0 gaps).
+- `.claude/hooks/test_firebreak_soundness.py` — **classifier soundness** (every RED denied, every GREEN allowed; the "gate-forwards-but-classifier-allows" guard; 37 RED / 13 GREEN).
+- Run all four: `test_firebreak_classify.py` · `test_firebreak_gate.py` · `test_firebreak_superset.py` · `test_firebreak_soundness.py`.
 
 **Phase 1 REMAINING — the activation layer (deliberately NOT done; user chose checkpoint-for-review):**
 1. Wire the gate into **global `~/.claude/settings.json`** `hooks.PreToolUse` (matcher `Bash|mcp__*|Write|Edit`, command `bash .claude/hooks/firebreak-gate.sh`). Step-0-locked placement; **global change** (no-op without a sentinel).
@@ -18,7 +19,8 @@ Latest commit **`a5e9975`**. Plan: `docs/plans/2026-06-21-feat-g1-risk-tiered-fi
 
 **Three bugs found & fixed during Phase-1 testing/review** (worth a reviewer's eye): a trusted learnings-writer could write an escaping path (`dev-notes/../.ssh/x`) — now denied for everyone outside the sanctioned set; the `bash` gate marker collided with the `"Bash"` tool name (every Bash call force-forwarded) — now requires a trailing space; the gate had no `remove` marker so `npm/yarn/pnpm remove` fast-pathed unseen despite the classifier denying it — found by the superset test, now fixed.
 
-**Hardening pass (`a5e9975`) closed:** gate brace/backslash + direct-script-path forwarding (now a verified superset of classifier denials); classifier git config-alias evasion (`-c alias.*=push`, `git config alias.* push`, `!`-aliases) and listed exec-wrapper `-c` command strings (`flock /tmp/l -c 'curl ...'`). **Remaining residuals** (declared, see 2nd-review doc): #1 allowlisted-interpreter escape, #2 inherited-`$VAR` redirect, #3 unlisted dispatcher/wrapper — now incl. `npx <pkg>` (candidate to add to the F13 wrapper set) and pre-existing/externally-defined git aliases (in-run alias SETUP is denied, so only pre-dating aliases survive).
+**Hardening pass `a5e9975`** closed: gate brace/backslash + direct-script-path forwarding; classifier git config-alias evasion + exec-wrapper `-c` command strings.
+**Hardening pass `44a4156`** (this session) closed: command lists/pipelines (`base64 -d | sh`), bare-host/opaque curl·wget, dispatcher global value-options (`gh --repo o/n api`), npx/bunx recursion, AND a false-negative sweep that fixed command-substitution outward (`echo $(curl evil)`) + redirect-to-escaping (`echo x > /etc/foo`). **Remaining residuals** (declared, see 3rd-review doc): #1 allowlisted-interpreter escape; #2 inherited-`$VAR` redirect (narrowed — `~`/`$HOME` now caught); #3 unlisted dispatcher/wrapper (npx/bunx DONE; `pnpm dlx`/`yarn dlx`/`pipx run`/`deno run` + pre-existing git aliases remain); **#4 NEW: command-word quote-splitting (`c""url`, `cu''rl`)** — needs coupled classifier-dequote + gate marker; declared, recommend Codex ruling.
 
 ## Current State
 
@@ -202,7 +204,7 @@ majority unattended.
 
 ```
 You are reviewing Phase 1 of the G1 risk-tiered firebreak in the Sandbox repo,
-branch feat/g1-risk-tiered-firebreak (local, not pushed; latest commit a5e9975).
+branch feat/g1-risk-tiered-firebreak (local, not pushed; latest commit 44a4156).
 
 CONTEXT (read these first):
 - Plan:  docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md — start with
@@ -217,12 +219,13 @@ CONTEXT (read these first):
 CODE UNDER REVIEW (only these — activation layer is intentionally NOT built yet):
 - .claude/hooks/firebreak-classify.py     (deterministic classifier)
 - .claude/hooks/firebreak-gate.sh         (cheap entry gate, R6)
-- .claude/hooks/test_firebreak_classify.py (62 cases)
-- .claude/hooks/test_firebreak_gate.py     (19 cases)
-- .claude/hooks/test_firebreak_superset.py (gate-superset invariant, 94-case corpus)
-- docs/reviews/2026-06-22-g1-phase1-second-review.md (my 2nd review of the above)
-Run all three test files; classifier/gate must print "N/N passed", superset must
-print "PASS: ... superset invariant holds".
+- .claude/hooks/test_firebreak_classify.py (100 cases)
+- .claude/hooks/test_firebreak_gate.py     (26 cases)
+- .claude/hooks/test_firebreak_superset.py (gate ⊇ denials invariant, 112-case corpus)
+- .claude/hooks/test_firebreak_soundness.py (classifier denies RED / allows GREEN)
+- docs/reviews/2026-06-22-...-second-review.md, docs/reviews/2026-06-23-...-third-review.md
+Run all four test files; classify/gate print "N/N passed"; superset prints "PASS:
+... superset invariant holds"; soundness prints "PASS: ... classifier sound".
 
 REVIEW FOR (P0/P1/P2, with file:line and a failing input where possible):
 1. SOUNDNESS — can a WORKER get a RED action to ALLOW? Probe the decision order
@@ -234,47 +237,49 @@ REVIEW FOR (P0/P1/P2, with file:line and a failing input where possible):
    write dests, control-plane realpath matching, the learnings carve-out (identity
    + sanctioned target + no ../symlink escape), and mcp read-only allowlist. Find
    evasions the existing tests miss.
-2. GATE COMPLETENESS — is the gate's marker set a true SUPERSET of classifier
-   denials? test_firebreak_superset.py enforces this over a 94-case corpus (0 gaps)
-   — try to BREAK it: find a command the classifier denies but the gate fast-paths,
-   then add it to the corpus. Known residual: an absolute non-home, non-recognized-
-   verb Bash write, and `npx <pkg>`/pre-existing git aliases (classifier-side, see
-   2nd-review doc). Also confirm no marker collides with envelope structural fields
-   the way `bash`→`"Bash"` did (now mitigated by command extraction).
-3. FAIL-CLOSED & RECORD INTEGRITY — unparseable envelope, classifier exception,
+2. GATE COMPLETENESS (superset) — is the gate's marker set a true SUPERSET of
+   classifier denials? test_firebreak_superset.py enforces this over a 112-case
+   corpus (0 gaps) — try to BREAK it: find a command the classifier denies but the
+   gate fast-paths, then add it to the corpus. Confirm no marker collides with
+   envelope structural fields the way `bash`→`"Bash"` did (mitigated by command
+   extraction).
+3. CLASSIFIER SOUNDNESS (the opposite direction) — among commands the gate
+   forwards, does the classifier actually DENY the RED ones? test_firebreak_soundness.py
+   asserts RED-denied / GREEN-allowed; try to add a RED command it allows. Probe:
+   list/pipeline split (`base64 -d | sh`), `$(...)`/backtick substitution recursion,
+   redirect-to-escaping (`echo x > /etc/foo`), bare-host curl, dispatcher_verb
+   value-flag skipping, npx/bunx + git config-alias resolvers.
+4. FAIL-CLOSED & RECORD INTEGRITY — unparseable envelope, classifier exception,
    atomic write (temp+os.rename), filename RED-<run>-<cat>-<uuid>.md, deny still
    fires when the record write fails.
-4. HONESTY — does the code match the plan's THREE declared residuals (interpreter
-   escape, inherited-$VAR redirect, F13 unlisted dispatcher/wrapper)? Any
-   guarantee that's broader in the comments than in the code?
-5. The two fixes made during testing (escaping learnings path; `bash ` marker) —
-   are they correct and complete, or do they mask a deeper issue?
+5. HONESTY — does the code match the declared residuals (#1 interpreter escape,
+   #2 inherited-$VAR redirect, #3 unlisted dispatcher/wrapper, #4 quote-splitting)?
+   Any guarantee broader in the comments than in the code?
 
 DECISION TO CONFIRM (held pending your verdict — do NOT assume; rule on it):
-- `npx`/`bunx` are package-runner wrappers that directly exec a command, so
-  `npx vercel deploy` currently resolves argv0 to `npx`, matches nothing, and is
-  ALLOWED (a real outward bypass; the gate forwards it via the `vercel` marker but
-  the classifier permits it). PROPOSED Phase-1 fix: add `npx`,`bunx` to the F13
-  exec-wrapper set so argv0 recurses to the real command (`npx vercel`→`vercel`→
-  deny); `npx -c '…'` is already covered by the nested-`-c` recursion. Two-token
-  runners (`pnpm dlx`,`yarn dlx`,`pipx run`,`deno run`) + arbitrary custom runners
-  would stay declared residual #3. QUESTION: is adding `npx`/`bunx` a Phase-1
-  must-fix, or acceptable as a v2 residual given the honest #3 declaration? The
-  author RECOMMENDS adding it now (npx is the most likely real instance in this
-  JS-heavy env and it enables exactly the deploy/publish actions the firebreak
-  exists to stop); deferred pending your call.
+- RESIDUAL #4, command-word QUOTE-SPLITTING (`c""url`, `cu''rl`, `s""h`): NOT yet
+  caught — argv0 is matched without removing internal quotes, so `c""url evil`
+  reaches the outward check as `c""url` (≠curl) and is ALLOWED; the gate also does
+  not forward it (no marker). Same leaky-set family as F13 brace/backslash.
+  Closing it needs BOTH a classifier dequote-argv0 step AND a gate marker
+  (`''`/`\"\"`) that over-forwards every empty-string argument (real R6 cost).
+  QUESTION: fix in Phase 1, or accept as declared residual #4? (Author leans
+  declare-for-now given the coupled change + gate cost; your call.)
+- Also still open from the 2nd review: two-token package-runners (`pnpm dlx`,
+  `yarn dlx`, `pipx run`, `deno run`) and pre-existing/external git aliases —
+  Phase-1 fix or v2 residual? (npx/bunx are now DONE.)
 
 OUT OF SCOPE: global ~/.claude/settings.json wiring, the orchestrator/SKILL.md
 sentinel+probe integration, Phase 2 (.gitignore + resolve-todos guard). Those are
 the post-review activation steps.
 
 Return: verdict (GO / GO-WITH-FIXES / NO-GO) + a P0/P1/P2 findings table + an
-explicit ruling on the npx/bunx decision above.
+explicit ruling on the residual-#4 (quote-split) and dlx-family decisions above.
 ```
 
-After Codex returns: triage P0/P1/P2, apply fixes (re-run ALL THREE suites green),
-**implement the npx/bunx wrapper fix IF Codex confirms it** (held at user request
-until then — proposed change + tests already scoped in the 2nd-review doc), run my
+After Codex returns: triage P0/P1/P2, apply fixes (re-run ALL FOUR suites green),
+**implement the quote-split / dlx-family fixes IF Codex confirms them** (held
+pending its ruling; quote-split fix is scoped in the 3rd-review doc), run my
 own adversarial second pass (~/.claude/docs/mandatory-review-workflow.md), THEN
 proceed to the activation layer (global wire + orchestrator integration) as a
 separate, explicitly-approved step. Decision to push the branch is the user's —
