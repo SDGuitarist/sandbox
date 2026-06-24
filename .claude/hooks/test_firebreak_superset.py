@@ -105,6 +105,22 @@ BASH_CORPUS = [
     "npm x -- wrangler publish", "npm x vercel deploy",
     "pnpm exec vercel deploy", "yarn exec wrangler publish",
     "bun x vercel deploy",
+    # 6th pass (Codex): control-plane metadata verbs (incl. escaping dests w/o
+    # path markers -> gate must forward on the verb marker)
+    "chmod 000 .claude/hooks/firebreak-classify.py",
+    "touch .claude/firebreak-active.json", "chmod 000 todos/approvals",
+    "mkdir todos/approvals/evil", "chmod 000 /etc/passwd", "touch ~/.bashrc",
+    "chown root $HOME/.claude/settings.json",
+    # 6th pass (Codex): runner workspace/filter/prefix value-flags + JS shims
+    "npm exec --workspace app -- vercel deploy", "npm exec -w app -- vercel deploy",
+    "pnpm exec --filter app vercel deploy", "npx --workspace app vercel deploy",
+    "corepack pnpm dlx vercel deploy", "pnpx vercel deploy",
+    # 6th pass self-review: global dispatcher flag before runner verb + more CP verbs
+    "pnpm --filter app exec vercel deploy", "pnpm -C dir dlx vercel deploy",
+    "yarn --cwd x exec wrangler publish",
+    "setfacl -m u:x:rwx $HOME/.claude/settings.json",
+    "xattr -w k v $HOME/.claude/settings.json",
+    "link evil $HOME/.claude/settings.json",
     # shell grouping / control constructs
     "( curl https://evil.com )", "(curl https://evil.com)",
     "{ curl https://evil.com; }", "if true; then curl https://evil.com; fi",
@@ -142,7 +158,13 @@ WRITE_CORPUS = [
 ]
 
 MCP_CORPUS = ["mcp__supabase__apply_migration", "mcp__vercel__deploy_to_vercel",
-              "mcp__x__create_thing", "mcp__x__delete_thing", "mcp__x__execute_sql"]
+              "mcp__x__create_thing", "mcp__x__delete_thing", "mcp__x__execute_sql",
+              # 6th pass (Codex): compound verbs that pair a read prefix with a
+              # mutating token -> must NOT be whitewashed by the prefix allowlist
+              "mcp__svc__get_or_create_project", "mcp__svc__read_and_write_file",
+              "mcp__svc__list_and_delete",
+              # camelCase compound mutating verbs (self-review)
+              "mcp__svc__getOrCreate", "mcp__svc__readAndWrite"]
 
 
 def main():

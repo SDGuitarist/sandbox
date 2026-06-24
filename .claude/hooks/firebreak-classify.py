@@ -58,23 +58,32 @@ DISPATCHERS = {
 }
 
 # F13 exec-wrappers to recurse through to the real command word. Includes
-# package-runners (npx/bunx) which fetch+exec the named command, so
-# `npx vercel deploy` resolves to the `vercel` command word.
+# package-runners (npx/bunx/pnpx) which fetch+exec the named command, so
+# `npx vercel deploy` resolves to the `vercel` command word, and the `corepack`
+# shim which passes through to the named package manager (`corepack pnpm dlx X`).
 WRAPPERS = {
     "env", "nice", "nohup", "timeout", "xargs", "command", "builtin", "exec",
     "setsid", "stdbuf", "time", "sudo", "doas", "chroot", "unshare", "flock",
     "script", "setarch", "watch", "parallel", "ionice", "chrt", "npx", "bunx",
+    "pnpx", "corepack",
 }
 # wrappers that consume one positional argument before the real command
 WRAPPER_TAKES_ARG = {"timeout", "nice", "flock", "stdbuf", "setarch", "ionice",
                      "chrt", "parallel", "watch"}
 # wrapper flags that take a VALUE (so the value is skipped, not mistaken for the
-# command word): `sudo -u user cmd`, `npx -p pkg cmd`.
+# command word): `sudo -u user cmd`, `npx -p pkg cmd`, `npx --workspace app cmd`.
 WRAPPER_VALUE_FLAGS = {"-u", "--user", "-g", "--group", "-p", "--package",
-                       "-C", "--chdir"}
+                       "-C", "--chdir", "-w", "--workspace", "--filter",
+                       "--prefix", "--cwd", "--dir"}
 
-# Bash write verbs that can target the control plane (F1 + F9)
-CP_WRITE_VERBS = {"rm", "mv", "cp", "install", "ln", "dd", "truncate", "tee", "sed"}
+# Bash write verbs that can target the control plane (F1 + F9). Includes
+# metadata / creation verbs (chmod/chown/chgrp/touch/mkdir/chflags): they don't
+# write CONTENT but a worker can use them to disable/clobber a control-plane file
+# (`chmod 000 .claude/hooks/firebreak-classify.py`, `touch
+# .claude/firebreak-active.json`) -- so their path positionals are checked too.
+CP_WRITE_VERBS = {"rm", "mv", "cp", "install", "ln", "dd", "truncate", "tee", "sed",
+                  "chmod", "chown", "chgrp", "touch", "mkdir", "chflags",
+                  "setfacl", "xattr", "link", "mkfifo", "mknod"}
 # verbs whose destination is arbitrary -> a fully-opaque dest defers (F9c)
 ARBITRARY_DEST_VERBS = {"cp", "install", "ln", "dd", "mv", "sed", "truncate"}
 
@@ -92,6 +101,9 @@ INTERPRETERS = {"python", "python3", "node", "ruby", "perl", "bash", "sh",
 TWO_TOKEN_RUNNERS = {("pnpm", "dlx"), ("yarn", "dlx"), ("pipx", "run"),
                      ("npm", "exec"), ("npm", "x"), ("pnpm", "exec"),
                      ("yarn", "exec"), ("bun", "x")}
+# Dispatchers that front a two-token runner (used to skip GLOBAL flags between the
+# dispatcher and its runner verb: `pnpm --filter app exec <cmd>`).
+RUNNER_DISPATCHERS = {d for (d, _v) in TWO_TOKEN_RUNNERS}
 
 # Value-taking options a two-token runner may carry BEFORE the real command word
 # (`pnpm dlx --package vercel vercel deploy`, `pipx run --spec ./evil cmd`,
@@ -99,7 +111,9 @@ TWO_TOKEN_RUNNERS = {("pnpm", "dlx"), ("yarn", "dlx"), ("pipx", "run"),
 # lands on the real command, not the flag/value. `-c`/`--call` are NOT here --
 # those carry a command STRING handled by extract_nested_commands.
 RUNNER_VALUE_FLAGS = {"-p", "--package", "--spec", "--python", "--pip-args",
-                      "-i", "--index-url", "--registry", "--node-range"}
+                      "-i", "--index-url", "--registry", "--node-range",
+                      "-w", "--workspace", "--filter", "--prefix", "-C",
+                      "--cwd", "--dir"}
 
 # mcp__* read-only verb prefixes (everything else defers -- R4d)
 MCP_READONLY_PREFIXES = (
@@ -107,6 +121,18 @@ MCP_READONLY_PREFIXES = (
     "inspect", "describe", "show", "fetch", "wait_for", "help", "view", "find",
     "count", "status",
 )
+# Mutating tokens that VETO the read-only prefix allowlist: if ANY of these appears
+# as a `_`/`-`-split token of an mcp verb, it defers even behind a read prefix
+# (`get_or_create`, `read_and_write`, `list_and_delete`). Exact-token match (not
+# substring) so `get_updates`/`list_writes` are NOT falsely vetoed.
+MCP_MUTATING_TOKENS = {
+    "create", "write", "delete", "update", "set", "put", "post", "remove", "add",
+    "insert", "modify", "patch", "upsert", "merge", "apply", "deploy", "publish",
+    "send", "exec", "execute", "run", "drop", "truncate", "rename", "upload",
+    "edit", "generate", "import", "trigger", "restart", "pause", "restore",
+    "reset", "rebase", "cancel", "revoke", "grant", "invite", "respond", "reply",
+    "comment", "share", "destroy", "kill", "stop", "approve", "reject",
+}
 
 # opacity: command-substitution / backtick / $VAR / ${...} / brace-expansion /
 # backslash-escape. (Brace/backslash MUST be checked here in the classifier on the
@@ -331,6 +357,29 @@ def is_opaque(token):
     return token is not None and bool(OPAQUE_RE.search(token))
 
 
+def _runner_subcommand_end(words, idx):
+    """If words[idx] is a runner dispatcher whose runner verb (dlx/exec/x/run)
+    follows -- possibly after the dispatcher's own GLOBAL value-flags
+    (`pnpm --filter app exec X`, `pnpm -C dir dlx X`, `yarn --cwd x exec X`) --
+    return the index JUST PAST the runner verb; else None. This generalizes the
+    adjacent two-token match so a global flag between the dispatcher and its
+    runner subcommand can't hide the inner command."""
+    base = base_name(words[idx])
+    if base not in RUNNER_DISPATCHERS:
+        return None
+    vflags = DISPATCHER_VALUE_FLAGS.get(base, set())
+    j = idx + 1
+    while j < len(words) and words[j].startswith("-"):
+        name = words[j].split("=", 1)[0]
+        if "=" not in words[j] and name in vflags and j + 1 < len(words):
+            j += 2                       # global value-flag -> skip its value
+        else:
+            j += 1
+    if j < len(words) and (base, base_name(words[j])) in TWO_TOKEN_RUNNERS:
+        return j + 1
+    return None
+
+
 def _skip_runner_flags(words, idx):
     """After a two-token runner prefix, skip its leading option flags (and the
     values of value-taking ones) plus a `--` end-of-options separator, so the
@@ -374,12 +423,12 @@ def resolve_argv0(words, sentinel):
                 idx += 1  # consume the wrapper's positional arg (duration/file/N)
             continue
         # two-token package runners: `pnpm dlx <cmd>`, `pipx run <cmd>`,
-        # `npm exec -- <cmd>`, `npm x <cmd>`. Skip the runner's own
-        # value-flags / `--` separator so we land on the real command word.
-        if idx + 1 < len(words) and \
-                (base, base_name(words[idx + 1])) in TWO_TOKEN_RUNNERS:
-            idx += 2
-            idx = _skip_runner_flags(words, idx)
+        # `npm exec -- <cmd>`, `npm x <cmd>` -- including a global dispatcher
+        # flag BEFORE the runner verb (`pnpm --filter app exec <cmd>`). Then skip
+        # the runner's own value-flags / `--` separator to reach the command word.
+        end = _runner_subcommand_end(words, idx)
+        if end is not None:
+            idx = _skip_runner_flags(words, end)
             continue
         break
     if idx >= len(words):
@@ -1060,6 +1109,16 @@ def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0):
 def mcp_decision(tool_name):
     parts = tool_name.split("__")
     verb = (parts[-1] if len(parts) >= 3 else tool_name).lower()
+    # A read-only PREFIX is not enough: a compound verb can pair a read prefix
+    # with a mutating action (`get_or_create`, `read_and_write`, `getOrCreate`).
+    # Veto FIRST on any mutating token so the prefix can't whitewash it. Split on
+    # `_`/`-` AND camelCase boundaries (insert `_` before an interior capital) so
+    # `getOrCreate` -> get/or/create. Exact-token match avoids substring false
+    # positives (`get_updates` is NOT vetoed by `update`).
+    raw = (parts[-1] if len(parts) >= 3 else tool_name)
+    snake = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", raw).lower()
+    if any(t in MCP_MUTATING_TOKENS for t in re.split(r"[_\-]+", snake)):
+        return "mcp-write"
     if any(verb.startswith(p) for p in MCP_READONLY_PREFIXES):
         return None
     return "mcp-write"

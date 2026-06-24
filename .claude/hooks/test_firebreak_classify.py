@@ -223,6 +223,25 @@ def main():
     d, _, _ = run(bash("cp src/a.py src/b.py", WORKER), s, cwd=repo)
     check("worker cp worktree->worktree stays GREEN", d, False)
 
+    # metadata / creation verbs can disable or clobber a control-plane file (6th pass)
+    d, _, _ = run(bash("chmod 000 .claude/hooks/firebreak-classify.py", WORKER), s, cwd=repo)
+    check("worker chmod control-plane hook script", d, True)
+
+    d, _, _ = run(bash("touch .claude/firebreak-active.json", WORKER), s, cwd=repo)
+    check("worker touch sentinel", d, True)
+
+    d, _, _ = run(bash(f"chown root {HOME}/.claude/settings.json", WORKER), s)
+    check("worker chown global control-plane settings", d, True)
+
+    d, _, _ = run(bash("mkdir todos/approvals/evil", WORKER), s, cwd=repo)
+    check("worker mkdir under approvals queue", d, True)
+
+    d, _, _ = run(bash("chmod +x build.sh", WORKER), s, cwd=repo)
+    check("worker chmod worktree file stays GREEN", d, False)
+
+    d, _, _ = run(bash("touch out.txt", WORKER), s, cwd=repo)
+    check("worker touch worktree file stays GREEN", d, False)
+
     # ---------------- out-of-repo deletes / data ----------------
     d, _, _ = run(bash(f"rm -rf {HOME}/Data/leads.db", WORKER), s)
     check("worker rm out-of-repo db (data)", d, True)
@@ -490,6 +509,31 @@ def main():
     d, _, _ = run(bash("npm exec -- jest", WORKER), s, cwd=repo)
     check("npm exec -- jest stays GREEN", d, False)
 
+    # runner workspace/filter value-flags + corepack/pnpx shims (6th pass)
+    d, _, _ = run(bash("npm exec --workspace app -- vercel deploy", WORKER), s)
+    check("npm exec --workspace app -- vercel deploy", d, True)
+
+    d, _, _ = run(bash("pnpm exec --filter app vercel deploy", WORKER), s)
+    check("pnpm exec --filter app vercel deploy", d, True)
+
+    d, _, _ = run(bash("npx --workspace app vercel deploy", WORKER), s)
+    check("npx --workspace app vercel deploy", d, True)
+
+    d, _, _ = run(bash("corepack pnpm dlx vercel deploy", WORKER), s)
+    check("corepack pnpm dlx vercel deploy", d, True)
+
+    d, _, _ = run(bash("pnpx vercel deploy", WORKER), s)
+    check("pnpx vercel deploy", d, True)
+
+    d, _, _ = run(bash("pnpm --filter app exec vercel deploy", WORKER), s)
+    check("pnpm --filter app exec (global flag before verb)", d, True)
+
+    d, _, _ = run(bash("yarn --cwd x exec wrangler publish", WORKER), s)
+    check("yarn --cwd x exec (global flag before verb)", d, True)
+
+    d, _, _ = run(bash("npm exec --workspace app -- jest", WORKER), s, cwd=repo)
+    check("npm exec --workspace app -- jest stays GREEN", d, False)
+
     # ---------------- mcp ----------------
     d, _, _ = run(mcp("mcp__supabase__apply_migration", WORKER), s)
     check("mcp apply_migration denied", d, True)
@@ -499,6 +543,25 @@ def main():
 
     d, _, _ = run(mcp("mcp__supabase__get_project", WORKER), s)
     check("mcp get_project allowed", d, False)
+
+    # compound verbs: read prefix + mutating token -> deny (6th pass / R4d)
+    d, _, _ = run(mcp("mcp__svc__get_or_create_project", WORKER), s)
+    check("mcp get_or_create denied", d, True)
+
+    d, _, _ = run(mcp("mcp__svc__read_and_write_file", WORKER), s)
+    check("mcp read_and_write denied", d, True)
+
+    d, _, _ = run(mcp("mcp__svc__list_and_delete", WORKER), s)
+    check("mcp list_and_delete denied", d, True)
+
+    d, _, _ = run(mcp("mcp__svc__get_updates", WORKER), s)
+    check("mcp get_updates allowed (no mutating token)", d, False)
+
+    d, _, _ = run(mcp("mcp__svc__getOrCreate", WORKER), s)
+    check("mcp camelCase getOrCreate denied", d, True)
+
+    d, _, _ = run(mcp("mcp__svc__getDeploymentStatus", WORKER), s)
+    check("mcp camelCase getDeploymentStatus allowed", d, False)
 
     # ---------------- blanket-deny fallback (F8) ----------------
     sb = sentinel(repo, blanket_deny_control_plane=True)

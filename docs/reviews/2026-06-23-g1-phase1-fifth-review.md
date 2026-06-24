@@ -106,6 +106,11 @@ Unchanged from the fourth review — no new class opened:
   (`npx some-evil-pkg`, `npm exec -- some-evil-pkg`) still stays GREEN — we cannot
   know an arbitrary package is malicious without running it. This is the honest
   leaky-set bound, not a closed gap.
+  > **Re-bounded in the 6th review (2026-06-24):** this wording was too narrow.
+  > Codex found `corepack`/`pnpx` shims (now listed) and runner value-flag forms
+  > slipping through. The honest bound is **an UNLISTED dispatcher/exec-wrapper
+  > with a literal `argv[0]`, OR an unrecognized package name** — matching the
+  > plan's F13 residual #3. See `docs/reviews/2026-06-24-g1-phase1-sixth-review.md`.
 - **Command-substitution / nesting depth** — capped at >4 → fail-closed.
 
 ## Verdict

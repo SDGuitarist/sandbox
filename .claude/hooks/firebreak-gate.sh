@@ -60,6 +60,8 @@ case "$tool_name" in
       -e 'npm run' -e 'make' -e '.sh' -e '.venv' -e 'bash ' -e 'sh ' \
       -e 'rm ' -e 'unlink' -e 'shred' -e 'rmdir' -e '-delete' -e 'truncate' \
       -e 'cp ' -e 'mv ' -e 'ln ' -e 'dd ' -e 'tee ' -e 'sed ' -e 'install' \
+      -e 'chmod' -e 'chown' -e 'chgrp' -e 'touch' -e 'mkdir' -e 'chflags' \
+      -e 'setfacl' -e 'xattr' -e 'link' -e 'mkfifo' -e 'mknod' \
       -e 'flock' -e 'timeout' -e 'nohup' -e 'setsid' -e 'unshare' -e 'doas' \
       -e 'sudo' -e 'xargs' -e 'nice ' -e 'ionice' -e 'chrt' -e 'stdbuf' \
       -e 'setarch' -e 'parallel' -e 'watch ' -e 'env ' -e 'command ' \
