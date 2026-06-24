@@ -242,6 +242,61 @@ def main():
     d, _, _ = run(bash("touch out.txt", WORKER), s, cwd=repo)
     check("worker touch worktree file stays GREEN", d, False)
 
+    # directory-level control-plane mutation: removing/disabling the protected
+    # hook/sentinel dir via the parent dir (F1/F9 dir-level)
+    d, _, _ = run(bash("rm -rf .claude/hooks", WORKER), s, cwd=repo)
+    check("worker rm -rf .claude/hooks (dir)", d, True)
+
+    d, _, _ = run(bash("rm -rf .claude", WORKER), s, cwd=repo)
+    check("worker rm -rf .claude (dir)", d, True)
+
+    d, _, _ = run(bash("rmdir .claude/hooks", WORKER), s, cwd=repo)
+    check("worker rmdir .claude/hooks", d, True)
+
+    d, _, _ = run(bash("mv .claude .claude.bak", WORKER), s, cwd=repo)
+    check("worker rename .claude away", d, True)
+
+    d, _, _ = run(bash("mv .claude/hooks .claude/hooks.disabled", WORKER), s, cwd=repo)
+    check("worker rename hooks dir to disable", d, True)
+
+    d, _, _ = run(bash("chmod -R 000 .claude", WORKER), s, cwd=repo)
+    check("worker chmod -R .claude dir", d, True)
+
+    d, _, _ = run(bash("unlink .claude/hooks/firebreak-classify.py", WORKER), s, cwd=repo)
+    check("worker unlink hook script", d, True)
+
+    d, _, _ = run(bash("rm -rf .", WORKER), s, cwd=repo)
+    check("worker rm -rf . (worktree root = ancestor of control plane)", d, True)
+
+    d, _, _ = run(bash("rm -rf .claude/worktrees/x", WORKER), s, cwd=repo)
+    check("worker rm under .claude/worktrees stays GREEN", d, False)
+
+    d, _, _ = run(bash("rm -rf .git/hooks", WORKER), s, cwd=repo)
+    check("worker rm .git/hooks stays GREEN (not our CP)", d, False)
+
+    d, _, _ = run(bash("rm -rf .claude/hooks", SWARM), s, cwd=repo)
+    check("trusted swarm-runner rm .claude/hooks allowed (F5)", d, False)
+
+    # cd-into-control-plane + mutate (cwd-shift evasion) -> defer
+    d, _, _ = run(bash("( cd .claude && rm -rf hooks )", WORKER), s, cwd=repo)
+    check("worker cd .claude && rm -rf hooks", d, True)
+
+    d, _, _ = run(bash("cd .claude && touch evil", WORKER), s, cwd=repo)
+    check("worker cd .claude && touch evil", d, True)
+
+    d, _, _ = run(bash("cd .claude && cat hooks/firebreak-gate.sh", WORKER), s, cwd=repo)
+    check("worker cd .claude && cat (read, no mutate) stays GREEN", d, False)
+
+    d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
+    check("worker cd src && rm -rf build stays GREEN", d, False)
+
+    # redirect-truncation / symlink targeting a hook file -> defer
+    d, _, _ = run(bash(": > .claude/hooks/firebreak-gate.sh", WORKER), s, cwd=repo)
+    check("worker truncate hook via redirect", d, True)
+
+    d, _, _ = run(bash("ln -sfn /tmp/evil .claude/hooks", WORKER), s, cwd=repo)
+    check("worker symlink-replace hooks dir", d, True)
+
     # ---------------- out-of-repo deletes / data ----------------
     d, _, _ = run(bash(f"rm -rf {HOME}/Data/leads.db", WORKER), s)
     check("worker rm out-of-repo db (data)", d, True)

@@ -83,7 +83,8 @@ WRAPPER_VALUE_FLAGS = {"-u", "--user", "-g", "--group", "-p", "--package",
 # .claude/firebreak-active.json`) -- so their path positionals are checked too.
 CP_WRITE_VERBS = {"rm", "mv", "cp", "install", "ln", "dd", "truncate", "tee", "sed",
                   "chmod", "chown", "chgrp", "touch", "mkdir", "chflags",
-                  "setfacl", "xattr", "link", "mkfifo", "mknod"}
+                  "setfacl", "xattr", "link", "mkfifo", "mknod",
+                  "rmdir", "unlink", "shred"}
 # verbs whose destination is arbitrary -> a fully-opaque dest defers (F9c)
 ARBITRARY_DEST_VERBS = {"cp", "install", "ln", "dd", "mv", "sed", "truncate"}
 
@@ -240,6 +241,36 @@ def is_control_plane(path):
     if "/todos/approvals/" in norm or norm.endswith("/todos/approvals"):
         return True
     return False
+
+
+def is_control_plane_dir(path, repo_root=None):
+    """A path whose mutation (delete / rename / chmod / metadata) would REMOVE or
+    DISABLE a protected control-plane file -- i.e. the path IS, or is an ANCESTOR
+    directory of, a protected location. Protected anchors: <repo>/.claude/hooks
+    (firebreak hook scripts), <repo>/.claude/firebreak-active.json (sentinel),
+    ~/.claude/settings.json (global hook registration), <repo>/todos/approvals
+    (queue). So `rm -rf .claude/hooks`, `mv .claude .claude.bak`, `rmdir
+    .claude/hooks`, and the parent-dir variants `rm -rf .` / `rm -rf ~` defer for a
+    worker -- while a SIBLING subtree (`build/`, `.claude/worktrees/<agent>/...`,
+    a new file under `.claude/`) stays writable (it is neither a protected anchor
+    nor an ancestor of one)."""
+    if path is None:
+        return False
+    t = realpath(path).replace("\\", "/").rstrip("/") or "/"
+    # (1) the protected dir ITSELF, anywhere it can be reached -- any `.claude` or
+    # `.claude/hooks` dir. A worker runs in a git worktree that carries its OWN
+    # tracked copy of `.claude/hooks/firebreak-*` (the hook fires with the
+    # worktree as cwd), so this must match by shape, not only the repo_root anchor.
+    if t.endswith("/.claude") or t.endswith("/.claude/hooks"):
+        return True
+    # (2) an ANCESTOR of a protected anchor -- the parent-dir variants `rm -rf .`,
+    # `rm -rf ~`, `rm -rf /` that would take a protected file down with them.
+    anchors = [GLOBAL_SETTINGS.replace("\\", "/")]
+    if repo_root:
+        rr = os.path.realpath(repo_root).replace("\\", "/").rstrip("/")
+        anchors += [rr + "/.claude/hooks", rr + "/.claude/firebreak-active.json",
+                    rr + "/todos/approvals"]
+    return any(t == "/" or a == t or a.startswith(t + "/") for a in anchors)
 
 
 def is_learnings_target(path, project_key):
@@ -917,7 +948,14 @@ def bash_control_plane(words, cmd, identity, repo_root, sentinel):
     worker = identity not in TRUSTED
 
     # Control-plane path via any write target -> worker denied, trusted allowed.
-    for t in cp_targets + redir:
+    # A protected FILE (is_control_plane) OR a directory whose mutation would
+    # remove/disable one (is_control_plane_dir: `rm -rf .claude/hooks`, `mv
+    # .claude .claude.bak`). The dir check applies to mutation verbs only -- not
+    # plain redirects, which create a file and can't remove the dir.
+    for t in cp_targets:
+        if is_control_plane(t) or is_control_plane_dir(t, repo_root):
+            return "control-plane" if worker else None
+    for t in redir:
         if is_control_plane(t):
             return "control-plane" if worker else None
     if not worker:
@@ -1061,11 +1099,52 @@ def classify_bash_command(cmd, identity, repo_root, sentinel, depth=0):
     simples = split_commands(cmd)
     if not simples:                     # nothing left after stripping -> classify raw
         return classify_simple_command(cmd, identity, repo_root, sentinel, depth)
+    # `cd <control-plane-dir> && <mutate>`: the classifier resolves each simple
+    # against the PROCESS cwd, so a `cd .claude` makes a later relative mutation
+    # (`rm -rf hooks`) resolve wrong. If the sequence both cd's into the control
+    # plane AND carries a mutation verb, fail-closed for a worker (no legitimate
+    # reason to cd into the firebreak's own dir and mutate).
+    if identity not in TRUSTED and _cd_into_control_plane(simples, repo_root) \
+            and _has_mutation_verb(simples, sentinel):
+        return "control-plane"
     for s in simples:
         c = classify_simple_command(s, identity, repo_root, sentinel, depth)
         if c:
             return c
     return None
+
+
+def _cd_into_control_plane(simples, repo_root):
+    """True if any `cd`/`pushd` in the sequence targets a control-plane dir."""
+    for s in simples:
+        w = shell_words(s)
+        if not w or base_name(w[0]) not in ("cd", "pushd"):
+            continue
+        for t in w[1:]:
+            if t.startswith("-"):
+                continue
+            if is_control_plane_dir(strip_quotes(t), repo_root) \
+                    or is_control_plane(strip_quotes(t)):
+                return True
+            break
+    return False
+
+
+def _has_mutation_verb(simples, sentinel):
+    """True if any simple command is a write/delete/metadata mutation or a
+    `find ... -delete/-exec` or carries a `>`/`>>` redirection."""
+    for s in simples:
+        if redirection_targets(s):
+            return True
+        argv0, rest = resolve_argv0(shell_words(s), sentinel)
+        if argv0 is None:
+            continue
+        a0 = base_name(argv0)
+        if a0 in CP_WRITE_VERBS or a0 in DELETE_VERBS:
+            return True
+        if a0 == "find" and ("-delete" in rest or "-exec" in rest):
+            return True
+    return False
 
 
 def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0):
