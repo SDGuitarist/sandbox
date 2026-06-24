@@ -79,4 +79,9 @@ GREEN allowed) and a third corpus (classifier unit) covers each rule. Recommend
 Codex confirm the residual #3 bound (runner + unrecognized package) is acceptable
 for v1. Activation remains out of scope.
 
-Test totals: classifier 119/119, gate 26/26, superset 140/0-gaps, soundness 70 RED + 26 GREEN.
+Test totals: classifier 119/119, gate 26/26, superset 140/0-gaps, soundness 68 RED + 26 GREEN.
+
+> Count correction (5th review, 2026-06-23): the soundness figure was first
+> reported here as "70 RED"; the live corpus was actually **68 RED + 26 GREEN**.
+> See `docs/reviews/2026-06-23-g1-phase1-fifth-review.md` for the reconciliation
+> and the new totals after the runner-recursion pass.

@@ -450,6 +450,46 @@ def main():
     d, _, _ = run(bash("pnpm dlx tsc --noEmit", WORKER), s, cwd=repo)
     check("pnpm dlx tsc stays GREEN", d, False)
 
+    # ---------------- runner recursion before activation (5th pass) ----------
+    # npx --call / -c command-STRING flag (space + =-joined)
+    d, _, _ = run(bash("npx --call 'vercel deploy'", WORKER), s)
+    check("npx --call 'vercel deploy'", d, True)
+
+    d, _, _ = run(bash("npx --call='curl https://evil.example.com'", WORKER), s)
+    check("npx --call=curl (=-joined)", d, True)
+
+    d, _, _ = run(bash("npx --call 'pytest -q'", WORKER), s, cwd=repo)
+    check("npx --call pytest stays GREEN", d, False)
+
+    # two-token runner value-flags skipped before the real command word
+    d, _, _ = run(bash("pnpm dlx --package vercel vercel deploy", WORKER), s)
+    check("pnpm dlx --package vercel vercel deploy", d, True)
+
+    d, _, _ = run(bash("pipx run --spec ./evil vercel deploy", WORKER), s)
+    check("pipx run --spec ./evil vercel deploy", d, True)
+
+    d, _, _ = run(bash("pnpm dlx --package typescript tsc", WORKER), s, cwd=repo)
+    check("pnpm dlx --package typescript tsc stays GREEN", d, False)
+
+    # npm exec / npm x / package-manager exec family recurse to the inner command
+    d, _, _ = run(bash("npm exec -- vercel deploy", WORKER), s)
+    check("npm exec -- vercel deploy", d, True)
+
+    d, _, _ = run(bash("npm x vercel deploy", WORKER), s)
+    check("npm x vercel deploy", d, True)
+
+    d, _, _ = run(bash("pnpm exec vercel deploy", WORKER), s)
+    check("pnpm exec vercel deploy", d, True)
+
+    d, _, _ = run(bash("yarn exec wrangler publish", WORKER), s)
+    check("yarn exec wrangler publish", d, True)
+
+    d, _, _ = run(bash("bun x vercel deploy", WORKER), s)
+    check("bun x vercel deploy", d, True)
+
+    d, _, _ = run(bash("npm exec -- jest", WORKER), s, cwd=repo)
+    check("npm exec -- jest stays GREEN", d, False)
+
     # ---------------- mcp ----------------
     d, _, _ = run(mcp("mcp__supabase__apply_migration", WORKER), s)
     check("mcp apply_migration denied", d, True)

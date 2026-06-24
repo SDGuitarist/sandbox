@@ -85,8 +85,21 @@ INTERPRETERS = {"python", "python3", "node", "ruby", "perl", "bash", "sh",
                 "zsh", "dash", "ksh", "deno"}
 
 # Two-token package-runner prefixes that fetch+exec the FOLLOWING command
-# (like npx/bunx, but spelled as a dispatcher + subcommand).
-TWO_TOKEN_RUNNERS = {("pnpm", "dlx"), ("yarn", "dlx"), ("pipx", "run")}
+# (like npx/bunx, but spelled as a dispatcher + subcommand). Includes the
+# package-manager `exec` family (`npm exec`/`npm x`/`pnpm exec`/`yarn exec`/
+# `bun x`), which run the named command word just like `npx`, so the inner
+# RED command (`npm exec -- vercel deploy`) must be resolved and classified.
+TWO_TOKEN_RUNNERS = {("pnpm", "dlx"), ("yarn", "dlx"), ("pipx", "run"),
+                     ("npm", "exec"), ("npm", "x"), ("pnpm", "exec"),
+                     ("yarn", "exec"), ("bun", "x")}
+
+# Value-taking options a two-token runner may carry BEFORE the real command word
+# (`pnpm dlx --package vercel vercel deploy`, `pipx run --spec ./evil cmd`,
+# `npm exec --package=foo -- cmd`). Skipped (with their values) so the resolver
+# lands on the real command, not the flag/value. `-c`/`--call` are NOT here --
+# those carry a command STRING handled by extract_nested_commands.
+RUNNER_VALUE_FLAGS = {"-p", "--package", "--spec", "--python", "--pip-args",
+                      "-i", "--index-url", "--registry", "--node-range"}
 
 # mcp__* read-only verb prefixes (everything else defers -- R4d)
 MCP_READONLY_PREFIXES = (
@@ -318,6 +331,23 @@ def is_opaque(token):
     return token is not None and bool(OPAQUE_RE.search(token))
 
 
+def _skip_runner_flags(words, idx):
+    """After a two-token runner prefix, skip its leading option flags (and the
+    values of value-taking ones) plus a `--` end-of-options separator, so the
+    resolver lands on the real command word -- `pnpm dlx --package vercel
+    vercel deploy` -> `vercel deploy`, `npm exec -- gh api` -> `gh api`."""
+    while idx < len(words) and words[idx].startswith("-"):
+        if words[idx] == "--":          # end-of-options -> next token is the cmd
+            idx += 1
+            break
+        flag = words[idx]
+        idx += 1
+        name = flag.split("=", 1)[0]
+        if "=" not in flag and name in RUNNER_VALUE_FLAGS and idx < len(words):
+            idx += 1                     # skip the flag's value (e.g. `--spec X`)
+    return idx
+
+
 def resolve_argv0(words, sentinel):
     """Skip leading VAR= assignments and exec-wrappers; return (argv0, rest)."""
     idx = 0
@@ -343,10 +373,13 @@ def resolve_argv0(words, sentinel):
                     and not is_opaque(words[idx]):
                 idx += 1  # consume the wrapper's positional arg (duration/file/N)
             continue
-        # two-token package runners: `pnpm dlx <cmd>`, `pipx run <cmd>`
+        # two-token package runners: `pnpm dlx <cmd>`, `pipx run <cmd>`,
+        # `npm exec -- <cmd>`, `npm x <cmd>`. Skip the runner's own
+        # value-flags / `--` separator so we land on the real command word.
         if idx + 1 < len(words) and \
                 (base, base_name(words[idx + 1])) in TWO_TOKEN_RUNNERS:
             idx += 2
+            idx = _skip_runner_flags(words, idx)
             continue
         break
     if idx >= len(words):
@@ -413,15 +446,22 @@ GIT_OUTWARD_VERBS = ("push", "filter-repo", "filter-branch")
 
 
 def extract_nested_commands(words):
-    """Command strings handed to a `-c` flag -- `sh -c '<cmd>'`, `bash -c`,
-    `flock /tmp/l -c '<cmd>'`, `timeout 5 sh -c '<cmd>'`, etc. The real action
-    lives inside the string, so the classifier must recurse into it. (`python -c`
-    runs python, not a shell command, but the top-level interpreter check already
-    defers it -- a harmless extra recursion.)"""
+    """Command strings handed to a command-string flag -- `sh -c '<cmd>'`,
+    `bash -c`, `flock /tmp/l -c '<cmd>'`, `timeout 5 sh -c '<cmd>'`, and the
+    package-runner `--call`/`-c` string (`npx --call 'vercel deploy'`,
+    `npm exec -c 'curl evil'`). The real action lives inside the string, so the
+    classifier must recurse into it. Both space-separated (`-c <cmd>`) and
+    `=`-joined (`--call=<cmd>`) forms are covered. (`python -c` runs python, not a
+    shell command, but the top-level interpreter check already defers it -- a
+    harmless extra recursion; likewise recursing a benign string only DENIES when
+    the inner command is itself RED.)"""
     out = []
-    for i in range(len(words) - 1):
-        if strip_quotes(words[i]) == "-c":
+    for i in range(len(words)):
+        tok = strip_quotes(words[i])
+        if tok in ("-c", "--call") and i + 1 < len(words):
             out.append(strip_quotes(words[i + 1]))
+        elif tok.startswith("--call=") or tok.startswith("-c="):
+            out.append(strip_quotes(tok.split("=", 1)[1]))
     return out
 
 
