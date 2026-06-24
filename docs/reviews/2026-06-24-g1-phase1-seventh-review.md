@@ -77,11 +77,16 @@ False-positive guards (all GREEN): `rm -rf build`, `rm -rf dist node_modules`,
 
 - #1 allowlisted-interpreter escape; #2 inherited-`$VAR` redirect; #3 unlisted
   dispatcher/wrapper or unrecognized package — all unchanged.
-- **Narrow note (within #2):** an inherited-`$VAR` directory in a delete
-  (`D=.claude/hooks; rm -rf $D`) is not statically resolvable, so it stays GREEN —
-  same inherited-`$VAR` class as residual #2. A worktree-nested `rm -rf .` whose cwd
-  is the worktree (not at/above a repo_root anchor) is the blunt self-destruct case
-  (removes the worker's own worktree, self-defeating, not a stealthy disable).
+- **Narrow note (within #2):** ~~an inherited-`$VAR` directory in a delete
+  (`D=.claude/hooks; rm -rf $D`) is not statically resolvable, so it stays GREEN~~
+  — **CORRECTED by the 8th pass (F14):** `D=.claude/hooks; rm -rf $D` is a
+  **same-command** assignment, statically resolvable, and now **defers**. It was
+  wrong to call it an inherited-`$VAR`. Only a **genuinely inherited** `$VAR` (set
+  in a prior separate command / the environment, with no assignment in this
+  command) stays opaque — see `docs/reviews/2026-06-24-g1-phase1-eighth-review.md`.
+  A worktree-nested `rm -rf .` whose cwd is the worktree (not at/above a repo_root
+  anchor) is the blunt self-destruct case (removes the worker's own worktree,
+  self-defeating, not a stealthy disable).
 
 ## Test-count reconciliation
 

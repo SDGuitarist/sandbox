@@ -935,16 +935,19 @@ def positional_args(rest):
             if not w.startswith("-") and not ASSIGN_RE.match(w)]
 
 
-def bash_control_plane(words, cmd, identity, repo_root, sentinel):
+def bash_control_plane(words, cmd, identity, repo_root, sentinel, assigns=None):
     """F1 + F9: control-plane / out-of-repo / opaque write. Covers write-verb
     positionals (cp/mv/tee/...) AND redirections (`> dest`) for ANY command verb
-    (so `echo x > /etc/foo` is caught)."""
+    (so `echo x > /etc/foo` is caught). `assigns` resolves same-command `$VAR`
+    targets (`D=.claude/hooks; rm -rf $D`)."""
+    assigns = assigns or {}
     argv0, rest = resolve_argv0(words, sentinel)
     if argv0 is None:
         return None
     a0 = base_name(argv0)
-    cp_targets = positional_args(rest) if a0 in CP_WRITE_VERBS else []
-    redir = redirection_targets(cmd)
+    cp_targets = [expand_assigns(t, assigns) for t in positional_args(rest)] \
+        if a0 in CP_WRITE_VERBS else []
+    redir = [expand_assigns(t, assigns) for t in redirection_targets(cmd)]
     worker = identity not in TRUSTED
 
     # Control-plane path via any write target -> worker denied, trusted allowed.
@@ -981,8 +984,10 @@ def bash_control_plane(words, cmd, identity, repo_root, sentinel):
     return None
 
 
-def bash_destructive(words, cmd, repo_root, sentinel):
-    """Data deletes and out-of-repo deletes (errs toward defer)."""
+def bash_destructive(words, cmd, repo_root, sentinel, assigns=None):
+    """Data deletes and out-of-repo deletes (errs toward defer). `assigns` resolves
+    same-command `$VAR` targets."""
+    assigns = assigns or {}
     argv0, rest = resolve_argv0(words, sentinel)
     if argv0 is None:
         return None
@@ -991,7 +996,8 @@ def bash_destructive(words, cmd, repo_root, sentinel):
         return "out-of-repo-delete"
     if a0 not in DELETE_VERBS and a0 != "truncate":
         return None
-    for t in positional_args(rest):
+    for t0 in positional_args(rest):
+        t = expand_assigns(t0, assigns)
         rp = realpath(t)
         if rp.endswith(".db") and not under_tmp(t):
             return "data"
@@ -1090,6 +1096,54 @@ def _matches_known_test_framework(a0, raw0, rest):
     return False
 
 
+def expand_assigns(token, assigns):
+    """Substitute `$VAR` / `${VAR}` using SAME-COMMAND assignments only. An unknown
+    var stays literal -- so a genuinely INHERITED env var keeps its `$` and remains
+    opaque (the declared residual), while a var assigned earlier in this same Bash
+    command resolves to a concrete path the control-plane checks can see."""
+    if not token or "$" not in token:
+        return token
+
+    def repl(m):
+        name = m.group(1) or m.group(2)
+        return assigns.get(name, m.group(0))
+
+    return re.sub(r"\$\{(\w+)\}|\$(\w+)", repl, token)
+
+
+def collect_assignments(simples):
+    """Variables assigned WITHIN this Bash command (`VAR=value` as its own simple,
+    or `export`/`declare`/`typeset`/`local VAR=value`) -> {VAR: literal value}.
+    This is what distinguishes a same-command assignment (statically resolvable ->
+    must be checked) from an INHERITED environment variable (set in a prior,
+    separate command/environment -> genuinely opaque, declared residual). An opaque
+    RHS (`$(...)`, backtick, or a not-yet-assigned `$VAR`) is skipped so we never
+    fabricate a value. RHS may reference earlier same-command assigns (`A=x;
+    B=$A/y`). Inline prefixes (`D=x cmd`) are NOT collected: bash expands a later
+    `$D` arg from the PARENT shell before that assignment applies."""
+    assigns = {}
+    for s in simples:
+        w = shell_words(s)
+        if not w:
+            continue
+        tok = None
+        if base_name(w[0]) in ("export", "declare", "typeset", "local") \
+                and len(w) >= 2 and ASSIGN_RE.match(w[1]):
+            tok = w[1]
+        elif len(w) == 1 and ASSIGN_RE.match(w[0]):
+            tok = w[0]
+        if not tok:
+            continue
+        name, val = tok.split("=", 1)
+        # resolve same-command vars, then `~`/`$HOME`/`$PWD` etc. so
+        # `F=$HOME/.claude/settings.json` becomes a concrete path.
+        val = expand(expand_assigns(strip_quotes(val), assigns))
+        if is_opaque(val):              # still $(...)/`backtick`/unknown $VAR -> skip
+            continue
+        assigns[name] = val
+    return assigns
+
+
 def classify_bash_command(cmd, identity, repo_root, sentinel, depth=0):
     """Classify a Bash command LINE -> RED category or None. Splits lists and
     pipelines (`;` `&&` `||` `|` `&`) so EVERY simple command is evaluated
@@ -1099,23 +1153,28 @@ def classify_bash_command(cmd, identity, repo_root, sentinel, depth=0):
     simples = split_commands(cmd)
     if not simples:                     # nothing left after stripping -> classify raw
         return classify_simple_command(cmd, identity, repo_root, sentinel, depth)
+    # Same-command variable assignments (`D=.claude/hooks; rm -rf $D`) are resolved
+    # so a control-plane target hidden behind a same-command var is still checked.
+    assigns = collect_assignments(simples)
     # `cd <control-plane-dir> && <mutate>`: the classifier resolves each simple
     # against the PROCESS cwd, so a `cd .claude` makes a later relative mutation
     # (`rm -rf hooks`) resolve wrong. If the sequence both cd's into the control
     # plane AND carries a mutation verb, fail-closed for a worker (no legitimate
     # reason to cd into the firebreak's own dir and mutate).
-    if identity not in TRUSTED and _cd_into_control_plane(simples, repo_root) \
+    if identity not in TRUSTED and _cd_into_control_plane(simples, repo_root, assigns) \
             and _has_mutation_verb(simples, sentinel):
         return "control-plane"
     for s in simples:
-        c = classify_simple_command(s, identity, repo_root, sentinel, depth)
+        c = classify_simple_command(s, identity, repo_root, sentinel, depth, assigns)
         if c:
             return c
     return None
 
 
-def _cd_into_control_plane(simples, repo_root):
-    """True if any `cd`/`pushd` in the sequence targets a control-plane dir."""
+def _cd_into_control_plane(simples, repo_root, assigns=None):
+    """True if any `cd`/`pushd` in the sequence targets a control-plane dir
+    (same-command `$VAR` targets resolved)."""
+    assigns = assigns or {}
     for s in simples:
         w = shell_words(s)
         if not w or base_name(w[0]) not in ("cd", "pushd"):
@@ -1123,8 +1182,8 @@ def _cd_into_control_plane(simples, repo_root):
         for t in w[1:]:
             if t.startswith("-"):
                 continue
-            if is_control_plane_dir(strip_quotes(t), repo_root) \
-                    or is_control_plane(strip_quotes(t)):
+            te = expand_assigns(strip_quotes(t), assigns)
+            if is_control_plane_dir(te, repo_root) or is_control_plane(te):
                 return True
             break
     return False
@@ -1147,12 +1206,14 @@ def _has_mutation_verb(simples, sentinel):
     return False
 
 
-def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0):
+def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0, assigns=None):
     """One simple command -> RED category or None. Recurses into nested `-c`
     command strings (sh/bash/flock -c '<cmd>', which may themselves be pipelines)
-    and git `!`-aliases so the real action behind a wrapper/alias cannot evade."""
+    and git `!`-aliases so the real action behind a wrapper/alias cannot evade.
+    `assigns` = same-command variable assignments (resolves `$VAR` targets)."""
     if depth > 4:
         return "fail-closed"
+    assigns = assigns or {}
     words = shell_words(cmd)
     for inner in extract_nested_commands(words):
         c = classify_bash_command(inner, identity, repo_root, sentinel, depth + 1)
@@ -1166,10 +1227,10 @@ def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0):
         c = f13_opaque_defer(words, sentinel)
         if c:
             return c
-    c = bash_control_plane(words, cmd, identity, repo_root, sentinel)
+    c = bash_control_plane(words, cmd, identity, repo_root, sentinel, assigns)
     if c:
         return c
-    c = bash_destructive(words, cmd, repo_root, sentinel)
+    c = bash_destructive(words, cmd, repo_root, sentinel, assigns)
     if c:
         return c
     c = bash_outward(words, sentinel, identity, repo_root, depth)

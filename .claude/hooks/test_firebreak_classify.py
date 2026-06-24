@@ -297,6 +297,28 @@ def main():
     d, _, _ = run(bash("ln -sfn /tmp/evil .claude/hooks", WORKER), s, cwd=repo)
     check("worker symlink-replace hooks dir", d, True)
 
+    # same-command variable target: resolved (deny) vs inherited (opaque residual)
+    d, _, _ = run(bash("D=.claude/hooks; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker D=.claude/hooks; rm -rf $D", d, True)
+
+    d, _, _ = run(bash("export D=.claude/hooks; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker export D=...; rm -rf $D", d, True)
+
+    d, _, _ = run(bash("D=.claude/hooks; chmod 000 ${D}", WORKER), s, cwd=repo)
+    check("worker D=...; chmod 000 ${D}", d, True)
+
+    d, _, _ = run(bash("A=.claude; B=$A/hooks; rm -rf $B", WORKER), s, cwd=repo)
+    check("worker chained same-command vars", d, True)
+
+    d, _, _ = run(bash("F=$HOME/.claude/settings.json; rm -f $F", WORKER), s, cwd=repo)
+    check("worker F=$HOME/...settings; rm -f $F", d, True)
+
+    d, _, _ = run(bash("rm -rf $INHERITED_UNSET_VAR", WORKER), s, cwd=repo)
+    check("worker inherited (no same-cmd assign) stays opaque/GREEN", d, False)
+
+    d, _, _ = run(bash("D=build; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker benign same-command var stays GREEN", d, False)
+
     # ---------------- out-of-repo deletes / data ----------------
     d, _, _ = run(bash(f"rm -rf {HOME}/Data/leads.db", WORKER), s)
     check("worker rm out-of-repo db (data)", d, True)
