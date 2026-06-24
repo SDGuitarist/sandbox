@@ -2,15 +2,16 @@
 
 **Date:** 2026-06-24
 **Repo:** `~/Projects/sandbox` · **Branch:** `feat/g1-risk-tiered-firebreak` (pushed)
-**Range to review:** your NO-GO was against `5f4d6d8`; fixes are in `49a6e9c..a54b640` (HEAD `a54b640`).
-**Prior verdict:** NO-GO for activation (4 false negatives). **This pass:** confirm the 6th-pass NO-GO fixes hold AND review the 7th-pass directory-level control-plane fix; hunt for new gaps before activation.
+**Range to review:** your NO-GO was against `5f4d6d8`; fixes are in `49a6e9c..ed54159` (HEAD `ed54159`).
+**Prior verdict:** NO-GO for activation (4 false negatives). **This pass:** confirm the 6th-pass NO-GO fixes hold AND review the 7th-pass (directory-level control-plane) and 8th-pass (same-command variable target) fixes; hunt for new gaps before activation.
 
 ## What changed since your NO-GO
 
-Two fix passes since `5f4d6d8`. All findings are test-locked and the residual #3
-wording is re-bounded. Files touched across both passes:
+Three fix passes since `5f4d6d8` (6th/7th/8th). All findings are test-locked and the
+residual #2/#3 wording is re-bounded. Files touched:
 `.claude/hooks/firebreak-classify.py`, `.claude/hooks/firebreak-gate.sh`, all four
-test corpora, HANDOFF, and the sixth + seventh review docs in `docs/reviews/`.
+test corpora, the plan, HANDOFF, and the sixth/seventh/eighth review docs in
+`docs/reviews/`.
 
 ### 6th pass — your four findings + three self-review variants
 
@@ -40,6 +41,26 @@ Must stay GREEN (verify no over-defer): `.claude/worktrees/<agent>/...` (worker'
 own worktree), `build/`, `.git/hooks`, `cd src && rm -rf build`, `cd .claude && cat
 …` (read, no mutation). Trusted identities may still mutate the control plane (F5).
 
+### 8th pass — same-command variable target (NEW; please scrutinize)
+
+The 7th review wrongly called `D=.claude/hooks; rm -rf $D` an "inherited-`$VAR`" and
+let it through. The assignment is in the **same Bash command**, so the target is
+statically resolvable — a worker could hide a control-plane path behind a
+same-command variable. Fixes:
+
+| Area | Fix to verify |
+|---|---|
+| resolve same-command vars | new `collect_assignments(simples)` (standalone `VAR=value`, `export`/`declare`/`typeset`/`local`; RHS expanded against earlier same-command assigns AND `~`/`$HOME`/`$PWD`; opaque RHS skipped) + `expand_assigns(token, assigns)`. |
+| check site | threaded through `classify_bash_command` → `classify_simple_command` → `bash_control_plane` / `bash_destructive` / `_cd_into_control_plane`; write/delete/metadata **positionals AND redirect targets** expanded before the control-plane checks. |
+| coverage | `rm -rf $D`, `chmod`/`rmdir`/`unlink`/`shred`/`touch $D`, `export D=…; rm -rf $D`, `declare`, chained `A=.claude; B=$A/hooks; rm -rf $B`, `$HOME`-rooted (`F=$HOME/.claude/settings.json; rm -f $F`), same-command redirect (`D=$HOME/.claude/settings.json; echo x > $D`), `cd $D && mutate`. |
+
+**Residual #2 narrowed + disambiguated:** only a **GENUINELY-inherited** `$VAR` —
+set in a prior separate Bash tool call or the process environment, with **no
+assignment in this command** (`rm -rf $D` with no `D=…` here; `echo x >
+$INHERITED_CP_VAR`) — stays opaque. **Same-command `$VAR` ≠ inherited `$VAR`** — no
+longer conflated (see the eighth-review doc + plan F9/F14). Benign same-command vars
+(`D=build; rm -rf $D`, `O=out.txt; echo hi > $O`) stay GREEN.
+
 ## Residual #3 — re-bounded honestly (your P1 ruling)
 
 Was narrowed to "unrecognized package only" — too narrow. Now stated as: **an
@@ -61,29 +82,36 @@ for every *listed* runner/shim; set enumeration remains leaky by design. Residua
    - shims/wrappers still off the lists (any new deploy/cloud CLI, `bun`/`deno`
      forms, `corepack <pm> <runner>` chains).
 2. **Directory-level control-plane (7th pass) — can a worker still remove/disable
-   the hook or sentinel?** Probe: parent-dir reach the classifier can't resolve
-   (env-indirected dir `D=.claude/hooks; rm -rf $D`, `$(...)` dir, symlink to the
-   dir then delete through it); `cd`/`pushd` chains the guard misses (`cd a; cd
+   the hook or sentinel?** Probe: `cd`/`pushd` chains the guard misses (`cd a; cd
    ../.claude; rm -rf hooks`, subshell nesting, `cd` via `pushd`/`popd`); a
    worktree-nested `rm -rf .` whose cwd is the worktree (not at/above a repo_root
-   anchor); and whether `is_control_plane_dir`'s shape match (`endswith /.claude`)
-   has a false-positive or false-negative edge.
-3. **Over-defer / false positives** from the new verbs/dirs — does a benign
-   in-worktree `chmod`/`touch`/`mkdir`/`setfacl`, a benign `rm -rf build`/`rmdir`,
-   a `cd .claude && cat …` (read), a benign MCP read verb, or a benign runner build
-   command now wrongly defer?
-4. **Superset invariant** still holds for every NEW denial (gate forwards it)?
-5. **Is residual #3 now correctly and honestly bounded**, or still over/under-claimed?
-6. Anything that should still **block activation** (global hook wiring +
+   anchor); symlink to the dir then delete through it; whether `is_control_plane_dir`'s
+   shape match (`endswith /.claude`) has a false-positive or false-negative edge.
+3. **Same-command variable target (8th pass) — does the assignment resolution have
+   holes?** Probe: a variable assigned in the same command via a form
+   `collect_assignments` misses (`read D <<< .claude/hooks; rm -rf $D`, `printf -v D
+   …`, arithmetic/array, `${D:=.claude/hooks}` default-assignment, `D=.claude/hooks
+   rm -rf $D` inline-prefix — note bash semantics there); a same-command var whose
+   value is itself opaque but resolvable (`D=$(echo .claude/hooks)`); and confirm a
+   GENUINELY-inherited `$VAR` is correctly LEFT opaque (not over-resolved against the
+   hook's own environment). Is the inherited-vs-same-command split stated honestly?
+4. **Over-defer / false positives** from the new verbs/dirs/vars — does a benign
+   in-worktree `chmod`/`touch`/`mkdir`/`setfacl`, `rm -rf build`/`rmdir`, `cd .claude
+   && cat …` (read), `D=build; rm -rf $D`, a benign MCP read verb, or a benign runner
+   build command now wrongly defer?
+5. **Superset invariant** still holds for every NEW denial (gate forwards it)?
+6. **Are residuals #2 and #3 now correctly and honestly bounded**, or still
+   over/under-claimed?
+7. Anything that should still **block activation** (global hook wiring +
    orchestrator integration), which remains OUT OF SCOPE for this review.
 
 ## Run the tests (baseline to confirm)
 
 ```
-python3 .claude/hooks/test_firebreak_classify.py     # 168/168
+python3 .claude/hooks/test_firebreak_classify.py     # 175/175
 python3 .claude/hooks/test_firebreak_gate.py         # 26/26
-python3 .claude/hooks/test_firebreak_superset.py     # 191 cases, 0 gaps
-python3 .claude/hooks/test_firebreak_soundness.py    # 132 RED + 51 GREEN
+python3 .claude/hooks/test_firebreak_superset.py     # 197 cases, 0 gaps
+python3 .claude/hooks/test_firebreak_soundness.py    # 147 RED + 58 GREEN
 ```
 
 If clean, return GO (or GO-WITH-RESIDUALS naming the accepted residuals). Otherwise
