@@ -63,9 +63,11 @@ case "$tool_name" in
       -e 'flock' -e 'timeout' -e 'nohup' -e 'setsid' -e 'unshare' -e 'doas' \
       -e 'sudo' -e 'xargs' -e 'nice ' -e 'ionice' -e 'chrt' -e 'stdbuf' \
       -e 'setarch' -e 'parallel' -e 'watch ' -e 'env ' -e 'command ' \
-      -e 'npx' -e 'bunx' -e 'base64' \
+      -e 'npx' -e 'bunx' -e 'base64' -e 'deno' -e 'dlx' -e 'pipx' \
+      -e 'ext::' -e 'fd::' \
       -e '> /' -e '>/' \
-      -e ';' -e '&&' -e '||' -e '|' -e '& ' \
+      -e ';' -e '&&' -e '||' -e '|' -e '& ' -e '(' \
+      -e "''" -e '\"\"' \
       && forward
     exit 0
     ;;

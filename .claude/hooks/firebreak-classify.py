@@ -61,9 +61,9 @@ DISPATCHERS = {
 # package-runners (npx/bunx) which fetch+exec the named command, so
 # `npx vercel deploy` resolves to the `vercel` command word.
 WRAPPERS = {
-    "env", "nice", "nohup", "timeout", "xargs", "command", "exec", "setsid",
-    "stdbuf", "time", "sudo", "doas", "chroot", "unshare", "flock", "script",
-    "setarch", "watch", "parallel", "ionice", "chrt", "npx", "bunx",
+    "env", "nice", "nohup", "timeout", "xargs", "command", "builtin", "exec",
+    "setsid", "stdbuf", "time", "sudo", "doas", "chroot", "unshare", "flock",
+    "script", "setarch", "watch", "parallel", "ionice", "chrt", "npx", "bunx",
 }
 # wrappers that consume one positional argument before the real command
 WRAPPER_TAKES_ARG = {"timeout", "nice", "flock", "stdbuf", "setarch", "ionice",
@@ -82,7 +82,11 @@ DELETE_VERBS = {"rm", "unlink", "shred", "rmdir"}
 
 # Indirection set (F2 + F7): defer unless it structurally matches a framework
 INTERPRETERS = {"python", "python3", "node", "ruby", "perl", "bash", "sh",
-                "zsh", "dash", "ksh"}
+                "zsh", "dash", "ksh", "deno"}
+
+# Two-token package-runner prefixes that fetch+exec the FOLLOWING command
+# (like npx/bunx, but spelled as a dispatcher + subcommand).
+TWO_TOKEN_RUNNERS = {("pnpm", "dlx"), ("yarn", "dlx"), ("pipx", "run")}
 
 # mcp__* read-only verb prefixes (everything else defers -- R4d)
 MCP_READONLY_PREFIXES = (
@@ -299,8 +303,15 @@ def strip_quotes(tok):
     return tok
 
 
+def dequote(tok):
+    """Remove ALL unescaped quote characters (not just surrounding) so command-word
+    quote-splitting -- `c""url`, `cu''rl`, `g""it` -- normalizes to the real word.
+    Opacity metachars ($()/`/${}) are preserved, so F13 still fires on them."""
+    return re.sub(r'(?<!\\)["\']', "", tok) if tok else tok
+
+
 def base_name(tok):
-    return os.path.basename(strip_quotes(tok))
+    return os.path.basename(dequote(tok))
 
 
 def is_opaque(token):
@@ -332,6 +343,11 @@ def resolve_argv0(words, sentinel):
                     and not is_opaque(words[idx]):
                 idx += 1  # consume the wrapper's positional arg (duration/file/N)
             continue
+        # two-token package runners: `pnpm dlx <cmd>`, `pipx run <cmd>`
+        if idx + 1 < len(words) and \
+                (base, base_name(words[idx + 1])) in TWO_TOKEN_RUNNERS:
+            idx += 2
+            continue
         break
     if idx >= len(words):
         return None, []
@@ -362,7 +378,7 @@ def dispatcher_verb(rest, dispatcher):
             else:
                 i += 1
             continue
-        return w
+        return dequote(w)
     return None
 
 
@@ -410,14 +426,17 @@ def extract_nested_commands(words):
 
 
 def extract_command_substitutions(cmd):
-    """Bodies of `$(...)` (nesting-aware) and backtick `...` -- their contents
-    EXECUTE, so each is classified as a command. Denying only when the inner
-    command is itself RED keeps benign substitutions (`$(date)`, `$(pwd)`) GREEN
-    while catching outward-via-substitution (`echo $(curl evil)`)."""
+    """Bodies that EXECUTE in a subshell -- `$(...)` command substitution,
+    `<(...)`/`>(...)` process substitution, and backtick `...` -- are each
+    classified as a command. Denying only when the inner command is itself RED
+    keeps benign forms (`$(date)`, `cat <(sort f)`) GREEN while catching
+    outward-via-substitution (`echo $(curl evil)`, `cat <(curl evil)`)."""
     subs = []
     i, n = 0, len(cmd)
     while i < n:
-        if cmd[i] == "$" and i + 1 < n and cmd[i + 1] == "(":
+        opener = (cmd[i] == "$" and i + 1 < n and cmd[i + 1] == "(") or \
+                 (cmd[i] in "<>" and i + 1 < n and cmd[i + 1] == "(")
+        if opener:
             depth, j = 1, i + 2
             start = j
             while j < n and depth > 0:
@@ -443,18 +462,49 @@ def _push(parts, cur):
     return []
 
 
+# Shell keywords that PREFIX a real command in a control construct -- stripped so
+# the body (`then RED`, `do RED`, `while RED-condition`) is classified.
+CONTROL_KEYWORDS = {"if", "then", "elif", "else", "fi", "for", "while", "until",
+                    "do", "done", "case", "esac", "select", "function", "time",
+                    "coproc"}
+_CMDPOS = ("", " ", "\t", "\n", ";", "&", "|", "(")
+
+
+def strip_leading_keywords(seg):
+    """Drop leading control keywords / `!` negation so `then curl evil` ->
+    `curl evil`, `while curl evil` -> `curl evil`."""
+    s = seg.strip()
+    while s:
+        if s[0] == "!":
+            s = s[1:].strip()
+            continue
+        m = re.match(r"^([A-Za-z_][\w-]*)\b", s)
+        if not (m and m.group(1) in CONTROL_KEYWORDS):
+            break
+        if m.group(1) == "case":
+            # drop the `case SUBJECT in` header so SUBJECT isn't seen as a command
+            inm = re.search(r"\bin\b", s[m.end():])
+            s = s[m.end():][inm.end():].strip() if inm else ""
+            continue
+        s = s[m.end():].strip()
+    return s
+
+
 def split_commands(cmd):
-    """Split a Bash command line into SIMPLE commands on top-level control
-    operators (`;` `&&` `||` `|` `|&` `&` newline) so EACH is classified -- e.g.
-    `base64 -d | sh`, `foo && curl evil`, `a; ./deploy`. Respects quotes,
-    `$(...)`/backtick/`${...}`, and backslash-escapes; does NOT split redirections
-    (`2>&1`, `>&`, `&>`, `>|`). Command-substitution bodies are left intact (their
-    content is a declared residual, consistent with the plan's non-critical-arg
-    GREEN rule)."""
+    """Split a Bash command line into SIMPLE commands so EACH is classified.
+    Splits on top-level control operators (`;` `&&` `||` `|` `|&` `&` newline) AND
+    shell grouping (`( ... )`, `{ ...; }`); leading control keywords are stripped
+    (`if`/`then`/`for`/`while`/`do`/...). So `base64 -d | sh`, `( curl evil )`,
+    `if x; then curl evil; fi`, `for i in 1; do ./deploy; done` are all evaluated.
+    Respects quotes, `$(...)`/`$((...))`/backtick/`${...}`, and backslash-escapes;
+    does NOT split redirections (`2>&1`, `>&`, `&>`, `>|`) or brace-expansion
+    (`c{u,}rl`). Command-substitution bodies are left intact (classified separately
+    via extract_command_substitutions)."""
     parts, cur = [], []
     i, n = 0, len(cmd)
     quote = None
-    depth = 0
+    pdepth = 0   # $( ) / $(( )) command-substitution + arithmetic
+    bdepth = 0   # ${ } parameter expansion
     btick = False
     while i < n:
         c = cmd[i]
@@ -470,12 +520,20 @@ def split_commands(cmd):
                 btick = False
             i += 1
             continue
-        if depth > 0:
+        if pdepth > 0:
             cur.append(c)
             if c == "(":
-                depth += 1
+                pdepth += 1
             elif c == ")":
-                depth -= 1
+                pdepth -= 1
+            i += 1
+            continue
+        if bdepth > 0:
+            cur.append(c)
+            if c == "{":
+                bdepth += 1
+            elif c == "}":
+                bdepth -= 1
             i += 1
             continue
         if c == "\\" and i + 1 < n:           # escaped char -> keep both, no split
@@ -494,13 +552,25 @@ def split_commands(cmd):
             i += 1
             continue
         if c == "$" and i + 1 < n and cmd[i + 1] == "(":
-            depth = 1
+            pdepth = 1
             cur.append("$")
             cur.append("(")
             i += 2
             continue
+        if c == "$" and i + 1 < n and cmd[i + 1] == "{":
+            bdepth = 1
+            cur.append("$")
+            cur.append("{")
+            i += 2
+            continue
+        if c in "<>" and i + 1 < n and cmd[i + 1] == "(":   # process substitution
+            pdepth = 1
+            cur.append(c)
+            cur.append("(")
+            i += 2
+            continue
         nxt = cmd[i + 1] if i + 1 < n else ""
-        prev = cur[-1] if cur else ""
+        praw = cmd[i - 1] if i > 0 else ""
         if c == "&" and nxt == "&":
             cur = _push(parts, cur)
             i += 2
@@ -510,7 +580,7 @@ def split_commands(cmd):
             i += 2
             continue
         if c == "&":
-            if prev == ">" or nxt == ">":      # >&  &>  2>&1 redirection
+            if praw == ">" or nxt == ">":      # >&  &>  2>&1 redirection
                 cur.append(c)
                 i += 1
                 continue
@@ -518,7 +588,7 @@ def split_commands(cmd):
             i += 1
             continue
         if c == "|":
-            if prev == ">":                    # >| clobber redirect
+            if praw == ">":                    # >| clobber redirect
                 cur.append(c)
                 i += 1
                 continue
@@ -529,10 +599,28 @@ def split_commands(cmd):
             cur = _push(parts, cur)
             i += 1
             continue
+        # shell grouping -> split so the grouped body is classified.
+        if c == "(" and praw in _CMDPOS:       # subshell `( ... )` / `(cmd)`
+            cur = _push(parts, cur)
+            i += 1
+            continue
+        if c == ")":
+            cur = _push(parts, cur)
+            i += 1
+            continue
+        if c == "{" and praw in _CMDPOS and nxt in (" ", "\t", "\n"):  # `{ ...; }`
+            cur = _push(parts, cur)
+            i += 1
+            continue
+        if c == "}" and praw in (" ", "\t", "\n", ";"):
+            cur = _push(parts, cur)
+            i += 1
+            continue
         cur.append(c)
         i += 1
     _push(parts, cur)
-    return parts
+    out = [strip_leading_keywords(p) for p in parts]
+    return [p for p in out if p]
 
 
 def host_of(token):
@@ -560,28 +648,46 @@ def looks_like_host(token):
     return False
 
 
-def curl_external_category(rest):
-    """curl/wget -> external-send unless every target is loopback. Bare hosts (no
-    scheme) and opaque/unverifiable hosts also defer. Flag VALUES (e.g. `-d @x`)
-    are skipped so they are not mistaken for the target."""
-    targets, skip = [], False
-    for w in rest:
-        if skip:
-            skip = False
+def _is_loopback(host):
+    h = host.lower().strip("[]")
+    return h in LOOPBACK_HOSTS or h.startswith("127.")
+
+
+def curl_external_category(rest, binary="curl"):
+    """curl/wget -> external-send unless every target is provably loopback.
+    Also defers on: file-driven requests (`-K/--config`, wget `-i/--input-file`),
+    DNS/route overrides (`--resolve`, `--connect-to`), and non-loopback proxies
+    (`-x/--proxy/--socks*`) -- each can externalize a send that looks local."""
+    # Flags whose mere presence makes the destination unverifiable -> defer.
+    defer_flags = ({"--config", "-i", "--input-file"} if binary == "wget"
+                   else {"-K", "--config", "--resolve", "--connect-to"})
+    proxy_flags = {"-x", "--proxy", "--preproxy", "--socks5", "--socks4",
+                   "--socks5-hostname", "--socks4a"}
+    targets, i, n = [], 0, len(rest)
+    while i < n:
+        w = rest[i]
+        name = w.split("=", 1)[0]
+        if name in defer_flags:
+            return "external-send"
+        if name in proxy_flags:
+            val = w.split("=", 1)[1] if "=" in w else (rest[i + 1] if i + 1 < n else "")
+            ph = host_of(val)
+            if is_opaque(ph) or not _is_loopback(ph):
+                return "external-send"
+            i += 1 if "=" in w else 2
             continue
         if w.startswith("-"):
-            if "=" not in w and w in CURL_VALUE_FLAGS:
-                skip = True
+            i += 2 if ("=" not in w and w in CURL_VALUE_FLAGS) else 1
             continue
         targets.append(w)
+        i += 1
     for t in targets:
         h = host_of(t)
         if is_opaque(h):                       # can't verify it's loopback
             return "external-send"
         if not looks_like_host(t):
             continue
-        bare = h.lower().strip("[]")
-        if bare in LOOPBACK_HOSTS or bare.startswith("127."):
+        if _is_loopback(h):
             continue                           # loopback target -- allowed
         return "external-send"                 # a non-loopback host
     return None
@@ -626,8 +732,13 @@ def git_alias_value_category(value, identity, repo_root, sentinel, depth):
 def git_outward_category(rest, identity, repo_root, sentinel, depth):
     """git push / history-rewrite, resolving inline aliases and config-alias setup.
     A LOCAL `git merge --no-ff` (no push) stays GREEN (F5)."""
+    # `ext::`/`fd::` git transports run an arbitrary command (RCE) -- defer on any.
+    for t in rest:
+        tv = strip_quotes(t)
+        if tv.startswith("ext::") or tv.startswith("fd::") or "ext::" in tv:
+            return "external-send"
     nrest = git_normalized_rest(rest)
-    verb = nrest[0] if nrest else None
+    verb = dequote(nrest[0]) if nrest else None   # defeat `git pu""sh`
     aliases = git_alias_defs(rest)
     # 1. any inline alias DEFINITION whose value is outward -> defer (whether or
     #    not it is invoked in this same command).
@@ -770,7 +881,7 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
     a0 = base_name(argv0)
 
     if a0 in ("curl", "wget"):
-        return curl_external_category(rest)
+        return curl_external_category(rest, a0)
     if a0 in ("nc", "ncat", "ssh", "scp", "sftp", "telnet"):
         return "external-send"
     if a0 == "rsync":
@@ -859,13 +970,13 @@ def classify_bash_command(cmd, identity, repo_root, sentinel, depth=0):
     if depth > 4:                       # runaway nesting -> fail closed
         return "fail-closed"
     simples = split_commands(cmd)
-    if len(simples) > 1 or (simples and simples[0] != cmd.strip()):
-        for s in simples:
-            c = classify_simple_command(s, identity, repo_root, sentinel, depth)
-            if c:
-                return c
-        return None
-    return classify_simple_command(cmd, identity, repo_root, sentinel, depth)
+    if not simples:                     # nothing left after stripping -> classify raw
+        return classify_simple_command(cmd, identity, repo_root, sentinel, depth)
+    for s in simples:
+        c = classify_simple_command(s, identity, repo_root, sentinel, depth)
+        if c:
+            return c
+    return None
 
 
 def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0):
