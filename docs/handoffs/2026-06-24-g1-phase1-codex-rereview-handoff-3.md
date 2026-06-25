@@ -1,9 +1,9 @@
 # Codex Re-Review Handoff #3 — G1 Firebreak Phase 1 (post-convergence)
 
 **Date:** 2026-06-24
-**Repo:** `~/Projects/sandbox` · **Branch:** `feat/g1-risk-tiered-firebreak`
-**Range to review:** `ed54159..959b03a` (HEAD **`959b03a`**). Substantive code commits: `89e2439` (F15 + F16 red-team convergence) and `959b03a` (**F16b dispatcher-skip fix** — the newest, added after a follow-up probe of the F16 `DISPATCHERS` watch-item).
-**Prior state:** your last re-review covered through `ed54159` (8th pass). Since then: the **9th pass (F15)**, a **6-round adversarial red-team (F16)** that drove the classifier to a dry round, and **F16b** which closed the one structural seam the red-team's own watch-item had flagged.
+**Repo:** `~/Projects/sandbox` · **Branch:** `feat/g1-risk-tiered-firebreak` (pushed)
+**Range to review:** `ed54159..883f5cf` (HEAD **`883f5cf`**). Substantive code commits: `89e2439` (F15 + F16 red-team convergence), `959b03a` (**F16b dispatcher-skip fix**), and `883f5cf` (**F16b pre-activation hardening** — enumerated the adjacent install/build-dest flags + `git config -f`/`--file` + `git clone <CP-dir>`).
+**Prior state:** your last re-review covered through `ed54159` (8th pass). Since then: the **9th pass (F15)**, a **6-round adversarial red-team (F16)** that drove the classifier to a dry round, **F16b** which closed the one structural seam the red-team's own watch-item had flagged, and a **pre-activation self-review** that enumerated the adjacent dispatcher output flags.
 
 ## What changed since `ed54159`
 
@@ -57,13 +57,26 @@ positional-write subcommand (`DISPATCHER_POSITIONAL_WRITES`: `git bundle create`
 `git -C`-normalized variants also defer.
 
 **Scrutinize (P0/P1):** (a) over-defer — confirm worktree outputs (`go build -o
-build/app`) and dispatcher READ positionals (`git add`/`git log`/`git diff` of a
-`.claude` path) stay GREEN; (b) the residual — a listed dispatcher writing the CP
-through an **unconventional** output flag NOT in `DISPATCHER_OUTPUT_FLAGS` still
-slips. Known un-enumerated seeds (declared watch-item): `cargo install --root
-.claude/…`, `pip wheel -w .claude/hooks`, `terraform plan -out=.claude/…`, `npm
-install --prefix .claude`. Is leaving these as a declared seam acceptable for v1, or
-should they be enumerated now?
+build/app`), benign flag uses (`docker build -t tag`, `docker run -t`, `kubectl get
+-o yaml`, `git config -f .gitconfig.local`), and dispatcher READ positionals (`git
+add`/`git log`/`git diff` of a `.claude` path) stay GREEN; (b) the residual.
+
+**Pre-activation hardening (`883f5cf`) — the F16b watch-item seeds are now CLOSED.**
+The self-review enumerated `DISPATCHER_OUTPUT_FLAGS += --root/--prefix/-w/--wheel-dir/
+-out/-t/--target/--target-dir/--out-dir/--modules-folder/--cache/--cache-dir/
+--cache-folder` (covers `cargo install --root`, `pip wheel -w/--wheel-dir`,
+`terraform plan -out=`, `npm install --prefix`, `pip install --target/-t`, `cargo
+build --target-dir`, `yarn --modules-folder`); added `git config -f`/`--file <CP>` to
+`git_local_category`; and added `git clone <CP-dir>` to `DISPATCHER_POSITIONAL_WRITES`.
+Already-covered (verify): `git checkout-index --prefix` (the `-a`/`-f` branch),
+`terraform apply -state-out` (apply = deploy), `go test -o`, `docker save -o`.
+Being liberal with the flag set is SAFE because a flag value defers ONLY when
+`_cp_path_protected` says it IS a control-plane path.
+
+**Remaining declared residual (rule on it):** a control-plane path embedded inside a
+STRUCTURED flag value the extractor sees as one opaque token — notably the BuildKit
+exporter `docker build -o type=local,dest=.claude/hooks` (the dest sits inside a
+comma-list). Accept as a v1 watch-item, or split `dest=`/`output=` sub-keys now?
 
 ### False positives fixed (these run unattended — must NOT halt)
 `cp`/`ln`/`install` read-SOURCES outside the worktree (only DEST is a write target,
@@ -77,22 +90,25 @@ IS/inside-CP (not ancestor) so `eslint .`/`pytest $F`/`curl -o build/x` stay GRE
    an UNRECOGNIZED verb with a CP path delivered by a form `_arg_path_candidates`
    misses; (b) a writer wrongly sitting in `READ_ONLY_VERBS`; (c) a LISTED dispatcher
    (F16b) writing CP via an output flag NOT in `DISPATCHER_OUTPUT_FLAGS` or a
-   positional-write subcommand NOT in `DISPATCHER_POSITIONAL_WRITES` (the F16b
-   residual — see the named seeds above).
+   positional-write subcommand NOT in `DISPATCHER_POSITIONAL_WRITES` — the seeds
+   (cargo/pip/terraform/npm/yarn + `git config -f` + `git clone`) are now closed by
+   `883f5cf`, so aim at what's left: a STRUCTURED flag value (`docker build -o
+   type=local,dest=<CP>`) or a dispatcher output flag none of us has named yet.
 2. **False positives** — the fail-closed posture is aggressive. Find a BENIGN
    unattended-build command now wrongly DENIED (beyond the by-design defers:
    inherited/opaque-var delete targets, `make`/`npm run` indirection, `git apply`).
 3. **Residual honesty** — #1 interpreter escape; #2 inherited-OR-opaque-RHS **redirect**
    target (delete/mutation now fail closed); #3 unlisted OUTWARD binary exfiltrating a
    NON-control-plane file (the control-plane half is now closed for BOTH unrecognized
-   verbs AND listed-dispatcher local-output writes — F16/F16b); the F16b unconventional-
-   output-flag seam; additive-new-file-inside-`.claude/hooks/` carve-out. Are these
-   stated correctly?
-4. **The `DISPATCHERS` watch-item (narrowed by F16b)** — adding a binary to
-   `DISPATCHERS` no longer silently removes CP coverage for its CONVENTIONAL
-   local-output writes; the remaining seam is an UNCONVENTIONAL output flag /
-   un-modeled positional-write subcommand. Is that narrowed seam an acceptable
-   documented residual, or enumerate the named seeds now?
+   verbs AND listed-dispatcher local-output writes — F16/F16b + `883f5cf` hardening);
+   the one remaining dispatcher seam = a path in a STRUCTURED flag value (`docker
+   build -o type=local,dest=<CP>`); additive-new-file-inside-`.claude/hooks/`
+   carve-out. Are these stated correctly?
+4. **The `DISPATCHERS` watch-item (narrowed by F16b + `883f5cf`)** — adding a binary
+   to `DISPATCHERS` no longer silently removes CP coverage for its conventional
+   local-output writes (the common install/build-dest flags are now enumerated); the
+   remaining seam is a STRUCTURED-value-embedded path or a not-yet-named output flag.
+   Acceptable documented residual for v1, or split `dest=`/`output=` sub-keys now?
 5. **Superset invariant** holds for every new denial (gate forwards it)?
 6. Anything that should still **block activation** (global hook wiring + orchestrator
    integration), which remains OUT OF SCOPE for this review.
@@ -100,10 +116,10 @@ IS/inside-CP (not ancestor) so `eslint .`/`pytest $F`/`curl -o build/x` stay GRE
 ## Run the tests (baseline to confirm)
 
 ```
-python3 .claude/hooks/test_firebreak_classify.py     # 216/216
+python3 .claude/hooks/test_firebreak_classify.py     # 235/235
 python3 .claude/hooks/test_firebreak_gate.py         # 26/26
-python3 .claude/hooks/test_firebreak_superset.py     # 280 cases, 0 gaps
-python3 .claude/hooks/test_firebreak_soundness.py    # 284 RED + 103 GREEN
+python3 .claude/hooks/test_firebreak_superset.py     # 287 cases, 0 gaps
+python3 .claude/hooks/test_firebreak_soundness.py    # 303 RED + 120 GREEN
 ```
 
 If clean, return GO (or GO-WITH-RESIDUALS naming the accepted residuals). Otherwise
