@@ -237,6 +237,9 @@ BASH_CORPUS = [
     "docker buildx build --cache-to type=local,dest=.claude/hooks ./ctx",
     "docker build --metadata-file .claude/hooks/firebreak-classify.py ./ctx",
     "docker build --iidfile .claude/hooks/firebreak-gate.sh ./ctx",
+    # buildx registry push (outward) -- gate forwards on `docker`/`push`.
+    "docker buildx build --push -t example.com/x ./ctx",
+    "docker buildx build --output=type=registry,ref=example.com/x ./ctx",
 ]
 
 WRITE_CORPUS = [

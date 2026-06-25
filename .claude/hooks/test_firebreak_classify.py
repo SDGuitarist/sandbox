@@ -480,6 +480,26 @@ def main():
     d, _, _ = run(bash("docker buildx build --cache-to type=registry,ref=myimg:cache ./ctx", WORKER), s, cwd=repo)
     check("worker docker buildx --cache-to type=registry stays GREEN", d, False)
 
+    # outward tier: buildx registry PUSH (--push flag or type=registry output) is an
+    # external send and must defer; local exporters (type=local/type=image) stay GREEN.
+    d, _, _ = run(bash("docker buildx build --push -t example.com/x ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx build --push (registry)", d, True)
+
+    d, _, _ = run(bash("docker buildx build --output=type=registry,ref=example.com/x ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --output=type=registry", d, True)
+
+    d, _, _ = run(bash("docker buildx build --output type=registry,ref=example.com/x ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --output type=registry (spaced)", d, True)
+
+    d, _, _ = run(bash("docker buildx build --output=type=image,name=myimg,push=true ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --output type=image,push=true", d, True)
+
+    d, _, _ = run(bash("docker buildx build --output=type=local,dest=build/out ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --output=type=local,dest=build/out stays GREEN", d, False)
+
+    d, _, _ = run(bash("docker buildx build --output=type=image,name=myimg ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --output=type=image (local, no push) stays GREEN", d, False)
+
     d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
     check("worker cd src && rm -rf build stays GREEN", d, False)
 

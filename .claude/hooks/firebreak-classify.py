@@ -1663,6 +1663,33 @@ def bash_destructive(words, cmd, repo_root, sentinel, assigns=None):
     return None
 
 
+def _buildx_registry_push(rest):
+    """True if a docker/buildx build PUSHES to a registry (outward send): the
+    `--push` flag, or an `-o`/`--output` exporter that targets a registry
+    (`type=registry`) or explicitly pushes (`push=true`). LOCAL exporters
+    (`type=local`/`type=image` with no push, `--load`) build into the local
+    daemon/filesystem and stay GREEN."""
+    if "--push" in rest:
+        return True
+    vals = []
+    i = 0
+    while i < len(rest):
+        w = rest[i]
+        if w in ("-o", "--output") and i + 1 < len(rest):
+            vals.append(rest[i + 1]); i += 2; continue
+        if w.startswith("--output="):
+            vals.append(w.split("=", 1)[1])
+        elif w.startswith("-o") and len(w) > 2 and not w.startswith("--"):
+            vals.append(w[2:])                     # glued `-o<exporter>`
+        i += 1
+    for val in vals:
+        for seg in strip_quotes(val).lower().split(","):
+            seg = seg.strip()
+            if seg.startswith("type=registry") or seg in ("push=true", "push=1"):
+                return True
+    return False
+
+
 def bash_outward(words, sentinel, identity, repo_root, depth):
     """Outward / irreversible (allowlist-deny). Local git merge stays GREEN."""
     argv0, rest = resolve_argv0(words, sentinel)
@@ -1694,6 +1721,8 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
     if a0 in ("docker", "podman", "nerdctl"):
         v = dispatcher_verb(rest, a0)
         if v in ("push", "login"):
+            return "external-send"
+        if _buildx_registry_push(rest):          # buildx build -> registry push
             return "external-send"
         if v in ("run", "exec", "create") and any(
                 w in ("-v", "--volume", "--mount", "--privileged")
