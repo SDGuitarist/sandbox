@@ -1,9 +1,9 @@
 # Codex Re-Review Handoff #3 — G1 Firebreak Phase 1 (post-convergence)
 
 **Date:** 2026-06-24
-**Repo:** `~/Projects/sandbox` · **Branch:** `feat/g1-risk-tiered-firebreak` (pushed)
-**Range to review:** `ed54159..89e2439` (HEAD **`89e2439`**). The substantive change is the single commit `89e2439`.
-**Prior state:** your last re-review covered through `ed54159` (8th pass). Since then: the **9th pass (F15)** and a **6-round adversarial red-team (F16)** that drove the classifier to a dry round.
+**Repo:** `~/Projects/sandbox` · **Branch:** `feat/g1-risk-tiered-firebreak`
+**Range to review:** `ed54159..959b03a` (HEAD **`959b03a`**). Substantive code commits: `89e2439` (F15 + F16 red-team convergence) and `959b03a` (**F16b dispatcher-skip fix** — the newest, added after a follow-up probe of the F16 `DISPATCHERS` watch-item).
+**Prior state:** your last re-review covered through `ed54159` (8th pass). Since then: the **9th pass (F15)**, a **6-round adversarial red-team (F16)** that drove the classifier to a dry round, and **F16b** which closed the one structural seam the red-team's own watch-item had flagged.
 
 ## What changed since `ed54159`
 
@@ -36,6 +36,35 @@ confidence). Fixed at the CLASS level, all test-locked. Full writeup:
 | **Outward / deploy / package** | integer-encoded IP hosts (`_decode_int_ip`, loopback carve-out preserved), `nc` loopback carve-out, socat/dig/host/nslookup/rclone/mc/s3cmd/mail/glab, docker/podman push + run--mount, helm/pulumi/serverless/cdk/ansible/nomad/argocd/skaffold/flux/doctl, uv/pipx/cargo/gem/brew/apt uninstall, `yarn workspace … publish` (`_pm_effective_verb`), extended `MCP_MUTATING_TOKENS`. |
 | **Gate markers** | `firebreak-gate.sh` got markers for the new denials (git clean/reset/hooksPath/checkout/…, helm/pulumi/serverless/socat/dig/docker/rclone/mail/busybox/vim/…). Superset proves 0 gaps. |
 
+### F16b — dispatcher-skip fix (commit `959b03a`, closes the F16 watch-item's CP half)
+The F16 structural backstop **exempts** listed `DISPATCHERS` (so a benign positional
+like `git add .claude/hooks` — staging, not a write — stays GREEN). That exemption
+left a hole: a listed dispatcher could still WRITE the control plane through a
+**local-output flag/subcommand** that is neither outward (push/deploy, caught by
+`bash_outward`) nor a `CP_WRITE` verb. A pre-fix probe found **8/10 vectors ALLOWED**:
+`go build -o .claude/hooks/firebreak-classify.py`, `git archive --output=.claude/hooks/x`,
+`git bundle create .claude/hooks/x`, `docker cp src .claude/hooks/x`, `npm pack
+--pack-destination .claude/hooks`, `pip download -d .claude/hooks`.
+
+**Fix:** a **dispatcher local-write backstop** in `bash_control_plane`, AFTER the
+dispatcher-specific (git working-tree, `git_local_category`) handling. For a worker,
+any control-plane path delivered through a conventional output flag
+(`DISPATCHER_OUTPUT_FLAGS`: `-o`/`--output`/`--output-dir`/`-O`/`-d`/`--dest`/
+`--pack-destination`/… incl. glued `-o<path>` and `--flag=`) or a known
+positional-write subcommand (`DISPATCHER_POSITIONAL_WRITES`: `git bundle create`,
+`docker|podman|nerdctl cp`) fails closed. Reuses `cp_normalize`+`expand_assigns`+
+`_cp_path_protected`+`worker_cp_obfuscation_risk`, so ANSI-C/case-fold/`${VAR:=default}`/
+`git -C`-normalized variants also defer.
+
+**Scrutinize (P0/P1):** (a) over-defer — confirm worktree outputs (`go build -o
+build/app`) and dispatcher READ positionals (`git add`/`git log`/`git diff` of a
+`.claude` path) stay GREEN; (b) the residual — a listed dispatcher writing the CP
+through an **unconventional** output flag NOT in `DISPATCHER_OUTPUT_FLAGS` still
+slips. Known un-enumerated seeds (declared watch-item): `cargo install --root
+.claude/…`, `pip wheel -w .claude/hooks`, `terraform plan -out=.claude/…`, `npm
+install --prefix .claude`. Is leaving these as a declared seam acceptable for v1, or
+should they be enumerated now?
+
 ### False positives fixed (these run unattended — must NOT halt)
 `cp`/`ln`/`install` read-SOURCES outside the worktree (only DEST is a write target,
 `_cp_dest`); integer-encoded **loopback** IPs decoded+allowed; `nc -z localhost`;
@@ -44,19 +73,26 @@ IS/inside-CP (not ancestor) so `eslint .`/`pytest $F`/`curl -o build/x` stay GRE
 
 ## Re-review focus (adversarial; P0/P1/P2 with exact file:line)
 
-1. **Backstop correctness** — can a worker still mutate the control plane with an
-   unrecognized verb? Probe a CP path delivered by a form `_arg_path_candidates`
-   misses; a writer wrongly sitting in `READ_ONLY_VERBS`; a verb that's in
-   `DISPATCHERS` (→ skips the backstop) but writes CP via an unmodeled flag.
+1. **Backstop correctness** — can a worker still mutate the control plane? Probe (a)
+   an UNRECOGNIZED verb with a CP path delivered by a form `_arg_path_candidates`
+   misses; (b) a writer wrongly sitting in `READ_ONLY_VERBS`; (c) a LISTED dispatcher
+   (F16b) writing CP via an output flag NOT in `DISPATCHER_OUTPUT_FLAGS` or a
+   positional-write subcommand NOT in `DISPATCHER_POSITIONAL_WRITES` (the F16b
+   residual — see the named seeds above).
 2. **False positives** — the fail-closed posture is aggressive. Find a BENIGN
    unattended-build command now wrongly DENIED (beyond the by-design defers:
    inherited/opaque-var delete targets, `make`/`npm run` indirection, `git apply`).
 3. **Residual honesty** — #1 interpreter escape; #2 inherited-OR-opaque-RHS **redirect**
    target (delete/mutation now fail closed); #3 unlisted OUTWARD binary exfiltrating a
-   NON-control-plane file (the control-plane half is closed by the backstop);
-   additive-new-file-inside-`.claude/hooks/` carve-out. Are these stated correctly?
-4. **The `DISPATCHERS` watch-item** — adding a binary to `DISPATCHERS` removes it from
-   backstop coverage. Is that an acceptable documented seam?
+   NON-control-plane file (the control-plane half is now closed for BOTH unrecognized
+   verbs AND listed-dispatcher local-output writes — F16/F16b); the F16b unconventional-
+   output-flag seam; additive-new-file-inside-`.claude/hooks/` carve-out. Are these
+   stated correctly?
+4. **The `DISPATCHERS` watch-item (narrowed by F16b)** — adding a binary to
+   `DISPATCHERS` no longer silently removes CP coverage for its CONVENTIONAL
+   local-output writes; the remaining seam is an UNCONVENTIONAL output flag /
+   un-modeled positional-write subcommand. Is that narrowed seam an acceptable
+   documented residual, or enumerate the named seeds now?
 5. **Superset invariant** holds for every new denial (gate forwards it)?
 6. Anything that should still **block activation** (global hook wiring + orchestrator
    integration), which remains OUT OF SCOPE for this review.
@@ -64,10 +100,10 @@ IS/inside-CP (not ancestor) so `eslint .`/`pytest $F`/`curl -o build/x` stay GRE
 ## Run the tests (baseline to confirm)
 
 ```
-python3 .claude/hooks/test_firebreak_classify.py     # 203/203
+python3 .claude/hooks/test_firebreak_classify.py     # 216/216
 python3 .claude/hooks/test_firebreak_gate.py         # 26/26
-python3 .claude/hooks/test_firebreak_superset.py     # 274 cases, 0 gaps
-python3 .claude/hooks/test_firebreak_soundness.py    # 270 RED + 94 GREEN
+python3 .claude/hooks/test_firebreak_superset.py     # 280 cases, 0 gaps
+python3 .claude/hooks/test_firebreak_soundness.py    # 284 RED + 103 GREEN
 ```
 
 If clean, return GO (or GO-WITH-RESIDUALS naming the accepted residuals). Otherwise
