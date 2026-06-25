@@ -262,6 +262,23 @@ RED = [
     "pip download -d .claude/hooks somepkg", "pip3 download --dest .claude/hooks pkg",
     "cargo build --out-dir .claude/hooks", "yarn pack -o .claude/hooks/firebreak-gate.sh",
     "go build -o ${D:=.claude/hooks}/firebreak-classify.py ./cmd",
+    # 16th pass (F16b residual closure): install/build-destination flags of listed
+    # dispatchers pointed at the control plane -- cargo --root, pip wheel -w /
+    # --wheel-dir, terraform plan -out, npm install --prefix (+ adjacent).
+    "cargo install --root .claude/hooks mypkg",
+    "cargo install --root=.claude/hooks mypkg", "cargo build --target-dir .claude/hooks",
+    "pip wheel -w .claude/hooks somepkg", "pip wheel --wheel-dir .claude/hooks somepkg",
+    "pip3 wheel --wheel-dir=.claude/hooks pkg", "pip install --root .claude/hooks pkg",
+    "pip install --prefix .claude pkg",
+    "terraform plan -out=.claude/hooks/firebreak-classify.py",
+    "terraform plan -out .claude/firebreak-active.json",
+    "npm install --prefix .claude", "npm install --prefix=.claude/hooks",
+    # 16th pass, self-review of ADJACENT dispatcher write surfaces:
+    "git config -f .claude/hooks/firebreak-gate.sh user.name x",
+    "git config --file=.claude/hooks/firebreak-classify.py a b",
+    "pip install --target .claude/hooks pkg", "pip install -t .claude/hooks pkg",
+    "yarn install --modules-folder .claude/hooks", "npm install --cache .claude pkg",
+    "git clone ./repo .claude/hooks",
 ]
 
 # These must NOT be denied (over-defer guard).
@@ -335,6 +352,18 @@ GREEN = [
     "pip download -d build/wheels somepkg", "docker cp c:/data build/data",
     "git bundle create build/repo.bundle HEAD", "git add .claude/hooks",
     "go build -o build/$NAME ./cmd",
+    # 16th-pass over-defer guard: install/build-destination flags to the WORKTREE
+    # stay GREEN (only a control-plane dest defers).
+    "cargo install --root build/tools mypkg", "cargo build --target-dir target",
+    "pip wheel -w build/wheels somepkg", "pip wheel --wheel-dir dist somepkg",
+    "pip install --prefix build/venv pkg", "terraform plan -out=plans/tfplan",
+    "npm install --prefix packages/app", "npm ci",
+    # 16th-pass adjacent over-defer guards: non-CP targets / benign flag uses.
+    "git config user.name x", "git config --global user.email a@b.c",
+    "git config -f .gitconfig.local user.name x", "docker build -t myimg .",
+    "docker run -t --rm alpine sh", "pip install --target build/libs pkg",
+    "yarn install --modules-folder node_modules", "git clone ./repo build/checkout",
+    "npm install --cache /tmp/npm pkg",
 ]
 
 

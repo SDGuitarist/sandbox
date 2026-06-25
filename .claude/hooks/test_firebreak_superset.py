@@ -216,6 +216,14 @@ BASH_CORPUS = [
     "docker cp c:/evil .claude/hooks/firebreak-classify.py",
     "npm pack --pack-destination .claude/hooks",
     "pip download -d .claude/hooks somepkg",
+    # 16th pass (F16b residual closure): install/build-dest flags to the CP --
+    # each carries `.claude` so the gate forwards on that marker.
+    "cargo install --root .claude/hooks mypkg",
+    "pip wheel --wheel-dir .claude/hooks somepkg",
+    "terraform plan -out=.claude/hooks/firebreak-classify.py",
+    "npm install --prefix .claude",
+    "git config -f .claude/hooks/firebreak-gate.sh user.name x",
+    "pip install --target .claude/hooks pkg", "git clone ./repo .claude/hooks",
 ]
 
 WRITE_CORPUS = [

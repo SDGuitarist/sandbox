@@ -332,6 +332,66 @@ def main():
     d, _, _ = run(bash("go build -o .claude/hooks/firebreak-classify.py ./cmd", SWARM), s, cwd=repo)
     check("trusted swarm-runner go build -o hook allowed (F5)", d, False)
 
+    # ---- F16b residual closure: install/build-destination flags ----
+    d, _, _ = run(bash("cargo install --root .claude/hooks mypkg", WORKER), s, cwd=repo)
+    check("worker cargo install --root into hooks dir", d, True)
+
+    d, _, _ = run(bash("pip wheel -w .claude/hooks somepkg", WORKER), s, cwd=repo)
+    check("worker pip wheel -w into hooks dir", d, True)
+
+    d, _, _ = run(bash("pip wheel --wheel-dir=.claude/hooks pkg", WORKER), s, cwd=repo)
+    check("worker pip wheel --wheel-dir= into hooks dir", d, True)
+
+    d, _, _ = run(bash("terraform plan -out=.claude/hooks/firebreak-classify.py", WORKER), s, cwd=repo)
+    check("worker terraform plan -out= into hook script", d, True)
+
+    d, _, _ = run(bash("npm install --prefix .claude", WORKER), s, cwd=repo)
+    check("worker npm install --prefix .claude dir", d, True)
+
+    d, _, _ = run(bash("cargo build --target-dir .claude/hooks", WORKER), s, cwd=repo)
+    check("worker cargo build --target-dir into hooks dir", d, True)
+
+    # over-defer guards: same flags to the worktree stay GREEN
+    d, _, _ = run(bash("cargo install --root build/tools mypkg", WORKER), s, cwd=repo)
+    check("worker cargo install --root build/ stays GREEN", d, False)
+
+    d, _, _ = run(bash("pip wheel -w build/wheels somepkg", WORKER), s, cwd=repo)
+    check("worker pip wheel -w build/ stays GREEN", d, False)
+
+    d, _, _ = run(bash("terraform plan -out=plans/tfplan", WORKER), s, cwd=repo)
+    check("worker terraform plan -out plans/ stays GREEN", d, False)
+
+    d, _, _ = run(bash("npm install --prefix packages/app", WORKER), s, cwd=repo)
+    check("worker npm install --prefix packages/ stays GREEN", d, False)
+
+    # adjacent surfaces found in the second self-review
+    d, _, _ = run(bash("git config -f .claude/hooks/firebreak-gate.sh user.name x", WORKER), s, cwd=repo)
+    check("worker git config -f writing a hook script", d, True)
+
+    d, _, _ = run(bash("git config --file=.claude/hooks/firebreak-classify.py a b", WORKER), s, cwd=repo)
+    check("worker git config --file= writing a hook script", d, True)
+
+    d, _, _ = run(bash("git config -f .gitconfig.local user.name x", WORKER), s, cwd=repo)
+    check("worker git config -f non-CP file stays GREEN", d, False)
+
+    d, _, _ = run(bash("git config --global user.email a@b.c", WORKER), s, cwd=repo)
+    check("worker git config --global stays GREEN", d, False)
+
+    d, _, _ = run(bash("pip install -t .claude/hooks pkg", WORKER), s, cwd=repo)
+    check("worker pip install -t into hooks dir", d, True)
+
+    d, _, _ = run(bash("yarn install --modules-folder .claude/hooks", WORKER), s, cwd=repo)
+    check("worker yarn --modules-folder into hooks dir", d, True)
+
+    d, _, _ = run(bash("git clone ./repo .claude/hooks", WORKER), s, cwd=repo)
+    check("worker git clone into .claude dir", d, True)
+
+    d, _, _ = run(bash("git clone https://github.com/x/y repo", WORKER), s, cwd=repo)
+    check("worker git clone to worktree dir stays GREEN", d, False)
+
+    d, _, _ = run(bash("docker build -t myimg .", WORKER), s, cwd=repo)
+    check("worker docker build -t tag stays GREEN", d, False)
+
     d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
     check("worker cd src && rm -rf build stays GREEN", d, False)
 

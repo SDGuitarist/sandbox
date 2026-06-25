@@ -113,19 +113,23 @@ the backstop uses an IS/inside-CP check (not the ancestor check), so `eslint .` 
   longer silently removes CP coverage for its conventional local-output writes. The
   remaining leverage: a listed dispatcher writing the CP through an UNCONVENTIONAL
   output flag not in `DISPATCHER_OUTPUT_FLAGS` (nor a modeled positional-write
-  subcommand). Known un-enumerated seeds: `cargo install --root .claude/…`, `pip
-  wheel -w .claude/hooks`, `terraform plan -out=.claude/…`, `npm install --prefix
-  .claude`. Keep both sets current and re-run the red-team after any `DISPATCHERS`
-  / output-flag change.
+  subcommand). The pre-activation self-review enumerated the common install/build-dest
+  flags (`cargo install --root`, `pip wheel -w`/`--wheel-dir`, `terraform plan -out`,
+  `npm install --prefix`, `pip install --target`/`-t`, `cargo build --target-dir`,
+  `yarn --modules-folder`, cache dirs) + `git config -f`/`--file <CP>` + `git clone
+  <CP-dir>`. The remaining declared residual is a path embedded in a STRUCTURED flag
+  value — notably `docker build -o type=local,dest=.claude/…` (the dest sits inside a
+  comma-list, seen as one opaque token). Keep both sets current and re-run the
+  red-team after any `DISPATCHERS` / output-flag change.
 
 ## Test totals (all green)
 
-| Suite | 9th review | After convergence | + F16b dispatcher-skip |
-|-------|-----------|-------------------|------------------------|
-| classifier unit | 188/188 | 203/203 | **216/216** |
-| gate | 26/26 | 26/26 | **26/26** |
-| superset | 205 / 0-gaps | 274 / 0-gaps | **280 / 0-gaps** |
-| soundness | 162 RED + 58 GREEN | 270 RED + 94 GREEN | **284 RED + 103 GREEN** |
+| Suite | 9th review | After convergence | + F16b | + F16b pre-activation hardening |
+|-------|-----------|-------------------|--------|---------------------------------|
+| classifier unit | 188/188 | 203/203 | 216/216 | **235/235** |
+| gate | 26/26 | 26/26 | 26/26 | **26/26** |
+| superset | 205 / 0-gaps | 274 / 0-gaps | 280 / 0-gaps | **287 / 0-gaps** |
+| soundness | 162 RED + 58 GREEN | 270 RED + 94 GREEN | 284 RED + 103 GREEN | **303 RED + 120 GREEN** |
 
 ## Verdict
 
@@ -135,12 +139,17 @@ then closed the one structural gap the round-6 watch-item had flagged: the backs
 EXEMPTED listed dispatchers, so a listed dispatcher could still write the control
 plane through a local-output flag/subcommand (`go build -o .claude/hooks/…`, `git
 archive --output=…`, `docker cp … .claude/hooks/…`, `npm pack --pack-destination`,
-`pip download -d`). That class is now fail-closed too. The fixes are class-level and
+`pip download -d`). That class is now fail-closed too, and a **pre-activation
+self-review** then enumerated the adjacent install/build-dest flags (`cargo install
+--root`, `pip wheel -w`, `terraform plan -out`, `npm install --prefix`, `pip install
+--target`/`-t`, `cargo build --target-dir`, `yarn --modules-folder`, cache dirs) plus
+`git config -f`/`--file` and `git clone <CP-dir>`. The fixes are class-level and
 test-locked; both invariants (superset, soundness) hold across the enlarged corpora;
 benign unattended-build activity stays GREEN. No reviewer's verdict can be
 *guaranteed*, but the surface Codex has been probing is now closed by construction
 (the backstop), not by enumeration. The control-plane half is closed for BOTH
-unrecognized verbs AND listed-dispatcher local-output writes. Activation remains out
-of scope.
+unrecognized verbs AND listed-dispatcher local-output writes; the one remaining
+declared residual is a path embedded in a STRUCTURED flag value (`docker build -o
+type=local,dest=<CP>`). Activation remains out of scope.
 
-Test totals: classifier 216/216, gate 26/26, superset 280/0-gaps, soundness 284 RED + 103 GREEN.
+Test totals: classifier 235/235, gate 26/26, superset 287/0-gaps, soundness 303 RED + 120 GREEN.

@@ -212,20 +212,31 @@ DISPATCHER_VALUE_FLAGS = {
              "-t", "--target"},
 }
 
-# Conventional LOCAL-OUTPUT flags a dispatcher SUBCOMMAND may use to WRITE a file
-# or directory (`go build -o F`, `git archive -o F`/`--output=F`, `npm pack
-# --pack-destination D`, `pip download -d D`/`--dest D`). A listed dispatcher is
-# exempt from the unrecognized-verb control-plane BACKSTOP, so without checking
-# these its local-output writes to the firebreak's own files slip through. The
-# value is matched against the control plane ONLY, so a `-o`/`-d` that carries a
-# non-path value (`kubectl get -o yaml`, `docker run -d`) is harmless -- `yaml`
-# isn't a control-plane PATH. Keep this list current as new dispatcher output
-# flags are discovered (same maintenance contract as DISPATCHERS itself -- F16
-# watch-item).
+# Conventional LOCAL-OUTPUT / install-destination flags a dispatcher SUBCOMMAND may
+# use to WRITE a file or directory (`go build -o F`, `git archive -o F`/`--output=F`,
+# `npm pack --pack-destination D`, `pip download -d D`/`--dest D`, `cargo install
+# --root D`, `pip wheel -w D`/`--wheel-dir D`, `terraform plan -out=F`, `npm install
+# --prefix D`, `cargo build --target-dir D`). A listed dispatcher is exempt from the
+# unrecognized-verb control-plane BACKSTOP, so without checking these its
+# local-output writes to the firebreak's own files slip through. Being liberal here
+# is SAFE: the value is matched against the control plane ONLY (`_cp_path_protected`),
+# so a flag that carries a non-path value (`kubectl get -o yaml`, `docker build -t
+# tag`, `npm -w pkgname`, `terraform plan -target=res`) yields a candidate the CP
+# check simply discards -- it can only DEFER when the value really is a control-plane
+# path. Keep this list current as new dispatcher output flags are discovered (same
+# maintenance contract as DISPATCHERS itself -- F16/F16b watch-item).
 DISPATCHER_OUTPUT_FLAGS = {
     "-o", "--output", "--output-dir", "--output-directory", "--out-dir",
     "--outdir", "-O", "--output-document", "-d", "--dir", "--dest",
     "--destination", "--pack-destination", "--target-directory", "--target-dir",
+    # install / build destinations (cargo/pip/npm/terraform), incl. terraform's
+    # single-dash `-out`. `-w`/`--wheel-dir` (pip wheel); `--root`/`--prefix`
+    # (cargo|pip install dest); `-out` (terraform plan output); `-t`/`--target`
+    # (pip install dest -- `-t` value for other dispatchers is a tag/tty, filtered);
+    # `--modules-folder` (yarn); `--cache`/`--cache-dir`/`--cache-folder`
+    # (npm/pip/yarn cache write dir).
+    "--root", "--prefix", "-w", "--wheel-dir", "-out",
+    "-t", "--target", "--modules-folder", "--cache", "--cache-dir", "--cache-folder",
 }
 # Dispatcher subcommands whose local WRITE destination is a POSITIONAL (not a
 # flag), so the unrecognized-verb backstop's positional sweep -- which we cannot
@@ -233,8 +244,10 @@ DISPATCHER_OUTPUT_FLAGS = {
 # .claude/hooks` (staging, not a write) -- is replaced by a targeted per-subcommand
 # rule. {dispatcher: {verb: collector}}; collector(rest_after_verb) -> [dest, ...].
 DISPATCHER_POSITIONAL_WRITES = {
-    # `git bundle create <FILE> <refs...>` -- FILE is the write target.
-    "git": {"bundle": lambda a: a[1:2] if len(a) >= 2 and a[0] == "create" else []},
+    # `git bundle create <FILE> <refs...>` -- FILE is the write target;
+    # `git clone <src> <DIR>` -- DIR (last positional, when explicit) is written.
+    "git": {"bundle": lambda a: a[1:2] if len(a) >= 2 and a[0] == "create" else [],
+            "clone": lambda a: a[-1:] if len(a) >= 2 else []},
     # `docker|podman|nerdctl cp <SRC> <DEST>` -- copy INTO a local path. Take both
     # positionals; only a real control-plane path trips the check.
     "docker": {"cp": lambda a: a},
@@ -776,7 +789,26 @@ def git_local_category(rest, identity, repo_root):
                    or worker_cp_obfuscation_risk(p, repo_root) for p in ps)
 
     if verb == "config":
-        return "control-plane" if any("hooksPath" in a for a in args) else None
+        if any("hooksPath" in a for a in args):
+            return "control-plane"        # `core.hooksPath /dev/null` neuters hooks
+        # `git config -f/--file <CP>` writes INI content INTO an arbitrary file -- a
+        # worker can use it to corrupt a control-plane hook/sentinel file.
+        j = 0
+        while j < len(args):
+            a = args[j]
+            val = None
+            if a in ("-f", "--file", "--blob") and j + 1 < len(args):
+                val = args[j + 1]; j += 2
+            elif a.startswith("--file="):
+                val = a.split("=", 1)[1]; j += 1
+            else:
+                j += 1
+            if val is not None:
+                v = cp_normalize(val)
+                if is_control_plane(v) or is_control_plane_dir(v, repo_root) \
+                        or worker_cp_obfuscation_risk(v, repo_root):
+                    return "control-plane"
+        return None
     if verb in ("apply", "am"):              # a patch can rewrite the hook scripts
         return "control-plane"
     if verb == "read-tree":
