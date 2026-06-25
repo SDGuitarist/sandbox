@@ -392,6 +392,47 @@ def main():
     d, _, _ = run(bash("docker build -t myimg .", WORKER), s, cwd=repo)
     check("worker docker build -t tag stays GREEN", d, False)
 
+    # ---- F16b residual closure: STRUCTURED exporter value (BuildKit dest=) ----
+    # A control-plane dest buried inside a comma-separated `key=value` exporter
+    # value -- one opaque token -- must still be split + checked.
+    d, _, _ = run(bash("docker build -o type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build -o type=local,dest=.claude/hooks", d, True)
+
+    d, _, _ = run(bash("docker build --output=type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build --output=...,dest=.claude/hooks", d, True)
+
+    d, _, _ = run(bash("docker build -o type=tar,dest=.claude/firebreak-active.json ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build -o type=tar,dest=sentinel", d, True)
+
+    # over-defer guards: structured exporter to the WORKTREE stays GREEN
+    d, _, _ = run(bash("docker build -o type=local,dest=build/out ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build -o ...,dest=build/out stays GREEN", d, False)
+
+    d, _, _ = run(bash("docker build --output=type=local,dest=build/out ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build --output=...,dest=build/out stays GREEN", d, False)
+
+    # a structured value with NO control-plane subkey stays GREEN (registry export)
+    d, _, _ = run(bash("docker build -o type=image,name=myimg ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build -o type=image,name=... stays GREEN", d, False)
+
+    # adjacent structured-exporter forms (second self-review): glued `-o<val>`,
+    # the `buildx` subcommand, and dest-first ordering must all defer too.
+    d, _, _ = run(bash("docker build -otype=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build glued -otype=local,dest=CP", d, True)
+
+    d, _, _ = run(bash("docker buildx build -o type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx build -o ...,dest=CP", d, True)
+
+    d, _, _ = run(bash("docker build -o dest=.claude/hooks,type=local ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build -o dest=CP,type=local (dest-first)", d, True)
+
+    # the other named control-plane anchors as embedded dests must defer too.
+    d, _, _ = run(bash("docker build -o type=local,dest=~/.claude/settings.json ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build dest=~/.claude/settings.json", d, True)
+
+    d, _, _ = run(bash("docker build -o type=local,dest=todos/approvals ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build dest=todos/approvals", d, True)
+
     d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
     check("worker cd src && rm -rf build stays GREEN", d, False)
 

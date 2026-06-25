@@ -279,6 +279,13 @@ RED = [
     "pip install --target .claude/hooks pkg", "pip install -t .claude/hooks pkg",
     "yarn install --modules-folder .claude/hooks", "npm install --cache .claude pkg",
     "git clone ./repo .claude/hooks",
+    # 17th pass (F16b structured-exporter closure): a control-plane dest buried in a
+    # comma-separated `key=value` exporter value (BuildKit `-o type=local,dest=<CP>`)
+    # -- one opaque token -- must be split + checked.
+    "docker build -o type=local,dest=.claude/hooks ./ctx",
+    "docker build --output=type=local,dest=.claude/hooks ./ctx",
+    "docker build -o type=tar,dest=.claude/firebreak-active.json ./ctx",
+    "docker build --output=type=local,dest=.claude/settings.json ./ctx",
 ]
 
 # These must NOT be denied (over-defer guard).
@@ -364,6 +371,11 @@ GREEN = [
     "docker run -t --rm alpine sh", "pip install --target build/libs pkg",
     "yarn install --modules-folder node_modules", "git clone ./repo build/checkout",
     "npm install --cache /tmp/npm pkg",
+    # 17th-pass over-defer guard: a structured exporter value whose dest is in the
+    # WORKTREE, or which carries no control-plane subkey, stays GREEN.
+    "docker build -o type=local,dest=build/out ./ctx",
+    "docker build --output=type=local,dest=build/out ./ctx",
+    "docker build -o type=image,name=myimg ./ctx",
 ]
 
 

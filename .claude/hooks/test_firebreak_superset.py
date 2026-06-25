@@ -224,6 +224,12 @@ BASH_CORPUS = [
     "npm install --prefix .claude",
     "git config -f .claude/hooks/firebreak-gate.sh user.name x",
     "pip install --target .claude/hooks pkg", "git clone ./repo .claude/hooks",
+    # 17th pass (F16b structured-exporter closure): a control-plane dest inside a
+    # comma-separated exporter value -- each still carries `.claude`, so the gate
+    # forwards on that marker; the superset invariant must hold for the new denials.
+    "docker build -o type=local,dest=.claude/hooks ./ctx",
+    "docker build --output=type=local,dest=.claude/hooks ./ctx",
+    "docker build -o type=tar,dest=.claude/firebreak-active.json ./ctx",
 ]
 
 WRITE_CORPUS = [

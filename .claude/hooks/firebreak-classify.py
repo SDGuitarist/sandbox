@@ -255,6 +255,17 @@ DISPATCHER_POSITIONAL_WRITES = {
     "nerdctl": {"cp": lambda a: a},
 }
 
+# Some dispatcher output flags carry a STRUCTURED value -- a comma-separated
+# `key=value` list -- so the real destination is buried inside one opaque token
+# the CP check can't see as a path. The canonical case is BuildKit's exporter:
+# `docker build -o type=local,dest=.claude/hooks` (`--output=type=local,dest=...`).
+# After extracting a flag value we ALSO split it on commas and surface the value of
+# any destination-bearing subkey, so the inner `.claude/hooks` is checked too.
+STRUCTURED_DEST_SUBKEYS = {
+    "dest", "destination", "output", "out", "outfile", "outdir",
+    "output-dir", "file", "path",
+}
+
 # curl/wget flags that take a VALUE (so a flag value like `-d @data.json` is not
 # mistaken for the target host).
 CURL_VALUE_FLAGS = {
@@ -1380,6 +1391,24 @@ def _arg_path_candidates(rest):
     return [c for c in out if c]
 
 
+def _structured_subvalues(token):
+    """A structured flag value like BuildKit's `type=local,dest=.claude/hooks`
+    hides the real destination inside a comma-separated `key=value` list, so the
+    whole token isn't a path the CP check can resolve. Split on commas and return
+    the values of destination-bearing subkeys (`dest=`/`output=`/...). Returns []
+    for an ordinary path value (no `=`), so plain `-o build/app` is unaffected."""
+    if not token or "=" not in token:
+        return []
+    out = []
+    for seg in token.split(","):
+        if "=" not in seg:
+            continue
+        k, v = seg.split("=", 1)
+        if k.strip().lower() in STRUCTURED_DEST_SUBKEYS and v:
+            out.append(v)
+    return out
+
+
 def _dispatcher_output_targets(a0, rest):
     """Local WRITE destinations a LISTED dispatcher carries -- via a conventional
     output FLAG (`go build -o F`, `git archive --output=F`, `npm pack
@@ -1410,7 +1439,16 @@ def _dispatcher_output_targets(a0, rest):
             after = positional_args(rest)
             after = after[1:] if after and after[0] == verb else after
             out += collector(after)
-    return [strip_quotes(t) for t in out]
+    # Surface BOTH the whole flag value AND any destination buried inside a
+    # STRUCTURED `key=value,...` value (BuildKit `-o type=local,dest=<CP>`), so a
+    # control-plane dest embedded in one opaque token is still checked.
+    result = []
+    for t in out:
+        t = strip_quotes(t)
+        result.append(t)
+        for sub in _structured_subvalues(t):
+            result.append(strip_quotes(sub))
+    return result
 
 
 def _has_link_flag(rest):
