@@ -433,6 +433,16 @@ def main():
     d, _, _ = run(bash("docker build -o type=local,dest=todos/approvals ./ctx", WORKER), s, cwd=repo)
     check("worker docker build dest=todos/approvals", d, True)
 
+    # adjacent INPUT surface (second self-review item 2): a container bind-mount
+    # SOURCE can mutate the CP from inside the container. Already closed broadly by
+    # bash_outward's host bind-mount-escape rule -- ANY -v/--volume/--mount/
+    # --privileged on docker run/exec/create defers. Lock it in.
+    d, _, _ = run(bash("docker run -v .claude:/x alpine sh", WORKER), s, cwd=repo)
+    check("worker docker run -v .claude bind-mount", d, True)
+
+    d, _, _ = run(bash("docker run --mount type=bind,source=.claude,target=/x alpine", WORKER), s, cwd=repo)
+    check("worker docker run --mount source=.claude bind-mount", d, True)
+
     d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
     check("worker cd src && rm -rf build stays GREEN", d, False)
 
