@@ -11,6 +11,11 @@
 .claude/todos/
 .claude/logs/
 
+# G1 firebreak runtime state (R5: sentinel + deferred-RED records must NOT be
+# committed -- approval records can contain secrets; sentinel is per-run)
+.claude/firebreak-active.json
+todos/approvals/
+
 # Python
 __pycache__/
 *.py[cod]
