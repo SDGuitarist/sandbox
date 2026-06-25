@@ -443,6 +443,43 @@ def main():
     d, _, _ = run(bash("docker run --mount type=bind,source=.claude,target=/x alpine", WORKER), s, cwd=repo)
     check("worker docker run --mount source=.claude bind-mount", d, True)
 
+    # red-team round 1: UNLISTED build tools (not in DISPATCHERS) must not slip a
+    # structured exporter past the unrecognized-verb structural backstop.
+    d, _, _ = run(bash("podman build -o type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker podman build -o ...,dest=CP (unlisted)", d, True)
+
+    d, _, _ = run(bash("nerdctl build -o type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker nerdctl build -o ...,dest=CP (unlisted)", d, True)
+
+    d, _, _ = run(bash("buildah build -o type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker buildah build -o ...,dest=CP (unlisted)", d, True)
+
+    d, _, _ = run(bash("buildctl build --output type=local,dest=.claude/hooks", WORKER), s, cwd=repo)
+    check("worker buildctl build --output ...,dest=CP (unlisted)", d, True)
+
+    d, _, _ = run(bash("nerdctl build -o type=local,dest=build/out ./ctx", WORKER), s, cwd=repo)
+    check("worker nerdctl build -o ...,dest=build/out stays GREEN", d, False)
+
+    # red-team round 2: docker-specific local-output flags on the LISTED dispatcher
+    # (absent from DISPATCHER_OUTPUT_FLAGS until now) -- the F16b watch-item.
+    d, _, _ = run(bash("docker buildx build --cache-to type=local,dest=.claude/hooks ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --cache-to ...,dest=CP", d, True)
+
+    d, _, _ = run(bash("docker build --metadata-file .claude/hooks/firebreak-classify.py ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build --metadata-file into hook", d, True)
+
+    d, _, _ = run(bash("docker build --iidfile .claude/hooks/firebreak-gate.sh ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build --iidfile into hook", d, True)
+
+    d, _, _ = run(bash("docker buildx build --cache-to type=local,dest=build/cache ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --cache-to ...,dest=build/ stays GREEN", d, False)
+
+    d, _, _ = run(bash("docker build --metadata-file build/meta.json ./ctx", WORKER), s, cwd=repo)
+    check("worker docker build --metadata-file build/ stays GREEN", d, False)
+
+    d, _, _ = run(bash("docker buildx build --cache-to type=registry,ref=myimg:cache ./ctx", WORKER), s, cwd=repo)
+    check("worker docker buildx --cache-to type=registry stays GREEN", d, False)
+
     d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
     check("worker cd src && rm -rf build stays GREEN", d, False)
 

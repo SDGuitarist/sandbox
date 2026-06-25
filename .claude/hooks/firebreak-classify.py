@@ -237,6 +237,10 @@ DISPATCHER_OUTPUT_FLAGS = {
     # (npm/pip/yarn cache write dir).
     "--root", "--prefix", "-w", "--wheel-dir", "-out",
     "-t", "--target", "--modules-folder", "--cache", "--cache-dir", "--cache-folder",
+    # container-build local-output flags (docker/buildx/buildctl): `--cache-to`
+    # takes a structured `type=local,dest=<path>` value (split by
+    # STRUCTURED_DEST_SUBKEYS); `--metadata-file`/`--iidfile` take a plain path.
+    "--cache-to", "--metadata-file", "--iidfile",
 }
 # Dispatcher subcommands whose local WRITE destination is a POSITIONAL (not a
 # flag), so the unrecognized-verb backstop's positional sweep -- which we cannot
@@ -1383,11 +1387,17 @@ def _arg_path_candidates(rest):
     real control-plane path."""
     out = []
     for w in rest:
-        out.append(strip_quotes(w))
+        wq = strip_quotes(w)
+        out.append(wq)
         if "=" in w:
             out.append(strip_quotes(w.split("=", 1)[1]))   # --output=PATH / dest=PATH
         if w.startswith("-") and len(w) > 2:
             out.append(strip_quotes(re.sub(r"^-+[A-Za-z]*", "", w)))  # -o<glued>PATH
+        # A structured comma-`key=value` value (BuildKit `-o type=local,dest=<CP>`)
+        # hides the dest inside one token -- surface the destination subkey so an
+        # UNLISTED build tool (podman/nerdctl/buildah/buildctl/future) can't slip it
+        # past the catch-all the way a listed dispatcher can't (F16c).
+        out.extend(_structured_subvalues(wq))
     return [c for c in out if c]
 
 
