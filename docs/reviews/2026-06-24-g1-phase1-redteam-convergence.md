@@ -69,6 +69,18 @@ test-locked into all four corpora, then the next round attacked the fixes.
   ends the enumerate-every-binary game: `busybox rm`, `vim -es`, `patch`, `sponge`,
   `gio`, and *future* tools defer without being individually modeled. A genuine
   reader (`cat .claude/...`) is allowlisted (`READ_ONLY_VERBS`).
+- **DISPATCHER LOCAL-WRITE BACKSTOP (F16b follow-up)** — the structural backstop
+  EXEMPTS listed `DISPATCHERS` (so a benign positional like `git add .claude/hooks`
+  stays GREEN), which left a hole: a listed dispatcher writing the control plane
+  through a **local-output flag/subcommand** that is neither outward (push/deploy)
+  nor a `CP_WRITE` verb. After the dispatcher-specific handling, a CP path delivered
+  via a conventional output flag (`DISPATCHER_OUTPUT_FLAGS`) or a known
+  positional-write subcommand (`DISPATCHER_POSITIONAL_WRITES`: `git bundle create`,
+  `docker|podman|nerdctl cp`) now fails closed for a worker — `go build -o
+  .claude/hooks/firebreak-classify.py`, `git archive --output=…`, `npm pack
+  --pack-destination .claude/hooks`, `pip download -d .claude/hooks`, `docker cp …
+  .claude/hooks/…` all defer. Worktree outputs and dispatcher READ positionals
+  (`git log/diff .claude/...`) stay GREEN; trusted identities (F5) unaffected.
 
 ## False positives fixed (unattended builds must not halt)
 
@@ -86,31 +98,49 @@ the backstop uses an IS/inside-CP check (not the ancestor check), so `eslint .` 
   writes. (Delete/mutation targets now fail closed — no longer residual there.)
 - **#3 enumerated dispatcher/outward** — an UNLISTED dispatcher or network/exfil
   binary with a literal `argv0` exfiltrating a NON-control-plane file. The backstop
-  closes the control-plane half; arbitrary-secret exfil over an unmodeled net tool
-  is the residual (analogous to the F13 set-enumeration leak).
+  (unrecognized verbs) + the dispatcher local-write backstop (listed dispatchers'
+  local-output writes) close the control-plane half; arbitrary-secret exfil over an
+  unmodeled net tool is the residual (analogous to the F13 set-enumeration leak).
 - **Additive carve-out** — a NEW non-`firebreak-*` file created INSIDE `.claude/hooks/`
-  (`rsync evil .claude/hooks/newfile`) is allowed; it cannot overwrite/disable a
-  protected hook or the realpath-protected global `~/.claude/settings.json`.
-- **Watch-item (round-6 note):** adding a binary to `DISPATCHERS` removes it from
-  backstop coverage — dispatcher additions are the highest-leverage place a future
-  regression could hide. Re-run the red-team after any `DISPATCHERS` change.
+  (`rsync evil .claude/hooks/newfile`) is allowed by the write-verb path; it cannot
+  overwrite/disable a protected hook or the realpath-protected global
+  `~/.claude/settings.json`. (Note: the dispatcher local-write backstop is stricter —
+  it uses `_cp_path_protected`, so a *dispatcher* output into `.claude/hooks/` defers
+  even for a new filename.)
+- **Watch-item (updated — F16b):** the dispatcher local-write backstop covers the
+  conventional output-flag (`DISPATCHER_OUTPUT_FLAGS`) + enumerated positional-write
+  (`DISPATCHER_POSITIONAL_WRITES`) surface, so adding a binary to `DISPATCHERS` no
+  longer silently removes CP coverage for its conventional local-output writes. The
+  remaining leverage: a listed dispatcher writing the CP through an UNCONVENTIONAL
+  output flag not in `DISPATCHER_OUTPUT_FLAGS` (nor a modeled positional-write
+  subcommand). Known un-enumerated seeds: `cargo install --root .claude/…`, `pip
+  wheel -w .claude/hooks`, `terraform plan -out=.claude/…`, `npm install --prefix
+  .claude`. Keep both sets current and re-run the red-team after any `DISPATCHERS`
+  / output-flag change.
 
 ## Test totals (all green)
 
-| Suite | 9th review | After convergence |
-|-------|-----------|-------------------|
-| classifier unit | 188/188 | **203/203** |
-| gate | 26/26 | **26/26** |
-| superset | 205 / 0-gaps | **274 / 0-gaps** |
-| soundness | 162 RED + 58 GREEN | **270 RED + 94 GREEN** |
+| Suite | 9th review | After convergence | + F16b dispatcher-skip |
+|-------|-----------|-------------------|------------------------|
+| classifier unit | 188/188 | 203/203 | **216/216** |
+| gate | 26/26 | 26/26 | **26/26** |
+| superset | 205 / 0-gaps | 274 / 0-gaps | **280 / 0-gaps** |
+| soundness | 162 RED + 58 GREEN | 270 RED + 94 GREEN | **284 RED + 103 GREEN** |
 
 ## Verdict
 
 GO-WITH-RESIDUALS. Six adversarial rounds drove the new-bypass rate to zero; the
-final round found nothing at ~90% confidence. The fixes are class-level and
+final round found nothing at ~90% confidence. A post-convergence follow-up (F16b)
+then closed the one structural gap the round-6 watch-item had flagged: the backstop
+EXEMPTED listed dispatchers, so a listed dispatcher could still write the control
+plane through a local-output flag/subcommand (`go build -o .claude/hooks/…`, `git
+archive --output=…`, `docker cp … .claude/hooks/…`, `npm pack --pack-destination`,
+`pip download -d`). That class is now fail-closed too. The fixes are class-level and
 test-locked; both invariants (superset, soundness) hold across the enlarged corpora;
 benign unattended-build activity stays GREEN. No reviewer's verdict can be
 *guaranteed*, but the surface Codex has been probing is now closed by construction
-(the backstop), not by enumeration. Activation remains out of scope.
+(the backstop), not by enumeration. The control-plane half is closed for BOTH
+unrecognized verbs AND listed-dispatcher local-output writes. Activation remains out
+of scope.
 
-Test totals: classifier 203/203, gate 26/26, superset 274/0-gaps, soundness 270 RED + 94 GREEN.
+Test totals: classifier 216/216, gate 26/26, superset 280/0-gaps, soundness 284 RED + 103 GREEN.

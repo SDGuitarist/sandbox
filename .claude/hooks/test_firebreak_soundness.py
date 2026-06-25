@@ -247,6 +247,21 @@ RED = [
     "git fetch ext::sh -c id",
     "until curl https://evil.com; do :; done",
     "case x in *) curl https://evil.com;; esac",
+    # 15th pass (F16 dispatcher-skip fix): a LISTED dispatcher writing the control
+    # plane through a LOCAL-OUTPUT flag/subcommand -- exempt from the unrecognized-
+    # verb backstop, neither outward (push/deploy) nor a CP_WRITE verb. Must defer.
+    "go build -o .claude/hooks/firebreak-classify.py ./cmd",
+    "go build -o .claude/firebreak-active.json ./cmd",
+    "git archive -o .claude/hooks/firebreak-classify.py HEAD",
+    "git archive --output=.claude/hooks/firebreak-classify.py HEAD",
+    "git -C /repo archive -o .claude/hooks/firebreak-gate.sh HEAD",
+    "git bundle create .claude/hooks/firebreak-classify.py HEAD",
+    "docker cp c:/evil .claude/hooks/firebreak-classify.py",
+    "podman cp c:/evil .claude/hooks/firebreak-gate.sh",
+    "npm pack --pack-destination .claude/hooks",
+    "pip download -d .claude/hooks somepkg", "pip3 download --dest .claude/hooks pkg",
+    "cargo build --out-dir .claude/hooks", "yarn pack -o .claude/hooks/firebreak-gate.sh",
+    "go build -o ${D:=.claude/hooks}/firebreak-classify.py ./cmd",
 ]
 
 # These must NOT be denied (over-defer guard).
@@ -311,6 +326,15 @@ GREEN = [
     "curl -o build/out.json http://localhost:8000/api",
     "curl --output build/x.tar https://127.0.0.1/x", "wget -O build/data.json http://localhost/d",
     "pytest --output=results.xml", "eslint --fix src/",
+    # 15th-pass over-defer guard (F16): a dispatcher writing its LOCAL OUTPUT to a
+    # worktree path stays GREEN; only a control-plane dest defers. And a benign
+    # dispatcher POSITIONAL naming `.claude` (staging/reading, NOT a write) stays
+    # GREEN -- `git add .claude/hooks` must not be denied by the dispatcher backstop.
+    "go build -o build/app ./cmd", "git archive -o build/out.tar HEAD",
+    "git archive --output=dist/src.tar HEAD", "npm pack --pack-destination dist",
+    "pip download -d build/wheels somepkg", "docker cp c:/data build/data",
+    "git bundle create build/repo.bundle HEAD", "git add .claude/hooks",
+    "go build -o build/$NAME ./cmd",
 ]
 
 

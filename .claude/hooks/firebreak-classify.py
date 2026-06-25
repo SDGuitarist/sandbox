@@ -212,6 +212,36 @@ DISPATCHER_VALUE_FLAGS = {
              "-t", "--target"},
 }
 
+# Conventional LOCAL-OUTPUT flags a dispatcher SUBCOMMAND may use to WRITE a file
+# or directory (`go build -o F`, `git archive -o F`/`--output=F`, `npm pack
+# --pack-destination D`, `pip download -d D`/`--dest D`). A listed dispatcher is
+# exempt from the unrecognized-verb control-plane BACKSTOP, so without checking
+# these its local-output writes to the firebreak's own files slip through. The
+# value is matched against the control plane ONLY, so a `-o`/`-d` that carries a
+# non-path value (`kubectl get -o yaml`, `docker run -d`) is harmless -- `yaml`
+# isn't a control-plane PATH. Keep this list current as new dispatcher output
+# flags are discovered (same maintenance contract as DISPATCHERS itself -- F16
+# watch-item).
+DISPATCHER_OUTPUT_FLAGS = {
+    "-o", "--output", "--output-dir", "--output-directory", "--out-dir",
+    "--outdir", "-O", "--output-document", "-d", "--dir", "--dest",
+    "--destination", "--pack-destination", "--target-directory", "--target-dir",
+}
+# Dispatcher subcommands whose local WRITE destination is a POSITIONAL (not a
+# flag), so the unrecognized-verb backstop's positional sweep -- which we cannot
+# apply wholesale to a dispatcher without denying benign positionals like `git add
+# .claude/hooks` (staging, not a write) -- is replaced by a targeted per-subcommand
+# rule. {dispatcher: {verb: collector}}; collector(rest_after_verb) -> [dest, ...].
+DISPATCHER_POSITIONAL_WRITES = {
+    # `git bundle create <FILE> <refs...>` -- FILE is the write target.
+    "git": {"bundle": lambda a: a[1:2] if len(a) >= 2 and a[0] == "create" else []},
+    # `docker|podman|nerdctl cp <SRC> <DEST>` -- copy INTO a local path. Take both
+    # positionals; only a real control-plane path trips the check.
+    "docker": {"cp": lambda a: a},
+    "podman": {"cp": lambda a: a},
+    "nerdctl": {"cp": lambda a: a},
+}
+
 # curl/wget flags that take a VALUE (so a flag value like `-d @data.json` is not
 # mistaken for the target host).
 CURL_VALUE_FLAGS = {
@@ -1318,6 +1348,39 @@ def _arg_path_candidates(rest):
     return [c for c in out if c]
 
 
+def _dispatcher_output_targets(a0, rest):
+    """Local WRITE destinations a LISTED dispatcher carries -- via a conventional
+    output FLAG (`go build -o F`, `git archive --output=F`, `npm pack
+    --pack-destination D`, `pip download -d D`) or a known positional-write
+    SUBCOMMAND (`git bundle create F`, `docker cp SRC DEST`). NOT every positional:
+    `git add .claude/hooks` stages (does not write the hook) and must stay GREEN, so
+    only declared write positions are returned. Caller normalizes/expands + checks
+    the control plane, so a flag carrying a non-path value (`kubectl get -o yaml`)
+    yields a harmless candidate the CP check filters out."""
+    out = []
+    i = 0
+    while i < len(rest):
+        w = rest[i]
+        name = w.split("=", 1)[0]
+        if w in DISPATCHER_OUTPUT_FLAGS and i + 1 < len(rest):
+            out.append(rest[i + 1]); i += 2; continue
+        if "=" in w and name in DISPATCHER_OUTPUT_FLAGS:
+            out.append(w.split("=", 1)[1])
+        elif len(w) > 2 and not w.startswith("--") and w[:2] in DISPATCHER_OUTPUT_FLAGS:
+            out.append(w[2:])                       # glued `-o<path>`/`-d<path>`/`-O<path>`
+        i += 1
+    pos_rules = DISPATCHER_POSITIONAL_WRITES.get(a0)
+    if pos_rules:
+        verb = dispatcher_verb(rest, a0)
+        collector = pos_rules.get(verb)
+        if collector:
+            # positionals AFTER the subcommand verb (skip the verb token itself)
+            after = positional_args(rest)
+            after = after[1:] if after and after[0] == verb else after
+            out += collector(after)
+    return [strip_quotes(t) for t in out]
+
+
 def _has_link_flag(rest):
     """True if a `cp` invocation creates a hard/symlink alias (`-l`/`--link`,
     `-s`/`--symbolic-link`) rather than copying content."""
@@ -1446,6 +1509,26 @@ def bash_control_plane(words, cmd, identity, repo_root, sentinel, assigns=None):
         for cand in _arg_path_candidates(rest):
             t = cp_normalize(expand_assigns(cand, assigns))
             if _cp_path_protected(t, repo_root):   # IS/inside the CP, not ancestor
+                return "control-plane"
+
+    # DISPATCHER LOCAL-WRITE BACKSTOP (F16 dispatcher-skip fix). A LISTED dispatcher
+    # is EXEMPT from the unrecognized-verb backstop above, yet can still WRITE the
+    # control plane through a LOCAL-OUTPUT flag/subcommand that is neither an outward
+    # push/deploy (caught later by bash_outward) nor a known CP_WRITE verb -- e.g.
+    # `go build -o .claude/hooks/firebreak-classify.py`, `git archive
+    # --output=.claude/hooks/x HEAD`, `git bundle create .claude/hooks/x HEAD`,
+    # `docker cp c:/x .claude/hooks/firebreak-classify.py`, `npm pack
+    # --pack-destination .claude/hooks`, `pip download -d .claude/hooks`. git's own
+    # working-tree destruction (GIT_WT_VERBS) was already disposed by
+    # git_local_category at the top of this function; this closes the local-OUTPUT
+    # half for every dispatcher. Scoped to declared write positions, so benign
+    # positionals (`git add .claude/hooks` = staging, not a write) stay GREEN.
+    if a0 in DISPATCHERS:
+        scan = git_normalized_rest(rest) if a0 == "git" else rest
+        for cand in _dispatcher_output_targets(a0, scan):
+            t = cp_normalize(expand_assigns(cand, assigns))
+            if _cp_path_protected(t, repo_root) \
+                    or worker_cp_obfuscation_risk(t, repo_root):
                 return "control-plane"
     return None
 

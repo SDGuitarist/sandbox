@@ -208,6 +208,14 @@ BASH_CORPUS = [
     "dd if=a of=~/.claude/settings.json", "sed -i s/a/b/ ~/.claude/settings.json",
     "DEST=$HOME/.claude/settings.json cp evil \"$DEST\"", "echo x > /etc/foo",
     "echo x >> ~/.claude/settings.json",
+    # 15th pass (F16 dispatcher-skip fix): dispatcher local-output writes to the
+    # control plane -- each carries `.claude`, so the gate forwards on that marker.
+    "go build -o .claude/hooks/firebreak-classify.py ./cmd",
+    "git archive --output=.claude/hooks/firebreak-classify.py HEAD",
+    "git bundle create .claude/hooks/firebreak-classify.py HEAD",
+    "docker cp c:/evil .claude/hooks/firebreak-classify.py",
+    "npm pack --pack-destination .claude/hooks",
+    "pip download -d .claude/hooks somepkg",
 ]
 
 WRITE_CORPUS = [

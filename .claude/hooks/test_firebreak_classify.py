@@ -287,6 +287,51 @@ def main():
     d, _, _ = run(bash("cd .claude && cat hooks/firebreak-gate.sh", WORKER), s, cwd=repo)
     check("worker cd .claude && cat (read, no mutate) stays GREEN", d, False)
 
+    # ---- dispatcher LOCAL-WRITE backstop (F16 dispatcher-skip fix) ----
+    # A LISTED dispatcher is exempt from the unrecognized-verb backstop, but must
+    # not be able to WRITE the control plane through a local-output flag/subcommand
+    # (neither outward push/deploy nor a CP_WRITE verb).
+    d, _, _ = run(bash("go build -o .claude/hooks/firebreak-classify.py ./cmd", WORKER), s, cwd=repo)
+    check("worker go build -o into hook script", d, True)
+
+    d, _, _ = run(bash("git archive --output=.claude/hooks/firebreak-classify.py HEAD", WORKER), s, cwd=repo)
+    check("worker git archive --output into hook script", d, True)
+
+    d, _, _ = run(bash("git -C /repo archive -o .claude/hooks/firebreak-gate.sh HEAD", WORKER), s, cwd=repo)
+    check("worker git -C ... archive -o (normalized) into hook", d, True)
+
+    d, _, _ = run(bash("git bundle create .claude/hooks/firebreak-classify.py HEAD", WORKER), s, cwd=repo)
+    check("worker git bundle create over hook script (positional)", d, True)
+
+    d, _, _ = run(bash("docker cp c:/evil .claude/hooks/firebreak-classify.py", WORKER), s, cwd=repo)
+    check("worker docker cp into hook script (positional dest)", d, True)
+
+    d, _, _ = run(bash("npm pack --pack-destination .claude/hooks", WORKER), s, cwd=repo)
+    check("worker npm pack --pack-destination into hooks dir", d, True)
+
+    d, _, _ = run(bash("pip download -d .claude/hooks somepkg", WORKER), s, cwd=repo)
+    check("worker pip download -d into hooks dir", d, True)
+
+    d, _, _ = run(bash("go build -o ${D:=.claude/hooks}/firebreak-classify.py ./cmd", WORKER), s, cwd=repo)
+    check("worker go build -o ${D:=.claude/hooks} (resolved default)", d, True)
+
+    # over-defer guards: dispatcher output to the WORKTREE stays GREEN; a benign
+    # dispatcher POSITIONAL naming `.claude` (staging, not a write) stays GREEN.
+    d, _, _ = run(bash("go build -o build/app ./cmd", WORKER), s, cwd=repo)
+    check("worker go build -o build/app stays GREEN", d, False)
+
+    d, _, _ = run(bash("git archive -o build/out.tar HEAD", WORKER), s, cwd=repo)
+    check("worker git archive -o build/ stays GREEN", d, False)
+
+    d, _, _ = run(bash("git add .claude/hooks", WORKER), s, cwd=repo)
+    check("worker git add .claude/hooks (stage, not write) stays GREEN", d, False)
+
+    d, _, _ = run(bash("npm pack --pack-destination dist", WORKER), s, cwd=repo)
+    check("worker npm pack --pack-destination dist stays GREEN", d, False)
+
+    d, _, _ = run(bash("go build -o .claude/hooks/firebreak-classify.py ./cmd", SWARM), s, cwd=repo)
+    check("trusted swarm-runner go build -o hook allowed (F5)", d, False)
+
     d, _, _ = run(bash("cd src && rm -rf build", WORKER), s, cwd=repo)
     check("worker cd src && rm -rf build stays GREEN", d, False)
 
