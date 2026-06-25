@@ -78,20 +78,37 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
     (`~/.claude/settings.json`, the sentinel, `todos/approvals/`). F12's recognized-
     framework allowlist only stops a plan from *promoting an arbitrary runner* to a
     "test" — it makes **no** safety claim about what an allowlisted framework runs.
-  - **(2) Genuinely-INHERITED `$VAR` target/redirect to a control-plane path
-    (F9/F11; narrowed by F14).** **Same-command** assignments are now resolved
-    (F14): `D=.claude/hooks; rm -rf $D`, `chmod/rmdir/unlink/shred/touch $D`,
-    `export D=…; rm -rf $D`, chained `A=.claude; B=$A/hooks; rm -rf $B`, and a
-    redirect through a same-command var (`D=$HOME/.claude/settings.json; echo x >
-    $D`) all **defer** — the assignment lives in the same Bash tool command, so the
-    target is statically resolvable. What remains opaque is a **truly inherited**
-    `$VAR` — one set in a **prior, separate Bash tool call or the process
-    environment**, with **no assignment in this command** (`rm -rf $D` with no
-    `D=…` here; `echo x > $INHERITED_CP_VAR`). That value isn't visible to the
-    static classifier, so it stays GREEN. Narrow, but it is a direct-call gap, so
-    the direct-call control-plane claim is **"complete except this inherited-var
-    case, the interpreter escape, and the F13 set-enumeration leak,"** not absolute.
-    **Do not conflate the two:** same-command `$VAR` ≠ inherited `$VAR`.
+  - **(2) A NON-statically-resolvable `$VAR` target/redirect to a control-plane path
+    (F9/F11; narrowed by F14 + F15).** Every **statically-resolvable same-command**
+    assignment is now resolved and checked: bare `D=…`, `export`/`declare`/`typeset`/
+    `local` (incl. with flags: `declare -g D=…`, `local -r D=…`, `export -- D=…`),
+    the here-string `read [opts] VAR <<< .claude/hooks`, `printf -v VAR` (literal or
+    `%s`-arg), chained `A=.claude; B=$A/hooks; rm -rf $B`, the in-place default
+    `rm -rf ${D:=.claude/hooks}` / `${D:-…}` / `${D=…}`, and a redirect through any
+    of these (`echo x > ${F:=$HOME/.claude/settings.json}`) all **defer** — the value
+    lives in this same Bash command, so the target is statically resolvable. What
+    stays GREEN is a target whose value is **NOT statically resolvable**, which is
+    exactly two epistemically-identical cases:
+      - a **truly inherited** `$VAR` — set in a **prior, separate Bash tool call or
+        the process environment**, with **no assignment in this command** (`rm -rf
+        $D` with no `D=…` here; `echo x > $INHERITED_CP_VAR`); and
+      - an **opaque same-command RHS** — assigned in this command but from a
+        command-substitution/backtick (`D=$(echo .claude/hooks); rm -rf $D`). This
+        is **NOT inherited** (the 7th-pass mislabel), but it is **equally opaque to a
+        static classifier** — and is the **same already-accepted residual** as the
+        direct form `rm -rf $(echo .claude/hooks)`, which is GREEN today. Resolving
+        the variable form while leaving the direct form GREEN would be inconsistent;
+        both are residual. (A determined worker with the residual-#1 interpreter
+        escape can disable the control plane regardless, so closing only the
+        command-substitution path here buys nothing.)
+    Narrow, but a direct-call gap, so the direct-call control-plane claim is
+    **"complete except these non-resolvable-value cases, the interpreter escape, and
+    the F13 set-enumeration leak,"** not absolute. **Do not conflate resolvable with
+    non-resolvable:** a statically-resolvable same-command `$VAR` is checked; only a
+    non-resolvable value (inherited, or opaque-RHS) stays GREEN. Remaining
+    not-yet-resolved same-command forms (multi-var `read A B <<<`, `mapfile`/
+    `readarray`, rich `printf` `%`-formats, alternate `${VAR:+word}`/`${VAR#…}`
+    operators) are likewise opaque-by-treatment and fall in this residual.
   - **(3) Unlisted-dispatcher / exec-wrapper opaque execution (F13 residual).** F13
     **substantially reduces** the opaque-command-word escape — it fail-closes/defers
     when `argv[0]` or a **recognized** dispatcher's verb is opaque, recursing **listed**
@@ -107,6 +124,14 @@ monoculture mitigation (G3), ledger hardening (G4), delegation-as-authority (G5)
     which **are** listed and therefore deferred) — but does **not CLOSE** the class —
     same honest-agent-guard class as #1/#2. The fix is to keep the lists current
     (Phase-1 tests enumerate them; new outward tools are added as discovered).
+    **Narrowed by F16 (red-team backstop):** the CONTROL-PLANE half of this leak is
+    now CLOSED by construction — an unrecognized verb naming a control-plane path
+    (positional/flag-value/`name=value`) fails closed regardless of whether it is on
+    any list, so a future/unlisted WRITE binary can no longer mutate the firebreak.
+    What remains residual is purely OUTWARD: an unlisted network/exfil binary with a
+    literal `argv0` sending a NON-control-plane file out. **Watch-item:** adding a
+    binary to `DISPATCHERS` REMOVES it from backstop coverage, so re-run the red-team
+    after any `DISPATCHERS` change.
 - **Deterministic-only authority.** No LLM in the dispose path (precedent: the
   spec-eval AI judge hit ~0% field precision and was demoted to advisory).
 
@@ -185,10 +210,19 @@ v1 design** (no longer "first draft"); this table is the decision trail.
 | **F11** | **F6's "single residual" was wrong — there are multiple declared direct-call residuals** (this pass named the second; F13 later named the third). (1) the **allowlisted-interpreter escape** (in-process file I/O the hook never sees — breaks outward AND control-plane); (2) the **inherited-`$VAR` redirection to a control-plane path** (F9's scoped rule allows opaque *relative* redirects, so a redirect through a var set to a control-plane path in an earlier GREEN call is a *direct* Bash call the redirect-layer static check can't resolve). The Threat Model now enumerates all three; the "direct-call protection" claim is narrowed to "direct worker tool calls **except** the named gaps." (The opaque command-word/verb escape is **substantially reduced by F13** but **not closed** — set enumeration is leaky — so it is **residual #3**, see F13.) |
 | **F12** | **`KNOWN_TEST_FRAMEWORKS` is a recognized-framework allowlist (plan-text-injection control), NOT a "safe-set."** Frameworks like `pytest`/`jest` execute arbitrary project/test code **by design** — that *is* the F6 residual. The allowlist's only job is to stop a plan from **promoting an arbitrary runner** (`python3 deploy.py`) to "test" status; it makes **no** safety claim about what an allowlisted framework then runs. All "safe-set" language reworded accordingly. |
 
+### Red-team convergence — F16 (6-round parallel adversarial sweep → structural backstop)
+
+| # | Fix | What changed |
+|---|-----|--------------|
+| **F16** | **Multi-round adversarial red-team (rounds 1–6; ~15 subagents executing real probes; see `docs/reviews/2026-06-24-g1-phase1-redteam-convergence.md`).** New-bypass rate per round: **21→15→12→9→1→0** (final round dry, ~90% confidence). Fixed at the CLASS level, all test-locked: (a) **path normalization** — decode ANSI-C `$'\xNN'`/octal, strip escapes/quotes, **case-insensitive** `.claude` (macOS FS); (b) **concrete-prefix fail-closed** — every unresolved var/array `${a[0]}`/indirect `${!n}`/substring `${x:2}`/pattern-sub/`$(...)`/dot-glob in a delete/mutation target defers unless a safe concrete worktree prefix bounds it; (c) **wrapper verb-eating** — `nice/ionice/stdbuf/watch/parallel` no longer eat the verb, per-wrapper value-flags skipped, `time -p`/`env -S` handled, `xargs` CP/outward; (d) **git working-tree destruction** — rm/clean/checkout/restore/switch/reset --hard/stash -u/mv/worktree/read-tree/checkout-index/config core.hooksPath/apply/am; (e) **write-dest flags** — `dd of=`/`sort -o`/`tar -C`/`unzip -d` (glued), `rsync DEST` (always), `ditto/cpio/pax`, **curl/wget `-o`/`-O` output** (CP + worktree-escape); (f) **redirect ops** `>|`/`>&`/fd-numbered; (g) **command-carrying contexts** `trap '<cmd>'`/`PROMPT_COMMAND=`; (h) **alias-to-hook** `ln`/`cp --link` CP source; (i) **outward/deploy/package** — integer-IP hosts (+nc/loopback carve-outs), socat/dig/host/nslookup/rclone/mc/s3cmd/mail/glab, docker/podman push + run--mount, helm/pulumi/serverless/cdk/ansible/nomad/argocd/skaffold/flux/doctl, uv/pipx/cargo/gem/brew/apt uninstall, yarn-workspace publish, extended MCP mutating tokens; (j) **STRUCTURAL BACKSTOP** — any UNRECOGNIZED verb (not a known reader/write/dispatcher/wrapper/interpreter, `READ_ONLY_VERBS` allowlist) naming a control-plane path as positional/flag-value/`name=value` fails closed — ends the enumerate-every-binary game (`busybox`/`vim -es`/`patch`/`sponge`/future tools). FPs fixed (cp/ln read-sources, loopback IP decode, filtered `find -delete`, `eslint .`, `pytest $F`). Totals: classifier 203/203, gate 26/26, superset 274/0-gaps, soundness 270 RED + 94 GREEN. |
+
+### Ninth review — F15 (same-command assignment-mechanism sweep: read/printf-v/${VAR:=default}/flagged-keyword; opaque-RHS residual decided)
+
 ### Sixth pass — F14 (implementation hardening: control-plane verb/dir coverage, runner recursion, MCP veto, same-command vars)
 
 | # | Fix | What changed |
 |---|-----|--------------|
+| **F15** | **Same-command assignment-mechanism sweep (Phase-1 ninth review; Codex re-review #2).** F14 resolved only `VAR=`/`export`/`declare`-bare assignments, so other same-command mechanisms that produce a statically-visible value still hid a control-plane target. Now resolved & checked (all test-locked): the here-string `read [opts] VAR <<< .claude/hooks`, `printf -v VAR` (literal format or `%s`-arg), the in-place default expansions `rm -rf ${D:=.claude/hooks}` / `${D:-…}` / `${D=…}` (incl. `$HOME`-rooted redirect `echo x > ${F:=$HOME/.claude/settings.json}`), and keyword assignments **with flags** (`declare -g`, `local -r`, `export --`). **Opaque same-command RHS decided & documented:** `D=$(echo .claude/hooks); rm -rf $D` is **not statically resolvable** and stays GREEN as the **same already-accepted residual #2** as the direct `rm -rf $(echo .claude/hooks)` form — explicitly **NOT** relabelled "inherited" (the 7th-pass error). Residual #2 reworded as "a NON-statically-resolvable value (truly-inherited OR opaque-RHS)"; #1/#3 unchanged. |
 | **F14** | **Implementation false-negative sweep (Phase-1 reviews 5–8; Codex NO-GO resolved).** A sequence of adversarial reviews hardened the *classifier* against control-plane and runner evasions, all test-locked (classifier/soundness/superset/gate corpora): (a) **runner recursion** — `npx --call`/`-c` command strings, two-token runner value-flags + global dispatcher flags (`pnpm --filter app exec X`), the `npm exec`/`npm x`/`pnpm exec`/`yarn exec`/`bun x` family, `corepack`/`pnpx` shims; (b) **control-plane metadata/creation verbs** — `chmod`/`chown`/`chgrp`/`touch`/`mkdir`/`chflags`/`setfacl`/`xattr`/`link`/`mkfifo`/`mknod` and the delete verbs `rmdir`/`unlink`/`shred` (were `DELETE_VERBS`-only, bypassing the control-plane check); (c) **MCP read-only allowlist veto** — a compound verb pairing a read prefix with a mutating token (`get_or_create`/`getOrCreate`) defers (split on `_`/`-` AND camelCase, exact-token match); (d) **directory-level control-plane mutation** — `is_control_plane_dir` denies a worker mutating a `.claude`/`.claude/hooks` dir or an **ancestor** of a protected anchor (`rm -rf .claude/hooks`, `mv .claude .bak`, parent-dir `rm -rf .`/`rm -rf ~`), plus a `cd <CP-dir> && <mutate>` fail-closed guard; (e) **same-command variable targets** — `D=.claude/hooks; rm -rf $D` (and `chmod/rmdir/unlink/shred/touch $D`, `export`/`declare`, chained `A=.claude; B=$A/hooks`, `$HOME`-rooted, same-command redirects) are **resolved** via `collect_assignments`/`expand_assigns` and checked. **Residual #2 narrowed accordingly:** only a **genuinely-inherited** `$VAR` (set in a prior separate command / the environment, with no assignment in this command) stays opaque — same-command `$VAR` is no longer a residual. Residuals #1 (interpreter escape) and #3 (unlisted dispatcher/wrapper) unchanged. |
 
 ### Fifth pass — F13 (opaque command-word / verb execution)
@@ -328,20 +362,24 @@ when inside a subagent) and the sentinel for run context. Disposition:
   `~`/`$HOME` expansion defeats symlink/traversal/`$HOME` obfuscation; the entry
   gate forwards to the classifier on any control-plane substring **or** any
   `~`/`$HOME`/`..`/symlink-suspect token — it never auto-allows an obfuscated form.
-  **Env-indirection (F9, narrowed by F14 — scoped to avoid GREEN over-defer):** a
+  **Env-indirection (F9, narrowed by F14 + F15 — scoped to avoid GREEN over-defer):** a
   control-plane-capable write/delete/metadata verb defers for workers when its
-  destination, after **best-effort expansion** (**same-command `VAR=…` assignments
-  incl. `export`/`declare` and chaining**, `~`/`$HOME`), is **(a)** a control-plane
-  path, **(b)** absolute / `~`/`$HOME`-rooted / `..`-escaping and **not provably
-  inside the worktree**, or **(c)** **fully opaque** (`$(…)`/backticks/a
-  genuinely-inherited `$VAR`) for the **arbitrary-destination verbs**
-  (`cp`/`install`/`ln`/`dd`/`mv`/`sed -i`/`truncate`). A destination that resolves to
-  a **plain worktree-relative path** — including `> "$out"` where `$out` is a
-  relative artifact path — is **NOT** deferred, so ordinary computed-path writes stay
-  GREEN. *Declared residual (F14-narrowed): only a **genuinely-inherited** `$VAR`
+  destination, after **best-effort expansion** (**same-command assignments — bare
+  `VAR=…`, `export`/`declare`/`typeset`/`local` incl. with flags, `read … <<<`,
+  `printf -v`, chaining, and the in-place default `${VAR:=word}`** — plus
+  `~`/`$HOME`), is **(a)** a control-plane path, **(b)** absolute / `~`/`$HOME`-rooted
+  / `..`-escaping and **not provably inside the worktree**, or **(c)** **fully
+  opaque** (`$(…)`/backticks/a genuinely-inherited `$VAR`) for the
+  **arbitrary-destination verbs** (`cp`/`install`/`ln`/`dd`/`mv`/`sed -i`/`truncate`).
+  A destination that resolves to a **plain worktree-relative path** — including
+  `> "$out"` where `$out` is a relative artifact path — is **NOT** deferred, so
+  ordinary computed-path writes stay GREEN. *Declared residual (F14/F15-narrowed): a
+  value that is **NOT statically resolvable** — a **genuinely-inherited** `$VAR`
   (set in a prior separate command / the environment, **no assignment in this
-  command**) redirection (`>`/`>>`) to a control-plane path is not caught at the
-  redirect layer. **Same-command** `$VAR` targets/redirects ARE resolved + denied
+  command**) OR an **opaque same-command RHS** (`D=$(echo .claude/hooks); rm -rf $D`,
+  the same residual as the direct `rm -rf $(echo .claude/hooks)`) — redirection
+  (`>`/`>>`) or target to a control-plane path is not caught. **Statically-resolvable
+  same-command** `$VAR` targets/redirects ARE resolved + denied
   (`D=.claude/hooks; rm -rf $D`, `D=$HOME/.claude/settings.json; echo x > $D`) — do
   not conflate the two.* **F6 caveat:** this protects against a worker's *direct* tool calls only —
   a write performed by code inside an allowlisted interpreter is invisible to the hook
@@ -856,12 +894,16 @@ ls todos/approvals/ 2>/dev/null
 - **F9 — env-indirected control-plane writes (scoped):** a control-plane-capable
   write verb defers only when its destination is control-plane / absolute / `..`-
   escaping / opaque — **plain worktree-relative computed writes stay GREEN**, so no
-  throughput regression (3rd-review P1). **F14 (8th review)** additionally resolves
-  **same-command** `VAR=…` assignments (incl. `export`/`declare`, chaining,
-  `$HOME`-rooted) for write/delete/metadata targets and redirects, so
-  `D=.claude/hooks; rm -rf $D` defers. The realpath check still can't see through a
-  **genuinely-inherited** `$VAR` (no assignment in this command) — that, and only
-  that, is declared residual #2.
+  throughput regression (3rd-review P1). **F14 (8th review)** + **F15 (9th review)**
+  resolve **statically-visible same-command** assignments — bare `VAR=…`,
+  `export`/`declare`/`typeset`/`local` (incl. with flags), `read … <<<`, `printf -v`,
+  chaining, `$HOME`-rooted, and the in-place default `${VAR:=word}` — for
+  write/delete/metadata targets and redirects, so `D=.claude/hooks; rm -rf $D` and
+  `rm -rf ${D:=.claude/hooks}` defer. The realpath check still can't see through a
+  value that is **NOT statically resolvable** — a **genuinely-inherited** `$VAR` (no
+  assignment in this command) OR an **opaque same-command RHS**
+  (`D=$(echo .claude/hooks); rm -rf $D`, the same residual as the direct
+  `rm -rf $(echo .claude/hooks)`) — that, and only that, is declared residual #2.
 - **Bash Command Rules bind the hook itself** (P0): single command / `exec`, no
   chaining, no `python3 -c`. (`docs/solutions/2026-04-09-compound-bash-instruction-refactor.md`)
 - **F13 — opaque command-word/verb (substantially reduces 5th-review P0; residual #3):**

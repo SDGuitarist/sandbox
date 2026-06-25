@@ -54,7 +54,20 @@ case "$tool_name" in
       -e 'nc ' -e 'ncat' -e 'rsync' -e 'gh ' \
       -e 'vercel' -e 'railway' -e 'flyctl' -e 'fly ' -e 'netlify' \
       -e 'wrangler' -e 'terraform' -e 'kubectl' -e 'heroku' -e 'aws ' -e 'gcloud' \
+      -e 'pulumi' -e 'serverless' -e 'sls ' -e 'doctl' -e 'helm ' \
+      -e 'git apply' -e 'git am' \
+      -e 'socat' -e 'dig ' -e 'host ' -e 'nslookup' -e 'drill' -e 'whois' \
+      -e 'docker' -e 'podman' -e 'nerdctl' -e 'glab' \
+      -e 'cdk ' -e 'ansible' -e 'nomad' -e 'argocd' -e 'skaffold' -e 'flux' \
+      -e 'rename' -e 'mmv' -e 'trap ' -e 'PROMPT_COMMAND' \
+      -e 'rclone' -e 's3cmd' -e 'mc ' -e 'mail' -e 'sendmail' -e 'mutt' \
+      -e 'kafkacat' -e 'kcat' -e 'mosquitto' -e 'lftp' -e 'ncftp' -e 'rsh' \
+      -e 'busybox' -e 'toybox' -e 'vim' -e ' vi ' -e 'sponge' -e 'gio ' \
+      -e 'gvfs' -e 'patch ' -e 'tftp' -e 'whois' -e 'drill' \
       -e 'push' -e 'force' -e 'filter-repo' -e 'filter-branch' -e 'alias.' \
+      -e 'clean' -e 'reset' -e 'hookspath' -e 'checkout' -e 'restore' \
+      -e 'worktree' -e 'read-tree' -e 'checkout-index' -e 'stash' \
+      -e 'chattr' -e 'uv ' \
       -e 'uninstall' -e 'publish' -e ' remove' \
       -e 'python' -e 'node' -e 'ruby' -e 'perl' -e 'eval' -e 'source ' \
       -e 'npm run' -e 'make' -e '.sh' -e '.venv' -e 'bash ' -e 'sh ' \

@@ -313,11 +313,62 @@ def main():
     d, _, _ = run(bash("F=$HOME/.claude/settings.json; rm -f $F", WORKER), s, cwd=repo)
     check("worker F=$HOME/...settings; rm -f $F", d, True)
 
+    # 10th-pass posture: a worker DELETE/CP-mutation target that is not statically
+    # resolvable to a proven-safe worktree path FAILS CLOSED (no residual #2 for
+    # delete/mutation targets) -- inherited var, opaque `$(...)`, glob-to-dotfile.
     d, _, _ = run(bash("rm -rf $INHERITED_UNSET_VAR", WORKER), s, cwd=repo)
-    check("worker inherited (no same-cmd assign) stays opaque/GREEN", d, False)
+    check("worker inherited var delete target fails closed", d, True)
 
     d, _, _ = run(bash("D=build; rm -rf $D", WORKER), s, cwd=repo)
     check("worker benign same-command var stays GREEN", d, False)
+
+    d, _, _ = run(bash("rm -rf build/$X", WORKER), s, cwd=repo)
+    check("worker safe concrete-prefix + var stays GREEN", d, False)
+
+    # same-command assignment via read / printf -v + ${VAR:=default} (9th pass)
+    d, _, _ = run(bash("read D <<< .claude/hooks; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker read <<< here-string CP target", d, True)
+
+    d, _, _ = run(bash("printf -v D .claude/hooks; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker printf -v CP target", d, True)
+
+    d, _, _ = run(bash("rm -rf ${D:=.claude/hooks}", WORKER), s, cwd=repo)
+    check("worker ${D:=.claude/hooks} default-expansion", d, True)
+
+    d, _, _ = run(bash("unlink ${F:=.claude/hooks/firebreak-gate.sh}", WORKER), s, cwd=repo)
+    check("worker unlink ${F:=hook} default-expansion", d, True)
+
+    d, _, _ = run(bash("echo x > ${F:=$HOME/.claude/settings.json}", WORKER), s, cwd=repo)
+    check("worker redirect to ${F:=$HOME settings} default-expansion", d, True)
+
+    # opaque same-command RHS + direct `$(...)` delete target -> now FAIL CLOSED
+    # (10th pass): a delete/CP-mutation target that isn't statically resolvable to
+    # a safe worktree path defers, regardless of how the opacity arises.
+    d, _, _ = run(bash("D=$(echo .claude/hooks); rm -rf $D", WORKER), s, cwd=repo)
+    check("worker opaque same-cmd RHS delete fails closed", d, True)
+
+    d, _, _ = run(bash("rm -rf $(echo .claude/hooks)", WORKER), s, cwd=repo)
+    check("worker direct $(...) delete target fails closed", d, True)
+
+    # over-defer guards for the new forms (benign -> GREEN)
+    d, _, _ = run(bash("read D <<< build; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker read <<< build benign stays GREEN", d, False)
+
+    d, _, _ = run(bash("rm -rf ${D:=build}", WORKER), s, cwd=repo)
+    check("worker ${D:=build} benign stays GREEN", d, False)
+
+    d, _, _ = run(bash("echo hi > ${O:=out.txt}", WORKER), s, cwd=repo)
+    check("worker redirect ${O:=out.txt} benign stays GREEN", d, False)
+
+    # keyword-with-flags + printf %s assignment forms (9th-pass self-review)
+    d, _, _ = run(bash("declare -g D=.claude/hooks; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker declare -g flagged assignment CP target", d, True)
+
+    d, _, _ = run(bash("printf -v D %s .claude/hooks; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker printf -v %s arg CP target", d, True)
+
+    d, _, _ = run(bash("declare -g D=build; rm -rf $D", WORKER), s, cwd=repo)
+    check("worker declare -g benign stays GREEN", d, False)
 
     # ---------------- out-of-repo deletes / data ----------------
     d, _, _ = run(bash(f"rm -rf {HOME}/Data/leads.db", WORKER), s)
@@ -639,6 +690,16 @@ def main():
 
     d, _, _ = run(mcp("mcp__svc__getDeploymentStatus", WORKER), s)
     check("mcp camelCase getDeploymentStatus allowed", d, False)
+
+    # 10th pass: read-prefix + extended mutating token must be vetoed
+    for nm in ("searchAndReplace", "downloadAndOverwrite", "readAndArchive",
+               "fetchAndStore", "read_and_flush", "describe_and_lock",
+               "getEnable", "readDisable", "listAndArchive"):
+        d, _, _ = run(mcp(f"mcp__svc__{nm}", WORKER), s)
+        check(f"mcp extended-mutating {nm} denied", d, True)
+    for nm in ("read_file", "list_files", "search_docs", "getStatus", "describe"):
+        d, _, _ = run(mcp(f"mcp__svc__{nm}", WORKER), s)
+        check(f"mcp read-only {nm} allowed", d, False)
 
     # ---------------- blanket-deny fallback (F8) ----------------
     sb = sentinel(repo, blanket_deny_control_plane=True)
