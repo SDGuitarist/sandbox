@@ -7,74 +7,122 @@ branch: feat/g3-verification-diversity
 origin: docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md
 governance_ref: docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md
 feed_forward:
-  risk: "Does an Opus disconfirmer reading the SAME run artifacts produce ORTHOGONAL findings, or just restate the Sonnet confirmer's concerns in stronger words? (carried from brainstorm 'least confident')"
+  risk: "Does an Opus disconfirmer reading the SAME run artifacts produce ORTHOGONAL findings, or just restate the Sonnet confirmer's concerns? Within-family (Opus vs Sonnet) is the WEAK diversity lever (self-preference bias); cross-family (Codex) is the strong one and is the pre-registered escalation."
   verify_first: true
 ---
 
 # feat: G3 — Self-Audit Disconfirmer for Verification Diversity ✨
 
+## Enhancement Summary
+
+**Deepened on:** 2026-06-25 (7 parallel review/research agents: architecture, simplicity, agent-native,
+pattern-recognition, autopilot-integrity, multi-file-sync, external best-practices).
+
+**Key improvements folded in:**
+1. **Cut the `disconfirmer_verdict` field + Gate 8d** (user decision) — it was cosmetic (DISPUTE-PASS →
+   `_WITH_DEFERRED_RISK` is the *normal* terminal status) and contradicted the "no-LLM-in-dispose-path"
+   invariant. The brainstorm's *intent* (a meta-objection can't be silently flattened) is preserved via
+   the existing Gates 2/5/7f teeth. Gate 8 collapses from 4 sub-gates to 2 load-bearing ones.
+2. **Closed the fail-open holes:** per-finding `D#→W<N>` identity link (was count-only, droppable);
+   prescribed D# ingestion in `self-audit-reviewer` Step 2 (was unspecified → vacuous pass); canonical
+   CONCUR sentinel + parse-failure fail-closed (truncated write was a silent pass).
+3. **Made every Gate 8 check deterministic** (literal-token, mirroring Gate 7f) — removed the phantom
+   `DISMISSED` disposition and the undecidable "explicit justification."
+4. **Corrected the diversity narrative** (external research): within-family Opus-vs-Sonnet is the *weak*
+   lever (self-preference bias is same-family); cross-family Codex promoted from "residual" to
+   pre-registered escalation. Efficacy probe upgraded to measure novel-valid AND overcall rate.
+5. **Named real omissions:** `verify_delegated_status.py` needs a new `--artifact-kind` (the change is
+   NOT markdown-only); Gate 4 reconciliation; explicit spawn args + `bypassPermissions`; decimal
+   sub-step `7.5`; all 4 gate-count sites.
+
+**New consideration discovered:** the **disposition monoculture** — the lone Sonnet confirmer still
+*disposes* the skeptic's findings — is the primary residual G3 leaves open (detection is diversified,
+disposition is not). Elevated from R5 to a named residual.
+
 ## Overview
 
 Seat a **dedicated disconfirmer** (an Opus agent with an adversarial brief) at the autopilot's
-**terminal verification surface** — immediately *before* the `self-audit-reviewer` step — to break
-the **perspective monoculture** the governance scorecard marks ❌ "a risk we embody"
+**terminal verification surface** — immediately *before* the `self-audit-reviewer` step — to break the
+**perspective monoculture** the governance scorecard marks ❌ "a risk we embody"
 (`docs/governance/2026-06-21-...`, G3 row). The disconfirmer's job is to *prove the run is NOT
 shippable*; its findings flow into the **existing WARN-disposition machinery** as mandatory WARNs the
-self-audit must dispose, and a **new deterministic Gate 8** in `/verify-self-audit` enforces that none
-are silently dropped. One pass, no loop, no LLM in the dispose path.
+self-audit must dispose, and a **new deterministic Gate 8** in `/verify-self-audit` enforces — by
+literal-token, fail-CLOSED checks — that none are silently dropped. One pass, no loop, no LLM in the
+dispose path, no LLM verdict with binding force.
 
-**This plan carries forward every decision from** `docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md`.
+**This plan carries forward every decision from** `docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md`,
+**with one revision** (the `disconfirmer_verdict` field, cut after deepen-plan — see Sources/Origin).
 
 ## Problem Statement / Motivation
 
 Today the terminal verdict is a **single Sonnet `self-audit-reviewer`** confirming a run is shippable.
-A lone confirmer shares its own blind spots — there is no agent whose *job is to disagree*. The G1
-review loop was field proof of the failure class: correlated reviewers (Codex + Claude, both "find any
-allowed input") ran ~17 passes and could not self-terminate because neither held the orthogonal lens
+A lone confirmer shares its own blind spots — no agent's *job is to disagree*. The G1 review loop was
+field proof of the failure class: correlated reviewers (Codex + Claude, both "find any allowed input")
+ran ~17 passes and could not self-terminate
 (`docs/solutions/2026-06-24-enumerated-denylist-vs-structural-backstop.md`, Update 2026-06-25, on the
 `feat/g1-risk-tiered-firebreak` branch). The disconfirmer antidote is **proven in research fan-outs**
-(`~/.claude/docs/search-agent-playbook.md`: SL5/SL8; "opus disconfirmer > sonnet extractors"; "Haiku
-unreliable for adjudication") but has **never been carried into build-verification**. G3 does exactly
-that, for one surface.
+(`~/.claude/docs/search-agent-playbook.md`: SL5/SL8; "opus disconfirmer > sonnet extractors") but has
+**never been carried into build-verification**. G3 does exactly that, for one surface.
 
 ## Proposed Solution
 
-Add four artifacts/edits, all greppable-markdown (there is **no JSON schema** — the gates validate
-prose markers):
+Five edits. **Four are greppable-markdown; one is a small Python change** (`verify_delegated_status.py`
+— see item 5 — so the "markdown-only" framing of the original draft was wrong):
 
-1. **New agent** `.claude/agents/self-audit-disconfirmer.md` (`model: opus`). Reads the run artifacts
-   adversarially, writes `docs/reports/<run-id>/disconfirmer.md` with a `**Disconfirmer Verdict:**`
-   (`CONCUR` | `DISPUTE-PASS`) and a findings table keyed with *local* IDs (`D1`, `D2`, …).
-2. **Wire it BEFORE the self-audit** in both the solo path (`.claude/skills/autopilot/SKILL.md`,
-   between "Verify BUILD_TRACKING" and "Self-Audit", ~line 1153) and the swarm path
-   (`.claude/agents/tail-runner.md`, between Step 7 and Step 8). The two are kept in sync by the
-   existing `TAIL_SYNC_POINT` contract (`SKILL.md` ~992–999) — **both must be edited.**
-3. **Extend `self-audit-reviewer.md`**: it must (a) ingest each disconfirmer `D#` finding as a WARN row
-   (assign the canonical `<run-id>-W<N>` key — the disconfirmer never assigns global keys, avoiding
-   FC34 races), dispose it, and cite `disconfirmer.md` as the Source; (b) record a
-   `**Disconfirmer Verdict:**` line; and (c) if the verdict is `DISPUTE-PASS`, it may **not** claim a
-   clean `PIPELINE_PASS` — it must be `PIPELINE_PASS_WITH_DEFERRED_RISK` (or `PIPELINE_FAIL`) and carry
-   the dispute in `## Unresolved Risk`. Add the field to its report template (Step 4) and its Step 6
-   self-validation list.
-4. **New Gate 8** in `.claude/skills/verify-self-audit/SKILL.md` (after 7f, before `## Output`; bump
-   the "Run all N checks" preamble at ~line 26 and the success line at ~line 241). Gate 8 is
-   **deterministic and fail-CLOSED**.
+1. **New agent** `.claude/agents/self-audit-disconfirmer.md` (full frontmatter: `name`, `description`,
+   `model: opus`, `tools: Read, Write, Grep, Glob`). Reads the run artifacts adversarially, writes
+   `docs/reports/<run-id>/disconfirmer.md` with a `**Run ID:** <run-id>` header + timestamp and a
+   findings table keyed with *local* IDs (`D1`, `D2`, … — disciplined like WARN keys; the disconfirmer
+   never assigns global `<run-id>-W<N>` keys, avoiding FC34 races). No separate verdict field: **CONCUR
+   ≡ zero findings (a canonical sentinel line present); DISPUTE ≡ ≥1 finding row.**
+2. **Wire it BEFORE the self-audit** in both paths, respecting the `TAIL_SYNC_POINT` contract
+   (`SKILL.md` ~992–999 — update the comment's enumeration to list the disconfirmer):
+   - Solo: `.claude/skills/autopilot/SKILL.md`, before `### Self-Audit` (~line 1153).
+   - Swarm: `.claude/agents/tail-runner.md`, as a **decimal sub-step `Step 7.5`** between Step 7 and
+     Step 8 (a renumber would break cross-refs like `SKILL.md:1078`).
+   - Spawn with **explicit args** `(run_id, reports_dir, plan_path, build_tracking_path, handoff_path)`
+     and **`mode: "bypassPermissions"`** (FC50 — pin the entrypoint, no discovery heuristics), matching
+     the Step 8 self-audit spawn block.
+3. **Extend `self-audit-reviewer.md`** (stays `model: sonnet` — invariant):
+   - **Step 2 (Collect WARNs):** add `disconfirmer.md` as a current-run WARN source — scan its findings
+     table and create **one WARN row per `D#`**, with **`Source = disconfirmer.md#D<n>`** (the
+     per-finding identity link Gate 8 needs) and the finding's **severity inherited verbatim** into the
+     row / Unresolved Risk (so a HIGH finding DEFERRED under an A grade trips the existing Gate 7f for
+     free).
+   - **Step 4 (template) + Source Reconciliation:** reconcile `disconfirmer.md` (its "WARN Tokens
+     Found" count = number of `D#` rows, NOT `WARN/STATUS` token lines) so Gate 4 doesn't trip on the
+     new file.
+   - (No verdict field, no DISPUTE-PASS status rule — cut with the verdict.)
+4. **New Gate 8** in `.claude/skills/verify-self-audit/SKILL.md` (after 7f, before `## Output`) —
+   **deterministic, fail-CLOSED, two load-bearing sub-checks** (see below). Bump **all four** gate-count
+   sites consistently: frontmatter `description` (~:3), "Run all N checks" preamble (~:26), and the two
+   success lines (~:239, ~:241). *(Note the pre-existing mislabel: the file says "9" while defining 7
+   gate headings; adding Gate 8 → set all four sites to the literal heading count "8" to resolve it.)*
+5. **`tools/verify_delegated_status.py`** — add a new `--artifact-kind disconfirmer`
+   (existence + freshness `mtime ≥ run_start_ts` + run-id match; **no `**Status:**` marker** — the
+   disconfirmer has no `STATUS:` line). Called at swarm **Step 18w** alongside the existing self-audit
+   disk-verify.
 
 ### Why this approach (carried from brainstorm)
 
 - **Scope = self-audit only** (not the `/workflows:review` mix, not the spec gates). Highest-leverage
   single surface; bounded "done." *(see brainstorm: Decision 1)*
-- **Opus disconfirmer.** Because the confirmer is already **Sonnet**, an Opus disconfirmer adds *both*
-  role diversity (disconfirm vs confirm) **and** model diversity (Opus vs Sonnet) — the playbook's
-  "opus disconfirmer > sonnet extractors" realized. Both standard models are Max-covered (no Sonnet-1M
-  usage credits). Cross-**family** (Codex) diversity is a declared plan-time residual, not the
-  unattended tail. *(see brainstorm: Decision 2)*
-- **Option-A adjudication.** Disconfirmer runs **first/independent** (confirmer can't pre-bias it) →
-  findings become mandatory WARNs the self-audit disposes → deterministic Gate 8 enforces every finding
-  is disposed and every *dismissal* is justified (mirroring Gate 7f). No new blocking path, no arbiter,
-  no re-run loop. *(see brainstorm: Decision 3)*
-- **Determinism boundary held.** The disconfirmer is advisory (an LLM finding); all enforcement lives
-  in deterministic Gate 8. No LLM in the dispose path. *(see brainstorm: Decision 4)*
+- **Opus disconfirmer.** Because the confirmer is **Sonnet**, an Opus disconfirmer adds role diversity
+  (disconfirm vs confirm) **and** model diversity (Opus vs Sonnet). **But heed the evidence:** Opus and
+  Sonnet are the *same family*, so self-preference bias (arXiv 2410.21819) is *not* neutralized by this
+  axis — within-family model diversity is the **weak** lever, role diversity is genuine, and **cross-
+  family (Codex) is the only strong lever**. Codex is therefore a **pre-registered escalation** (see
+  Done #4 / R2), not an open-ended "residual." All Anthropic models here are standard tier (Max-covered;
+  never Sonnet-1M). *(see brainstorm: Decision 2, narrative corrected by deepen-plan)*
+- **Option-A adjudication.** Disconfirmer runs **first/independent** → findings become mandatory WARNs
+  the self-audit disposes → deterministic Gate 8 enforces every finding is linked + disposed. No new
+  blocking path, no arbiter, no re-run loop, **no LLM verdict with binding force.** *(see brainstorm:
+  Decision 3; the verdict field that would have added binding force is cut.)*
+- **Determinism boundary held — now strictly.** The disconfirmer is advisory (LLM findings); ALL
+  enforcement is literal-token deterministic in Gate 8. *(see brainstorm: Decision 4)*
+- **Before-placement is the bias-correct choice, not just convenient.** Running the disconfirmer
+  *blind to* the self-audit verdict avoids anchoring/confirmation bias (arXiv 2412.06593, 2603.18740) —
+  CoT does not undo an anchor once seen. It stays an independent reviewer, not an anchored one.
 
 ## Technical Approach
 
@@ -84,223 +132,272 @@ prose markers):
 ... Verify BUILD_TRACKING.md (existing gate)
       │
       ▼
-[NEW] self-audit-disconfirmer  (model: opus, adversarial brief)
-      │   reads run artifacts → writes docs/reports/<run-id>/disconfirmer.md
-      │   { Disconfirmer Verdict: CONCUR|DISPUTE-PASS ; findings D1..Dn }
+[NEW] self-audit-disconfirmer  (model: opus, adversarial brief, explicit args, bypassPermissions)
+      │   reads run artifacts (ground-truth) → writes docs/reports/<run-id>/disconfirmer.md
+      │   { **Run ID:** <id> + ts ; findings D1..Dn (or canonical CONCUR sentinel) }
       ▼
 self-audit-reviewer (model: sonnet, existing)
-      │   ingests each D# as a WARN row (key <run-id>-W<N>, Source=disconfirmer.md), disposes it;
-      │   records Disconfirmer Verdict; DISPUTE-PASS ⟹ not clean PIPELINE_PASS
+      │   Step 2: ingests each D# → one WARN row, Source=disconfirmer.md#D<n>, severity verbatim; disposes
       ▼
-/verify-self-audit  (existing Gates 1–7 + [NEW] Gate 8, deterministic, fail-CLOSED)
+/verify-self-audit  (Gates 1–7 + [NEW] Gate 8, deterministic, literal-token, fail-CLOSED)
       ▼
-... Done   (swarm: Step 18w disk-verify also confirms disconfirmer.md freshness)
+... Done   (swarm: Step 18w disk-verify confirms disconfirmer.md freshness via new --artifact-kind)
 ```
 
-### Disconfirmer agent brief (the orthogonal lens — this is the load-bearing part)
+### Disconfirmer agent brief (the orthogonal lens — the load-bearing part)
 
-The brief must make the disconfirmer **structurally orthogonal**, not a second confirmer:
-- Mandate: *"Assume this run should NOT ship. Find the strongest reasons it is not shippable that a
-  competent-but-bounded confirming reviewer would miss."* Target the classes the playbook says
-  confirmers miss: scope/convergence errors, silent gaps, claims unbacked by on-disk artifacts.
-- **Ground-truth bias** (playbook "Ground-truth verifier"): open the actual on-disk artifacts and check
-  claims against them, never against summaries/STATUS lines.
-- **Current-run scope only** (autonomy-hardening rule): do NOT surface pre-existing backlog/HANDOFF
-  "Deferred Items (from prior work)". A clean run must pass even with a large backlog.
-- **Reviewer-mandate stopping rule** (enumerated-denylist lesson): findings must name a *class* of
-  problem ("X category of WARN is missing/mis-disposed"), not whack-a-mole line items; the disconfirmer
-  runs **once** — it is not a loop.
-- Output contract: `**Disconfirmer Verdict:** CONCUR` (no blocking findings) or `DISPUTE-PASS`, plus a
-  table `| D# | Category | Why this threatens shippability | Severity (LOW/MED/HIGH) |`. Header carries
-  `Run ID: <run-id>` and a timestamp (FC52). Tools: `Read, Write, Grep, Glob`.
+- **Mandate:** *"Assume this run should NOT ship. Find the strongest reasons it is not shippable that a
+  competent-but-bounded confirming reviewer would miss."*
+- **Ground-truth required (else discard):** every finding MUST cite the specific on-disk artifact
+  (`file:line` or artifact name) it was derived from. A finding grounded only in a STATUS line / summary
+  prose is **invalid** and must not be emitted. *(playbook Ground-truth verifier; debate gains require
+  grounded critiques — arXiv 2510.20963)*
+- **Positive hunting targets (illustrative, NOT exhaustive — do not turn into an enumerated denylist):**
+  scope/convergence creep; artifacts *claimed but absent on disk*; cross-section contradictions; claims
+  unbacked by artifacts. Hunting a checklist of *positive* classes improves recall without recreating
+  the enumerated-exclusion trap.
+- **Current-run scope only:** do NOT surface pre-existing backlog / HANDOFF "Deferred Items (from prior
+  work)." A clean run must pass even with a large backlog.
+- **One pass, name a class:** findings name a *class* of problem, not whack-a-mole line items. The
+  disconfirmer runs **once** — it is not a loop.
+- **Output contract (parseable for both an agent and a grep):**
+  - Header: `**Run ID:** <run-id>` (bold, matching house style) + an ISO timestamp line.
+  - Findings table: `| D# | Category | Why this threatens shippability (with file:line) | Severity |`.
+    - `D#` = `D<N>`, integer, **sequential from 1, no gaps, no zero-pad**, as the **first table cell**
+      (anchored regex `^\|\s*D\d+\s*\|`) so a stray "D3" in prose can't match.
+    - Severity ∈ **exactly `LOW | MEDIUM | HIGH`** (match the existing Unresolved-Risk vocabulary; no
+      `MED`).
+  - **Canonical no-findings sentinel** (CONCUR): a required literal line `No disconfirmer findings.` and
+    zero `D#` rows. (A header-only/truncated write with neither rows nor sentinel ⟹ Gate 8 FAIL — not a
+    silent CONCUR.)
+  - Tools: `Read, Write, Grep, Glob`. No `STATUS:` output-contract line (completion is enforced
+    downstream by Gate 8a fail-closed).
 
-### Gate 8 — deterministic, fail-CLOSED
+### Gate 8 — deterministic, fail-CLOSED (2 load-bearing sub-checks)
 
-Implemented as markdown-instruction checks (consistent with Gates 1–7), reading via Read/Grep/Glob:
-- **8a — Exists & identity (fail-closed):** `docs/reports/<run-id>/disconfirmer.md` exists (Glob) and
-  its header contains the exact `Run ID: <run-id>`. **Missing/mismatched ⟹ FAIL** (never pass — the
-  skeptic is mandatory). *(FC10 fail-closed; FC52 identity)*
-- **8b — Verdict present:** contains `**Disconfirmer Verdict:**` with exactly `CONCUR` or `DISPUTE-PASS`.
-- **8c — Every finding disposed:** every `D#` row in `disconfirmer.md` maps to a WARN row in
-  `self-audit.md` whose `Source` cites `disconfirmer.md`, with a valid Disposition and non-empty
-  Rationale. Any finding the audit *dismisses* (disposes as non-blocking) requires an explicit
-  justification string in the Rationale (mirrors 7f's "can't silently drop the skeptic").
-- **8d — Verdict honored:** if Verdict is `DISPUTE-PASS`, the self-audit `Final Status` is **not**
-  `PIPELINE_PASS` (must be `_WITH_DEFERRED_RISK` or `_FAIL`) **and** the dispute appears in
-  `## Unresolved Risk`.
-- **Swarm freshness:** extend `SKILL.md` Step 18w to also disk-verify `disconfirmer.md`
-  (`verify_delegated_status.py --artifact docs/reports/<run-id>/disconfirmer.md`-style mtime ≥
-  run_start_ts + run-id match), matching how `self-audit.md` is disk-verified. *(harness-green ≠ live)*
+Markdown-instruction checks (consistent with Gates 1–7), via Read/Grep/Glob:
+- **8a — Exists, identity, parseable (fail-closed):** `docs/reports/<run-id>/disconfirmer.md` exists
+  (Glob) AND its header contains the literal `**Run ID:** <run-id>` AND (the findings table is parseable
+  with recognizable `^| D<n> |` rows **OR** the canonical `No disconfirmer findings.` sentinel is
+  present). **Missing / mismatched / unparseable ⟹ FAIL** (never pass — the skeptic is mandatory; a
+  malformed write is not "zero findings"). *(FC10 fail-closed; FC52 identity)*
+- **8c — Per-finding bijection + dismissal token:** for **every** `D<n>` row in `disconfirmer.md` there
+  must exist **exactly one** WARN row in `self-audit.md` whose `Source` contains the literal
+  `disconfirmer.md#D<n>`. For any such WARN disposed **`ACCEPTED`** (the "dismiss" set — `ACCEPTED` =
+  real-but-tolerated; state this explicitly), its Rationale must contain the literal token `#D<n>`
+  (presence check only, mirroring 7f's literal-`HIGH`+key pattern — **Gate 8c checks token presence,
+  never justification quality**). Disposition-enum + non-empty-rationale validation is NOT repeated here
+  (Gate 2 owns it). *(closes the count-parity fail-open; no phantom `DISMISSED` disposition.)*
+- **Swarm freshness (Step 18w):** the new `verify_delegated_status.py --artifact-kind disconfirmer`
+  disk-verifies `disconfirmer.md` (mtime ≥ run_start_ts + run-id). Solo relies on Run ID match +
+  structural in-tail freshness (the disconfirmer runs as a step in the same tail invocation, writing to
+  the per-run dir); the manual "copy a prior run's file and edit its Run ID" case is **out of the
+  unattended threat model** (declared residual). *(harness-green ≠ live)*
 
 ### System-Wide Impact
 
-- **Interaction graph:** new agent spawn sits inside the Shared Tail; it adds one Opus pass before the
-  existing Sonnet self-audit. Solo runs it inline; swarm runs it inside `tail-runner` (which `SKILL.md`
-  Step 18w disk-verifies). No other callbacks fire.
-- **Error propagation:** disconfirmer crash/empty output → Gate 8a FAIL → run fails (fail-closed),
-  surfaced exactly like a self-audit FAIL. No silent `PIPELINE_PASS`.
-- **State lifecycle:** one new artifact per run (`disconfirmer.md`), one per run-id (FC5/FC34 — no
-  parallel-run collision because it is namespaced under `docs/reports/<run-id>/`).
-- **API-surface parity:** the solo and swarm paths are the parity surface; `TAIL_SYNC_POINT` forces both
-  edits. Missing one = swarm and solo diverge (the single biggest implementation risk — see Risks).
-- **Integration scenarios:** (a) CONCUR happy path; (b) DISPUTE-PASS forces non-clean status; (c)
-  missing artifact fails closed; (d) dismissed finding without justification fails 8c; (e) solo and
-  swarm both gated.
+- **Interaction graph:** new Opus spawn in the Shared Tail, one pass before the existing Sonnet audit.
+  Solo runs it inline; swarm runs it inside `tail-runner` (Step 7.5), disk-verified at `SKILL.md` 18w.
+- **Error propagation:** disconfirmer crash / empty / malformed output → Gate 8a FAIL → run fails
+  (fail-closed). Note: **solo fail-closed is only as strong as the orchestrator reaching `/verify-self-audit`**
+  — if context drift skips *both* the spawn and the gate, there is no new backstop (same class as the
+  pre-existing self-audit risk; not a regression). Swarm is backstopped by Step 18w disk-verify.
+- **State lifecycle:** one new artifact per run, namespaced under `docs/reports/<run-id>/` (FC5/FC34: no
+  parallel-run collision). Partial-tail abort after the disconfirmer but before the audit relies on the
+  existing run-state guard (no new mechanism added; flagged as a known boundary).
+- **API-surface parity:** solo and swarm are the parity surface; `TAIL_SYNC_POINT` forces both edits.
+  Drift is the top risk (R1) — the acceptance check asserts *ordering*, not just string presence.
 
 ## What Must NOT Change (invariants)
 
 - **Gates 1–7 of `/verify-self-audit` and their semantics** — Gate 8 is additive only.
-- **The `self-audit-reviewer` model stays Sonnet.** G3 does not bump it to Opus (declared latent
-  finding, out of scope — would breach the pre-registered "done"). *(see brainstorm: Latent finding)*
-- **No LLM enters the deterministic dispose path.** Gate 8 is markdown-deterministic; the disconfirmer
-  is advisory only.
-- **No re-run / convergence loop.** Disconfirmer runs exactly once per run. *(rejecting the loop the
-  learnings research proposed — it reintroduces the G1 convergence trap.)*
+- **The `self-audit-reviewer` model stays Sonnet** (latent finding: it audits Opus work with a weaker
+  model — out of scope; would breach the pre-registered "done"). *(see brainstorm: Latent finding)*
+- **No LLM enters the deterministic dispose path, and no LLM verdict has binding force.** Gate 8 is
+  literal-token deterministic; the disconfirmer is advisory only. *(strengthened by cutting the verdict.)*
+- **No re-run / convergence loop.** Disconfirmer runs exactly once per run.
 - **Current-run WARN scoping** — the disconfirmer must not downgrade a clean run with pre-existing
   backlog.
-- **Existing WARN-key convention** (`<run-id>-W<N>`, sequential, no gaps) and disposition enum — verify
-  the exact enum strings against `.claude/agents/self-audit-reviewer.md` during implementation
-  (research reported `ACCEPTED/PROMOTED/DEFERRED`; confirm before coding).
+- **Existing WARN-key convention** (`<run-id>-W<N>`) and disposition enum **`ACCEPTED / PROMOTED /
+  DEFERRED`** — **VERIFIED** during deepen-plan (`self-audit-reviewer.md:106-112`, `verify-self-audit/SKILL.md:57`).
+  No `DISMISSED` value exists; Gate 8c uses `ACCEPTED` as the dismissal set.
 
 ## Acceptance Tests (EARS)
 
-Format: `WHEN [condition] THE SYSTEM SHALL [behavior]`.
+Format: `WHEN [condition] THE SYSTEM SHALL [behavior]`. Run all checks against a **fixture run copied to
+`/tmp` first — never mutate real run reports.**
 
 ### Happy path
-- WHEN a run reaches the tail and the disconfirmer finds no blocking issues THE SYSTEM SHALL write
-  `docs/reports/<run-id>/disconfirmer.md` with `**Disconfirmer Verdict:** CONCUR` and an empty/"none"
-  findings table, and `/verify-self-audit` Gate 8 SHALL pass.
-  - Verify: `grep -c 'Disconfirmer Verdict:\*\* CONCUR' docs/reports/<run-id>/disconfirmer.md` → `1`
-- WHEN the disconfirmer raises findings `D1..Dn` THE SYSTEM SHALL cause the self-audit report to contain
-  one WARN row per `D#` (Source = `disconfirmer.md`), each disposed with a non-empty rationale.
-  - Verify: count of `disconfirmer.md`-sourced WARN rows in `self-audit.md` == count of `D#` rows in
-    `disconfirmer.md`, AND every such WARN row has a non-empty Disposition (∈ enum) and a non-empty
-    Rationale cell (no `|  |` empties in those two columns).
-- WHEN both solo and swarm tails run THE SYSTEM SHALL invoke the disconfirmer before the self-audit in
-  each path.
-  - Verify: `grep -l 'self-audit-disconfirmer' .claude/skills/autopilot/SKILL.md .claude/agents/tail-runner.md` → both files.
+- WHEN the disconfirmer finds no blocking issues THE SYSTEM SHALL write `disconfirmer.md` containing the
+  literal `No disconfirmer findings.` sentinel and zero `D#` rows, and Gate 8 SHALL pass.
+  - Verify: `grep -c 'No disconfirmer findings\.' docs/reports/<run-id>/disconfirmer.md` → `1`
+- WHEN the disconfirmer raises findings `D1..Dn` THE SYSTEM SHALL cause `self-audit.md` to contain, for
+  each `D<n>`, exactly one WARN row whose Source contains `disconfirmer.md#D<n>`, disposed per the enum.
+  - Verify (bijection, not count): for each `D<n>` in `disconfirmer.md`,
+    `grep -c "disconfirmer.md#D<n>" docs/reports/<run-id>/self-audit.md` → `1`.
+- WHEN both solo and swarm tails run THE SYSTEM SHALL invoke the disconfirmer **before** the self-audit
+  in each path.
+  - Verify (ordering, not just presence): in `SKILL.md` the `self-audit-disconfirmer` block appears
+    before `### Self-Audit`; in `tail-runner.md` `Step 7.5` appears before `Step 8`.
+    `grep -n 'self-audit-disconfirmer\|### Self-Audit' .claude/skills/autopilot/SKILL.md` shows the
+    disconfirmer line first; same idea for `tail-runner.md` Step 7.5 vs Step 8.
 
 ### Error cases
-- WHEN `disconfirmer.md` is missing or its `Run ID` does not match the run THE SYSTEM SHALL FAIL
-  `/verify-self-audit` at Gate 8a (fail-closed).
-  - Verify: with the file absent, `/verify-self-audit <run-id> docs/reports/<run-id>/` returns
-    `STATUS: FAIL`.
-- WHEN the Verdict is `DISPUTE-PASS` but the self-audit `Final Status` is `PIPELINE_PASS` THE SYSTEM
-  SHALL FAIL Gate 8d.
-  - Verify: a fixture with `DISPUTE-PASS` + `PIPELINE_PASS` → `/verify-self-audit` returns `STATUS: FAIL`.
-- WHEN a disconfirmer finding is dismissed without an explicit justification in the WARN rationale THE
-  SYSTEM SHALL FAIL Gate 8c.
-  - Verify: a fixture with an undisposed/justification-less `D#` → `STATUS: FAIL`.
+- WHEN `disconfirmer.md` is missing, its `**Run ID:**` mismatches, or its table is unparseable (no `D#`
+  rows AND no sentinel) THE SYSTEM SHALL FAIL Gate 8a.
+  - Verify: with the file absent, `/verify-self-audit <run-id> docs/reports/<run-id>/` → `STATUS: FAIL`.
+- WHEN a `D<n>` finding has no matching `disconfirmer.md#D<n>` WARN row in `self-audit.md` THE SYSTEM
+  SHALL FAIL Gate 8c (dropped-finding fail-open closed).
+  - Verify: a fixture omitting one `#D<n>` row → `STATUS: FAIL`.
+- WHEN a `D<n>` WARN disposed `ACCEPTED` lacks the literal `#D<n>` token in its Rationale THE SYSTEM
+  SHALL FAIL Gate 8c.
+  - Verify: a fixture ACCEPTED row without `#D<n>` in Rationale → `STATUS: FAIL`.
+- WHEN a disconfirmer **HIGH** finding is DEFERRED under an **A** grade without its key cited THE SYSTEM
+  SHALL FAIL the existing **Gate 7f** (the inherited-severity teeth).
+  - Verify: a fixture with a DEFERRED+HIGH disconfirmer WARN, grade A, no key in Justification → `FAIL`.
 - WHEN the disconfirmer (Opus) agent is unavailable THE SYSTEM SHALL fail the run, NOT fall back to a
-  pass. *(billing note: the agent pins standard `opus` via frontmatter — Max-covered, never Sonnet-1M.)*
+  pass. *(agent pins standard `opus` via frontmatter — Max-covered, never Sonnet-1M.)*
 
-### Verification commands (run against a fixture run-id, copy reports to /tmp first — never mutate real runs)
+### Verification commands
 - `grep -n 'Gate 8' .claude/skills/verify-self-audit/SKILL.md` — Gate 8 present
+- `grep -cn '\b8\b gates\|all 8' .claude/skills/verify-self-audit/SKILL.md` — all 4 count sites updated
 - `grep -n 'self-audit-disconfirmer' .claude/skills/autopilot/SKILL.md .claude/agents/tail-runner.md` — both wired
 - `grep -n 'model: opus' .claude/agents/self-audit-disconfirmer.md` — Opus pinned, Max-covered
+- `grep -n 'artifact-kind disconfirmer\|disconfirmer' tools/verify_delegated_status.py` — new kind added
 - `head -8 .claude/agents/self-audit-reviewer.md` — confirm it still says `model: sonnet` (invariant)
 
 ## Success Metrics
 
-- First real swarm run (env permitting) produces a fresh `disconfirmer.md`, Gate 8 passes/fails
-  deterministically, and the run is **not** ungoverned. (Failure mode = a halted run, not a silent pass.)
-- **Efficacy probe (the feed-forward risk):** on ≥1 historical `docs/reports/*/self-audit.md`, the
-  disconfirmer surfaces ≥1 finding the original Sonnet audit did not — *evidence of orthogonality, not
-  restatement.* If it only restates, the brief needs sharpening (this is the verify-first item).
+- First real swarm run (env permitting) produces a fresh `disconfirmer.md`; Gate 8 passes/fails
+  deterministically; the run is **not** ungoverned. (Failure mode = a halted run, not a silent pass.)
+- **Efficacy probe (the feed-forward risk — upgraded):** run the disconfirmer on a **batch of 3–5
+  historical `docs/reports/*/self-audit.md`**, including **≥1 known-miss case** (e.g. a run where a later
+  review found a real gap). Report two numbers, validity judged by a **human or a cross-family model
+  (never the Opus disconfirmer's own family** — self-preference):
+  - **Novel-valid rate** = findings absent from the original audit AND judged valid (must be **> 0**).
+  - **Overcall rate** = invalid findings / total findings (must be **< a pre-chosen threshold** — an
+    "assume not shippable" prior trivially inflates novelty, so overcall must be bounded).
+  - If Novel-valid = 0 OR Overcall exceeds threshold after ≤3 brief-tuning passes → **trigger the Codex
+    cross-family escalation** (NOT a bigger single model, NOT a loop — single-model capacity is not the
+    bottleneck; verifier *diversity* is. arXiv 2509.17995 / 2506.18203).
 
 ## Dependencies & Risks / Mitigation
 
-- **R1 — TAIL_SYNC drift (highest):** editing only one of solo/swarm. *Mitigation:* the EARS "both
-  files" check; treat as a P1 in review.
-- **R2 — Non-orthogonality (the feed-forward risk):** Opus disconfirmer restates Sonnet's concerns.
-  *Mitigation:* the historical-report efficacy probe before declaring done; sharpen the adversarial
-  brief; cross-family (Codex) is the declared residual if role+model diversity proves insufficient.
-- **R3 — Fail-open regression:** a future edit makes a missing artifact pass. *Mitigation:* Gate 8a is
-  explicitly fail-closed + an EARS error-case test pins it.
-- **R4 — Latency/token cost:** a second tail pass (Opus) on every unattended run. *Mitigation:* accepted;
-  one pass only, no loop; note in compound doc for cost tracking.
-- **R5 — Sequencing limitation (declared residual):** running *before* the audit means the disconfirmer
-  critiques the **run**, not the audit's **disposition judgment**. Catching audit-judgment errors would
-  need an after-pass (a loop) — explicitly rejected. Declared residual.
+- **R1 — TAIL_SYNC drift (highest):** editing only one of solo/swarm, or wiring the disconfirmer in the
+  wrong *order*. *Mitigation:* the EARS **ordering** check (not just `grep -l` presence); update the
+  `TAIL_SYNC_POINT` comment enumeration; treat as P1 in review.
+- **R2 — Non-orthogonality / within-family ceiling (the feed-forward risk):** Opus may restate Sonnet
+  (self-preference, and the hardest misses — cross-section contradictions — are the regime where even a
+  strong verifier plateaus, arXiv 2509.17995). *Mitigation:* the upgraded efficacy probe (novel-valid +
+  overcall) gates this; cross-family Codex is the **pre-registered** next move if it fails.
+- **R3 — Fail-open regression:** a future edit lets a missing/malformed artifact pass. *Mitigation:*
+  Gate 8a is explicitly fail-closed incl. parse-failure; EARS error-cases pin it.
+- **R4 — Latency/token cost:** a second tail pass (Opus) per unattended run. *Mitigation:* one pass only,
+  no loop; note in the compound doc for cost tracking.
+- **R5 (PRIMARY RESIDUAL) — Disposition monoculture:** G3 diversifies *detection* but the **same lone
+  Sonnet confirmer still disposes** the disconfirmer's findings — the orthogonal lens hands its verdict
+  back to the monoculture it was meant to diversify, and nothing checks whether a disposition was
+  *correct* (only that it exists and is token-linked). Diversifying *disposition* is explicitly out of
+  scope for G3 and is the real residual it leaves open. *(declared, not solved.)*
+- **R6 — Sequencing limitation:** running *before* the audit means the disconfirmer critiques the **run**,
+  not the audit's **disposition judgment**; catching audit-judgment errors would need an after-pass (a
+  loop) — explicitly rejected. Declared residual (subsumed by R5).
 
 ## Pre-registered "Done" (stopping discipline — from the G1 retro)
 
 Done =
-1. `self-audit-disconfirmer.md` agent exists (`model: opus`) and runs before the self-audit in **both**
-   paths;
-2. its findings are ingested as WARNs the self-audit disposes; the `disconfirmer_verdict` is recorded;
-3. `/verify-self-audit` Gate 8 (8a–8d) enforces existence (fail-closed), disposition, justified
-   dismissals, and verdict-honoring;
-4. one end-to-end pass (real or fixture) shows the wiring works AND the efficacy probe shows ≥1
-   orthogonal finding on a historical report.
+1. `self-audit-disconfirmer.md` agent exists (`model: opus`, full frontmatter, explicit args,
+   `bypassPermissions`) and runs **before** the self-audit in **both** paths (ordering-verified);
+2. its findings are ingested as WARNs (`Source = disconfirmer.md#D<n>`, severity verbatim) the
+   self-audit disposes;
+3. Gate 8 (8a + 8c, fail-closed, literal-token) + `verify_delegated_status.py --artifact-kind
+   disconfirmer` (swarm) enforce existence, identity, parseability, and the per-finding bijection;
+4. the efficacy probe (3–5 historical reports incl. a known-miss) shows **Novel-valid > 0** and
+   **Overcall < threshold**; if not, the Codex cross-family escalation is triggered.
 
 **Tell-to-stop:** if a change "adds another reviewer" without changing the *perspective distribution*,
-adds a re-run loop, or creeps to the review mix / spec gates — stop and re-scope. Hard pass-cap on any
-brief-tuning iteration: **3**; beyond it, write a "why isn't it orthogonal?" diagnosis instead of
-another tweak.
+adds a re-run loop, gives an LLM verdict binding force, or creeps to the review mix / spec gates — stop
+and re-scope. Hard pass-cap on brief-tuning iterations: **3**; beyond it, write a "why isn't it
+orthogonal?" diagnosis and escalate to cross-family, do not tweak again.
 
 ## File-by-file change list (pseudo)
 
-- `.claude/agents/self-audit-disconfirmer.md` — NEW. Frontmatter `model: opus`, `tools: Read, Write,
-  Grep, Glob`; adversarial brief + output contract above.
-- `.claude/skills/autopilot/SKILL.md` — insert disconfirmer block before `### Self-Audit` (~1153);
-  extend Step 18w disk-verify to include `disconfirmer.md`.
-- `.claude/agents/tail-runner.md` — insert disconfirmer step between Step 7 and Step 8 (mirror; respect
-  `TAIL_SYNC_POINT`).
-- `.claude/agents/self-audit-reviewer.md` — Step 4 report template gains `**Disconfirmer Verdict:**` +
-  the "ingest each D# as a WARN" instruction; Step 6 self-validation gains the verdict/ingest checks.
-- `.claude/skills/verify-self-audit/SKILL.md` — add `### Gate 8` (8a–8d); bump check-count preamble
-  (~26) and success line (~241).
-- (test fixtures) `docs/reports/<fixture>/…` copies in `/tmp` for the EARS error-case checks — never
-  mutate real run reports.
+- `.claude/agents/self-audit-disconfirmer.md` — NEW. `name`/`description`/`model: opus`/`tools: Read,
+  Write, Grep, Glob`; adversarial brief + output contract above.
+- `.claude/skills/autopilot/SKILL.md` — insert disconfirmer spawn block (explicit args,
+  `bypassPermissions`) before `### Self-Audit` (~1153); update the `TAIL_SYNC_POINT` comment enumeration.
+- `.claude/agents/tail-runner.md` — insert disconfirmer as **Step 7.5** (decimal, not renumber) before
+  Step 8; mirror solo; update its `TAIL_SYNC_POINT` comment copy.
+- `.claude/agents/self-audit-reviewer.md` — Step 2 gains the disconfirmer-`D#`-ingestion rule
+  (`Source = disconfirmer.md#D<n>`, severity verbatim); Step 4 / Source Reconciliation gains the
+  `disconfirmer.md` row (count = `D#` rows). **No verdict field.** Stays `model: sonnet`.
+- `.claude/skills/verify-self-audit/SKILL.md` — add `### Gate 8` (8a + 8c); bump all **four** gate-count
+  sites (~:3, ~:26, ~:239, ~:241) to "8".
+- `tools/verify_delegated_status.py` — add `--artifact-kind disconfirmer` (existence + freshness +
+  run-id; no `**Status:**` marker); call it at `SKILL.md` Step 18w.
+- (test fixtures) `/tmp` copies of a real run's `docs/reports/<run-id>/` for the EARS error-cases —
+  never mutate real run reports.
 
 ## Sources & References
 
 ### Origin
 - **Brainstorm:** [docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md](docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md)
   — carried decisions: scope=self-audit-only; Opus disconfirmer (role+model diversity, confirmer is
-  Sonnet); Option-A adjudication (mandatory WARNs + deterministic teeth, no loop); dedicated
-  `disconfirmer_verdict` field.
+  Sonnet); Option-A adjudication (mandatory WARNs + deterministic teeth, no loop).
+  - **REVISED decision (deepen-plan, 2026-06-25):** the brainstorm's dedicated `disconfirmer_verdict`
+    field is **cut**. It was cosmetic (DISPUTE-PASS → the *normal* `_WITH_DEFERRED_RISK` status) and
+    contradicted the "no-LLM-in-dispose-path" invariant (a soft form of the rejected unilateral-block).
+    The intent ("a meta-objection can't be silently flattened") is preserved by routing findings through
+    the existing Gates 2/5/7f. User-approved.
 
-### Internal references (verified during planning)
-- `.claude/agents/self-audit-reviewer.md` — `model: sonnet`; 9-section report; WARN table columns; keys
-  `<run-id>-W<N>`; pipeline statuses.
+### Internal references (verified during planning + deepen-plan)
+- `.claude/agents/self-audit-reviewer.md` — `model: sonnet`; WARN table `| # | Key | Source | WARN
+  Description | Disposition | Rationale |` (:102); enum `ACCEPTED/PROMOTED/DEFERRED` (:106-112); keys
+  `<run-id>-W<N>` (:63-66); pipeline statuses (:72-77), `_WITH_DEFERRED_RISK` = "expected for most runs."
 - `.claude/skills/verify-self-audit/SKILL.md` — Gates 1–7 (7a–7f), markdown-instruction, no schema file;
-  Gate 7f key-citation mechanics (the pattern Gate 8 mirrors).
-- `.claude/skills/autopilot/SKILL.md` — Shared Tail ordering; solo spawn (~1154) vs swarm Step 17w/18w
-  disk-verify (`verify_delegated_status.py`); `TAIL_SYNC_POINT` (~992–999).
+  Gate 2 enum/rationale (:57,65-70); Gate 4 reconciliation (:88-99); Gate 7f literal-token (:220-234);
+  count sites (:3,:26,:239,:241).
+- `.claude/skills/autopilot/SKILL.md` — Shared Tail; solo spawn (~1154); swarm Step 17w/18w disk-verify
+  (`verify_delegated_status.py`, :967-999); `TAIL_SYNC_POINT` asymmetric (:992-999).
 - `.claude/agents/tail-runner.md` — swarm tail Steps 7–10; self-audit spawn `subagent_type:
-  "self-audit-reviewer"`, `mode: "bypassPermissions"`.
-- `docs/reports/070/self-audit.md` — ground-truth sample (`PIPELINE_PASS_WITH_DEFERRED_RISK`, keys
-  070-W1..W4, Overall 4.7/5.0 (A); a real Gate-7f-by-exemption).
-- `docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md` — G3 row (monoculture).
+  "self-audit-reviewer"`, `mode: "bypassPermissions"` (:197-204); "no discovery heuristics" (:33-39).
+- `tools/verify_delegated_status.py` — current `--artifact-kind self-audit` checks `**Status:**` (no
+  disconfirmer kind yet).
+- `docs/reports/070/self-audit.md` — ground-truth sample.
 
 ### Prior-art learnings (gotchas designed around)
-- `docs/solutions/2026-06-24-enumerated-denylist-vs-structural-backstop.md` (g1 branch) — field proof +
-  stopping discipline; *don't* enumerate disconfirmer exclusions; reviewer mandate = find a class.
-- `docs/solutions/2026-06-25-g1-firebreak-activation-arc.md` (g1 branch) — gate-wiring pattern;
-  positive-control probe; **harness-green ≠ live**; artifact-based (disk) authority.
-- `docs/solutions/2026-04-30-spec-convergence-loop.md` — model-diversity-as-blind-spot-coverage pattern.
-- `docs/solutions/2026-05-13-sandbox-autonomy-hardening.md` — WARN current-run scoping.
-- `~/.claude/docs/agent-pitfalls.md` — FC10 (fail-closed), FC34/FC5 (one-per-run-id), FC50 (pin the
-  spawn entrypoint), FC52 (artifact identity/freshness), FC11 (propagate the disconfirmer pattern in
-  compound).
-- `~/.claude/docs/search-agent-playbook.md` — Disconfirmer + Ground-truth-verifier roles; "opus
-  disconfirmer > sonnet extractors"; Haiku unreliable for adjudication.
+- `docs/solutions/2026-06-24-enumerated-denylist-vs-structural-backstop.md` (g1) — field proof + stopping
+  discipline; positive hunting targets, not enumerated exclusions.
+- `docs/solutions/2026-06-25-g1-firebreak-activation-arc.md` (g1) — gate-wiring; positive-control probe;
+  harness-green ≠ live; disk authority.
+- `docs/solutions/2026-04-30-spec-convergence-loop.md` — diversity-as-blind-spot-coverage; human pass.
+- `docs/solutions/2026-05-13-sandbox-autonomy-hardening.md` — current-run WARN scoping.
+- `~/.claude/docs/agent-pitfalls.md` — FC10, FC34/FC5, FC50, FC52, FC11.
+- `~/.claude/docs/search-agent-playbook.md` — Disconfirmer + Ground-truth-verifier roles.
+
+### External research (deepen-plan, independent/academic — vendor claims excluded)
+- Self-preference bias in LLM-judges (within-family): arXiv 2410.21819, 2506.02592.
+- Self-correction without external feedback degrades: arXiv 2310.01798 (ICLR 2024).
+- Same-model debate ≈ self-consistency; diversity/grounded critiques drive gains: arXiv 2510.20963.
+- Anchoring/confirmation bias (vindicates blind before-placement): arXiv 2412.06593, 2603.18740.
+- Critique precision/recall benchmarks (efficacy-probe design): arXiv 2402.13764, 2402.14809, 2501.14492.
+- Verifier ceiling on hard problems; ensemble-of-diverse > single-strong: arXiv 2509.17995, 2506.18203,
+  2502.20379.
 
 ## Feed-Forward
 
-- **Hardest decision:** Sequencing the disconfirmer *before* the audit (independent, no loop) vs *after*
-  (can critique the audit's judgment, but needs a loop). Chose before — it preserves Option A's
-  one-pass/no-new-blocking-path discipline and the brainstorm's independence requirement; the cost
-  (can't critique disposition judgment) is a declared residual (R5).
-- **Rejected alternatives:** (a) the learnings research's **re-run loop** — rejected as a re-entry into
-  the G1 convergence trap; (b) a unilateral-BLOCK disconfirmer — rejected (puts an LLM back in the abort
-  path G1 removed); Gate 8's deterministic must-dispose gives teeth instead; (c) bumping the
-  self-audit-reviewer to Opus — rejected as scope creep (latent finding).
+- **Hardest decision:** Whether the disconfirmer's meta-objection needed its own binding `disconfirmer_verdict`
+  field. The brainstorm said yes; deepen-plan showed the field was cosmetic *and* contradicted the
+  determinism invariant (binding LLM verdict). Resolved by **cutting it** and preserving the intent via
+  the existing Gates 2/5/7f teeth — diversity of *detection* with deterministic, non-LLM enforcement.
+- **Rejected alternatives:** (a) the learnings research's **re-run loop** — re-entry into the G1
+  convergence trap; (b) a binding verdict / unilateral-BLOCK disconfirmer — puts an LLM back in the
+  dispose path; (c) bumping the self-audit-reviewer to Opus — scope creep (latent finding); (d)
+  diversity-by-downgrade (Sonnet/Haiku disconfirmer) — weaker skeptic, and moot (confirmer is Sonnet).
 - **Least confident (verify first):** Whether an Opus disconfirmer on the *same* artifacts yields
-  *orthogonal* findings or restates the Sonnet audit. The Success-Metrics efficacy probe (≥1 historical
-  report) is the gate on this before declaring done; cross-family (Codex) is the fallback residual.
+  *orthogonal*, *valid* findings or restates the Sonnet audit — and the evidence says within-family is
+  the weak lever. The upgraded efficacy probe (novel-valid + overcall, cross-family-judged) is the gate;
+  cross-family Codex is the pre-registered escalation.
 
 ## Codex Handoff Prompt (Plan Review — paste into a fresh Codex context)
 
@@ -311,26 +408,30 @@ code is written. Repo: ~/Projects/sandbox, branch feat/g3-verification-diversity
 Plan: docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md
 Origin brainstorm: docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md
 
-What it does: adds an Opus "disconfirmer" agent that runs BEFORE the Sonnet self-audit-reviewer in the
-autopilot tail; its findings become mandatory WARNs the self-audit disposes; a new deterministic
-fail-CLOSED Gate 8 in /verify-self-audit enforces disposition + verdict-honoring. One pass, no loop, no
-LLM in the dispose path. Scope is the self-audit surface only.
+What it does: an Opus "disconfirmer" agent runs BEFORE the Sonnet self-audit-reviewer in the autopilot
+tail; its findings become mandatory WARNs the self-audit disposes (Source=disconfirmer.md#D<n>); a new
+deterministic fail-CLOSED Gate 8 (8a existence/identity/parseable + 8c per-finding bijection & dismissal
+token) enforces them. One pass, no loop, NO LLM verdict with binding force, no LLM in the dispose path.
+Scope = self-audit surface only. This plan has already been through a 7-agent deepen-plan pass; the
+disconfirmer_verdict field was CUT.
 
-Ground the review in these verified facts: /verify-self-audit is pure markdown-instruction gates (no
-script/schema); WARN keys are <run-id>-W<N>; the solo path (SKILL.md ~1153) and swarm path
-(tail-runner.md Step 7→8) are kept in sync by TAIL_SYNC_POINT and BOTH must be edited; self-audit-reviewer
-stays model: sonnet (invariant).
+Verified facts to assume: /verify-self-audit is pure markdown-instruction gates (no schema); disposition
+enum is exactly ACCEPTED/PROMOTED/DEFERRED (no DISMISSED); WARN keys <run-id>-W<N>; solo (SKILL.md
+~1153) and swarm (tail-runner Step 7.5) kept in sync by TAIL_SYNC_POINT (BOTH must be edited);
+self-audit-reviewer stays model: sonnet; verify_delegated_status.py needs a new --artifact-kind
+disconfirmer (this is the one non-markdown change).
 
-Look hardest for, and return as P0/P1/P2 with file:line and a concrete fix:
-1. TAIL_SYNC drift — any way solo and swarm diverge.
-2. Fail-OPEN holes — any path where a missing/malformed disconfirmer.md still lets the run PASS.
-3. Determinism-boundary leaks — any LLM judgment that ends up in the dispose path.
-4. Sequencing soundness — does "before the audit" actually deliver the meta-objection (DISPUTE-PASS)
-   teeth Gate 8d claims, given the audit runs after?
-5. Cross-section contradictions between this plan, the brainstorm, and the verified self-audit contract
-   (e.g. the disposition enum: plan assumes ACCEPTED/PROMOTED/DEFERRED — confirm against
-   .claude/agents/self-audit-reviewer.md).
-6. Convergence/stopping-discipline gaps — anything that could reintroduce a review loop.
+Look hardest for, and return as P0/P1/P2 with file:line + concrete fix + a GO/NO-GO:
+1. TAIL_SYNC drift / wrong ORDER (disconfirmer must precede the audit in both paths).
+2. Fail-OPEN holes — any path where missing/stale/malformed/partial disconfirmer.md still PASSes,
+   including solo (no Step 18w) freshness and partial-tail-abort.
+3. Determinism leaks — any LLM judgment that ends up enforced (Gate 8 must be literal-token only).
+4. The per-finding bijection (8c) — is the disconfirmer.md#D<n> identity link actually unforgeable and
+   greppable? Any way the Sonnet reviewer can drop/duplicate a finding and still pass?
+5. The verify_delegated_status.py extension — sound? (new kind has no **Status:** marker.)
+6. Whether cutting the verdict field lost any LEGITIMATE capability the brainstorm wanted.
+7. Cross-section contradictions between plan, brainstorm, and the verified contracts.
+8. Convergence/stopping-discipline gaps; whether the efficacy probe (novel-valid + overcall) is sound.
 
-Return: a prioritized findings list + a GO / NO-GO for proceeding to /workflows:work.
+Return a prioritized findings list + GO/NO-GO for proceeding to /workflows:work.
 ```
