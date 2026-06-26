@@ -46,9 +46,12 @@ variable content. See CLAUDE.md Bash Command Rules for the full list.
 
 ## Steps
 
-<!-- TAIL_SYNC_POINT: These tail STEPS (review/compound/learnings) are duplicated in
-SKILL.md Shared Tail (solo path). Changes to those steps MUST be mirrored there, and
-vice versa.
+<!-- TAIL_SYNC_POINT: These tail STEPS (review/compound/learnings/disconfirmer/
+self-audit) are duplicated in SKILL.md Shared Tail (solo path). Changes to those steps
+MUST be mirrored there, and vice versa. In particular, the Disconfirmer (Step 7.5) MUST
+run BEFORE the Self-Audit (Step 8) -- mirror of the solo Disconfirmer-before-Self-Audit
+ordering; the self-audit disposes the disconfirmer's findings, so the order is
+load-bearing.
 NOTE (Plan A, 2026-06-06): terminal-gate VERIFICATION authority is intentionally NOT
 symmetric across paths. This SWARM tail's result is verified by the orchestrator
 disk-verifying self-audit.md (SKILL.md Step 18w, via tools/verify_delegated_status.py).
@@ -191,6 +194,29 @@ Read BUILD_TRACKING.md and verify these sections are non-empty:
 
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
+
+### Step 7.5: Disconfirmer (runs BEFORE the Self-Audit)
+
+**This decimal sub-step runs BEFORE Step 8 (Self-Audit) by design -- the
+self-audit disposes the disconfirmer's findings. Do NOT reorder it after Step 8
+(TAIL_SYNC_POINT). It is numbered 7.5 (not a renumber) so cross-refs to Step 8+
+stay valid.**
+
+Use the **self-audit-disconfirmer** agent (subagent_type:
+"self-audit-disconfirmer"). Pass these five arguments (explicit -- no discovery
+heuristics):
+1. The run_id
+2. The reports directory path
+3. The plan document path
+4. `BUILD_TRACKING.md`
+5. `HANDOFF.md`
+
+Spawn with `mode: "bypassPermissions"`. The agent writes
+`<reports_dir>/disconfirmer.md` (local `D#` findings, or the canonical
+`No disconfirmer findings.` sentinel). It is advisory -- no STATUS line, no binding
+verdict; its findings are enforced by Gate 8 in `/verify-self-audit` (Step 9) and
+disk-verified by the orchestrator at SKILL.md Step 18w. Wait for it to complete,
+then proceed to Step 8.
 
 ### Step 8: Self-Audit
 

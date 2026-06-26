@@ -989,9 +989,12 @@ such — do not re-adjudicate WARN dispositions here.
 Step 17w (Delegate Shared Tail) which spawns the tail-runner agent.
 The steps below only run inline for solo builds.
 
-<!-- TAIL_SYNC_POINT: The Shared Tail STEPS below (review/compound/learnings) are
-duplicated in .claude/agents/tail-runner.md (swarm path). Changes to those steps MUST
-be mirrored there, and vice versa.
+<!-- TAIL_SYNC_POINT: The Shared Tail STEPS below (review/compound/learnings/
+disconfirmer/self-audit) are duplicated in .claude/agents/tail-runner.md (swarm path).
+Changes to those steps MUST be mirrored there, and vice versa. In particular, the
+Disconfirmer MUST run BEFORE the Self-Audit in BOTH paths (solo: Disconfirmer section
+before Self-Audit section; swarm: tail-runner Step 7.5 before Step 8) -- this ordering
+is load-bearing (the self-audit disposes the disconfirmer's findings).
 NOTE (Plan A, 2026-06-06): terminal-gate VERIFICATION authority now differs by path and
 is intentionally NOT symmetric. The SWARM tail is verified by disk-verifying self-audit.md
 (Step 18w, via tools/verify_delegated_status.py). The SOLO tail below runs inline and
@@ -1150,6 +1153,27 @@ Read BUILD_TRACKING.md and verify these sections are non-empty:
 
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
+
+### Disconfirmer (MANDATORY -- DO NOT SKIP -- runs BEFORE the Self-Audit)
+
+**WARNING: This is the orthogonal lens that breaks the verification monoculture.
+It MUST run BEFORE the Self-Audit below so the self-audit can dispose its findings.
+Order matters -- do not reorder this after the Self-Audit (TAIL_SYNC_POINT).**
+
+Use the **self-audit-disconfirmer** agent (subagent_type:
+"self-audit-disconfirmer"). Pass these five arguments (explicit -- no discovery
+heuristics):
+1. The run-id (from Step 5.5)
+2. The reports directory path (`docs/reports/<run-id>/`)
+3. The plan document path
+4. `BUILD_TRACKING.md`
+5. `HANDOFF.md`
+
+Spawn with `mode: "bypassPermissions"`. The agent writes
+`docs/reports/<run-id>/disconfirmer.md` (local `D#` findings, or the canonical
+`No disconfirmer findings.` sentinel). It is advisory -- it has no STATUS line and
+no binding verdict; its findings are enforced downstream by Gate 8 in
+`/verify-self-audit`. Wait for it to complete, then proceed to the Self-Audit.
 
 ### Self-Audit (MANDATORY -- DO NOT SKIP)
 
