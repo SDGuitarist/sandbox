@@ -19,7 +19,11 @@ summary: >
   survived. The fix that finally converged was STRUCTURAL: a catch-all backstop that
   closes the whole class by construction. This doc records the diagnostic signal, the
   fix pattern, and the convergence method so the next "why won't this review loop
-  end?" is caught in pass 2, not pass 9.
+  end?" is caught in pass 2, not pass 9. UPDATE 2026-06-25: the structural backstop's
+  own enumerated EXEMPTION (listed dispatchers) restarted the loop for 8 more passes —
+  the deeper lesson, plus why this happened here and never in prior feature builds
+  (finite vs infinite review target) and the pre-registered stopping discipline, are
+  in the "Update (2026-06-25)" section.
 ---
 
 # Enumerated Denylist vs Structural Backstop
@@ -108,6 +112,74 @@ sending a NON-control-plane file out — still an enumerated set, still leaky, n
 explicitly declared (analogous to the interpreter-escape residual). And a
 **watch-item**: adding a binary to the recognized `DISPATCHERS` set REMOVES it from
 backstop coverage, so re-run the red-team after any such change.
+
+## Update (2026-06-25): the structural backstop had an enumerated EXEMPTION that restarted the loop
+
+The original doc declared the structural backstop "the fix that converged." It wasn't —
+not fully. The backstop **exempts listed `DISPATCHERS`** (so `git add .claude/hooks`, a
+benign stage, stays GREEN). That exemption is *itself an enumerated allowlist with an
+open complement* — and it quietly restarted the exact loop the backstop was supposed to
+end. Eight more passes followed, every one a child of that one exemption:
+
+- F16b: listed dispatchers writing the control plane via local-output flags
+  (`go build -o`, `git archive --output`, `npm pack --pack-destination`, …)
+- F16c: a control-plane dest hidden inside a STRUCTURED flag value
+  (`docker build -o type=local,dest=.claude/hooks`)
+- then podman/nerdctl/buildah/buildctl (unlisted build tools), then
+  `--cache-to`/`--metadata-file`/`--iidfile`, then `docker buildx --push` (outward via a
+  flag, not the `push` verb).
+
+**The deeper lesson: a structural backstop with an enumerated EXEMPTION is still
+deny-known-bad — it just relocates the enumeration to the exemption's complement.** The
+"watch-item" the original doc footnoted ("adding a binary to DISPATCHERS removes it from
+backstop coverage") was not a footnote; it was the loop's next engine. A backstop only
+converges if its exemptions are *also* structural (e.g. exempt the dispatcher's READ
+positionals by role, not the whole binary), or if the same catch-all is applied inside
+the exempted path (which is what finally closed it — `_structured_subvalues` runs in BOTH
+the dispatcher handler AND the unrecognized-verb catch-all).
+
+## Why this happened HERE and never in prior compound workflows
+
+Every prior compound build (WRC, GigSheet, Ethics Toolkit, producer-brief) is a **feature
+build against a frozen, finite spec** — a closed set of EARS criteria / routes / an auth
+matrix. The reviewer is a **checker** against a fixed reference, and a checker over a
+finite spec always terminates. Your spec-convergence loop terminates for the same reason:
+its target (a spec's cross-section consistency) is finite and enumerable.
+
+This task was the first time the loop's target was an **adversarial security control** —
+its correctness is universally quantified ("for ALL malicious inputs, deny") over an
+**infinite, unfrozen** input space (every shell command). "Found nothing new" is not a
+reachable state when the domain is infinite, so the same loop that always converged
+couldn't. **It was never the loop; it was the first finite→infinite target switch, and
+nothing in the process noticed the category change.** A second-order instance of the
+governance doc's own G3 (monoculture): Codex and Claude were *correlated* reviewers, both
+running "find any allowed input," neither holding the orthogonal "is this surface even in
+scope / is this convergent?" perspective.
+
+A frozen spec is also what gives a reviewer *permission to decline* a true-but-irrelevant
+finding. With no frozen spec, every valid finding was in-scope-by-construction, so nothing
+could be refused, so the loop had no membrane.
+
+## The stopping discipline (pre-register this BEFORE an adversarial review loop)
+
+1. **Pre-register convergence:** "stop when K consecutive rounds yield zero findings that
+   aren't variants of an already-handled class." Find-rate not decaying → stop signal, not
+   a license for another round.
+2. **Class-fix-only gate:** a finding may be closed only by a rule that provably covers
+   its family. If the fix is "append to a list," that's the tell — escalate to a
+   structural rule or DECLARE the residual.
+3. **Honor the residual budget:** decide up front which surfaces get chased to zero and
+   which are declared per the threat model. Findings on a declared surface are *logged*,
+   not looped. (This control's own threat model says "honest-agent guard, declared
+   residuals" — we spent P0 effort fighting a surface we'd already agreed to bound.)
+4. **Hard pass cap (~3):** beyond it, continuing requires a written "why isn't this
+   converging?" — which IS the diagnosis. The cap forces analysis instead of the next patch.
+5. **Reviewer mandate = "find a NEW CLASS, or prove a declared residual is mis-scoped,"**
+   not "find anything."
+
+And the activation bookend: **harness-green ≠ live.** The classifier passed 265 tests
+while being completely inert (unregistered hook, unwritten sentinel). "Done" must mean
+"runs in reality," validated by a live/self-validating mechanism, not a green harness.
 
 ## Feed-Forward
 

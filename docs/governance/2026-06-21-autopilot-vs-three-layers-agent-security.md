@@ -128,13 +128,13 @@ abort-only halt.
 
 ## Tracked items (gaps → work)
 
-| # | Item | Framework basis | Priority | Notes |
-|---|------|-----------------|:--------:|-------|
-| **G1** | **Risk-tiered firebreak in autopilot** — classify actions; auto-run low-stakes, escalate binding/irreversible to a human gate instead of blanket `bypassPermissions` | Principle 1 (human controllers) + firebreaks | **High** | Reconciles zero-prompt with CLAUDE.md Safety Rule; the single highest-leverage gap |
-| **G2** | **In-flight AI monitor** — a monitor agent (Planner/Talker dual-agent pattern) watching workers *during* execution, not only pre/post gates | Layer I "AI monitors" | Medium | Net-new capability; brainstorm first — cost vs. coverage |
-| **G3** | **Name & mitigate monoculture** — inject model/prompt diversity into *critical verification* roles (not just research fan-outs); apply playbook's adversarial-verify + "opus disconfirmer > sonnet extractors" lessons | Layer II monoculture / correlated errors | Medium | We know the antidote; we just don't apply it to build-verification yet |
-| **G4** | **Harden the performance ledger** — per-run nonce / signed STATUS artifacts to close the reused-run-id integrity hole | Layer II tamper-proof ledger | Medium | Already on the autopilot backlog; framework independently argues for it |
-| **G5** | **Model delegation as authority transfer** — make the handoff record explicit authority/responsibility/accountability, not just task status | Layer II intelligent delegation | Low | Mostly a documentation/contract upgrade to existing STATUS artifacts |
+| # | Item | Framework basis | Priority | Status | Notes |
+|---|------|-----------------|:--------:|:------:|-------|
+| **G1** | **Risk-tiered firebreak in autopilot** — classify actions; auto-run low-stakes, escalate binding/irreversible to a human gate instead of blanket `bypassPermissions` | Principle 1 (human controllers) + firebreaks | **High** | **DONE** (live-validation pending) | Built, hardened, global hook registered, orchestrator-wired (sentinel + positive-control probe + teardown), e2e-verified. **Not yet exercised on a real swarm run** — the built-in probe self-validates on first real use (aborts fail-open if not live). Residuals: stale sentinel on orchestrator crash; solo path unwired; classifier interpreter/`$VAR`/outward-unlisted-binary tails. Arc: `docs/solutions/2026-06-25-g1-firebreak-activation-arc.md`; convergence lesson: `docs/solutions/2026-06-24-enumerated-denylist-vs-structural-backstop.md` |
+| **G2** | **In-flight AI monitor** — a monitor agent (Planner/Talker dual-agent pattern) watching workers *during* execution, not only pre/post gates | Layer I "AI monitors" | Medium | Open | Net-new capability; brainstorm first — cost vs. coverage |
+| **G3** | **Name & mitigate monoculture** — inject model/prompt diversity into *critical verification* roles (not just research fan-outs); apply playbook's adversarial-verify + "opus disconfirmer > sonnet extractors" lessons | Layer II monoculture / correlated errors | Medium | Open | We know the antidote; we just don't apply it to build-verification yet. **The G1 review loop was field proof of this** — correlated Codex+Claude reviewers, both blind the same way |
+| **G4** | **Harden the performance ledger** — per-run nonce / signed STATUS artifacts to close the reused-run-id integrity hole | Layer II tamper-proof ledger | Medium | Open | Already on the autopilot backlog; framework independently argues for it |
+| **G5** | **Model delegation as authority transfer** — make the handoff record explicit authority/responsibility/accountability, not just task status | Layer II intelligent delegation | Low | Open | Mostly a documentation/contract upgrade to existing STATUS artifacts |
 
 ## Where the framework validates what we already do
 
