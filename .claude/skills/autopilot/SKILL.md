@@ -694,6 +694,58 @@ re-verify passes (cherry-pick channel) or the fallback is recorded:
    The cost of this check is seconds; the cost of detecting the drift mid-swarm is
    the whole run (recovery options collapse past the spawn boundary).
 
+### Step 9w.9.6: Activate Firebreak (MANDATORY -- SWARM ONLY) (G1)
+
+The PreToolUse firebreak classifier is a NO-OP until a run sentinel exists. Write
+it now -- AFTER the provenance gate (9w.9.5, whose conditional push to origin is
+deliberately BEFORE the firebreak window) and BEFORE the parallel worker spawn --
+so worker tool calls are governed: outward/irreversible actions defer to
+`todos/approvals/`, control-plane writes are denied. Then PROVE the hook actually
+fires for the real worktree+bypass worker path; if it does not, the run is
+fail-OPEN and MUST abort.
+
+1. **Write the sentinel + ensure the queue dir exists** (two single Bash calls):
+   - `python3 .claude/hooks/firebreak-activate.py activate <run-id>`
+     (`activate` clears any stale sentinel from a crashed prior run first; defaults
+     are the auto-memory project key, phase `build`, `test_allowlist {"pytest": true}`.)
+   - `mkdir -p todos/approvals`
+     (so a fail-OPEN probe's Bash redirect actually CREATES its canary -- otherwise a
+     missing dir would hide the failure.)
+
+2. **Positive-control probe (R1/F1 -- the load-bearing check).** Spawn ONE real
+   worker-shaped Agent and confirm the firebreak blocks it:
+   - `isolation: "worktree"`, `mode: "bypassPermissions"`, `model: "haiku"`,
+     `run_in_background: false`, `name: "swarm-<run-id>-probe"`.
+   - Tell the probe agent to attempt exactly these and report what happened:
+     (a) **Write** tool -> file_path `todos/approvals/__fb_probe_write__`, content `x`
+     (b) **Bash** -> `echo x > todos/approvals/__fb_probe_bash__`
+     (c) **Bash** -> `curl -s https://firebreak-probe.invalid/`
+     All three are RED; a live firebreak denies each (c is harmless if it ever runs --
+     `.invalid` never resolves).
+   - **Deterministic verdict -- do NOT trust the agent's self-report.** After the probe
+     returns, run a single Bash call:
+     `ls todos/approvals/__fb_probe_write__ todos/approvals/__fb_probe_bash__ 2>/dev/null`
+     - **Any output (a canary exists)** -> the firebreak did NOT block the worker ->
+       FAIL-OPEN. Run `python3 .claude/hooks/firebreak-activate.py deactivate`, then
+       `rm -f todos/approvals/__fb_probe_write__ todos/approvals/__fb_probe_bash__`,
+       and ABORT the run with:
+       `"FIREBREAK NOT LIVE: positive-control probe wrote the control plane. Aborting (fail-open)."`
+     - **No output (neither canary exists)** -> both control-plane writes were denied ->
+       the firebreak governs the worker path. Proceed.
+   - Cleanup insurance (no-op when blocked):
+     `rm -f todos/approvals/__fb_probe_write__ todos/approvals/__fb_probe_bash__`
+
+3. Record `firebreak: ACTIVE` in BUILD_TRACKING.md RUN_METRICS.
+
+**Teardown contract:** the firebreak stays active until Step 18w tears it down on
+success (and the fail paths there / the 11w-16w abort handler also deactivate). If
+the orchestrator dies between activation and teardown, a stale sentinel remains --
+the NEXT run's `activate` clears it, and a human can clear it meanwhile with
+`python3 .claude/hooks/firebreak-activate.py deactivate` (declared residual: until
+then, manual sessions IN THIS REPO are governed too). The brief sentinel-write ->
+probe slice is a setup window (no governed worker yet); the governed worker window
+is the parallel spawn (Step 10w) -> run end.
+
 ### Step 10w: Parallel Swarm Work
 
 **PRECONDITION:** Before reading the agent assignment table, verify:
@@ -891,8 +943,9 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   main, no cleanup, worker branches preserved) and set `final_status` in
   BUILD_TRACKING.md Run State. Do NOT proceed to Step 17w, and do NOT disk-verify
   (these blocking classes abort BEFORE writing `assembly-summary.md`, and a stale
-  prior-run summary must not mask the abort). The run ends. (These are the two
-  blocking failure classes — see CLAUDE.md Escalation Rules.)
+  prior-run summary must not mask the abort). **Tear down the firebreak before
+  ending** (`python3 .claude/hooks/firebreak-activate.py deactivate`). The run ends.
+  (These are the two blocking failure classes — see CLAUDE.md Escalation Rules.)
 - **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
   The blocking classes above are the ONLY wire-driven aborts in this handler. All of
   the following wire outcomes route identically to the disk-verify below — none of them
@@ -927,6 +980,11 @@ perform the final `context_proxy_chars` boundary update from Step 1.52 and apply
 the >70% warning check. This is the last boundary the orchestrator records before
 handing off, so it is the one that reveals whether the orchestrator nearly
 saturated. Non-blocking — record the WARN if tripped, then proceed.
+
+**Flip the firebreak phase to `tail` (G1/F5)** -- single Bash call before spawning:
+`python3 .claude/hooks/firebreak-activate.py set-phase tail`. This grants the
+tail-runner (a trusted identity) the learnings-write carve-out for compound-phase
+propagation; no worker runs past this point.
 
 Use the **tail-runner** agent to execute the entire Shared Tail in a
 fresh context window.
@@ -968,6 +1026,10 @@ python3 tools/verify_delegated_status.py \
   --artifact docs/reports/<run-id>/self-audit.md --artifact-kind self-audit \
   --run-start-ts <run_start_ts> --run-id <run-id> --wire-status "<wire status or 'none'>"
 ```
+
+**First, tear down the firebreak (G1)** -- the governed window is over regardless of
+verdict. Single Bash call: `python3 .claude/hooks/firebreak-activate.py deactivate`.
+Then:
 
 - **Exit 0:** the tail genuinely completed → output `<promise>DONE</promise>` and stop.
 - **Any non-zero exit:** the run fails. The script prints the specific reason
