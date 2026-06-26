@@ -1,7 +1,7 @@
 ---
 title: "feat: G3 — Self-Audit Disconfirmer for Verification Diversity"
 type: feat
-status: active
+status: completed
 date: 2026-06-25
 branch: feat/g3-verification-diversity
 origin: docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md
@@ -47,6 +47,19 @@ contracts: TAIL_SYNC_POINT accounted for in both solo + swarm paths; `self-audit
 status-bearing report. Only named residual = the pre-registered R2 (does the Opus disconfirmer produce
 *orthogonal* findings vs restate the Sonnet audit) — bounded, verify-first, not a plan blocker. Cleared
 for `/workflows:work`.
+
+## Verify-First Result (2026-06-26): GATE PASSED
+
+The feed-forward `verify_first` risk (R2 / Done #4 — does the Opus disconfirmer produce
+*orthogonal, valid* findings or restate the Sonnet audit?) was **empirically cleared on
+the first pass.** Opus generated candidate findings on historical runs 064/068/069/070
+(069 = known-miss, generators hard-blocked from each run's `self-audit.md` + answer-key);
+**cross-family Codex** judged validity (Opus never judged its own family). Result:
+**Novel-valid 4/4 = 1.00, Overcall 0/25 = 0.00 → PASS** (bars: novel-valid > 0, overcall
+< 0.34). The 069 headline known-miss confirmed: the disconfirmer independently re-derived
+the FC50 unpinned-entrypoint class the later binding review caught. Zero brief-tuning
+iterations used (3 allowed); no cross-family-standing-verifier escalation needed. Full
+data + verbatim verdict: `docs/spikes/2026-06-25-g3-disconfirmer-efficacy-probe.md`.
 
 ## Overview
 
