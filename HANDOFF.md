@@ -1,4 +1,47 @@
-# HANDOFF — Sandbox
+# HANDOFF — Sandbox · Next step: G3 Codex PLAN REVIEW
+
+**Date:** 2026-06-25
+**Branch:** `feat/g3-verification-diversity` (off master; working tree clean)
+**Phase:** **G3 (monoculture in verification) — Brainstorm + Plan + Deepen-Plan COMPLETE. Next = external Codex PLAN REVIEW, then `/workflows:work`.**
+
+## TL;DR — G3 status (current cycle)
+
+G3 = "carry the disconfirmer antidote into autopilot BUILD-verification." This session (manual) ran the
+compound loop through deepen-plan on a fresh branch. **G1 is DONE/live on `feat/g1-risk-tiered-firebreak`
+(unmerged to master); do NOT reopen it.** The detailed G1-PLAN content further down this file is from
+2026-06-22 and is **SUPERSEDED/historical** (G1 has since been built + activated on its branch).
+
+**G3 cycle artifacts (all on `feat/g3-verification-diversity`, committed):**
+- Brainstorm `b8bdf45` — `docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md` (+2 review passes)
+- Plan `4e7832c` — `docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md` (passed plan-quality-gate + ears-validator)
+- Plan deepened `be5c3c5` — 7-agent deepen-plan pass (cut the verdict field, closed fail-opens, corrected diversity narrative)
+
+**G3 design in one line:** an **Opus disconfirmer** runs **before** the (Sonnet) `self-audit-reviewer`;
+its findings become mandatory WARNs the audit disposes (`Source=disconfirmer.md#D<n>`); a new
+deterministic **fail-CLOSED Gate 8** (8a existence/identity/parseable + 8c per-finding bijection)
+enforces them. One pass, no loop, **no LLM verdict with binding force**, no LLM in the dispose path.
+Scope = self-audit surface only.
+
+**Key locked decisions:** scope=self-audit only; Opus disconfirmer (role+model diversity — but
+within-family is the WEAK lever, cross-family **Codex** is the pre-registered escalation); Option-A
+adjudication (mandatory WARNs + deterministic teeth); **`disconfirmer_verdict` field CUT** (was cosmetic
++ contradicted no-LLM-in-dispose-path; intent preserved via existing Gates 2/5/7f). `self-audit-reviewer`
+stays `model: sonnet` (invariant). `verify_delegated_status.py` needs a new `--artifact-kind disconfirmer`
+(the one non-markdown change).
+
+**NEXT ACTION:** paste the **Codex Handoff Prompt** at the BOTTOM of the G3 plan into a fresh Codex
+context for the external plan review. Bring P0/P1 findings back, update the plan, THEN `/workflows:work`.
+Feed-forward risk to verify first: does the Opus disconfirmer produce *orthogonal, valid* findings, or
+restate the Sonnet audit? (efficacy probe: novel-valid + overcall on 3–5 historical reports.)
+
+**Implementation note for Work:** before editing `self-audit-reviewer.md`, the disposition enum is
+already VERIFIED `ACCEPTED/PROMOTED/DEFERRED`. Edit `SKILL.md` (~1153, before `### Self-Audit`) and
+`tail-runner.md` (Step 7.5) **in the same pass** (TAIL_SYNC, the named top risk R1) — assert *ordering*,
+not just presence.
+
+---
+
+<details><summary><strong>SUPERSEDED — 2026-06-22 G1-PLAN handoff (historical; G1 since built/activated on its branch)</strong></summary>
 
 **Date:** 2026-06-22
 **Branch:** master (in sync with origin, working tree clean)
@@ -215,3 +258,5 @@ to DIRECT worker tool calls with THREE declared residuals (#1 interpreter escape
 #2 inherited-$VAR redirect, #3 F13 unlisted-dispatcher/wrapper leak); autopilot's only
 push is the pre-spawn provenance push (conditional, pre-sentinel, scoped out by ordering).
 ```
+
+</details>
