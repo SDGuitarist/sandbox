@@ -1,13 +1,13 @@
 ---
 name: verify-self-audit
-description: Verification gate for self-audit reports. 9 hard gates covering report existence, WARN key format, disposition validity, deferred-item tracking, source reconciliation, honest status claims, section completeness, and run quality grading. Called by the autopilot skill after the self-audit-reviewer agent runs.
+description: Verification gate for self-audit reports. 8 hard gates covering report existence, WARN key format, disposition validity, deferred-item tracking, source reconciliation, honest status claims, section completeness, run quality grading, and disconfirmer-finding enforcement. Called by the autopilot skill after the self-audit-reviewer agent runs.
 argument-hint: "<run-id> <reports-dir>"
 allowed-tools: Read Grep Glob
 ---
 
 # Verify Self-Audit
 
-This skill runs 9 hard gates on a self-audit report. It is called by
+This skill runs 8 hard gates on a self-audit report. It is called by
 the autopilot skill as a single step to keep the autopilot under its
 complexity budget.
 
@@ -19,11 +19,12 @@ You receive two arguments:
 
 Derive these paths:
 - Self-audit report: `<reports-dir>/self-audit.md`
+- Disconfirmer report: `<reports-dir>/disconfirmer.md`
 - HANDOFF: `HANDOFF.md` (project root)
 
 ## Gates
 
-Run all 9 checks in order. If ANY check fails, output the FAIL message
+Run all 8 checks in order. If ANY check fails, output the FAIL message
 and stop. Do NOT continue to subsequent checks after a failure.
 
 ### Gate 1: Report Exists
@@ -234,11 +235,72 @@ If either token is missing for any WARN, FAIL with:
 SELF-AUDIT DISHONESTY: Overall grade is A but WARN [key] is DEFERRED with HIGH severity. Justification must contain both 'HIGH' and '[key]'. Missing: [which token(s)].
 ```
 
+### Gate 8: Disconfirmer Findings Enforced
+
+The disconfirmer (an Opus agent) runs BEFORE the self-audit and writes
+`<reports-dir>/disconfirmer.md`. The skeptic is **mandatory**: this gate is
+**fail-CLOSED** and **literal-token deterministic** (mirroring Gate 7f). A
+missing, mismatched, or malformed disconfirmer report is a FAIL -- never a silent
+pass, and never read as "zero findings."
+
+**8a. Exists, identity, parseable (fail-closed):**
+
+Glob `<reports-dir>/disconfirmer.md`. It MUST exist.
+
+Read it and verify ALL of:
+1. Its header contains the literal line `**Run ID:** <run-id>` where `<run-id>`
+   matches the run-id argument.
+2. It is parseable as EITHER:
+   - one or more findings rows whose first cell matches the anchored pattern
+     `^| D<n> |` (e.g. `| D1 |`, `| D2 |` -- integer, sequential from 1, no
+     zero-pad), OR
+   - the canonical no-findings sentinel: the literal line `No disconfirmer
+     findings.` is present AND there are zero `^| D<n> |` rows.
+
+A header-only or truncated write (neither finding rows NOR the sentinel) is
+malformed -- it is NOT "zero findings."
+
+If the file is missing, the Run ID line is absent/mismatched, or it is
+unparseable (no `D#` rows AND no sentinel), FAIL with:
+```
+SELF-AUDIT INCOMPLETE: disconfirmer.md missing, run-id mismatched, or unparseable (no D# rows and no 'No disconfirmer findings.' sentinel). The disconfirmer is mandatory and fail-closed.
+```
+
+If the sentinel is present with zero `D#` rows, Gate 8 passes (a clean CONCUR);
+skip 8c.
+
+**8c. Per-finding bijection + dismissal token:**
+
+For EVERY `D<n>` row in `disconfirmer.md`, read the WARN Disposition Table in
+`self-audit.md` and verify there is **exactly one** WARN row whose `Source`
+column contains the literal `disconfirmer.md#D<n>`.
+
+If any `D<n>` has zero matching WARN rows (a dropped finding), FAIL with:
+```
+SELF-AUDIT INCONSISTENCY: disconfirmer finding D<n> has no matching WARN row (Source containing 'disconfirmer.md#D<n>') in self-audit.md. Every disconfirmer finding must be ingested as a WARN.
+```
+
+If any `D<n>` has more than one matching WARN row (a duplicated finding), FAIL with:
+```
+SELF-AUDIT INCONSISTENCY: disconfirmer finding D<n> matches more than one WARN row in self-audit.md. Each finding must map to exactly one WARN.
+```
+
+For each such WARN disposed `ACCEPTED` (the "dismiss" set -- `ACCEPTED` =
+real-but-tolerated), its `Rationale` cell MUST contain the literal token `#D<n>`
+(presence check only -- this gate never judges justification *quality*; Gate 2
+already owns disposition-enum and non-empty-rationale validation).
+
+If an `ACCEPTED` disconfirmer WARN's Rationale lacks the literal `#D<n>` token,
+FAIL with:
+```
+SELF-AUDIT INCONSISTENCY: disconfirmer WARN for D<n> is ACCEPTED but its Rationale lacks the literal '#D<n>' token. An accepted (dismissed) disconfirmer finding must cite its D# in the rationale.
+```
+
 ## Output
 
-If all 9 gates pass, output:
+If all 8 gates pass, output:
 ```
-SELF-AUDIT VERIFIED: All 9 gates passed for run <run-id>.
+SELF-AUDIT VERIFIED: All 8 gates passed for run <run-id>.
 STATUS: PASS
 ```
 
