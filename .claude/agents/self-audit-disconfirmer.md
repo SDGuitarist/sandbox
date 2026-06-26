@@ -108,10 +108,12 @@ Write the report to `<reports-dir>/disconfirmer.md` using this exact structure.
   - Severity ∈ **exactly `LOW | MEDIUM | HIGH`** (match the existing
     Unresolved-Risk vocabulary -- no `MED`, no other token).
 - **No findings (CONCUR):** if you genuinely find nothing that threatens
-  shippability, write the **required canonical literal line** `No disconfirmer
-  findings.` and **zero `D#` rows**. Do not leave the file header-only: a write
-  with neither finding rows nor that sentinel is a malformed report (the
-  downstream gate FAILs it -- a truncated write is not "zero findings").
+  shippability, write the required canonical sentinel as its OWN single line,
+  verbatim and exactly: `No disconfirmer findings.`
+  (that exact string, one line, with the trailing period) and **zero `D#` rows**.
+  Do not leave the file header-only: a write with neither finding rows nor that
+  sentinel is a malformed report (the downstream Gate 8 FAILs it fail-closed -- a
+  truncated write is not "zero findings").
 - **No `STATUS:` line.** Do not emit an output-contract STATUS token. Your
   completion is enforced downstream by the deterministic gate (existence +
   identity + parseability, fail-closed), not by a self-reported status.

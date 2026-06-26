@@ -1144,7 +1144,7 @@ completed_artifacts:
 pending_mandatory_artifacts:
   - Verify BUILD_TRACKING.md completeness
   - Self-audit report (docs/reports/<run-id>/self-audit.md)
-  - Verify self-audit (9 gates)
+  - Verify self-audit (8 gates, incl. Gate 8 disconfirmer enforcement)
 
 review_findings:
   p1_fixed: <count>
@@ -1217,11 +1217,14 @@ check STATUS.
 
 Run `/verify-self-audit <run-id> docs/reports/<run-id>/`
 
-This helper skill runs 9 hard gates on the self-audit report: report exists,
+This helper skill runs 8 hard gates on the self-audit report: report exists,
 WARN keys valid and dispositions correct, deferred items tracked by key in
 HANDOFF.md, source reconciliation complete, honest success claim,
 section completeness (What Was Missed, skeptical questions, promotions),
-and run quality grading (6 scored dimensions with artifact-backed evidence).
+run quality grading (6 scored dimensions with artifact-backed evidence),
+and Gate 8 disconfirmer enforcement (fail-CLOSED existence/identity/parseability
+of disconfirmer.md + exact per-finding bijection into the WARN table). The
+disconfirmer runs BEFORE this self-audit step in both the solo and swarm tails.
 
 Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.
 

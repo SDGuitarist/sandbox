@@ -60,9 +60,13 @@ Current-run WARN sources (scan ALL of these):
 does NOT use the literal `WARN` token -- it uses local `D#` finding rows
 (`| D1 | ... |`, `| D2 | ... |`). Scan its findings table and create **one WARN
 row per `D#` row**, with:
-- **Source = the exact literal `disconfirmer.md#D<n>`** (e.g. `disconfirmer.md#D1`).
-  This per-finding link is what Gate 8c greps for -- a count-only or merged
-  summary row will FAIL the gate. One WARN row per `D#`, no merging.
+- **Source cell = exactly `disconfirmer.md#D<n>` and nothing else** (e.g. the whole
+  cell is `disconfirmer.md#D1`). Gate 8c requires **whole-cell equality**, not a
+  substring — so do NOT append other text to the Source cell, and do NOT list two
+  `D#` tokens in one Source cell. **One WARN row per `D#`, never merged:** a
+  count-only summary, a merged row citing two findings, or a Source cell with extra
+  text will FAIL the gate. (Whole-cell equality is also what keeps `D1` from
+  colliding with `D10`.)
 - The finding's **Severity inherited verbatim** (`LOW` / `MEDIUM` / `HIGH`) into
   your disposition reasoning and, if you DEFER it, into the Unresolved Risk
   entry's "Severity for next session" line. (So a HIGH disconfirmer finding

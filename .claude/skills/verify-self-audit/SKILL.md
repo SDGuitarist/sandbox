@@ -249,51 +249,87 @@ Glob `<reports-dir>/disconfirmer.md`. It MUST exist.
 
 Read it and verify ALL of:
 1. Its header contains the literal line `**Run ID:** <run-id>` where `<run-id>`
-   matches the run-id argument.
-2. It is parseable as EITHER:
-   - one or more findings rows whose first cell matches the anchored pattern
-     `^| D<n> |` (e.g. `| D1 |`, `| D2 |` -- integer, sequential from 1, no
-     zero-pad), OR
-   - the canonical no-findings sentinel: the literal line `No disconfirmer
-     findings.` is present AND there are zero `^| D<n> |` rows.
+   matches the run-id argument exactly.
+2. It is in EXACTLY ONE of two well-formed states. First define a **finding row**
+   precisely (this is the only thing that counts as a finding — prose does not):
 
-A header-only or truncated write (neither finding rows NOR the sentinel) is
-malformed -- it is NOT "zero findings."
+   > A *finding row* is a markdown table row whose FIRST cell, after trimming the
+   > surrounding spaces, is exactly `D<N>` — the literal letter `D` followed by a
+   > positive integer with **no leading zero** (`D1`, `D2`, `D10`; NEVER `D0`,
+   > `D01`, `D 1`, `D1.1`, or a bare `D3` mentioned in prose). The grep-safe anchor
+   > for a finding row is the regex `^\|\s*D[1-9][0-9]*\s*\|`.
 
-If the file is missing, the Run ID line is absent/mismatched, or it is
-unparseable (no `D#` rows AND no sentinel), FAIL with:
+   The two accepted states are:
+   - **FINDINGS state:** one or more finding rows match the anchor above, AND the
+     canonical sentinel line is ABSENT.
+   - **CONCUR state:** the canonical sentinel line `No disconfirmer findings.` is
+     present verbatim on its own line, AND there are ZERO finding rows.
+
+Any other shape FAILs fail-closed. This explicitly includes: a header-only or
+truncated write (no finding rows AND no sentinel); prose that mentions a `D<n>` but
+has no matching anchored table row; a malformed table (a `D`-prefixed first cell that
+is not `D[1-9][0-9]*`, e.g. `D01` / `D 1` / `D1.1`); and BOTH the sentinel line and
+one or more finding rows present at once (ambiguous → malformed). A malformed write
+is NEVER read as "zero findings."
+
+If the file is missing, the Run ID line is absent/mismatched, or it is not in exactly
+one of the two well-formed states, FAIL with:
 ```
-SELF-AUDIT INCOMPLETE: disconfirmer.md missing, run-id mismatched, or unparseable (no D# rows and no 'No disconfirmer findings.' sentinel). The disconfirmer is mandatory and fail-closed.
-```
-
-If the sentinel is present with zero `D#` rows, Gate 8 passes (a clean CONCUR);
-skip 8c.
-
-**8c. Per-finding bijection + dismissal token:**
-
-For EVERY `D<n>` row in `disconfirmer.md`, read the WARN Disposition Table in
-`self-audit.md` and verify there is **exactly one** WARN row whose `Source`
-column contains the literal `disconfirmer.md#D<n>`.
-
-If any `D<n>` has zero matching WARN rows (a dropped finding), FAIL with:
-```
-SELF-AUDIT INCONSISTENCY: disconfirmer finding D<n> has no matching WARN row (Source containing 'disconfirmer.md#D<n>') in self-audit.md. Every disconfirmer finding must be ingested as a WARN.
+SELF-AUDIT INCOMPLETE: disconfirmer.md missing, run-id mismatched, or unparseable (must be EITHER >=1 anchored `| D<N> |` finding row [D<N> = no leading zero] with NO sentinel, OR the verbatim `No disconfirmer findings.` sentinel with ZERO finding rows). The disconfirmer is mandatory and fail-closed.
 ```
 
-If any `D<n>` has more than one matching WARN row (a duplicated finding), FAIL with:
+If the CONCUR state holds (sentinel present, zero finding rows), Gate 8 passes (a
+clean CONCUR); skip 8c.
+
+**8c. Per-finding bijection + dismissal token (EXACT one-to-one):**
+
+The mapping between disconfirmer findings and self-audit WARN rows must be a strict
+**bijection**: each `D<n>` finding maps to exactly one WARN row, and each
+disconfirmer-sourced WARN row carries exactly one finding. `contains` matching is
+NOT sufficient (it lets a merged row satisfy several findings and lets `#D1` match
+inside `#D10`). Enforce all four checks:
+
+**1. Grep-safe, whole-cell token.** A WARN row "cites `D<n>`" if and only if its
+`Source` cell, after trimming surrounding spaces, **equals exactly** the single
+token `disconfirmer.md#D<n>` — the entire cell is that token and nothing else.
+(Whole-cell equality, not substring `contains`. This is what prevents `D1` from
+matching inside `D10`: `disconfirmer.md#D1` ≠ `disconfirmer.md#D10` as whole cells.)
+
+**2. No merged rows.** No WARN row's `Source` cell may contain more than one
+`disconfirmer.md#D` occurrence. A single row that cites two findings is rejected —
+each finding needs its own row. If any Source cell holds ≥2 `disconfirmer.md#D`
+tokens, FAIL with:
 ```
-SELF-AUDIT INCONSISTENCY: disconfirmer finding D<n> matches more than one WARN row in self-audit.md. Each finding must map to exactly one WARN.
+SELF-AUDIT INCONSISTENCY: a self-audit WARN Source cell cites more than one disconfirmer finding. Each disconfirmer finding needs its OWN WARN row (one Source cell = exactly one `disconfirmer.md#D<n>`).
 ```
 
-For each such WARN disposed `ACCEPTED` (the "dismiss" set -- `ACCEPTED` =
-real-but-tolerated), its `Rationale` cell MUST contain the literal token `#D<n>`
-(presence check only -- this gate never judges justification *quality*; Gate 2
-already owns disposition-enum and non-empty-rationale validation).
+**3. Surjective + injective + count parity.** For EVERY `D<n>` finding row in
+`disconfirmer.md`, there must be **exactly one** WARN row whose `Source` cell equals
+`disconfirmer.md#D<n>` (per check 1):
+- Zero matching rows (dropped finding) → FAIL with:
+  ```
+  SELF-AUDIT INCONSISTENCY: disconfirmer finding D<n> has no WARN row whose Source cell is exactly 'disconfirmer.md#D<n>'. Every disconfirmer finding must be ingested as its own WARN.
+  ```
+- Two or more matching rows (duplicated finding) → FAIL with:
+  ```
+  SELF-AUDIT INCONSISTENCY: disconfirmer finding D<n> matches more than one WARN row. Each finding must map to exactly one WARN.
+  ```
+- A `disconfirmer.md#D<k>` Source cell that references no existing `D<k>` finding row
+  (phantom citation) → FAIL with:
+  ```
+  SELF-AUDIT INCONSISTENCY: a self-audit WARN Source cites 'disconfirmer.md#D<k>' but disconfirmer.md has no D<k> finding row. Source must reference an existing finding.
+  ```
+The count of disconfirmer-sourced WARN rows MUST equal the number of `D<n>` finding
+rows; checks 2+3 together guarantee it.
 
-If an `ACCEPTED` disconfirmer WARN's Rationale lacks the literal `#D<n>` token,
-FAIL with:
+**4. Dismissal token (grep-safe).** For each disconfirmer WARN disposed `ACCEPTED`
+(the "dismiss" set — `ACCEPTED` = real-but-tolerated), its `Rationale` cell MUST
+contain the literal token `#D<n>` **immediately followed by a non-digit boundary**
+(end of cell, whitespace, or punctuation) so `#D1` is not satisfied by `#D10`.
+Presence check only — this gate never judges justification *quality*; Gate 2 already
+owns disposition-enum and non-empty-rationale validation. If missing, FAIL with:
 ```
-SELF-AUDIT INCONSISTENCY: disconfirmer WARN for D<n> is ACCEPTED but its Rationale lacks the literal '#D<n>' token. An accepted (dismissed) disconfirmer finding must cite its D# in the rationale.
+SELF-AUDIT INCONSISTENCY: disconfirmer WARN for D<n> is ACCEPTED but its Rationale lacks the literal '#D<n>' token (with a non-digit boundary). An accepted (dismissed) disconfirmer finding must cite its D# in the rationale.
 ```
 
 ## Output
