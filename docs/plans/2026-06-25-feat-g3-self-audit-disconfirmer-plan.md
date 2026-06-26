@@ -39,6 +39,15 @@ pattern-recognition, autopilot-integrity, multi-file-sync, external best-practic
 *disposes* the skeptic's findings — is the primary residual G3 leaves open (detection is diversified,
 disposition is not). Elevated from R5 to a named residual.
 
+## Plan Review (Codex — 2026-06-25): GO
+
+External fresh-context Codex review returned **GO, no blockers**. It re-verified the load-bearing
+contracts: TAIL_SYNC_POINT accounted for in both solo + swarm paths; `self-audit-reviewer` still uses
+`ACCEPTED / PROMOTED / DEFERRED`; the new `disconfirmer.md` is treated as a freshness/run-id check, not a
+status-bearing report. Only named residual = the pre-registered R2 (does the Opus disconfirmer produce
+*orthogonal* findings vs restate the Sonnet audit) — bounded, verify-first, not a plan blocker. Cleared
+for `/workflows:work`.
+
 ## Overview
 
 Seat a **dedicated disconfirmer** (an Opus agent with an adversarial brief) at the autopilot's

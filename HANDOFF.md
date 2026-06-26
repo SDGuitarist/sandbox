@@ -1,8 +1,8 @@
-# HANDOFF — Sandbox · Next step: G3 Codex PLAN REVIEW
+# HANDOFF — Sandbox · Next step: G3 `/workflows:work`
 
 **Date:** 2026-06-25
 **Branch:** `feat/g3-verification-diversity` (off master; working tree clean)
-**Phase:** **G3 (monoculture in verification) — Brainstorm + Plan + Deepen-Plan COMPLETE. Next = external Codex PLAN REVIEW, then `/workflows:work`.**
+**Phase:** **G3 (monoculture in verification) — Brainstorm + Plan + Deepen-Plan + Codex PLAN REVIEW (GO) COMPLETE. Next = `/workflows:work`.**
 
 ## TL;DR — G3 status (current cycle)
 
@@ -29,10 +29,11 @@ adjudication (mandatory WARNs + deterministic teeth); **`disconfirmer_verdict` f
 stays `model: sonnet` (invariant). `verify_delegated_status.py` needs a new `--artifact-kind disconfirmer`
 (the one non-markdown change).
 
-**NEXT ACTION:** paste the **Codex Handoff Prompt** at the BOTTOM of the G3 plan into a fresh Codex
-context for the external plan review. Bring P0/P1 findings back, update the plan, THEN `/workflows:work`.
-Feed-forward risk to verify first: does the Opus disconfirmer produce *orthogonal, valid* findings, or
-restate the Sonnet audit? (efficacy probe: novel-valid + overcall on 3–5 historical reports.)
+**NEXT ACTION:** `/workflows:work` on the G3 plan. **Codex plan review = GO (2026-06-25, no blockers)** —
+contracts re-verified (TAIL_SYNC both paths, ACCEPTED/PROMOTED/DEFERRED enum, disconfirmer-as-freshness-
+artifact). Feed-forward risk to verify first during work: does the Opus disconfirmer produce *orthogonal,
+valid* findings, or restate the Sonnet audit? (efficacy probe: novel-valid + overcall on 3–5 historical
+reports — the one bounded residual Codex flagged).
 
 **Implementation note for Work:** before editing `self-audit-reviewer.md`, the disposition enum is
 already VERIFIED `ACCEPTED/PROMOTED/DEFERRED`. Edit `SKILL.md` (~1153, before `### Self-Audit`) and
