@@ -961,7 +961,24 @@ The verdict is the **on-disk `self-audit.md`**, not the tail-runner's echoed wir
 STATUS. The tail-runner finishes its work and writes `self-audit.md` (via
 `/verify-self-audit`) but can be cut off before echoing its Output Contract; a
 "no STATUS line → FAIL" reading would fail a genuinely complete run. So disk-verify
-the artifact. Run as a single Bash call:
+the artifacts.
+
+**First, disk-verify the disconfirmer artifact** (it ran at tail-runner Step 7.5,
+before the self-audit, and is mandatory + fail-closed). Run as a single Bash call:
+
+```
+python3 tools/verify_delegated_status.py \
+  --artifact docs/reports/<run-id>/disconfirmer.md --artifact-kind disconfirmer \
+  --run-start-ts <run_start_ts> --run-id <run-id>
+```
+
+- **Exit 0:** the disconfirmer ran and is fresh → proceed to the self-audit verify below.
+- **Any non-zero exit:** the run fails (missing/stale/run-id-mismatch disconfirmer).
+  Output the printed reason and stop. The `disconfirmer` kind checks existence +
+  freshness + run-id only — it is advisory and carries no status line; its findings
+  are enforced by Gate 8 inside `/verify-self-audit` (already run in the tail).
+
+**Then, disk-verify the self-audit artifact.** Run as a single Bash call:
 
 ```
 python3 tools/verify_delegated_status.py \
@@ -976,7 +993,8 @@ python3 tools/verify_delegated_status.py \
   exit code; do NOT second-guess it from the wire STATUS, and do NOT fail merely because
   the wire STATUS line was absent.
 
-The script confirms only existence + freshness + run-id + non-FAIL terminal status.
+The script confirms only existence + freshness + run-id + non-FAIL terminal status
+(the `disconfirmer` kind skips the status check — advisory, no status line).
 Deferred-risk adjudication stays owned by `/verify-self-audit` (already run inside the
 tail-runner); `PIPELINE_PASS_WITH_DEFERRED_RISK` is a pass and the script treats it as
 such — do not re-adjudicate WARN dispositions here.

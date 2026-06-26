@@ -13,6 +13,11 @@ Authority model (do NOT weaken):
     missing/stale/FAIL artifact.
   * This script checks ONLY existence, freshness, run-id, and terminal status.
     Deferred-risk adjudication remains owned by /verify-self-audit.
+  * The `disconfirmer` kind is ADVISORY and carries NO terminal status line by
+    contract -- so it is checked for existence + freshness + run-id ONLY (the
+    status parse/accept-set steps are skipped). Its findings get their teeth
+    downstream from Gate 8 in /verify-self-audit (literal-token, fail-closed),
+    not from a self-reported status here.
 
 Exit codes (kept in 1-255; 256 would wrap to 0 = a false pass):
   0  PASS              all checks held
@@ -24,7 +29,8 @@ Exit codes (kept in 1-255; 256 would wrap to 0 = a false pass):
   6  RUNID_MISMATCH    embedded run-id missing or != --run-id
 
 Usage:
-  verify_delegated_status.py --artifact <path> --artifact-kind self-audit|assembly
+  verify_delegated_status.py --artifact <path>
+      --artifact-kind self-audit|assembly|disconfirmer
       --run-start-ts <epoch-seconds> --run-id <id> [--wire-status <text>]
 """
 
@@ -73,7 +79,9 @@ def _fail(code, reason):
 
 
 def _extract_run_id(text, kind):
-    rx = _SELFAUDIT_RUNID_RE if kind == "self-audit" else _ASSEMBLY_RUNID_RE
+    # assembly embeds the run-id in its heading; self-audit AND disconfirmer both
+    # use the "**Run ID:**" header line.
+    rx = _ASSEMBLY_RUNID_RE if kind == "assembly" else _SELFAUDIT_RUNID_RE
     m = rx.search(text)
     return m.group(1).strip() if m else None
 
@@ -95,7 +103,9 @@ def _extract_status(text, kind):
 def main():
     parser = _Parser(description="Disk-verify a delegated agent's terminal STATUS.")
     parser.add_argument("--artifact", required=True, help="path to the artifact on disk")
-    parser.add_argument("--artifact-kind", required=True, choices=["self-audit", "assembly"])
+    parser.add_argument(
+        "--artifact-kind", required=True, choices=["self-audit", "assembly", "disconfirmer"]
+    )
     parser.add_argument("--run-start-ts", required=True, help="run start time, epoch seconds")
     parser.add_argument("--run-id", required=True, help="this run's id (e.g. 069)")
     parser.add_argument("--wire-status", default=None, help="agent's echoed status (logged only)")
@@ -128,6 +138,15 @@ def main():
         _fail(EXIT_RUNID_MISMATCH, "no embedded run-id found in artifact")
     if embedded != args.run_id:
         _fail(EXIT_RUNID_MISMATCH, f"embedded run-id {embedded!r} != --run-id {args.run_id!r}")
+
+    # disconfirmer is advisory: no terminal status line by contract. Existence +
+    # freshness + run-id (checks 1-3 above) are the whole verdict; skip status.
+    # Gate 8 in /verify-self-audit enforces its findings (literal-token, fail-closed).
+    if args.artifact_kind == "disconfirmer":
+        if args.wire_status is not None:
+            sys.stderr.write(f"note: wire-status logged, non-decisive: {args.wire_status!r}\n")
+        print(f"PASS: {args.artifact_kind} {args.artifact} run_id={embedded} (advisory; no status)")
+        sys.exit(EXIT_PASS)
 
     # 4. status parses
     status = _extract_status(text, args.artifact_kind)
