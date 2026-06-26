@@ -61,6 +61,18 @@ the FC50 unpinned-entrypoint class the later binding review caught. Zero brief-t
 iterations used (3 allowed); no cross-family-standing-verifier escalation needed. Full
 data + verbatim verdict: `docs/spikes/2026-06-25-g3-disconfirmer-efficacy-probe.md`.
 
+## Code Review (Codex — 2026-06-26): GO
+
+The implementation passed a fresh-context Codex CODE review. Initial pass returned
+**NO-GO** with 3 findings (Gate 8c bijection not strict enough — `contains` allowed
+merged rows + `D1`/`D10` collision; Gate 8a parse wording too loose; one stale "9 hard
+gates" string in `autopilot/SKILL.md`). All fixed in commit `65954b4` (whole-cell Source
+equality + merged-row/phantom-citation rejection + non-digit boundary on `#D<n>`; anchored
+finding-row regex with an exhaustive accept/fail trichotomy; gate count → 8). A self-review
+also caught + un-wrapped the line-wrapped sentinel in the disconfirmer agent. Codex
+**RE-REVIEW = GO, no new findings**; invariants and the byte-identical sentinel confirmed.
+Trail: `docs/handoffs/2026-06-26-g3-disconfirmer-{code-review,rereview}-codex-handoff.md`.
+
 ## Overview
 
 Seat a **dedicated disconfirmer** (an Opus agent with an adversarial brief) at the autopilot's

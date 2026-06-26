@@ -71,6 +71,22 @@ single GO / NO-GO for merging feat/g3-verification-diversity.
 
 ---
 
+## Re-Review Verdict — 2026-06-26 (Codex): **GO** (raw, verbatim)
+
+| Original finding | Status | Evidence |
+|------------------|--------|----------|
+| Gate 8c not bijective enough | **RESOLVED** | verify-self-audit/SKILL.md:284-332 now requires whole-cell equality, rejects merged rows, rejects phantom citations, enforces count parity, and uses a non-digit boundary for `#D<n>` so `#D1` cannot satisfy `#D10`. self-audit-reviewer.md:58-81 mirrors that exactly for the WARN ingestion contract. |
+| Gate 8a parse wording too loose | **RESOLVED** | verify-self-audit/SKILL.md:246-279 defines the anchored finding-row regex `^\|\s*D[1-9][0-9]*\s*\|`, accepts only the two states, and explicitly fails header-only, malformed, and sentinel+rows cases. Header and separator rows excluded cleanly. |
+| Autopilot still said "9 hard gates" | **RESOLVED** | autopilot/SKILL.md:1144-1147 and 1216-1227 now say 8 gates and name Gate 8 disconfirmer enforcement. No stale "9 hard gates" text left. |
+
+**Regression checks:** canonical sentinel `No disconfirmer findings.` byte-identical across
+disconfirmer.md:110-113, self-audit-reviewer.md:79-81, verify-self-audit/SKILL.md:265,278,
+autopilot/SKILL.md:1191-1193. self-audit-reviewer still `model: sonnet`.
+verify_delegated_status.py unchanged + still correct (advisory-only disconfirmer branch,
+skips status before ACCEPT_SETS, exit codes in range).
+
+**No new P0/P1/P2 findings. Verdict: GO** for merging `feat/g3-verification-diversity`.
+
 ## Author notes (context, not part of the paste)
 
 - **Self-review already done.** While fixing, I caught a 4th issue myself: the sentinel was
