@@ -40,6 +40,31 @@ already VERIFIED `ACCEPTED/PROMOTED/DEFERRED`. Edit `SKILL.md` (~1153, before `#
 `tail-runner.md` (Step 7.5) **in the same pass** (TAIL_SYNC, the named top risk R1) — assert *ordering*,
 not just presence.
 
+## Prompt for Next Session (copy-paste)
+
+```
+Read HANDOFF.md. This is sandbox; G1 firebreak is DONE/live (don't reopen). G3's plan is GO — the
+external Codex plan review passed with NO blockers. Start /workflows:work on
+docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md.
+
+Build order (re-derive the commit checkpoints from the plan's File-by-file list): (1) new
+.claude/agents/self-audit-disconfirmer.md (model: opus, explicit args, bypassPermissions); (2) wire it
+BEFORE the self-audit in BOTH paths IN THE SAME PASS — solo .claude/skills/autopilot/SKILL.md (~1153,
+before "### Self-Audit") and swarm .claude/agents/tail-runner.md (Step 7.5) — TAIL_SYNC is the top risk
+R1, assert ORDERING not just presence; (3) Gate 8 (8a existence/identity/parseable + 8c per-finding
+bijection, fail-CLOSED, literal-token) in .claude/skills/verify-self-audit/SKILL.md + bump all 4
+gate-count sites; (4) self-audit-reviewer.md Step 2 D# ingestion (Source=disconfirmer.md#D<n>, severity
+verbatim) + Source Reconciliation row; (5) tools/verify_delegated_status.py new --artifact-kind
+disconfirmer, called at SKILL.md Step 18w.
+
+Invariants (do NOT break): self-audit-reviewer stays model: sonnet; no LLM in the dispose path; no
+re-run loop; no LLM verdict with binding force; disposition enum is ACCEPTED/PROMOTED/DEFERRED
+(verified). Verify-FIRST risk = the efficacy probe: does the Opus disconfirmer produce ORTHOGONAL, VALID
+findings or restate the Sonnet audit? Measure novel-valid + overcall on 3-5 historical self-audit
+reports, validity judged by human/cross-family (never the Opus family). If it fails after <=3 brief
+tweaks, escalate to cross-family Codex — NOT a bigger model, NOT a loop.
+```
+
 ---
 
 <details><summary><strong>SUPERSEDED — 2026-06-22 G1-PLAN handoff (historical; G1 since built/activated on its branch)</strong></summary>
