@@ -1,288 +1,64 @@
-# HANDOFF — Sandbox · Next step: G3 `/workflows:work`
+# HANDOFF — Sandbox · G3 Disconfirmer COMPOUND COMPLETE
 
-**Date:** 2026-06-25
-**Branch:** `feat/g3-verification-diversity` (off master; working tree clean)
-**Phase:** **G3 (monoculture in verification) — Brainstorm + Plan + Deepen-Plan + Codex PLAN REVIEW (GO) COMPLETE. Next = `/workflows:work`.**
-
-## TL;DR — G3 status (current cycle)
-
-G3 = "carry the disconfirmer antidote into autopilot BUILD-verification." This session (manual) ran the
-compound loop through deepen-plan on a fresh branch. **G1 is DONE/live on `feat/g1-risk-tiered-firebreak`
-(unmerged to master); do NOT reopen it.** The detailed G1-PLAN content further down this file is from
-2026-06-22 and is **SUPERSEDED/historical** (G1 has since been built + activated on its branch).
-
-**G3 cycle artifacts (all on `feat/g3-verification-diversity`, committed):**
-- Brainstorm `b8bdf45` — `docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md` (+2 review passes)
-- Plan `4e7832c` — `docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md` (passed plan-quality-gate + ears-validator)
-- Plan deepened `be5c3c5` — 7-agent deepen-plan pass (cut the verdict field, closed fail-opens, corrected diversity narrative)
-
-**G3 design in one line:** an **Opus disconfirmer** runs **before** the (Sonnet) `self-audit-reviewer`;
-its findings become mandatory WARNs the audit disposes (`Source=disconfirmer.md#D<n>`); a new
-deterministic **fail-CLOSED Gate 8** (8a existence/identity/parseable + 8c per-finding bijection)
-enforces them. One pass, no loop, **no LLM verdict with binding force**, no LLM in the dispose path.
-Scope = self-audit surface only.
-
-**Key locked decisions:** scope=self-audit only; Opus disconfirmer (role+model diversity — but
-within-family is the WEAK lever, cross-family **Codex** is the pre-registered escalation); Option-A
-adjudication (mandatory WARNs + deterministic teeth); **`disconfirmer_verdict` field CUT** (was cosmetic
-+ contradicted no-LLM-in-dispose-path; intent preserved via existing Gates 2/5/7f). `self-audit-reviewer`
-stays `model: sonnet` (invariant). `verify_delegated_status.py` needs a new `--artifact-kind disconfirmer`
-(the one non-markdown change).
-
-**NEXT ACTION:** `/workflows:work` on the G3 plan. **Codex plan review = GO (2026-06-25, no blockers)** —
-contracts re-verified (TAIL_SYNC both paths, ACCEPTED/PROMOTED/DEFERRED enum, disconfirmer-as-freshness-
-artifact). Feed-forward risk to verify first during work: does the Opus disconfirmer produce *orthogonal,
-valid* findings, or restate the Sonnet audit? (efficacy probe: novel-valid + overcall on 3–5 historical
-reports — the one bounded residual Codex flagged).
-
-**Implementation note for Work:** before editing `self-audit-reviewer.md`, the disposition enum is
-already VERIFIED `ACCEPTED/PROMOTED/DEFERRED`. Edit `SKILL.md` (~1153, before `### Self-Audit`) and
-`tail-runner.md` (Step 7.5) **in the same pass** (TAIL_SYNC, the named top risk R1) — assert *ordering*,
-not just presence.
-
-## Prompt for Next Session (copy-paste)
-
-```
-Read HANDOFF.md. This is sandbox; G1 firebreak is DONE/live (don't reopen). G3's plan is GO — the
-external Codex plan review passed with NO blockers. Start /workflows:work on
-docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md.
-
-Build order (re-derive the commit checkpoints from the plan's File-by-file list): (1) new
-.claude/agents/self-audit-disconfirmer.md (model: opus, explicit args, bypassPermissions); (2) wire it
-BEFORE the self-audit in BOTH paths IN THE SAME PASS — solo .claude/skills/autopilot/SKILL.md (~1153,
-before "### Self-Audit") and swarm .claude/agents/tail-runner.md (Step 7.5) — TAIL_SYNC is the top risk
-R1, assert ORDERING not just presence; (3) Gate 8 (8a existence/identity/parseable + 8c per-finding
-bijection, fail-CLOSED, literal-token) in .claude/skills/verify-self-audit/SKILL.md + bump all 4
-gate-count sites; (4) self-audit-reviewer.md Step 2 D# ingestion (Source=disconfirmer.md#D<n>, severity
-verbatim) + Source Reconciliation row; (5) tools/verify_delegated_status.py new --artifact-kind
-disconfirmer, called at SKILL.md Step 18w.
-
-Invariants (do NOT break): self-audit-reviewer stays model: sonnet; no LLM in the dispose path; no
-re-run loop; no LLM verdict with binding force; disposition enum is ACCEPTED/PROMOTED/DEFERRED
-(verified). Verify-FIRST risk = the efficacy probe: does the Opus disconfirmer produce ORTHOGONAL, VALID
-findings or restate the Sonnet audit? Measure novel-valid + overcall on 3-5 historical self-audit
-reports, validity judged by human/cross-family (never the Opus family). If it fails after <=3 brief
-tweaks, escalate to cross-family Codex — NOT a bigger model, NOT a loop.
-```
-
----
-
-<details><summary><strong>SUPERSEDED — 2026-06-22 G1-PLAN handoff (historical; G1 since built/activated on its branch)</strong></summary>
-
-**Date:** 2026-06-22
-**Branch:** master (in sync with origin, working tree clean)
-**Phase:** **G1 risk-tiered firebreak — PLAN through 6 review passes (R1–R8, F1–F13); Codex NO-GO addressed; build-ready pending Step 0. Awaiting a confirming Codex GO/NO-GO.**
-Plan at commit **`4ed63fe`** (master, pushed), 1003 lines. Next: re-run the Codex GO/NO-GO (prompt below). If **GO** → `/workflows:work` on the plan (Step 0 spike FIRST). If **NO-GO** → triage the P0(s), fix, re-loop.
-**Do NOT skip Step 0** — it is the empirical gate for the whole identity model + worktree-firing + fast-path shape.
+**Date:** 2026-06-26
+**Branch:** `feat/g3-verification-diversity` (pushed to origin; UNMERGED; working tree clean after the compound commits)
+**Phase:** **G3 (monoculture in verification) — DONE through Compound. Next = merge decision (G3 → master) OR the next governance gap (G4/G5).**
 
 ## Current State
 
-Today's session (manual) produced three governance/knowledge artifacts and one
-completed brainstorm, all committed and pushed to master:
+G3 ("carry the disconfirmer antidote into autopilot BUILD-verification") is **complete through the full compound loop** and review-clean. An Opus `self-audit-disconfirmer` now runs once, BEFORE the Sonnet `self-audit-reviewer`, in both the solo and swarm tails; its grounded `D#` findings become mandatory WARNs the self-audit disposes, enforced by a new deterministic fail-closed **Gate 8**. The verify-first efficacy risk was cleared cross-family (Opus generates → Codex judges): **novel-valid 4/4, overcall 0/25**. Codex code review went NO-GO (3 findings) → fixed (`65954b4`) → re-review **GO**. **G1 remains DONE/live on `feat/g1-risk-tiered-firebreak` (unmerged); do NOT reopen it.**
 
-1. **Master extraction** of all unattended-swarm/autopilot/guardrails/evals work —
-   `docs/solutions/2026-06-21-unattended-swarm-autopilot-master-extraction.md`.
-2. **Governance analysis** scoring the autopilot system against Google DeepMind's
-   *Three Layers of Agent Security* (June 2026) — surfaced 5 gaps (G1–G5) —
-   `docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`
-   (+ source PDF in the same dir).
-3. **G1 brainstorm** (refined, 2 review passes, plan-ready) —
-   `docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md`.
+## Key Artifacts
 
-**G1 in one line:** a risk-tiered firebreak that enforces CLAUDE.md's existing
-"Forbidden Actions" contract (currently unenforced under
-`dangerouslySkipPermissions`) by classifying actions and **deferring** the
-binding/irreversible tail to the `todos/` approval queue, keeping the safe
-majority unattended.
+| Phase | Location |
+|-------|----------|
+| Brainstorm | docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md |
+| Plan (completed) | docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md |
+| Efficacy probe (PASS) | docs/spikes/2026-06-25-g3-disconfirmer-efficacy-probe.md |
+| Code-review handoffs (Codex) | docs/handoffs/2026-06-26-g3-disconfirmer-{code-review,rereview}-codex-handoff.md |
+| Solution | docs/solutions/2026-06-26-g3-self-audit-disconfirmer.md |
+| Governance scorecard (G3 row closed) | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
 
-## Decisions already locked in the G1 brainstorm
+Changed components: `.claude/agents/self-audit-disconfirmer.md` (new), `.claude/agents/self-audit-reviewer.md`, `.claude/agents/tail-runner.md`, `.claude/skills/autopilot/SKILL.md`, `.claude/skills/verify-self-audit/SKILL.md`, `tools/verify_delegated_status.py`.
 
-- **Escalation = defer-and-continue** via the existing `todos/` + `resolve-todos`
-  queue (human = async batch reviewer, not a 2am babysitter).
-- **Classifier = deterministic denylist (v1) → hybrid w/ AI advisory (Phase 2).**
-  Deterministic always dispositive; AI only ever flags blind spots.
-- **Merge-to-`main` = RED** (deferred for approval; v1 does NOT redesign assembly).
-- **RED tier** = git force/shared-push + merge-to-main + prod-DB destructive +
-  out-of-repo deletes + external sends + deploy + external-MCP-writes (default-deny)
-  + package removal. **GREEN** = everything local in the worktree **+ the sanctioned
-  learnings-propagation out-of-repo writes** (carve-out — must not be deferred).
+## Review Fixes Pending
 
-## PLAN phase output (2026-06-21, session 2 — DONE)
+None. All 3 Codex code-review findings fixed in `65954b4`; re-review GO, no new findings.
 
-1. **Spike GREEN (riskiest assumption verified first).** Empirically confirmed on
-   claude 2.1.173 that a **PreToolUse hook fires AND blocks above
-   `dangerouslySkipPermissions`** — for both the main session and a Task-spawned
-   subagent. Mechanism viable; no fallback (agent-brief/tool-wrapper) needed.
-   Residual = worktree-subagent firing + hook placement → gated as Step 0.
-   Proof: `docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md`.
-2. **Plan written, passed both gates** (plan-quality-gate = GO, ears-validator =
-   PASS), then **deepened by 5 adversarial reviewers** (security, architecture,
-   simplicity, data-integrity, performance) and **thinned to a safety-complete v1**.
-3. **Both brainstorm open questions resolved:** (Q1) human-only approval via a
-   glob-isolated `todos/approvals/` queue (NOT extending `resolve-todos`, which runs
-   unattended); (Q2) no new run status needed.
-4. **Deepening Review changed the design** (table R1–R8 at top of plan):
-   - **R1** hook placement flipped **project → GLOBAL** + positive-control probe.
-   - **R2** the graceful **deferred-merge wiring CUT from v1** — the swarm-runner
-     merge is LOCAL and autopilot never pushes, so "merge-to-main" wasn't actually
-     irreversible; the draft's pointer-commit reproduced FC51 base-drift and risked
-     a silent false-`PIPELINE_PASS`. v1 merge-RED fires only on a `master`/shared
-     target and just defers + one HANDOFF line.
-   - **R3/R4** threat model restated honestly (guards honest mistakes + bounds
-     outward blast radius, NOT adversarial-proof) + evasion hardening (git `-C`
-     normalization, indirection-defer, outward allowlist incl. `gh api`/`npm
-     publish`/`nc`/`ssh`, `mcp__*` read-only allowlist).
-   - **R5** queue hardened: gitignore `todos/approvals/`, collision-free atomic
-     uuid filenames (the `NNN` sequence races across 31 workers).
-   - **R6** token-grep fast-path (python cold-start tax ≈ 7–12 min/run).
-   - **R8** `/approve` skill deferred to v2; `resolve-todos` guard stays.
-5. **User decisions (2026-06-21):** fully cut the status-mapping sliver (no v1
-   status engineering for a deferred master-merge); next phase = Plan Review (Codex).
-6. **v1 scope = Step 0 → Phase 1 → Phase 2.** v2 (deferred, documented): graceful
-   merge disposition, `/approve` skill, AI advisory pass.
-7. **Second-review pass (4 user-requested fixes + self-run review → F1–F5,
-   commit `0f79883`/`356b542`):**
-   - **F1** protect the firebreak **control plane** (hook config/scripts, sentinel,
-     `todos/approvals/`) from the workers it governs; matcher extended to
-     `Write`/`Edit`; positive-control probe spawns a **real** `isolation:"worktree"`
-     + `bypassPermissions` agent.
-   - **F2** cover interpreter/direct-script indirection
-     (`python`/`python3`/`.venv/bin/*`, `node`, `ruby`, `./script`) vs a vetted
-     `test_allowlist`; **declared residual** stated honestly (pytest runs
-     worker-authored files = unbounded egress escape; v1 ≠ adversarial sandbox).
-   - **F3** learnings carve-out re-keyed to **realpath target + learnings-writer
-     identity** (orchestrator/tail-runner), not command shape.
-   - **F4** all v2 merge-defer content (`/approve`, pointer commits,
-     `PIPELINE_PASS_WITH_DEFERRED_RISK`) **isolated** out of the v1 body into a v2
-     appendix.
-   - **F5 (root fix from the self-run 2nd review):** key authority on a
-     **TRUSTED-IDENTITY allowlist** (orchestrator/swarm-runner/tail-runner), **not
-     `agent_id` presence** — the original rule would have **denied the mandatory
-     learnings write** and **deferred the swarm-runner's local merge to `master`**
-     on every run. Struck "merge" from the shared-push RED row (local merge =
-     GREEN; only push/force-push is RED). Gate forwards-on-suspicion; **Step 0 now
-     asserts `agent_id`/`agent_type` is present + unforgeable** (else fall back to
-     blanket control-plane deny).
-   - **Residual risks (now explicit/gated):** (a) the trusted-identity model rests
-     on Step 0 proving `agent_type` is unforgeable; (b) the allowlisted-interpreter
-     egress escape is a declared bound (real isolation needs OS/network egress
-     control — out of scope for v1).
-8. **Third/fourth/fifth review passes → F6–F13 (commits `8696bae` / `1458f5a` /
-   `388cfaf` / `4ed63fe`), each driven by a Codex or self-run adversarial pass:**
-   - **F6** every v1 guarantee (outward AND control-plane) holds for **DIRECT worker
-     tool calls only** — an allowlisted interpreter runs worker-authored code
-     in-process, invisible to the PreToolUse hook.
-   - **F7/F12** `test_allowlist` = hardcoded `KNOWN_TEST_FRAMEWORKS`
-     recognized-framework allowlist (plan-text-injection control, NOT a safety claim;
-     a bad plan can't promote `python3 deploy.py` to a "test").
-   - **F8** Step 0 validates hook metadata for **all four roles** (orchestrator /
-     swarm-runner / tail-runner / worker) as an **empirical harness-contract check,
-     NOT cryptographic unforgeability**.
-   - **F9** env-indirected control-plane write destinations defer (scoped — plain
-     worktree-relative writes incl. `> "$out"` stay GREEN).
-   - **F10** **autopilot DOES push to a shared remote** — the pre-spawn
-     spec-provenance gate (SKILL.md 9w.9.5) **conditionally** `git push`es a spec-only
-     commit to `origin/<default-branch>`. Scoped out by ordering: firebreak active =
-     **sentinel-present (sentinel-write → run-end)**; sentinel written AFTER the
-     provenance gate → push not classified. (Replaced the false "never pushes" claim.)
-   - **F11** the direct-call boundary has **named residuals**, not absolute protection.
-   - **F13 (latest, Codex P0):** classifier **fail-closes on opaque command-word/verb**
-     (`$(printf curl)`, `git $(printf push)`, `sudo $(printf curl)`, `c{u,}rl`) —
-     shell-tokenize → defer if argv[0]/dispatcher-verb still contains an expansion;
-     recurse exec-wrappers. **Honest downgrade:** set enumeration is leaky → F13
-     *reduces, does not close*.
-   - **THREE declared direct-call residuals (the current honest threat model):**
-     #1 allowlisted-interpreter escape, #2 inherited-`$VAR` redirect to a control-plane
-     path, #3 F13 unlisted-dispatcher/exec-wrapper leak. All stated consistently.
-   - **Review trail:** Codex returned **NO-GO** once (F10 window contradiction +
-     resolve-todos overclaim + shared-master wording — all fixed) and a **P0** on the
-     opaque-command-word escape (→ F13). Self-run security reviews caught the F5
-     identity inversion and the F13 "closes" overclaim. Handoff record:
-     `docs/handoffs/2026-06-21-g1-firebreak-plan-claude-code-handoff.md`.
+## Deferred Items
 
-## Key Artifacts (this session)
+- **[G3 PRIMARY RESIDUAL] Disposition monoculture** — the lone Sonnet confirmer still *disposes* the disconfirmer's findings; nothing verifies a disposition is *correct*. Diversifying disposition without a binding LLM verdict or a loop = a candidate future G-gate.
+- **[G3] Gate 8 not yet fired in a live tail** (harness-green ≠ live). A real autopilot run, or a positive-control probe (does a planted self-audit violation actually halt?), is the next validation.
+- **Merge decision: G3 → master** — pending explicit go-ahead (G3 sits done-on-branch like G1).
+- **[G1 backlog] FC51 orchestrator rule** — ensure the converged spec is at the worktree base before swarm spawn (cherry-pick the spec-update commit, OR inline-inject spec sections). The `check_spec_provenance.py` BASEREF-FRESH change is the *detection* half; the orchestrator *repair* rule remains.
+- **Track A `P-extract`** — refactor `swarm-runner.md` cherry-pick prose into a shared callable so Track A earns a real EXERCISED fixture row. Overlaps the FC51 item.
+- **Suite adoption decision** — wire `validate_hardening.py` in as a blocking gate (docs/proposals/validate-hardening-on-fixtures.md).
+- **Eval-harness ↔ catalog FC drift** — harness covers 47 FCs; catalog is at FC1–FC57. Add scenarios/judges for FC48–FC57.
+- **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in `callsheets.generate` (todos/070-pending-p2-...md).
+- **Governance G2 / G4 / G5** — in-flight AI monitor (G2), per-run-nonce ledger hardening (G4), delegation-as-authority-transfer (G5).
 
-| Item | Location |
-|------|----------|
-| **G1 PLAN (deepened, v1 thinned)** | **docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md** |
-| **G1 spike (riskiest assumption, GREEN)** | **docs/spikes/2026-06-21-g1-pretooluse-hook-under-bypass-spike.md** |
-| Codex Plan-Review prompt (GO/NO-GO) | "Codex Handoff Prompt" section in the plan above |
-| Codex NO-GO review record | docs/handoffs/2026-06-21-g1-firebreak-plan-claude-code-handoff.md |
-| G1 brainstorm (plan input) | docs/brainstorms/2026-06-21-g1-risk-tiered-firebreak-brainstorm.md |
-| Governance scorecard (G1–G5) | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
-| Framework source PDF | docs/governance/three-layers-of-agent-security-deepmind-2026-06.pdf |
-| Master extraction (system reference) | docs/solutions/2026-06-21-unattended-swarm-autopilot-master-extraction.md |
-| Existing approval-queue pattern | todos/ + .claude/skills/resolve-todos/ |
-| Permission bypass switch | .claude/settings.local.json (`dangerouslySkipPermissions`) |
-| Forbidden Actions contract | CLAUDE.md ("Forbidden Actions", "Bash Command Rules") |
+## Three Questions
 
-## Deferred Backlog (priority order)
-
-0. **[ACTIVE → CONFIRMING CODEX GO/NO-GO] G1 risk-tiered firebreak** — plan through
-   6 review passes (R1–R8, F1–F13), Codex NO-GO + P0 both addressed, build-ready
-   pending Step 0. Next: re-run Codex GO/NO-GO; on GO → `/workflows:work` on v1
-   (Step 0 → Phase 1 → Phase 2). Commit `4ed63fe`.
-1. **FC51 orchestrator rule** — ensure the converged spec is at the worktree base
-   before swarm spawn (cherry-pick the spec-update commit into worktree bases, OR
-   inline-inject spec sections into briefs). Live fragility that bit Run 070.
-   (Partly addressed by the 2026-06-21 `check_spec_provenance.py` BASEREF-FRESH
-   change — that's the *detection* half; the orchestrator *repair* rule remains.)
-2. **Track A `P-extract`** — refactor `swarm-runner.md` cherry-pick prose into a
-   shared callable so Track A (FC51) earns a real EXERCISED fixture row. Overlaps #1.
-3. **Suite adoption decision** — wire `validate_hardening.py` in as a blocking gate.
-   Proposal: docs/proposals/validate-hardening-on-fixtures.md.
-4. **Eval-harness ↔ catalog FC drift** — harness covers 47 FCs; catalog is at
-   FC1–FC57. Add scenarios/judges for FC48–FC57. (Surfaced 2026-06-21.)
-5. **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in
-   `callsheets.generate`. File: todos/070-pending-p2-callsheets-generate-redundant-double-query.md
-6. **G2–G5** (from the governance scorecard) — in-flight AI monitor (G2),
-   monoculture mitigation in verification roles (G3), per-run-nonce ledger
-   hardening (G4), delegation-as-authority-transfer (G5).
-
-## Stashes (untouched, local)
-
-3 stashes on `master`: `stash@{0}`/`{1}` are superseded cpaa WIP (safe to drop);
-`stash@{2}` is unmerged venue-scraper proxy/`html_mode` work for
-`feat/lead-scraper-expansion` (keeper — fix `claude-sonnet-4-20250514` →
-`claude-sonnet-4-6` on revival).
-
-## Recovery SHAs (older, if ever needed)
-
-| Ref (deleted) | Tip SHA | Where it lives now |
-|---------------|---------|--------------------|
-| `feat/film-production-pm` | `9b432bf` | 2nd-parent lineage of `49deb17` on master |
-| `test/fc52-9w95-rewire-real-swarm` | `998854e` | reflog / GC window (~30d) |
+1. **Hardest decision?** Whether the disconfirmer's meta-objection needed its own binding `disconfirmer_verdict` field. Cut it — cosmetic AND it violated no-LLM-in-dispose-path; intent preserved via the deterministic Gates 2/5/7f.
+2. **What was rejected?** A re-run/convergence loop (re-entry into the G1 trap); a binding/unilateral-BLOCK disconfirmer; bumping the reviewer to Opus (scope creep); a weaker Sonnet/Haiku disconfirmer.
+3. **Least confident about?** The PRIMARY RESIDUAL — disposition monoculture (detection is diversified, disposition is not) — and that Gate 8 has not yet fired in a real live tail.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md, then read docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md
-START with the "Deepening Review — Changelog" (R1–R8, F1–F13) and the "Threat Model"
-— the plan has been through 6 review passes. v1 = Step 0 → Phase 1 → Phase 2; all
-/approve / pointer-commit / PIPELINE_PASS_WITH_DEFERRED_RISK content is v2 (appendix).
+Read HANDOFF.md. This is sandbox. G3 (self-audit disconfirmer for verification diversity)
+is COMPOUND COMPLETE and review-clean on feat/g3-verification-diversity (pushed, unmerged);
+do NOT reopen it. G1 is also DONE/live on its own branch — do NOT reopen.
 
-This is Sandbox (commit 4ed63fe). G1 plan is build-ready PENDING Step 0. A prior
-Codex pass returned NO-GO (F10 window contradiction, resolve-todos overclaim,
-shared-master wording) and a separate P0 (opaque command-word escape) — ALL fixed
-(F10, F13, honest 3-residual threat model). The current state is: awaiting a
-CONFIRMING Codex GO/NO-GO.
+Pick ONE:
+(a) Merge G3 → master (needs explicit go-ahead; G3 is done-on-branch like G1), OR
+(b) Start the next governance gap — G2 (in-flight AI monitor), G4 (per-run-nonce ledger),
+    or G5 (delegation-as-authority-transfer) — via /workflows:brainstorm, seeding from
+    docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md, OR
+(c) The G3 PRIMARY RESIDUAL: diversify self-audit DISPOSITION (not just detection) without
+    a binding LLM verdict or a loop.
 
-DO THIS:
-1. If a fresh Codex GO/NO-GO verdict exists: triage it (P0/P1/P2), apply fixes,
-   re-run my own adversarial second pass (per ~/.claude/docs/mandatory-review-workflow.md),
-   commit+push, loop until GO.
-2. If not yet re-reviewed: the GO/NO-GO Codex prompt is in the plan's "Codex Handoff
-   Prompt" section — run it, bring the verdict back.
-3. On GO: /workflows:work on the plan's v1. STEP 0 FIRST (gating spike):
-   - global hook placement governs a REAL isolation:worktree + bypassPermissions agent;
-   - the F8 all-four-roles agent_type identity check holds (harness-contract);
-   - the token-grep fast-path + F13 brace/backslash forwarding survive the bypass heuristics.
-   Do NOT build v2-deferred items (graceful merge disposition, /approve skill, AI advisory).
-
-KEY HONESTY INVARIANTS to preserve (Codex will re-check): every guarantee is bounded
-to DIRECT worker tool calls with THREE declared residuals (#1 interpreter escape,
-#2 inherited-$VAR redirect, #3 F13 unlisted-dispatcher/wrapper leak); autopilot's only
-push is the pre-spawn provenance push (conditional, pre-sentinel, scoped out by ordering).
+Key G3 invariants if anything touches it: self-audit-reviewer stays model: sonnet; Gate 8
+fail-closed + literal-token; no loop; no binding LLM verdict; enum ACCEPTED/PROMOTED/DEFERRED.
+Solution doc: docs/solutions/2026-06-26-g3-self-audit-disconfirmer.md.
 ```
-
-</details>
