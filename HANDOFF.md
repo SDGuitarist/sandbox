@@ -1,154 +1,97 @@
-# HANDOFF — Sandbox · Next step: G3 (monoculture in verification)
+# HANDOFF — Sandbox · G3 Disconfirmer COMPOUND COMPLETE
 
-**Date:** 2026-06-25
-**Branch:** `feat/g1-risk-tiered-firebreak` (G1 work; start G3 on a fresh branch)
-**Phase:** G1 Compound COMPLETE. Next compound cycle = **G3, starting at Brainstorm.**
+**Date:** 2026-06-26
+**Branch:** `feat/g3-verification-diversity` (pushed to origin; UNMERGED; working tree clean after the compound commits)
+**Phase:** **G3 DONE through Compound. RECOMMENDED NEXT = consolidate + live-validate G1 & G3 (merge both to master, then one live autopilot run) BEFORE starting any new gate.**
 
----
+## Recommended Next Move (start here)
 
-## TL;DR — where we are
+**Don't start a third gate yet — consolidate and live-validate what's built.** There are now
+**two** completed governance hardening features — **G1 firebreak** (`feat/g1-risk-tiered-firebreak`)
+and **G3 disconfirmer** (`feat/g3-verification-diversity`) — both review-clean but **unmerged on
+separate branches and never fired in a real autopilot run.** Both backlogs carry the *same* residual:
+**"harness-green ≠ live."** Starting G2/G4/G5 (or the G3 disposition residual) stacks a third
+unvalidated gate on that pile. Retire the shared residual once, for both:
 
-We analyzed Google DeepMind's *"Three Layers of Agent Security"* and scored the autopilot
-swarm against it (`docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`),
-producing five hardening gaps **G1–G5**. **G1 (risk-tiered firebreak) is DONE and LIVE**
-— built, hardened, global hook registered, orchestrator-wired, captured across all
-learning surfaces. Its only open item is first-real-swarm validation, which its built-in
-probe performs automatically. **The recommended next step is G3.**
+1. **Merge `feat/g1-risk-tiered-firebreak` → master, then `feat/g3-verification-diversity` → master.**
+   Both are review-clean (G1: ~17 passes + activation; G3: plan-review + efficacy probe + code-review
+   GO). **GATE: needs explicit human go-ahead** (merge-to-master). Show each merge's diff stat first;
+   do NOT push master without confirmation. Manual merge is fine (G1's "merge-to-main = RED" applies to
+   autopilot, not a human session).
+2. **Run ONE live autopilot build** that exercises the firebreak (G1) AND Gate 8 (G3) in a real tail —
+   the positive-control / first-live-run validation both backlogs demand. **GATE: blocked on the
+   `dangerouslySkipPermissions` env** (same blocker as Film-Production-PM). If the env isn't ready, do
+   step 1 now to consolidate the base and tee up step 2 for when it is.
+3. **Then** pick G2 (in-flight AI monitor) / G4 (per-run-nonce ledger) / G5 (delegation-as-authority)
+   from a clean, validated, merged base — via `/workflows:brainstorm`, seeding from the governance
+   scorecard.
 
-⚠️ **Two live facts a new session must know up front:**
-1. **The firebreak is active machine-wide.** A global PreToolUse hook is registered in
-   `~/.claude/settings.json` (backup `…bak-firebreak-20260625`). It is a **no-op unless a
-   run sentinel exists**, so manual sessions are unaffected — but any **autopilot swarm
-   run now activates it** (writes `.claude/firebreak-active.json`, runs a positive-control
-   probe that ABORTS the run fail-open if the hook isn't governing). To clear a stale
-   sentinel from a crashed run: `python3 .claude/hooks/firebreak-activate.py deactivate`.
-2. **G3 touches the autopilot verification path, which now overlaps G1.** Changing review
-   roles means re-reading how the firebreak + review agents interact.
+**Why this over the alternatives:** starting a new gate or the G3 disposition residual adds MORE
+unvalidated gate logic on top of two features that are "done but unproven, unmerged." Validate + merge
+first; extend from a proven base.
 
----
+## Current State
 
-## THE NEXT STEP — G3: Name & mitigate monoculture
+G3 ("carry the disconfirmer antidote into autopilot BUILD-verification") is **complete through the full compound loop** and review-clean. An Opus `self-audit-disconfirmer` now runs once, BEFORE the Sonnet `self-audit-reviewer`, in both the solo and swarm tails; its grounded `D#` findings become mandatory WARNs the self-audit disposes, enforced by a new deterministic fail-closed **Gate 8**. The verify-first efficacy risk was cleared cross-family (Opus generates → Codex judges): **novel-valid 4/4, overcall 0/25**. Codex code review went NO-GO (3 findings) → fixed (`65954b4`) → re-review **GO**. **G1 remains DONE/live on `feat/g1-risk-tiered-firebreak` (unmerged); do NOT reopen it.**
 
-### What G3 is (from the governance scorecard)
-> Inject **model/prompt diversity into critical *verification* roles** (not just research
-> fan-outs); apply the playbook's adversarial-verify + "opus disconfirmer > sonnet
-> extractors" lessons. — Layer II (multi-agent), monoculture / correlated errors.
+## Key Artifacts
 
-The scorecard marks this **❌ "a risk we embody"**: *"All workers = Opus, near-identical
-briefs; the FC catalog* is *a correlated-error log."* When every agent is the same model
-running near-identical briefs, they make the **same mistakes**, so review can't catch what
-all reviewers are blind to.
-
-### Why now — we have FIELD PROOF
-The G1 review loop was a live instance of exactly this failure: **Codex and Claude were
-functionally correlated reviewers**, both running "find any allowed input," neither holding
-the orthogonal "is this surface even in scope / is this convergent?" perspective — so the
-loop ran ~17 passes and could not self-terminate. We diagnosed it in
-`docs/solutions/2026-06-24-enumerated-denylist-vs-structural-backstop.md` (Update 2026-06-25).
-G3 is the systemic fix for that class.
-
-### The asymmetry to close
-The **antidote is already proven — but only in RESEARCH/outreach fan-outs, not in BUILD
-verification.** See `~/.claude/docs/search-agent-playbook.md`:
-- A dedicated **Disconfirmer / adversary** role (≥1 agent told to *disprove/attack*, not
-  confirm) catches what confirmers structurally miss (playbook SL5/SL8; line 54).
-- **"opus disconfirmer > sonnet extractors"** for the adjudication role; **Haiku is
-  unreliable for adjudication** (line 146 + the Haiku caveat).
-These lessons live in the search/research playbook. **G3's job is to carry them into the
-autopilot's build-verification roles** (the review agents, the self-audit, the spec gates).
-
-### Concrete surfaces a fresh session should examine (don't pre-decide — brainstorm first)
-- **Local review agents:** `.claude/agents/flow-trace-reviewer.md`, `self-audit-reviewer.md`.
-- **Plugin review agents** used by `/workflows:review` (security-sentinel, performance-oracle,
-  learnings-researcher, etc.) — from the compound-engineering plugin, not local.
-- **Where the review mix + models are chosen:** `.claude/skills/autopilot/SKILL.md`
-  (Steps 11w–16w assembly/verification via swarm-runner; Step 17w/18w tail via tail-runner;
-  the self-audit gate). Workers spawn `model: "opus"` (SKILL Step 10w) — the monoculture
-  source.
-- **The self-audit** (`self-audit-reviewer` → `/verify-self-audit`) is the single highest-
-  leverage place to seat a disconfirmer, since it's the terminal verdict.
-
-### Hard constraints to weigh in the brainstorm
-- **Billing (CRITICAL):** model diversity must stay Max-covered. Standard Sonnet 4.6 and
-  Opus 4.8 are covered; **Sonnet 4.6 (1M context) DRAWS FROM USAGE CREDITS — avoid it.**
-  Haiku is cheap but **unreliable for adjudication** (playbook). So "diversity" ≠ "any
-  model"; it's prompt/role diversity + a careful model choice for the disconfirmer.
-- **Apply the stopping discipline we just learned** (don't let G3 spiral): it's a bounded
-  design + wiring task. Pre-register what "done" means; a fix that "adds another reviewer"
-  without changing the *perspective distribution* is the tell to stop and rethink.
-- **Determinism boundary:** the firebreak proved "no LLM in the dispose path." G3 adds LLM
-  diversity to *advisory* verification, not to deterministic gates — keep that line.
-
-### Process (six-phase compound loop)
-Start at **Brainstorm** (`/workflows:brainstorm`) — G3 is a design question (which roles,
-which models, confirmer-vs-disconfirmer split, how to adjudicate conflicts) before it's
-code. Carry the Feed-Forward risk forward. This is a clean new cycle on a fresh branch.
-
----
-
-## Key Artifacts & Pointers
-
-| Topic | Location |
+| Phase | Location |
 |-------|----------|
-| Governance map (G1–G5, scored) | `docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md` |
-| G1 plan | `docs/plans/2026-06-21-feat-g1-risk-tiered-firebreak-plan.md` |
-| G1 activation arc (solution) | `docs/solutions/2026-06-25-g1-firebreak-activation-arc.md` |
-| Convergence-loop lesson (solution) | `docs/solutions/2026-06-24-enumerated-denylist-vs-structural-backstop.md` |
-| Disconfirmer / adversarial-verify lessons | `~/.claude/docs/search-agent-playbook.md` (lines ~54, 146) |
-| G1 code | `.claude/hooks/firebreak-{gate.sh,classify.py,activate.py}`; SKILL 9w.9.6/17w/18w |
-| Sandbox auto-memory (cycle note) | `~/.claude/projects/-Users-alejandroguillen-Projects-sandbox/memory/g1-firebreak-2026-06-25.md` |
+| Brainstorm | docs/brainstorms/2026-06-25-g3-verification-diversity-brainstorm.md |
+| Plan (completed) | docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md |
+| Efficacy probe (PASS) | docs/spikes/2026-06-25-g3-disconfirmer-efficacy-probe.md |
+| Code-review handoffs (Codex) | docs/handoffs/2026-06-26-g3-disconfirmer-{code-review,rereview}-codex-handoff.md |
+| Solution | docs/solutions/2026-06-26-g3-self-audit-disconfirmer.md |
+| Governance scorecard (G3 row closed) | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
 
-## Deferred Backlog (priority order)
+Changed components: `.claude/agents/self-audit-disconfirmer.md` (new), `.claude/agents/self-audit-reviewer.md`, `.claude/agents/tail-runner.md`, `.claude/skills/autopilot/SKILL.md`, `.claude/skills/verify-self-audit/SKILL.md`, `tools/verify_delegated_status.py`.
 
-0. **G1 live validation** — first real swarm run self-validates (probe aborts fail-open).
-   Needs the `dangerouslySkipPermissions` env.
-1. **G3 — monoculture in verification (NEXT)** — see the full brief above.
-2. **G4 — ledger nonce** — per-run nonce / signed STATUS (also key **FC52-BASEREF-FRESH-071**).
-3. **G5 — delegation as authority transfer** — handoff records carry authority/accountability.
-4. **G2 — in-flight AI monitor** — net-new; brainstorm first (cost vs coverage).
-5. **G1 follow-ons (small):** wire the SOLO autopilot path; close stale-sentinel-on-crash;
-   outward `--cache-to type=registry` (cache push) declared residual.
-6. **Carried (pre-G1):** FC51 spec-at-worktree-base repair rule; Track A `P-extract`;
-   `validate_hardening.py` adoption gate; eval-harness↔catalog FC drift (FC48–FC57);
-   Todo #070 (P2 double-query in `callsheets.generate`).
+## Review Fixes Pending
 
-## Stashes (untouched, local)
-3 stashes on `master`: `stash@{0}`/`{1}` superseded cpaa WIP (safe to drop);
-`stash@{2}` = unmerged venue-scraper proxy/`html_mode` for `feat/lead-scraper-expansion`
-(keeper — fix `claude-sonnet-4-20250514` → `claude-sonnet-4-6` on revival).
+None. All 3 Codex code-review findings fixed in `65954b4`; re-review GO, no new findings.
 
-## Recovery SHAs (older)
-| Ref (deleted) | Tip SHA | Where it lives now |
-|---------------|---------|--------------------|
-| `feat/film-production-pm` | `9b432bf` | 2nd-parent lineage of `49deb17` on master |
-| `test/fc52-9w95-rewire-real-swarm` | `998854e` | reflog / GC window (~30d) |
+## Deferred Items
 
-## Three Questions (G1 Feed-Forward, carried)
-1. **Hardest decision?** Whether "flip it on" meant the hook (inert for swarms) or the
-   orchestrator wiring (the real thing). Both, in order.
-2. **What was rejected?** Manufacturing a throwaway swarm to validate G1 — the probe
-   self-validates on first real use.
-3. **Least confident?** The first real swarm run (env permitting); failure mode is a
-   halted run, not an ungoverned one.
+- **[G3 PRIMARY RESIDUAL] Disposition monoculture** — the lone Sonnet confirmer still *disposes* the disconfirmer's findings; nothing verifies a disposition is *correct*. Diversifying disposition without a binding LLM verdict or a loop = a candidate future G-gate.
+- **[G3] Gate 8 not yet fired in a live tail** (harness-green ≠ live). A real autopilot run, or a positive-control probe (does a planted self-audit violation actually halt?), is the next validation.
+- **Merge decision: G3 → master** — pending explicit go-ahead (G3 sits done-on-branch like G1).
+- **[G1 backlog] FC51 orchestrator rule** — ensure the converged spec is at the worktree base before swarm spawn (cherry-pick the spec-update commit, OR inline-inject spec sections). The `check_spec_provenance.py` BASEREF-FRESH change is the *detection* half; the orchestrator *repair* rule remains.
+- **Track A `P-extract`** — refactor `swarm-runner.md` cherry-pick prose into a shared callable so Track A earns a real EXERCISED fixture row. Overlaps the FC51 item.
+- **Suite adoption decision** — wire `validate_hardening.py` in as a blocking gate (docs/proposals/validate-hardening-on-fixtures.md).
+- **Eval-harness ↔ catalog FC drift** — harness covers 47 FCs; catalog is at FC1–FC57. Add scenarios/judges for FC48–FC57.
+- **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in `callsheets.generate` (todos/070-pending-p2-...md).
+- **Governance G2 / G4 / G5** — in-flight AI monitor (G2), per-run-nonce ledger hardening (G4), delegation-as-authority-transfer (G5).
 
----
+## Three Questions
 
-## Prompt for Next Session (copy-paste)
+1. **Hardest decision?** Whether the disconfirmer's meta-objection needed its own binding `disconfirmer_verdict` field. Cut it — cosmetic AND it violated no-LLM-in-dispose-path; intent preserved via the deterministic Gates 2/5/7f.
+2. **What was rejected?** A re-run/convergence loop (re-entry into the G1 trap); a binding/unilateral-BLOCK disconfirmer; bumping the reviewer to Opus (scope creep); a weaker Sonnet/Haiku disconfirmer.
+3. **Least confident about?** The PRIMARY RESIDUAL — disposition monoculture (detection is diversified, disposition is not) — and that Gate 8 has not yet fired in a real live tail.
+
+## Prompt for Next Session
 
 ```
-Read HANDOFF.md. This is sandbox; G1 firebreak is DONE/live (don't reopen it). Start the
-G3 compound cycle: "Name & mitigate monoculture — inject model/prompt diversity into
-build-VERIFICATION roles, not just research fan-outs." Begin with /workflows:brainstorm.
+Read HANDOFF.md, "Recommended Next Move" first. This is sandbox. Both G1 (risk-tiered
+firebreak, feat/g1-risk-tiered-firebreak) and G3 (self-audit disconfirmer,
+feat/g3-verification-diversity) are DONE, review-clean, and COMPOUND COMPLETE but UNMERGED
+and never run live. Do NOT reopen either's design.
 
-Ground it in: (a) the governance map G3 row (docs/governance/2026-06-21-...), (b) the
-field proof that correlated reviewers share blind spots (docs/solutions/2026-06-24-...
-Update 2026-06-25), and (c) the proven antidote in ~/.claude/docs/search-agent-playbook.md
-(disconfirmer role; "opus disconfirmer > sonnet extractors"; Haiku unreliable for
-adjudication). The antidote is proven in RESEARCH fan-outs — G3 carries it into autopilot
-build-verification (review agents, self-audit, spec gates; models pinned in
-.claude/skills/autopilot/SKILL.md).
+RECOMMENDED PATH — consolidate + live-validate before any new gate:
+1. Merge G1 -> master, then G3 -> master. Show me each merge's diff stat FIRST; do NOT push
+   master without my explicit confirmation (merge-to-master needs go-ahead). Manual merge is
+   fine — G1's "merge-to-main = RED" applies to autopilot, not a human session.
+2. Run ONE live autopilot build that exercises the firebreak (G1) AND Gate 8 (G3) in a real
+   tail = the first-live-run / positive-control validation both backlogs demand. BLOCKED on
+   the dangerouslySkipPermissions env; if not ready, do step 1 now and tee up step 2.
+3. THEN start G2/G4/G5 from a clean, validated, merged base via /workflows:brainstorm,
+   seeding from docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md.
 
-Constraints: keep diversity Max-covered (avoid Sonnet 1M-context = usage credits); no LLM
-in deterministic gates (advisory only); and apply the stopping discipline from the G1
-retro — G3 is a bounded design+wiring task, pre-register what "done" means.
+If I instead want to extend now: the G3 PRIMARY RESIDUAL is diversifying self-audit
+DISPOSITION (not just detection) without a binding LLM verdict or a loop — but prefer
+validate+merge first (this is more unvalidated gate logic otherwise).
+
+G3 invariants if anything touches it: self-audit-reviewer stays model: sonnet; Gate 8
+fail-closed + literal-token; no loop; no binding LLM verdict; enum ACCEPTED/PROMOTED/DEFERRED.
+Solution doc: docs/solutions/2026-06-26-g3-self-audit-disconfirmer.md.
 ```

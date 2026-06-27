@@ -55,6 +55,31 @@ Current-run WARN sources (scan ALL of these):
 - Spec consistency ambiguous matches flagged as warnings
 - Missing artifacts noted in Step 1
 
+**Disconfirmer findings (MANDATORY ingestion -- the Gate 8 contract):**
+`docs/reports/<run-id>/disconfirmer.md` is a REQUIRED current-run WARN source. It
+does NOT use the literal `WARN` token -- it uses local `D#` finding rows
+(`| D1 | ... |`, `| D2 | ... |`). Scan its findings table and create **one WARN
+row per `D#` row**, with:
+- **Source cell = exactly `disconfirmer.md#D<n>` and nothing else** (e.g. the whole
+  cell is `disconfirmer.md#D1`). Gate 8c requires **whole-cell equality**, not a
+  substring — so do NOT append other text to the Source cell, and do NOT list two
+  `D#` tokens in one Source cell. **One WARN row per `D#`, never merged:** a
+  count-only summary, a merged row citing two findings, or a Source cell with extra
+  text will FAIL the gate. (Whole-cell equality is also what keeps `D1` from
+  colliding with `D10`.)
+- The finding's **Severity inherited verbatim** (`LOW` / `MEDIUM` / `HIGH`) into
+  your disposition reasoning and, if you DEFER it, into the Unresolved Risk
+  entry's "Severity for next session" line. (So a HIGH disconfirmer finding
+  DEFERRED under an A grade trips the existing Gate 7f automatically.)
+- Assign it a normal `<run-id>-W<N>` key like any other WARN. The disconfirmer
+  assigns only the local `D#`; you own the global WARN key.
+- **If you dispose a disconfirmer WARN as `ACCEPTED`** (real but tolerated), its
+  Rationale MUST contain the literal `#D<n>` token (Gate 8c presence check).
+
+If `disconfirmer.md` contains the canonical `No disconfirmer findings.` sentinel
+(zero `D#` rows), add no WARN rows from it -- but still list it in Source
+Reconciliation with a count of 0.
+
 NOT a WARN source:
 - Pre-existing HANDOFF.md "Deferred Items (from prior work)" section
 - Prior run reports in other `docs/reports/` directories
@@ -121,6 +146,7 @@ tokens found in each. This proves the agent actually looked at every source.
 |-------------|-------------------|----------------------|
 | docs/reports/<run-id>/spec-consistency-check.md | 2 | 2 (043-W1, 043-W2) |
 | docs/reports/<run-id>/smoke-test.md | 0 | 0 |
+| docs/reports/<run-id>/disconfirmer.md | 2 (D# rows) | 2 (043-W4, 043-W5; Source disconfirmer.md#D1, #D2) |
 | BUILD_TRACKING.md (FAILURES section) | 1 | 1 (043-W3) |
 
 Rules:
@@ -131,7 +157,11 @@ Rules:
 - HANDOFF.md MUST appear (scan its "Review Fixes Pending" section for
   current-run P2/P3 items).
 - "WARN Tokens Found" = count of lines containing WARN, WARNING, or STATUS:
-  FAIL/PARTIAL in that file.
+  FAIL/PARTIAL in that file. **Exception for `disconfirmer.md`:** it carries no
+  WARN/STATUS tokens, so its "WARN Tokens Found" = the number of `D#` finding
+  rows (0 if it holds the `No disconfirmer findings.` sentinel). `disconfirmer.md`
+  lives in `docs/reports/<run-id>/`, so Gate 4 requires it as a reconciliation row
+  regardless.
 - "WARNs Added to Table" = which keys from the WARN Disposition Table came
   from this file. If a token was found but not added, explain why (e.g.,
   "duplicate of 043-W1" or "informational, not actionable").

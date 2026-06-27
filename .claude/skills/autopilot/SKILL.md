@@ -1019,7 +1019,24 @@ The verdict is the **on-disk `self-audit.md`**, not the tail-runner's echoed wir
 STATUS. The tail-runner finishes its work and writes `self-audit.md` (via
 `/verify-self-audit`) but can be cut off before echoing its Output Contract; a
 "no STATUS line → FAIL" reading would fail a genuinely complete run. So disk-verify
-the artifact. Run as a single Bash call:
+the artifacts.
+
+**First, disk-verify the disconfirmer artifact** (it ran at tail-runner Step 7.5,
+before the self-audit, and is mandatory + fail-closed). Run as a single Bash call:
+
+```
+python3 tools/verify_delegated_status.py \
+  --artifact docs/reports/<run-id>/disconfirmer.md --artifact-kind disconfirmer \
+  --run-start-ts <run_start_ts> --run-id <run-id>
+```
+
+- **Exit 0:** the disconfirmer ran and is fresh → proceed to the self-audit verify below.
+- **Any non-zero exit:** the run fails (missing/stale/run-id-mismatch disconfirmer).
+  Output the printed reason and stop. The `disconfirmer` kind checks existence +
+  freshness + run-id only — it is advisory and carries no status line; its findings
+  are enforced by Gate 8 inside `/verify-self-audit` (already run in the tail).
+
+**Then, disk-verify the self-audit artifact.** Run as a single Bash call:
 
 ```
 python3 tools/verify_delegated_status.py \
@@ -1038,7 +1055,8 @@ Then:
   exit code; do NOT second-guess it from the wire STATUS, and do NOT fail merely because
   the wire STATUS line was absent.
 
-The script confirms only existence + freshness + run-id + non-FAIL terminal status.
+The script confirms only existence + freshness + run-id + non-FAIL terminal status
+(the `disconfirmer` kind skips the status check — advisory, no status line).
 Deferred-risk adjudication stays owned by `/verify-self-audit` (already run inside the
 tail-runner); `PIPELINE_PASS_WITH_DEFERRED_RISK` is a pass and the script treats it as
 such — do not re-adjudicate WARN dispositions here.
@@ -1051,9 +1069,12 @@ such — do not re-adjudicate WARN dispositions here.
 Step 17w (Delegate Shared Tail) which spawns the tail-runner agent.
 The steps below only run inline for solo builds.
 
-<!-- TAIL_SYNC_POINT: The Shared Tail STEPS below (review/compound/learnings) are
-duplicated in .claude/agents/tail-runner.md (swarm path). Changes to those steps MUST
-be mirrored there, and vice versa.
+<!-- TAIL_SYNC_POINT: The Shared Tail STEPS below (review/compound/learnings/
+disconfirmer/self-audit) are duplicated in .claude/agents/tail-runner.md (swarm path).
+Changes to those steps MUST be mirrored there, and vice versa. In particular, the
+Disconfirmer MUST run BEFORE the Self-Audit in BOTH paths (solo: Disconfirmer section
+before Self-Audit section; swarm: tail-runner Step 7.5 before Step 8) -- this ordering
+is load-bearing (the self-audit disposes the disconfirmer's findings).
 NOTE (Plan A, 2026-06-06): terminal-gate VERIFICATION authority now differs by path and
 is intentionally NOT symmetric. The SWARM tail is verified by disk-verifying self-audit.md
 (Step 18w, via tools/verify_delegated_status.py). The SOLO tail below runs inline and
@@ -1185,7 +1206,7 @@ completed_artifacts:
 pending_mandatory_artifacts:
   - Verify BUILD_TRACKING.md completeness
   - Self-audit report (docs/reports/<run-id>/self-audit.md)
-  - Verify self-audit (9 gates)
+  - Verify self-audit (8 gates, incl. Gate 8 disconfirmer enforcement)
 
 review_findings:
   p1_fixed: <count>
@@ -1213,6 +1234,27 @@ Read BUILD_TRACKING.md and verify these sections are non-empty:
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
 
+### Disconfirmer (MANDATORY -- DO NOT SKIP -- runs BEFORE the Self-Audit)
+
+**WARNING: This is the orthogonal lens that breaks the verification monoculture.
+It MUST run BEFORE the Self-Audit below so the self-audit can dispose its findings.
+Order matters -- do not reorder this after the Self-Audit (TAIL_SYNC_POINT).**
+
+Use the **self-audit-disconfirmer** agent (subagent_type:
+"self-audit-disconfirmer"). Pass these five arguments (explicit -- no discovery
+heuristics):
+1. The run-id (from Step 5.5)
+2. The reports directory path (`docs/reports/<run-id>/`)
+3. The plan document path
+4. `BUILD_TRACKING.md`
+5. `HANDOFF.md`
+
+Spawn with `mode: "bypassPermissions"`. The agent writes
+`docs/reports/<run-id>/disconfirmer.md` (local `D#` findings, or the canonical
+`No disconfirmer findings.` sentinel). It is advisory -- it has no STATUS line and
+no binding verdict; its findings are enforced downstream by Gate 8 in
+`/verify-self-audit`. Wait for it to complete, then proceed to the Self-Audit.
+
 ### Self-Audit (MANDATORY -- DO NOT SKIP)
 
 **WARNING: This is the final honesty gate. It catches documentation gaps,
@@ -1237,11 +1279,14 @@ check STATUS.
 
 Run `/verify-self-audit <run-id> docs/reports/<run-id>/`
 
-This helper skill runs 9 hard gates on the self-audit report: report exists,
+This helper skill runs 8 hard gates on the self-audit report: report exists,
 WARN keys valid and dispositions correct, deferred items tracked by key in
 HANDOFF.md, source reconciliation complete, honest success claim,
 section completeness (What Was Missed, skeptical questions, promotions),
-and run quality grading (6 scored dimensions with artifact-backed evidence).
+run quality grading (6 scored dimensions with artifact-backed evidence),
+and Gate 8 disconfirmer enforcement (fail-CLOSED existence/identity/parseability
+of disconfirmer.md + exact per-finding bijection into the WARN table). The
+disconfirmer runs BEFORE this self-audit step in both the solo and swarm tails.
 
 Check its output. If STATUS: FAIL, the run fails. Do NOT proceed to Done.
 
