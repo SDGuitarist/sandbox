@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-26
 **Branch:** `master` (G1 firebreak **and** G3 disconfirmer merged + **pushed to origin**, `c81486c`). Working tree clean.
-**Phase:** **Step 1 (consolidate) DONE. NEXT = Step 2: one live autopilot run to validate the firebreak (G1) + Gate 8 (G3) — BLOCKED on the `dangerouslySkipPermissions` launch env. Do NOT start a new gate (G2/G4/G5) until that live run happens.**
+**Phase:** **Step 1 (consolidate) DONE. Step 2 pre-flight GREEN + Gate-8 logic PROBE-VALIDATED (2026-06-28, blind-graded both directions). REMAINING for Step 2 = the live autopilot tail that fires the firebreak (G1) AND Gate 8 (G3) in a real run — still BLOCKED on the `dangerouslySkipPermissions` launch env. Do NOT start a new gate (G2/G4/G5) until that live run happens.**
 
 ## Recommended Next Move (start here)
 
@@ -22,6 +22,17 @@ stands between here and a clean base for G2/G4/G5:
    *unattended autopilot launch* — it cannot be fired from inside a normal interactive session.
    **Validation target:** (a) the firebreak positive-control probe trips, AND (b) a *planted*
    self-audit violation actually halts via Gate 8 (does the fail-closed gate really fire live?).
+   - **Pre-flight: GREEN (2026-06-28).** Hook-path/sentinel verified (no false-GREEN risk — see plan
+     §1.1), bypass env present, classifier 265/265, no stale sentinel, clean tree. Brief:
+     `docs/plans/2026-06-26-g1-g3-live-validation-run-brief.md`.
+   - **Target (b) — Gate 8 logic — PROBE-VALIDATED (2026-06-28), the brief's Phase C.** A blind
+     subagent ran `/verify-self-audit` against a planted fixture (`g8probe`): the DROP variant
+     (disconfirmer D1 not ingested) **FAILED at Gate 8c** with the exact `disconfirmer finding D1 has
+     no WARN row …` message; the CORRECTED variant (one WARN, Source `disconfirmer.md#D1`, ACCEPTED,
+     rationale `#D1`) **PASSED all 8 gates.** Same fixture, one structural change, opposite verdict →
+     Gate 8 enforces the bijection, is not inert, and is not always-failing. Fixture deleted after.
+     **Caveat:** this validates the gate *spec executed faithfully*, NOT Gate 8 firing inside a real
+     autopilot tail — that (and target (a), the firebreak) still need the env-blocked live run.
 3. **Then** pick G2 (in-flight AI monitor) / G4 (per-run-nonce ledger) / G5 (delegation-as-authority)
    from the now-clean, merged base — via `/workflows:brainstorm`, seeding from the governance
    scorecard. **Still gated on Step 2 finishing first** — don't stack a third unvalidated gate.
@@ -68,7 +79,7 @@ None. G1 review-clean (~17 passes + Codex GO); G3 all 3 Codex code-review findin
 
 ## Deferred Items
 
-- **[STEP 2 — top priority] Live-validate G1 + G3 in one real tail** (harness-green ≠ live). A real autopilot run, or a positive-control probe (does a *planted* self-audit violation actually halt via Gate 8? does the firebreak probe trip?), is the next validation. Blocked on the `dangerouslySkipPermissions` unattended-launch env.
+- **[STEP 2 — top priority] Live-validate G1 + G3 in one real tail** (harness-green ≠ live). **Narrowed 2026-06-28:** pre-flight GREEN and the **Gate-8 logic is probe-validated** (blind-graded DROP→FAIL / CORRECTED→PASS via the brief's Phase C; fixture `g8probe` deleted). **What REMAINS:** the actual live autopilot tail — (a) the firebreak positive-control probe tripping in a real swarm, and (b) Gate 8 firing inside that real tail (not just as a standalone probe). Still blocked on the `dangerouslySkipPermissions` unattended-launch env. Brief: `docs/plans/2026-06-26-g1-g3-live-validation-run-brief.md`.
 - **[G3 PRIMARY RESIDUAL] Disposition monoculture** — the lone Sonnet confirmer still *disposes* the disconfirmer's findings; nothing verifies a disposition is *correct*. Diversifying disposition without a binding LLM verdict or a loop = a candidate future G-gate. (Prefer Step 2 before opening this.)
 - **Branch cleanup** — `feat/g1-risk-tiered-firebreak` and `feat/g3-verification-diversity` (local + origin) are fully merged into master; safe to delete after Step 2 confirms the base is sound.
 - **[G1 backlog] FC51 orchestrator rule** — ensure the converged spec is at the worktree base before swarm spawn (cherry-pick the spec-update commit, OR inline-inject spec sections). The `check_spec_provenance.py` BASEREF-FRESH change is the *detection* half; the orchestrator *repair* rule remains.
