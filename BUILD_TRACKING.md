@@ -17,6 +17,10 @@
 
 | Phase | Status | Report Path |
 |-------|--------|-------------|
+| gates-consistency | PASS (after 1 fix: 2 contradictions) | docs/reports/079/spec-consistency-check.md |
+| gates-completeness | PASS | docs/reports/079/spec-completeness-check.md |
+| gate-verification | CLEARED | docs/reports/079/gate-verification.md |
+| spec-eval (advisory) | ENV_ERROR (no API key; no spec verdict; non-blocking) | docs/reports/079/ |
 
 **Run State:**
 - run_id: 079
