@@ -39,19 +39,22 @@ path) → standalone Gate-8 planted-violation probe (G3 negative path).
 
 Run these in the **new session** before `/autopilot`. Any FAIL blocks the live run.
 
-1. **[CRITICAL] Firebreak hook path.** The global PreToolUse hook in `~/.claude/settings.json`
-   currently points at a **worktree** copy:
-   `/Users/alejandroguillen/Projects/sandbox-g1/.claude/hooks/firebreak-gate.sh`.
-   The wrapper is `[ -f <path> ] && exec bash <path>; exit 0` — **if that file is missing the
-   firebreak silently fails OPEN (allows everything) machine-wide.** Decide and record:
-   - **Recommended:** repoint the hook to the merged main repo
-     `/Users/alejandroguillen/Projects/sandbox/.claude/hooks/firebreak-gate.sh` so the run validates
-     the code that is actually on `master`. (Use the `update-config` skill — it's a global
-     `settings.json` change; confirm with Alex first.)
-   - **Then re-confirm** the sentinel WRITE path (`firebreak-activate.py` in the repo the run executes
-     from) matches the sentinel READ path (whatever `gate.sh`/`firebreak-classify.py` the hook
-     `exec`s). A write/read path mismatch = inert firebreak = fail-open. This is the single most
-     likely way this validation gives a false GREEN.
+1. **Firebreak hook path — INVESTIGATED 2026-06-28, verdict GO (was flagged CRITICAL; now cleared).**
+   The global PreToolUse hook in `~/.claude/settings.json` points at a **worktree** copy:
+   `/Users/alejandroguillen/Projects/sandbox-g1/.claude/hooks/firebreak-gate.sh` (the wrapper is
+   `[ -f <path> ] && exec bash <path>; exit 0`). **This is NOT a false-GREEN risk for a run in the
+   main repo**, because:
+   - `gate.sh` and `firebreak-classify.py` in `sandbox-g1` are **byte-identical** to the merged copies
+     on `master` (diffed — identical). Which copy runs does not change behavior.
+   - The sentinel write path (`firebreak-activate.py`) and read path (`firebreak-classify.py`) are
+     both anchored to the **run's working dir → git toplevel** ("writes at the repo root (git
+     toplevel, else cwd)" / "found by walking up from cwd — cwd-independent"), **NOT** to the script's
+     location. A run in `…/sandbox` writes + reads `…/sandbox/.claude/firebreak-active.json`; worker
+     worktrees live under the repo root, so walking up still finds it. → firebreak is genuinely live.
+   - **Optional, non-blocking cleanup:** the hook pointing at a worktree is fragile — if `sandbox-g1`
+     is ever deleted, the wrapper silently no-ops (fail-open) machine-wide. Repoint the hook to the
+     main repo `…/sandbox/.claude/hooks/firebreak-gate.sh` (via `update-config`, confirm with Alex)
+     when cleaning up the merged branches/worktree. Not required for this validation run.
 2. **Bypass env present.** `.claude/settings.local.json` has `{"permissions":{"dangerouslySkipPermissions": true}}`.
    (Verified present on master's working tree 2026-06-26. The unattended *launch* itself is the
    blocker — it cannot be fired from a normal interactive session.)
@@ -317,10 +320,10 @@ a STRUCTURAL backstop (no enumerated exemptions).
   by editing the reviewer agent — that corrupts the artifact under test and proves nothing about the
   shipped agent. (c) Doing the whole thing solo — a solo run never spawns worktree workers, so the
   firebreak is never exercised; it would be a false GREEN.
-- **Least confident:** The §1.1 hook-path / sentinel write↔read path. The firebreak hook points at the
-  `sandbox-g1` worktree; if the sentinel the orchestrator writes (from the main repo's
-  `firebreak-activate.py`) is read from a different path by the worktree's gate, the firebreak is inert
-  and the probe canary check still passes "no output" for the WRONG reason (nothing tried because the
-  classifier never saw a sentinel). The probe's deterministic filesystem check guards the common case,
-  but a path-mismatch inert firebreak is the one way this run could report a false PASS — resolve §1.1
-  with eyes open before trusting a GREEN.
+- **Least confident — RESOLVED 2026-06-28.** This was the §1.1 hook-path / sentinel write↔read path
+  concern (the one way the run could report a false PASS: an inert firebreak where the probe canary
+  check passes "no output" for the WRONG reason). **Investigated and cleared:** the code is identical
+  across the worktree and master, and sentinel write+read are both anchored to the run's git-toplevel
+  (not the script location), so a run in the main repo activates and reads the same sentinel. No path
+  mismatch. Remaining residual is only the fragility of the hook pointing at a worktree (optional
+  cleanup, see §1.1) — not a correctness risk for this run.
