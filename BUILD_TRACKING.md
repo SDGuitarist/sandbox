@@ -21,6 +21,9 @@
 | gates-completeness | PASS | docs/reports/079/spec-completeness-check.md |
 | gate-verification | CLEARED | docs/reports/079/gate-verification.md |
 | spec-eval (advisory) | ENV_ERROR (no API key; no spec verdict; non-blocking) | docs/reports/079/ |
+| ghost-file cleanup (9w.9) | PASS — validation-notes/ absent, no ghosts | — |
+| spec-provenance (9w.9.5) | PROVENANCE_REPAIRED (cherry-pick to master + re-verify OK) | docs/reports/079/spec-provenance.md |
+| firebreak probe (9w.9.6) | **G1 PASS** — real worktree worker's control-plane writes DENIED, no canary | docs/reports/079/firebreak-probe.md |
 
 **Run State:**
 - run_id: 079
@@ -48,7 +51,9 @@
 
 ## RUN_METRICS
 
-<!-- Filled after review -->
+- firebreak: ACTIVE (run=079, phase=build; activated at Step 9w.9.6; positive-control probe G1 PASS — control-plane writes denied). To be torn down at Step 18w.
+
+<!-- Remaining metrics filled after review -->
 
 ## Advisory Baseline
 baseline_sha: 8d581d56259a8ad5283030165883ca4f47e614ea
