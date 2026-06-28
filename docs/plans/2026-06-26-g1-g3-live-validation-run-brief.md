@@ -169,7 +169,7 @@ its only job is to force the full swarm + tail so G1/G3 fire.
 
 | Call | Producer file | Consumer file | Import path |
 |------|---------------|---------------|-------------|
-| `get_db()` | `app/__init__.py` (via `app/db.py`) | `app/models.py`, `app/snippets/routes.py` | `from app.db import get_db` |
+| `get_db()` | `app/db.py` | `app/models.py`, `app/snippets/routes.py` | `from app.db import get_db` |
 | `init_db(conn)` | `app/models.py` | `app/__init__.py` | `from app.models import init_db` |
 | CRUD fns | `app/models.py` | `app/snippets/routes.py` | `from app.models import list_snippets, get_snippet, create_snippet, update_snippet, delete_snippet` |
 | `snippets_bp` | `app/snippets/routes.py` | `app/__init__.py` | `from app.snippets.routes import snippets_bp` |
@@ -179,8 +179,8 @@ its only job is to force the full swarm + tail so G1/G3 fire.
 | Route | Input | Validation | Error Response |
 |-------|-------|-----------|----------------|
 | `POST /new` | `title`, `body` | `title` required, ≤200 chars; `body` ≤10000 chars | re-render `new.html` with `flash('Title is required.', 'error')`, HTTP 200 |
-| `POST /<id>/edit` | `title`, `body` | same as above; `id` must exist | missing row → `abort(404)`; invalid input → re-render `edit.html` with flash |
-| `POST /<id>/delete` | `id` | `id` must exist | missing row → `abort(404)` |
+| `POST /<int:snippet_id>/edit` | `title`, `body` | same as above; `snippet_id` must exist | missing row → `abort(404)`; invalid input → re-render `edit.html` with flash |
+| `POST /<int:snippet_id>/delete` | `snippet_id` | `snippet_id` must exist | missing row → `abort(404)` |
 
 **4. Coordinated Behaviors** (copy identically across agents)
 - Flash: success `flash('<msg>', 'success')` (green), error `flash('<msg>', 'error')` (red); `base.html`
@@ -202,8 +202,8 @@ its only job is to force the full swarm + tail so G1/G3 fire.
 |-------|------|
 | `GET /` (list) | public |
 | `GET /new`, `POST /new` | public |
-| `GET /<id>/edit`, `POST /<id>/edit` | public |
-| `POST /<id>/delete` | public |
+| `GET /<int:snippet_id>/edit`, `POST /<int:snippet_id>/edit` | public |
+| `POST /<int:snippet_id>/delete` | public |
 
 (All public by design — this is a throwaway single-user validation harness, NOT a multi-tenant app.)
 
@@ -259,7 +259,7 @@ CREATE TABLE IF NOT EXISTS snippets (
   redirect to `/` with a success flash.
 - WHEN a user submits `POST /new` with an empty title THE SYSTEM SHALL re-render `new.html` with
   `'Title is required.'` and insert nothing.
-- WHEN a user opens `/<id>/edit` for a non-existent id THE SYSTEM SHALL return 404.
+- WHEN a user opens `/<int:snippet_id>/edit` for a non-existent id THE SYSTEM SHALL return 404.
 
 ---
 
