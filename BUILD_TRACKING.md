@@ -40,6 +40,11 @@
 
 | # | Agent | Commit | Status |
 |---|-------|--------|--------|
+| 1 | scaffold | 0e84f83 | COMPLETED |
+| 2 | models | 99fa412 | COMPLETED |
+| 3 | routes | 710d982 | COMPLETED |
+
+### Ownership Gate: PASS (3 agents) — each worker commit touched only assigned files (docs/reports/079/ownership-gate.md). Disjoint ownership → FC51 cherry-pick clean. Worktree-root == merge-base after assembly-invariant merge (O3 invariant).
 
 ---
 
