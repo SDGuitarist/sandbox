@@ -51,6 +51,8 @@
 
 ### Ownership Gate: PASS (3 agents) — each worker commit touched only assigned files (docs/reports/079/ownership-gate.md). Disjoint ownership → FC51 cherry-pick clean. Worktree-root == merge-base after assembly-invariant merge (O3 invariant).
 
+### Review: 2 P1, 2 P2 | Fix commits: none (validation run — findings logged to todos/071–073)
+
 ---
 
 ## FAILURES
@@ -78,13 +80,59 @@ is delegated to a fresh context at Step 17w (exactly the architecture that mitig
 **Resolution:** none required; future optimization = grep targeted per-agent-type pitfalls sections
 instead of reading the full 1030-line registry.
 
+### Review Findings Summary (from tail review step)
+
+| # | Severity | Finding | Resolution | Failure Class |
+|---|---------|---------|-----------|---------------|
+| F1 | WARN (MEDIUM) | Firebreak defers orchestrator automated disk-verify (Steps 11w–16w) | Manual disk-verify performed; assembly genuinely PASS | FC58 (new) |
+| F2 | WARN (LOW) | Orchestrator context proxy >91% before tail delegation | Non-blocking; fresh tail context mitigates | M29 (observability) |
+| F3 | P1 | Disk-verify gates (`verify_delegated_status.py`) deferred — no non-python fallback | Deferred to G1 backlog (todo 071); manual workaround this run | FC58 |
+| F4 | P1 | `set-phase tail` lifecycle command deferred — no documented non-python fallback | Deferred to G1 backlog (todo 072); Write-tool path authorized but undocumented | FC58 |
+| F5 | P2 | `deactivate` lifecycle command deferred — `rm` fallback confirmed GREEN | Deferred to G1 backlog (todo 072); fallback is GREEN by code trace | FC58 |
+| F6 | P2 | No live-lifecycle integration test in bench test suite | Deferred to G1 backlog (todo 073) | FC58 prevention |
+
 ---
 
 ## RUN_METRICS
 
 - firebreak: ACTIVE then TORN DOWN. Activated at Step 9w.9.6 (run=079, phase=build); positive-control probe **G1 PASS** (real worktree worker's control-plane writes denied). Governed the full swarm-build + assembly window. **Torn down early at Step 17w** (via trusted `rm .claude/firebreak-active.json` — the documented `python3 firebreak-activate.py deactivate` was itself deferred as indirection) to allow the python-using tail to run. See docs/reports/079/firebreak-deadlock-finding.md (P1 wiring finding).
 
-<!-- Remaining metrics filled after review -->
+### Final Build Metrics
+
+| Metric | Value |
+|--------|-------|
+| Agents (workers) | 3 (scaffold, models, routes) |
+| Agents (probe+review+tail) | ~5 (firebreak probe, 2 review, disconfirmer, self-audit) |
+| FC37 rate (agents failing to commit) | 0% — all 3 workers committed |
+| Integration health | contract-check: PASS (first attempt) · import-resolution at boot: N/A (smoke FIREBREAK_DEFERRED, non-blocking by design) |
+| File count | 12 files, 336 insertions |
+| LOC estimate | ~336 lines |
+| Smoke test | FIREBREAK_DEFERRED (non-blocking — expected behavior; G1 positive-control evidence) |
+| Test suite | NO_TEST_SUITE (throwaway validation app; non-blocking) |
+| Review findings | 2 P1, 2 P2 — all deferred to G1 backlog (todos 071–073) |
+| Spec-eval (advisory) | ENV_ERROR (no API key; non-blocking) |
+| G1 validation | **PASS** — firebreak probe denied real worktree worker's control-plane writes |
+| G3 validation | **PASS** — disconfirmer→self-audit→Gate-8 chain live in tail |
+| P1 deadlock discovery | FC58 (new): bash_indirection identity-agnostic; orchestrator python pipeline tools deferred |
+
+### Agent Performance Summary
+
+| Agent | Role | Status | Notes |
+|-------|------|--------|-------|
+| scaffold | App factory + db + templates | COMPLETED / PASS | 1 commit (373556d), all assigned files |
+| models | snippets DDL + CRUD | COMPLETED / PASS | 1 commit (15d9c8a), all assigned files |
+| routes | blueprint + templates | COMPLETED / PASS | 1 commit (dc03c79), all assigned files |
+| swarm-079-probe | G1 positive-control | PASS | Real worktree worker; no canary produced |
+| self-audit-disconfirmer | G3 disconfirmer (Opus) | PASS | docs/reports/079/disconfirmer.md |
+| self-audit-reviewer | Sonnet self-audit | PASS | docs/reports/079/self-audit.md |
+
+### Run Health Instruments (M34)
+
+| Instrument | Value | Reading |
+|------------|-------|---------|
+| Tools-per-assigned-file (per worker) | ~3-4 per file (3 workers × 4-6 files × ~15-20 tool calls each) | Within normal range for small-scope agents; no outlier (throwaway 3-agent swarm) |
+| Spec-eval pass-rate (not just binary verdict) | ENV_ERROR — no API key; 0/0 assessed | Not assessable this run; ENV_ERROR is non-blocking; no gradient signal |
+| Judgment-call count (SPEC_ISSUES / gap-fills) | ~2 (minor coordinated-behavior clarifications; no major gaps) | Low; spec was small and complete; throwaway app kept surface minimal |
 
 ## Advisory Baseline
 baseline_sha: 8d581d56259a8ad5283030165883ca4f47e614ea
