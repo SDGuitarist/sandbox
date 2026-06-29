@@ -1,31 +1,30 @@
 ---
 review_agents:
-  - codex (manual, binding — plan review GO; code review NO-GO → fix → re-review GO)
+  - codex (manual, binding — for future G1/G3 fix implementation cycles)
 ---
 
-# Review Context — G3 Self-Audit Disconfirmer (compound 2026-06-26)
+# Review Context — G1+G3 Live Validation Run 079 (2026-06-29)
 
 ## Risk Chain
 
-**Brainstorm/Plan risk (Feed-Forward, verify_first):** Does an Opus disconfirmer reading the SAME run artifacts produce *orthogonal, valid* findings, or just restate the Sonnet confirmer? Within-family (Opus vs Sonnet) is the WEAK diversity lever (self-preference is same-family); cross-family (Codex) is the strong one and the pre-registered escalation.
+**Brainstorm/Plan risk (Feed-Forward, verify_first):** "harness-green ≠ live. Both G1 (firebreak) and G3 (Gate 8 disconfirmer) pass on the bench but have NEVER fired in a real autopilot tail. A gate that is silently inert (fail-open) passes every bench test and protects nothing."
 
-**Plan mitigation:** Cut the binding `disconfirmer_verdict` field (kept the no-LLM-in-dispose-path invariant); before-placement blind to the audit (anchoring-correct); findings routed through the existing Gates 2/5/7f as mandatory WARNs; new deterministic fail-closed Gate 8 enforces the link. Efficacy gated by a pre-registered probe (novel-valid > 0 AND overcall < 0.34), cross-family-judged, brief-tuning capped at 3 then escalate to Codex-as-standing-verifier.
+**Plan mitigation:** Run the smallest possible real swarm (3 workers, throwaway Flask CRUD) to force the full swarm + tail path. G1 validated via positive-control probe (canary-file deterministic verdict). G3 validated via disconfirmer→self-audit→Gate-8 chain in a live tail.
 
-**Work risk (R1, top):** TAIL_SYNC drift — wiring the disconfirmer into only one of solo/swarm, or in the wrong order (it MUST precede the self-audit in both paths).
+**Work outcome:** G1 PASS — firebreak denied a real worktree worker's control-plane writes (no canary, deterministic verdict). G3 PASS (with caveat) — disconfirmer + Gate-8 chain ran in a live tail, but with the firebreak torn down first due to the P1 deadlock.
 
-**Review resolution:** Plan review (Codex) GO. Efficacy probe (Codex) PASS — novel-valid 4/4, overcall 0/25; 069 known-miss independently re-derived. Code review (Codex) NO-GO with 3 findings — 8c bijection was `contains` (D1⊂D10 + merged rows = fail-open) [P1]; 8a parse wording too loose for a fail-closed gate [P1]; one stale "9 hard gates" string in autopilot/SKILL.md [P2]. All fixed in `65954b4` (whole-cell equality + merged/phantom rejection + non-digit boundary; anchored finding-row regex with exhaustive accept/fail trichotomy; gate count → 8). Self-review also un-wrapped a line-wrapped sentinel in the agent. Codex re-review = GO, no new findings.
+**P1 finding (new FC58 — Pipeline Self-Strangulation):** The G1 firebreak's `bash_indirection` check in `firebreak-classify.py` is identity-agnostic (no TRUSTED bypass). It deferred the orchestrator's own python tools: `python3 tools/verify_delegated_status.py` (disk-verify gates), `python3 .claude/hooks/firebreak-activate.py set-phase tail` (lifecycle), `python3 .claude/hooks/firebreak-activate.py deactivate` (teardown). Working fallback: `rm .claude/firebreak-active.json` from TRUSTED orchestrator is GREEN. Disk-verify gates have no non-python equivalent (manual workaround this run). Fix deferred to G1 backlog.
 
-## Files to Scrutinize
+**Review resolution:** 2 P1, 2 P2 from architecture-strategist + learnings-researcher agents. No fix commits (all findings deferred to G1 backlog per operator direction). Findings confirm P1 classification for disk-verify deferral and set-phase deferral; P2 for deactivate (rm fallback) and live-lifecycle test missing.
 
-| File | What changed | Risk area |
-|------|-------------|-----------|
-| .claude/skills/verify-self-audit/SKILL.md | NEW fail-closed Gate 8 (8a parse, 8c exact bijection); count 9→8 | the gate's whole-cell + boundary rules must stay strict (no fail-open regression) |
-| .claude/agents/self-audit-disconfirmer.md | NEW Opus agent; D# output contract + canonical sentinel | sentinel/D#/severity literals must stay byte-identical to what Gate 8 + reviewer expect |
-| .claude/agents/self-audit-reviewer.md | Step 2 D# ingestion (whole-cell Source); stays sonnet | one WARN per D#, Source cell EXACTLY the token (no path prefix / no merge) |
-| .claude/agents/tail-runner.md | swarm Step 7.5 before Step 8; TAIL_SYNC comment | ordering parity with solo path |
-| .claude/skills/autopilot/SKILL.md | solo Disconfirmer section before Self-Audit; Step 18w disk-verify; count→8 | TAIL_SYNC; solo fail-closed only as strong as reaching /verify-self-audit |
-| tools/verify_delegated_status.py | advisory --artifact-kind disconfirmer (no status) | branch before ACCEPT_SETS lookup; exit codes 1..255 |
+## Files to Scrutinize (for next G1 fix cycle)
+
+| File | What needs changing | Risk area |
+|------|---------------------|-----------|
+| .claude/hooks/firebreak-classify.py | Add trusted-tool indirection allowlist before line 2070 | Narrow scope to specific pipeline script basenames; workers stay fully governed |
+| .claude/skills/autopilot/SKILL.md | Step 17w/18w: replace python lifecycle cmds with Write-tool/rm alternatives | Non-python fallback must be documented and tested |
+| .claude/hooks/test_firebreak_classify.py | Add live-lifecycle integration test group | Trusted orchestrator python GREEN + worker python DEFERRED under active sentinel |
 
 ## Plan Reference
 
-`docs/plans/2026-06-25-feat-g3-self-audit-disconfirmer-plan.md`
+`docs/plans/2026-06-26-g1-g3-live-validation-run-brief.md`

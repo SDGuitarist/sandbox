@@ -1,0 +1,158 @@
+**Run ID:** 079
+**Status:** PIPELINE_PASS_WITH_DEFERRED_RISK
+
+# Self-Audit Report -- Run 079
+
+**Date:** 2026-06-29
+**Build:** G1+G3 Live Validation — Snippets (throwaway)
+**Run ID:** 079
+**Final Status:** PIPELINE_PASS_WITH_DEFERRED_RISK
+
+## Final Run Status
+
+**Status:** PIPELINE_PASS_WITH_DEFERRED_RISK
+
+This was a validation run (not a product build). Its two critical goals — proving the G1 firebreak and the G3 Gate-8 disconfirmer chain fire in a real autopilot tail — were both met: the firebreak probe denied real worktree worker control-plane writes (deterministic filesystem verdict, no canary), and the disconfirmer→self-audit→Gate-8 chain ran live in the tail. However, the run hit a P1 blocking finding (FC58): the firebreak's `bash_indirection` check is identity-agnostic, deferring the orchestrator's own python pipeline tools and lifecycle commands, requiring manual rescue to complete. G1 and G3 were validated sequentially in the same run but were never simultaneously live. The two unfixed P1s (disk-verify no non-python fallback; set-phase tail deferred) are properly deferred to the G1 backlog (todos 071–073, HANDOFF.md).
+
+---
+
+## WARN Disposition Table
+
+| # | Key | Source | WARN Description | Disposition | Rationale |
+|---|-----|--------|-----------------|-------------|-----------|
+| 1 | 079-W1 | disconfirmer.md#D1 | BUILD_TRACKING Agent Performance Summary pre-recorded PASS for disconfirmer and self-audit rows before those agents ran; HANDOFF declared "G3 LIVE PASS" before self-audit.md existed on disk | PROMOTED | Real finding. The disconfirmer (Opus) correctly identifies that marking tail-phase agents PASS in BUILD_TRACKING line 126-127 before those agents produce their artifacts anchors the Sonnet confirmer toward concurrence — undermining the independence the G3 chain exists to provide. Promoted to agent-pitfalls as a new process rule for all future runs: BUILD_TRACKING must use a PENDING/RUNNING state for tail-phase agents (disconfirmer, self-audit-reviewer) until those artifacts actually exist on disk. Promoted to the 2026-06-29 agent-pitfalls Update Log entry as a companion to FC58. #D1 |
+| 2 | 079-W2 | disconfirmer.md#D2 | Documented unattended pipeline cannot complete with firebreak active; disk-verify performed manually; firebreak teardown via undocumented `rm` rather than `python3 firebreak-activate.py deactivate` | ACCEPTED | Risk is real and known — this IS FC58, the run's primary P1 finding. The condition is tolerable here because: (a) FC58 is fully documented as a new failure class and the run's most important discovery; (b) the manual disk-verify was a correct engineering response to a newly-discovered deadlock, and the checks performed were the exact checks the python tool would have run; (c) the `rm` teardown is confirmed GREEN by code trace (TRUSTED orchestrator identity bypasses control-plane delete; `rm` is not an interpreter so indirection never fires); (d) the G1 PASS verdict is backed by the deterministic filesystem canary check, not by the manual disk-verify; (e) the overall run status is PIPELINE_PASS_WITH_DEFERRED_RISK (not PIPELINE_PASS), which correctly represents the pipeline's incomplete unattended-capability. FC58 remediation is tracked in HANDOFF.md under [FC58-DISKVERIFY-079, P1] and [FC58-LIFECYCLE-079, P1]. #D2 |
+| 3 | 079-W3 | disconfirmer.md#D3 | G1 and G3 were never simultaneously live; G3 tail ran with firebreak inactive; BUILD_TRACKING.md:71-73 contradicts firebreak-deadlock-finding.md:79-83 on whether Gate-8 python can run under active firebreak | DEFERRED | Real and unresolved. The plan's Phase B goal was both gates live in the same run. Due to FC58, the firebreak had to be torn down before the G3 tail ran, so simultaneous activation was impossible. The artifact contradiction is real: BUILD_TRACKING notes "phase=tail MUST allow python or the entire G3 tail cannot run — to be confirmed empirically" while firebreak-deadlock-finding.md says Gate-8 gates are "largely Read/Grep/Glob … not firebreak-blocked." These two claims are not reconciled and the empirical test was never run (firebreak removed first). Resolution requires: (1) implement FC58 Fix A + Fix B (todos 071-072), (2) run a new live validation confirming Gate-8 python can run with firebreak active (phase=tail), (3) then run a full live swarm with firebreak active end-to-end. Severity: HIGH (per disconfirmer). NOTE: HANDOFF.md does not contain a `[079-W3]` key entry — this is a documentation linkage gap from this run (HANDOFF was written before self-audit assigned W# keys; HANDOFF "Three Questions" #1 acknowledges the simultaneous activation issue implicitly but creates no formal tracking key). #D3 |
+| 4 | 079-W4 | disconfirmer.md#D4 | §5 EARS build happy-path acceptance tests never executed; smoke test FIREBREAK_DEFERRED; assembly PASS rests on static inspection (contract check + grep) not execution | ACCEPTED | Tolerable for this validation run. The smoke test deferral was itself G1 positive-control evidence (firebreak governing python execution). The validation EARS criteria — the ones that actually matter for this run's goals — WERE met: G1 probe denied worker control-plane writes (deterministic filesystem); G3 chain ran live in tail. The throwaway CRUD's runtime correctness is not a deliverable of this run; the plan explicitly calls it "throwaway scaffolding." The contract check (spec-completeness-checker executing against assembled code) verified all 9 export names, 4 wiring paths, 3 input validation prescriptions, and 6 transaction contracts against the spec. For a throwaway validation harness, static contract verification is sufficient. #D4 |
+| 5 | 079-W5 | BUILD_TRACKING (FAILURES F3, P1) | `python3 tools/verify_delegated_status.py` disk-verify gates (Steps 11w–16w/18w) deferred by active firebreak; no non-python fallback exists; manual verification substituted this run | PROMOTED | Promoted to HANDOFF.md deferred items as `[FC58-DISKVERIFY-079, P1]` (todo 071). Fix A: add trusted-tool indirection allowlist in `classify_simple_command` before line 2070 — when `identity in TRUSTED` AND `os.path.basename(script)` in allowlist (`verify_delegated_status.py`, `check_spec_provenance.py`, `firebreak-activate.py`) → skip `bash_indirection`. Workers remain fully governed. |
+| 6 | 079-W6 | BUILD_TRACKING (FAILURES F4, P1) | `python3 .claude/hooks/firebreak-activate.py set-phase tail` (Step 17w) deferred by active firebreak; no non-python alternative documented for the lifecycle flip | PROMOTED | Promoted to HANDOFF.md deferred items as `[FC58-LIFECYCLE-079, P1]` (todo 072). Fix B: replace Step 17w command with Write-tool edit to sentinel JSON `phase` field — a control-plane Write by TRUSTED orchestrator is explicitly allowed by the classifier. |
+| 7 | 079-W7 | BUILD_TRACKING (FAILURES F5, P2) | `python3 .claude/hooks/firebreak-activate.py deactivate` (Step 18w) deferred by active firebreak; `rm .claude/firebreak-active.json` fallback confirmed GREEN this run | PROMOTED | Promoted to HANDOFF.md deferred items as `[FC58-LIFECYCLE-079, P1]` (grouped with 079-W6, todo 072). Fix B also covers this step. The `rm` fallback used in run 079 is GREEN for TRUSTED orchestrator (control-plane delete check exempts TRUSTED identities; `rm` is not an interpreter). Documenting the rm path in SKILL.md Step 18w closes this. |
+| 8 | 079-W8 | BUILD_TRACKING (FAILURES F6, P2) | No live-lifecycle integration test covering trusted orchestrator python invocations under active sentinel; bench suite (265/265) only tests classification logic on synthetic inputs | PROMOTED | Promoted to HANDOFF.md deferred items as `[FC58-LIVETEST-079, P2]` (todo 073). Fix C: add test group to `test_firebreak_classify.py` covering: orchestrator python3 pipeline scripts GREEN under active sentinel; worker python3 DEFERRED; orchestrator rm GREEN. This is the structural gap that allowed FC58 to reach a live run. |
+| 9 | 079-W9 | docs/reports/079/context-telemetry.md | Orchestrator context proxy reached ~182K chars (~91% of ~200K proxy) before tail delegation — M29 WARN threshold exceeded | ACCEPTED | Non-blocking by architecture. The tail is delegated to a fresh context at Step 17w, which is precisely the mitigation for this pressure class. The ~100K-char dominated cost is the mandatory Step 1.6 agent-pitfalls.md full read (1030 lines). Future optimization: grep targeted per-agent-type sections rather than reading the full registry. No action required for this run; optimization deferred. Duplicate of BUILD_TRACKING FAILURES F2 WARN (LOW). |
+| 10 | 079-W10 | docs/reports/079/spec-consistency-check.md | Check 9: `create_app` absent from Cross-Boundary Wiring Table despite Export Names Table listing it as consumed by run.py | ACCEPTED | Within-agent issue only. Both `app/__init__.py` (defines `create_app`) and `run.py` (consumes it) belong to Agent 1 (scaffold). No cross-agent wiring risk, no inter-agent confusion possible. The spec-consistency-check.md disposition guidance explicitly marks this acceptable for a throwaway validation build. |
+| 11 | 079-W11 | docs/reports/079/spec-consistency-check.md | Check 10: `app/models.py` listed as runtime consumer of `get_db()` in both Export Names Table and Wiring Table, but models accept a `conn` parameter — only routes call `get_db()` at runtime | ACCEPTED | Within-agent impact at worst. An unused `from app.db import get_db` import in models.py is the worst-case outcome. The real consumer (routes) is correctly documented in a separate wiring row. The spec-consistency-check disposition guidance marks this acceptable; no structural correctness risk. |
+| 12 | 079-W12 | docs/reports/079/spec-completeness-check.md | 4 format advisory WARNs: spec uses bold text (`**1. Export Names Table**`) instead of ATX headings (`### Export Names`) for the 6 mandatory coverage sections; Route columns combine HTTP method and path in one cell, preventing automated path extraction | ACCEPTED | All 4 WARNs produced N/A verdicts (detection could not find items to check) rather than FAIL verdicts. The check's overall STATUS is PASS. These are spec-format improvement recommendations for future builds; no actual spec coverage gaps resulted from the formatting choice. Both issues are inherent to the brief's style (numbered bold text for coverage sections; single-column route tables). Non-blocking for this throwaway validation build. |
+
+---
+
+## Source Reconciliation
+
+| Source File | WARN Tokens Found | WARNs Added to Table |
+|-------------|-------------------|----------------------|
+| docs/reports/079/gate-verification.md | 0 | 0 |
+| docs/reports/079/spec-completeness-check.md | 4 (Route column no-path x2, heading format x1, CRUD grouping x1) | 1 (079-W12, consolidated as single format-advisory row) |
+| docs/reports/079/spec-consistency-check.md | 2 (Check 9, Check 10 — both labeled WARN) | 2 (079-W10, 079-W11) |
+| docs/reports/079/swarm-assignment.md | 0 | 0 |
+| docs/reports/079/spec-provenance.md | 0 (STATUS: PROVENANCE_REPAIRED — not a WARN) | 0 |
+| docs/reports/079/firebreak-probe.md | 0 (STATUS: G1 PASS) | 0 |
+| docs/reports/079/worker-roster.md | 0 | 0 |
+| docs/reports/079/cross-worker-scan.md | 0 (empirical-wall note is informational; no literal WARN token) | 0 |
+| docs/reports/079/ownership-gate.md | 0 (STATUS: PASS) | 0 |
+| docs/reports/079/contract-check.md | 0 (STATUS: PASS) | 0 |
+| docs/reports/079/smoke-test.md | 0 (STATUS: FIREBREAK_DEFERRED — not a WARN token; non-blocking per CLAUDE.md) | 0 |
+| docs/reports/079/test-results.md | 0 (STATUS: NO_TEST_SUITE — non-blocking) | 0 |
+| docs/reports/079/assembly-summary.md | 0 (STATUS: PASS) | 0 |
+| docs/reports/079/context-telemetry.md | 1 ("WARN: orchestrator context proxy >70% before tail delegation") | 1 (079-W9) |
+| docs/reports/079/firebreak-deadlock-finding.md | 0 (uses FINDING/HIGH header, no literal WARN token; content captured via BUILD_TRACKING FAILURES) | 0 (finding captured as 079-W5 and 079-W6 via BUILD_TRACKING) |
+| docs/reports/079/disconfirmer.md | 4 (D# rows: D1, D2, D3, D4; no literal WARN token per disconfirmer format) | 4 (079-W1 via disconfirmer.md#D1; 079-W2 via disconfirmer.md#D2; 079-W3 via disconfirmer.md#D3; 079-W4 via disconfirmer.md#D4) |
+| BUILD_TRACKING.md (FAILURES section) | 6 WARN-level items: 2 literal WARN lines (F1 MEDIUM, F2 LOW) + 4 unresolved P1/P2 findings (F3-F6) | 4 (079-W5 through 079-W8); F1 is the same finding as 079-W5 (more precise as P1); F2 is duplicate of 079-W9 from context-telemetry.md |
+| HANDOFF.md ("Review Fixes Pending" section) | 0 (section not present as named heading; P2 items in deferred list already captured as 079-W8 via BUILD_TRACKING) | 0 additional |
+
+---
+
+## What Was Missed In The First Summary
+
+**1. Pre-recording of tail agent verdicts was not identified as a process quality issue (D1).** The BUILD_TRACKING Agent Performance Summary table (lines 126-127) marks the disconfirmer and self-audit-reviewer as PASS before they ran. The HANDOFF.md header declares "G3 LIVE PASS" before self-audit.md existed on disk. This pattern — where the orchestrator writes tracking artifacts that pre-announce outcomes the tail has not yet produced — was surfaced by the disconfirmer (D1, HIGH) but is absent from both the solution doc and BUILD_TRACKING as a named process quality issue. The solution doc §2 (G3 validation) does not call out the pre-recording concern; it only documents the G3 chain's correct execution. Future BUILD_TRACKING templates should include a PENDING state for tail-phase agents.
+
+**2. The G1+G3 simultaneous coexistence question was left as an "empirically unconfirmed" open item, not a formal new risk (D3).** The solution doc §2 correctly acknowledges the caveat ("G1 and G3 were NOT live simultaneously") and §3 notes the wiring question ("phase=tail MUST allow python or the entire G3 tail cannot run — to be confirmed empirically"). But the Risk Resolution section (§4) closes G3 as "CLOSED — Gate 8 is NOT inert" without creating a new open risk entry: "must validate G3 runs with G1 active (phase=tail) after FC58 fixes." The disconfirmer surfaces the artifact contradiction on this point (BUILD_TRACKING line 71-73 vs firebreak-deadlock-finding.md lines 79-83) which the solution doc does not reconcile. The coexistence question is the run's most important remaining uncertainty and should appear as a deferred item in its own right.
+
+**3. Phase C (Gate-8 planted-violation probe) completion is not recorded in BUILD_TRACKING or the solution doc.** The plan required Phase C as a mandatory deliverable (§2 Phase C, "exercises G3 negative path"). The commit 868e049 (`docs(HANDOFF): record Gate-8 probe-validation (brief Phase C) — DROP→FAIL / CORRECTED→PASS`) confirms Phase C was completed, but neither BUILD_TRACKING's Phase Status table nor the solution doc's Key Artifacts table records this. The only evidence is a git commit message. A required deliverable should appear in both tracking artifacts.
+
+**4. The HANDOFF key convention (named keys like `[FC58-DISKVERIFY-079, P1]`) is incompatible with the standard run-specific W# keys (`[079-W5]`) required by the self-audit → HANDOFF linkage contract.** HANDOFF.md was written before the self-audit assigned 079-W# keys. No self-audit WARN key appears in HANDOFF.md, breaking the grep-based key matching that verify-self-audit Gate checks depend on. This is a process ordering issue (orchestrator writes HANDOFF in the compound phase before the self-audit runs) that was not flagged in either tracking artifact or the solution doc. The next session should update HANDOFF.md to add `[079-W3]` for the coexistence finding.
+
+**5. M34 Run Health Instruments show a clean baseline but mask the firebreak's impact on build observability.** The BUILD_TRACKING M34 table records spec-eval as ENV_ERROR (no gradient signal) and judgment-call count as ~2 (low). What it does not note is that the firebreak suppressed both the smoke test and all worker py_compile checks, meaning the only execution-level evidence for assembly correctness is the contract check (static grep). The M34 instruments do not flag this as a BUILD_OBSERVABILITY_GAP. A first-summary reader would see "no outliers" and miss that the build has zero execution evidence.
+
+---
+
+## Questions A Skeptical Reviewer Would Ask
+
+**Q1:** The G1 validation used a deterministic filesystem canary check. But was the firebreak hook actually running from master's code, or from the sandbox-g1 worktree copy? Could the hook be running identical code but from the wrong path, making the "no canary" verdict a path-discrepancy artifact rather than a real denial?
+
+**A1:** The plan §1.1 (marked RESOLVED 2026-06-28) investigated this empirically. The hook at `~/.claude/settings.json` points at `sandbox-g1/.claude/hooks/firebreak-gate.sh`, but: (a) that file is byte-identical to the master copy (diffed); (b) the sentinel WRITE path (`firebreak-activate.py`) anchors on `git toplevel` from cwd (the main sandbox repo), not the script's location; (c) the sentinel READ path (`firebreak-classify.py`) walks up from the worker's cwd, which lands at the sandbox repo root. The deferral queue files in `docs/reports/079/firebreak-probe-evidence/` record the probe's replayable payload as the main-repo absolute path (`/Users/alejandroguillen/Projects/sandbox/todos/approvals/__fb_probe_bash__`). Had the hook been inert due to a path mismatch, the echo redirect WOULD have written a canary at that exact path — and we checked that exact path. "No canary" means a real denial.
+
+**Q2:** G3 was validated with the firebreak inactive. The "production condition" for any real autopilot run is that the firebreak activates at Step 9w.9.6 and stays active through the tail (phase=tail) until Step 18w teardown. Did you actually prove G3 fires in production? Or only that it fires in a firebreak-absent fallback mode?
+
+**A2:** Honest answer: G3 was validated in a live autopilot tail on real artifacts, which meets the plan's Phase B success criterion ("Gate 8 passed on real run artifacts"). But it did NOT validate G3 under the production firebreak condition (phase=tail active during the tail). The firebreak-deadlock-finding.md §76-83 claims Gate-8's constituent gates (Read/Grep/Glob) are not firebreak-blocked, while BUILD_TRACKING §71-73 says "to be confirmed empirically." These are contradictory claims, and the empirical test was never run because the firebreak was removed first. Until FC58 Fix A (todo 071) is implemented and a live run confirms Gate-8 python can execute with firebreak active, the "G3 under production conditions" claim is unverified. 079-W3 tracks this.
+
+**Q3:** The run description says "PIPELINE_PASS_WITH_DEFERRED_RISK." But the documented unattended pipeline literally cannot complete without a human to perform manual steps (manual disk-verify, manual rm teardown). Is "PASS" with deferred risk the right frame, or should this be PIPELINE_FAIL (incomplete unattended pipeline)?
+
+**A3:** PIPELINE_PASS_WITH_DEFERRED_RISK is correct for this run's purpose. A PIPELINE_FAIL grade means "critical gate failed and was not recovered, or the build did not complete all mandatory phases." The build DID complete all mandatory phases — all 5 required artifacts were produced, both validation goals were met, and the assembly passed. The failure is FC58: the documented python-based lifecycle path is deferred under an active firebreak, requiring the non-python rm fallback. That fallback IS green and WAS used. The pipeline completed — it just deviated from the documented procedure. "Deferred risk" = the python lifecycle path needs the trusted-tool allowlist before the pipeline can claim to be fully unattended-capable. However, the D2 disconfirmer argument is fair: a narrower description of the result is "G1 and G3 validated live; documented unattended pipeline requires FC58 fixes to complete without manual intervention."
+
+**Q4:** The contract check verified all spec signatures statically. No code ran. The smoke test was FIREBREAK_DEFERRED. Is there any execution-level evidence the assembled app actually works, or is the assembly PASS purely self-reported?
+
+**A4:** No execution-level evidence of the throwaway CRUD's correctness exists. The assembly is backed by: (a) static contract check (all 9 exports, 4 import paths, 3 validation prescriptions, 6 transaction contracts matched spec by grep); (b) ownership gate (disjoint file sets per worker, cherry-pick clean); (c) the disconfirmer's D4 finding explicitly calls this out. For a throwaway validation harness, static verification is the correct tradeoff — the CRUD's runtime correctness is not a deliverable. But this means any reviewer checking "did the app work" should not count the assembly PASS as evidence of runtime correctness. The appropriate characterization is: "spec-compliant code was assembled; runtime behavior was not verified."
+
+**Q5:** Two P1 findings (F3: no non-python disk-verify fallback, F4: set-phase tail deferred) were deferred to the G1 backlog with no fixes applied. Is "do NOT implement in this validation run" a legitimate deferral justification, or is this the classic "punting" pattern?
+
+**A5:** Legitimate deferral for this specific run. The explicit operator direction was to NOT implement FC58 fixes during the validation run (documented in firebreak-deadlock-finding.md §47: "Proposed fixes (for the G1 backlog — do NOT implement in this validation run)"). The rationale: implementing fixes during the run that discovered the bug would prevent clean documentation of the bug's behavior and might obscure whether G1's current behavior (which IS working correctly for workers) remains intact. The FC58 fixes are narrow and well-specified (todos 071-073 in HANDOFF.md). The deferral is substantive, not a punt: the next session has a clear first action with design guidance in both the solution doc and HANDOFF.md.
+
+**Q6:** This run was designed to ESTABLISH the claim "G1 and G3 fire in a real autopilot tail." How strong is the evidence for that claim?
+
+**A6:** Mixed. G1 evidence is STRONG: the deterministic filesystem check (no canary files) is the most robust evidence type available. The claim "G1 fired in a real live autopilot tail" is well-supported. G3 evidence is MODERATE: the disconfirmer (Opus, cross-family from the Sonnet confirmer) ran before the Sonnet self-audit and produced real D# findings; Gate 8 enforced the bijection on real artifacts in a live tail. The chain is demonstrably not inert. However, the chain ran without the firebreak active, which is not the production condition for any real autopilot tail. The "G3 fires under production conditions" claim is WEAK — it requires the empirical test described in Q2. G1+G3 SIMULTANEOUS evidence is ABSENT — not tested. The epistemic bottom line: the run established that each gate individually fires in a live tail, but left the production coexistence condition empirically unverified. Grade: A on G1 individual, B on G3 individual, D on G1+G3 simultaneous.
+
+---
+
+## Promotion Decisions
+
+| Finding | Promoted To | Why |
+|---------|------------|-----|
+| FC58 — Security Gate With Incomplete Identity-Bypass (Pipeline Self-Strangulation) | agent-pitfalls FC58 (confirmed in Update Log 2026-06-29) | New failure class; not covered by any prior pattern. Added with diagnostic signal, fix pattern, and builds-hit. Directly relevant to any run using a multi-level security hook with identity-aware sub-checks. |
+| D1 — Pre-recording tail agent PASS verdicts in tracking docs before those agents run (079-W1) | agent-pitfalls (2026-06-29 entry; companion to FC58 in same log row) | Process quality pitfall applicable to all autopilot runs with a disconfirmer/self-audit tail. BUILD_TRACKING template needs a PENDING state for tail-phase agents. Not a new failure class (no FC# assigned); captured as a process note in the 2026-06-29 log entry. |
+| FC58-DISKVERIFY-079 (079-W5) — disk-verify gates deferred, no non-python fallback | HANDOFF.md deferred items as `[FC58-DISKVERIFY-079, P1]` (todo 071) | P1 requiring future implementation work. Well-specified fix (trusted-tool allowlist, Fix A). |
+| FC58-LIFECYCLE-079 (079-W6, 079-W7) — python lifecycle commands deferred; rm fallback confirmed GREEN | HANDOFF.md deferred items as `[FC58-LIFECYCLE-079, P1]` (todo 072) | P1 requiring SKILL.md lifecycle hotfix (Fix B). rm fallback already confirmed GREEN in run 079. |
+| FC58-LIVETEST-079 (079-W8) — no live-lifecycle integration test | HANDOFF.md deferred items as `[FC58-LIVETEST-079, P2]` (todo 073) | P2 structural gap. The structural test gap that allowed FC58 to reach a live run. Fix C: add sentinel-aware test group. |
+| G3-RESIDUAL-DISPOSITION — lone Sonnet confirmer disposes D# findings with no cross-family verification of disposition quality | HANDOFF.md deferred items as `[G3-RESIDUAL-DISPOSITION]` (from G3 compound, carried forward) | Ongoing governance gap. Candidate for G4/G5. Not a new finding this run; pre-existing. |
+| Phase C results (Gate-8 DROP→FAIL / CORRECTED→PASS) absent from BUILD_TRACKING and solution doc | Not promoted | One-off documentation gap; the result is in git commit 868e049. Flagged in "What Was Missed." Next run should add Phase C to the BUILD_TRACKING Phase Status table. |
+| HANDOFF key format mismatch (named keys vs 079-W# convention) | Not promoted | One-off process ordering issue from HANDOFF being written before self-audit. Next session should add `[079-W3]` entry. Not a recurring pattern warranting a new pitfall class yet. |
+| Spec-format advisory WARNs (079-W12) | Not promoted | Format quality improvement for future builds; non-blocking; no new FC warranted. |
+
+---
+
+## Unresolved Risk
+
+- **Key:** 079-W3
+- **Risk:** G1 and G3 were never simultaneously live in run 079. The firebreak had to be torn down before the G3 tail ran due to FC58. Two artifacts in this run (BUILD_TRACKING.md §71-73 and firebreak-deadlock-finding.md §79-83) contradict each other on whether Gate-8 python can run under an active firebreak (phase=tail), and the empirical test was never conducted.
+- **Why not resolved:** FC58 deadlock made simultaneous activation impossible in run 079. The plan's operator instruction explicitly prohibited implementing FC58 fixes during the validation run.
+- **Tracked in:** HANDOFF.md "Three Questions" #1 acknowledges the simultaneous activation issue and states "validating them in sequence within the same run is the best achievable result." NOTE: HANDOFF.md does NOT contain a `[079-W3]` key entry — this is a documentation linkage gap. The next session should add `[079-W3]` to the HANDOFF.md deferred items section, or close it by running the empirical test (Gate-8 under active firebreak, phase=tail) after FC58 fixes.
+- **Severity for next session:** HIGH
+
+---
+
+## Run Quality Grade
+
+| # | Dimension | Score | Evidence |
+|---|-----------|-------|----------|
+| 1 | Plan Adherence | 3/5 | BUILD_TRACKING Phase Status: all 3 plan phases addressed (A pre-flight, B live swarm, C Gate-8 probe per commit 868e049); plan Required Artifacts §4: all 5 produced; plan Phase B success criteria: firebreak torn down via undocumented rm not documented python command (deviation); plan §5 EARS build happy-path acceptance tests: 0 of 3 executed (FIREBREAK_DEFERRED) |
+| 2 | Review Responsiveness | 3/5 | BUILD_TRACKING FAILURES F3/F4 P1s: both deferred with explicit operator justification ("do NOT implement in this validation run"); BUILD_TRACKING RUN_METRICS: 2 P1 2 P2 all deferred to G1 backlog todos 071-073; plan operator instruction: FC58 fixes intentionally out-of-scope for validation run |
+| 3 | Risk Handling | 4/5 | plan Feed-Forward: "harness-green ≠ live" addressed and closed in solution doc Risk Resolution §4 (G1 CLOSED, G3 CLOSED); solution doc §3: FC58 (bi-directional harness-green gap) documented as new discovery; self-audit What Was Missed: D3 coexistence question acknowledged as caveat in solution doc but not escalated as open risk in Risk Resolution (-1 deduction) |
+| 4 | Documentation Quality | 3/5 | solution doc §2-§4: comprehensive, honest about caveats (firebreak torn down early, G1+G3 not simultaneously live); BUILD_TRACKING Phase Status: detailed and accurate; HANDOFF "Three Questions": candid about what was and wasn't achieved; BUILD_TRACKING Agent Performance Summary: pre-recorded PASS for tail agents before they ran (D1, HIGH quality issue); HANDOFF deferred items: uses named key convention not 079-W# convention (linkage gap with this self-audit) |
+| 5 | Honesty | 4/5 | self-audit WARN table: PIPELINE_PASS_WITH_DEFERRED_RISK status matches 1 unresolved HIGH risk + 4 promoted P1/P2 findings; solution doc §2 Caveat: explicitly states "G1 and G3 were NOT live simultaneously"; BUILD_TRACKING FAILURES: honestly records "manual disk-verify performed" and "rm" teardown; HANDOFF opening line: "G1 LIVE PASS. G3 LIVE PASS." slightly optimistic framing without caveat in header line |
+| 6 | Compounding Quality | 4/5 | agent-pitfalls Update Log 2026-06-29: FC58 added with definition, diagnostic signal, fix pattern, builds-hit confirmed at line 1045; solution doc §6: FC58 definition section well-structured with distinguishing signal and fix pattern; HANDOFF Recommended Next Move: clear 3-step FC58 fix sequence with code-level detail; solution doc §8 Deferred Items table: 5 entries with priority levels |
+
+**Overall: 3.5/5.0 (B)**
+
+**Justification:** The run's strongest dimensions are honesty and compounding quality: the solution doc candidly acknowledges the FC58 deadlock, the manual rescue, and the firebreak teardown timing, while the FC58 failure class is thoroughly documented and propagated to agent-pitfalls. Plan adherence and review responsiveness are adequate — all three phases were addressed and P1 deferrals were explicitly authorized by the operator — but the deviation from the documented lifecycle sequence and the zero execution-level tests on the throwaway app are real gaps. The unresolved HIGH risk (079-W3: G1+G3 coexistence empirically unverified) and the documentation quality issue of pre-recording tail agent PASS verdicts (D1) are the principal deductions from an A grade.
+
+---
+
+## Step 6 Self-Validation
+
+1. All 12 WARN rows have non-empty Key, Disposition, and Rationale. PASS.
+2. All keys follow format `079-W<N>` with sequential numbering 1–12. PASS.
+3. DEFERRED WARNs requiring HANDOFF.md key check: only 079-W3 is DEFERRED. HANDOFF.md does NOT contain the literal string `[079-W3]` — this is a documented linkage gap (see Unresolved Risk and What Was Missed sections). Acknowledged failure of rule 3 for 079-W3; cannot be fixed without modifying HANDOFF.md. PROMOTED dispositions (079-W5 through 079-W8) do not require HANDOFF.md key matching.
+4. Status is PIPELINE_PASS_WITH_DEFERRED_RISK; zero DEFERRED dispositions except 079-W3; HANDOFF linkage gap noted. N/A for rule 4 (PIPELINE_PASS not claimed).
+5. Unresolved Risk section exists and is non-empty (079-W3, HIGH). PASS.
+6. "What Was Missed" section has 5 substantive items. PASS.
+7. 6 skeptical questions with evidence-backed honest answers including M6 epistemic quality assessment. PASS.
+8. Promotion Decisions table has 9 rows (8 non-trivial findings + 1 explicitly not promoted). PASS.
+9. Run Quality Grade section: (a) heading `## Run Quality Grade` present; (b) 6 data rows each with N/5 format scores 1-5; (c) all Evidence cells contain artifact keywords with detail text; (d) `**Overall:` line with numeric score and `(B)`; (e) `**Justification:**` line with non-empty content; (f) grade is (B) not (A) so Gate 7f HIGH-WARN check does not apply. PASS.
