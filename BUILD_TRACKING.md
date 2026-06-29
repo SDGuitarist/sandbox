@@ -25,6 +25,7 @@
 | spec-provenance (9w.9.5) | PROVENANCE_REPAIRED (cherry-pick to master + re-verify OK) | docs/reports/079/spec-provenance.md |
 | firebreak probe (9w.9.6) | **G1 PASS** — real worktree worker's control-plane writes DENIED, no canary | docs/reports/079/firebreak-probe.md |
 | swarm | PASS | docs/reports/079/assembly-summary.md |
+| firebreak teardown (17w, early) | DONE via trusted `rm` — **P1 finding**: documented python teardown/disk-verify deferred as indirection | docs/reports/079/firebreak-deadlock-finding.md |
 
 **Run State:**
 - run_id: 079
@@ -81,7 +82,7 @@ instead of reading the full 1030-line registry.
 
 ## RUN_METRICS
 
-- firebreak: ACTIVE (run=079, phase=build; activated at Step 9w.9.6; positive-control probe G1 PASS — control-plane writes denied). To be torn down at Step 18w.
+- firebreak: ACTIVE then TORN DOWN. Activated at Step 9w.9.6 (run=079, phase=build); positive-control probe **G1 PASS** (real worktree worker's control-plane writes denied). Governed the full swarm-build + assembly window. **Torn down early at Step 17w** (via trusted `rm .claude/firebreak-active.json` — the documented `python3 firebreak-activate.py deactivate` was itself deferred as indirection) to allow the python-using tail to run. See docs/reports/079/firebreak-deadlock-finding.md (P1 wiring finding).
 
 <!-- Remaining metrics filled after review -->
 
