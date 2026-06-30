@@ -944,7 +944,9 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   BUILD_TRACKING.md Run State. Do NOT proceed to Step 17w, and do NOT disk-verify
   (these blocking classes abort BEFORE writing `assembly-summary.md`, and a stale
   prior-run summary must not mask the abort). **Tear down the firebreak before
-  ending** (`python3 .claude/hooks/firebreak-activate.py deactivate`). The run ends.
+  ending** (`rm .claude/firebreak-active.json` -- the same independent teardown as
+  Step 18w; an abort path is exactly where teardown must not depend on the FC58
+  carve-out). The run ends.
   (These are the two blocking failure classes — see CLAUDE.md Escalation Rules.)
 - **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
   The blocking classes above are the ONLY wire-driven aborts in this handler. All of
@@ -989,6 +991,12 @@ firebreak via the trusted-pipeline-script carve-out -- `firebreak-activate.py` i
 the allowlist. It is kept as a python call, not a raw Write, because `set-phase` is a
 field-preserving read-modify-write of the sentinel; a blind Write would risk clobbering
 `run_id`/`repo_root` and breaking the disk-verify gate at Step 18w.)
+
+> **Maintainer note (FC58):** any NEW `python3`-invoked orchestrator gate tool added to
+> this skill must be added to `TRUSTED_PIPELINE_SCRIPTS` in
+> `.claude/hooks/firebreak-classify.py`, or it will be DEFERRED under an active firebreak
+> (the run-079 failure mode). The defer is loud (a visible RED indirection record), but
+> the fix location is here-to-there, so this pointer exists to make it discoverable.
 
 Use the **tail-runner** agent to execute the entire Shared Tail in a
 fresh context window.
