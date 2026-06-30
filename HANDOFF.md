@@ -1,8 +1,8 @@
-# HANDOFF — Sandbox · FC58 FIX CYCLE COMPLETE + MERGED · NEXT = HOOK REPOINT
+# HANDOFF — Sandbox · FC58 FIXED + MERGED + HOOK REPOINTED · NEXT = COEXISTENCE RE-VALIDATION
 
 **Date:** 2026-06-29
-**Branch:** `master` @ `2c23724` — **FC58 fix cycle merged (`--no-ff`) and pushed to origin.** Working tree clean.
-**Phase:** **FC58 (the run-079 P1) is FIXED, reviewed (security=SAFE, architecture=mergeable), and merged. 279/279 classifier tests pass. BUT the fix does NOT run live yet — the global firebreak hook still execs the stale `sandbox-g1` worktree classifier. NEXT = Step 2 (repoint the global hook → main repo; needs Alex's OK), then Step 3 (coexistence re-validation to close `[079-W3]`). G2/G4/G5 still gated behind the re-validation.**
+**Branch:** `master` @ `2c23724`+ (HANDOFF commits after) — **FC58 fix cycle merged (`--no-ff`) and pushed.** Working tree clean.
+**Phase:** **FC58 (the run-079 P1) is FIXED + reviewed (security=SAFE, architecture=mergeable) + merged (279/279 tests). Step 2 hook repoint DONE + live-probe-verified — the FC58-fixed classifier is now what the global firebreak hook invokes (effective next session). NEXT = Step 3 (coexistence re-validation: a live autopilot run with the firebreak active THROUGH the tail, to close `[079-W3]`). G2/G4/G5 still gated behind the re-validation. `sandbox-g1` worktree is no longer load-bearing → can be torn down (Step 4).**
 
 ## Honest validation status (read this before claiming "done")
 
@@ -25,11 +25,11 @@ The FC58 fix cycle (handoff Step 1) is **DONE + merged to master** (`2c23724`, p
 
 ## Recommended Next Move (start here — fresh session)
 
-**Step 1 (FC58 fix cycle) is COMPLETE + merged.** Do NOT start G2/G4/G5 yet. Remaining sequence:
+**Steps 1 + 2 are COMPLETE.** Do NOT start G2/G4/G5 yet. Remaining sequence:
 
-**Step 2 — Repoint the global firebreak hook → main repo. THIS IS THE PREREQUISITE for re-validation. ⬅ START HERE.** The global PreToolUse hook in `~/.claude/settings.json` execs `sandbox-g1`'s `firebreak-gate.sh` → `sandbox-g1`'s `firebreak-classify.py`, which is on `feat/g1` (stale — has the SAME FC58 bug and does NOT have the merged fix). So **the FC58 classifier fix on master does not run live until the hook points at the main repo.** Repoint via `update-config` (global settings — **confirm with Alex before editing `~/.claude/settings.json`**), then reconcile the sentinel write/read paths. Verify post-repoint that the live hook loads the main-repo classifier (e.g. a probe that an allowlisted orchestrator python call is GREEN and a worker python call is DEFERRED).
+**Step 2 — Repoint the global firebreak hook → main repo. ✅ DONE (2026-06-29).** `~/.claude/settings.json` line 114 now execs `/Users/alejandroguillen/Projects/sandbox/.claude/hooks/firebreak-gate.sh` (was `sandbox-g1`). Verified: gate scripts byte-identical between trees; gate locates the classifier via `$HOOK_DIR` (so it now uses the main-repo FC58-fixed classifier); sentinel resolution is cwd-anchored (`find_sentinel` walks up from cwd / `FIREBREAK_SENTINEL`), independent of gate location — no path reconciliation needed. Live gate→classifier probe passed: orchestrator allowlisted python → ALLOW, `firebreak-activate.py set-phase` → ALLOW, worker python → DENY, orchestrator `python3 -c` → DENY. Backup at `~/.claude/settings.json.bak-fc58-repoint`. **Caveat:** Claude Code loads hooks at session start, so a session already running before the edit keeps the old path in memory — the repoint is effective for the NEXT session / autopilot run (which is what Step 3 needs anyway). The `sandbox-g1` worktree is now NO LONGER load-bearing → safe to tear down in Step 4.
 
-**Step 3 — Coexistence re-validation run** — a new live autopilot run with the firebreak **active through the tail**, to actually close `[079-W3]` (G1+G3 simultaneous, never tested live together). With FC58 fixed, the tail's `verify_delegated_status.py` disk-verify gates and `set-phase tail` now run GREEN under the active firebreak, so the firebreak no longer has to tear down before the tail.
+**Step 3 — Coexistence re-validation run. ⬅ START HERE.** A new live autopilot run with the firebreak **active through the tail**, to actually close `[079-W3]` (G1+G3 simultaneous, never tested live together). With FC58 fixed + the hook repointed, the tail's `verify_delegated_status.py` disk-verify gates and `set-phase tail` now run GREEN under the active firebreak, so the firebreak no longer has to tear down before the tail. This is a full unattended autopilot run (needs a throwaway spec + `dangerouslySkipPermissions` env) — kick off deliberately.
 
 **Step 4 — `sandbox-g1` worktree teardown + branch cleanup** (deferred all session). Order: hook already repointed (Step 2) → `git worktree remove sandbox-g1` → delete `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, **and `feat/fc58-firebreak-trusted-indirection`** (local + remote; all merged).
 
@@ -75,7 +75,7 @@ The FC58 fix cycle (handoff Step 1) is **DONE + merged to master** (`2c23724`, p
 - **[FC58-LIFECYCLE-079, P1] DONE** — lifecycle teardown hotfix (todo 072, hybrid, merged).
 - **[FC58-LIVETEST-079, P2] DONE** — 14 lifecycle/boundary tests (todo 073, merged, 279/279).
 - **[FC58-PATHPIN, P2] NEW** — path-pin the allowlist to retire the two trusted-only residuals (todo 074, pending).
-- **[HOOK-PATH-REPOINT — the PREREQ, now the next action]** Repoint global firebreak hook off the `sandbox-g1` worktree to the main repo BEFORE any FC58 re-validation (else the merged fix never runs live). Needs Alex's OK (global `~/.claude/settings.json`). Pair with worktree+branch teardown (Step 4).
+- **[HOOK-PATH-REPOINT] DONE (2026-06-29)** — `~/.claude/settings.json` line 114 repointed to the main-repo gate; live probe verified the FC58-fixed classifier runs. Effective next session (hooks load at session start). `sandbox-g1` worktree no longer load-bearing → tear down in Step 4. Rollback backup: `~/.claude/settings.json.bak-fc58-repoint`.
 - **[G3-RESIDUAL-DISPOSITION]** Disposition monoculture — the lone Sonnet confirmer disposes disconfirmer D# findings; nothing verifies a disposition is *correct*. Candidate future G-gate. Prefer after FC58 + coexistence.
 - **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in `callsheets.generate`.
 - **[G2/G4/G5]** Governance gates — **gated behind FC58 fixes + the coexistence re-validation.** Then `/workflows:brainstorm` from the scorecard.
@@ -100,14 +100,15 @@ architecture=mergeable). 279/279 classifier tests pass. Status:
   - [079-W3, HIGH] G1+G3 simultaneous coexistence is STILL UNVERIFIED (run 079's tail ran
     firebreak-OFF). Don't claim "fully done" until Step 3.
 
+DONE this session: Step 1 (FC58 fix cycle, merged 2c23724) + Step 2 (hook repoint —
+  ~/.claude/settings.json line 114 now points at the main-repo gate; live probe passed:
+  orch allowlisted python GREEN, worker python DEFERRED, orch python3 -c DENY).
+
 NEXT, in order (do NOT jump to G2/G4/G5):
-  2. Repoint global firebreak hook ~/.claude/settings.json off the sandbox-g1 worktree to the
-     main-repo classifier — PREREQUISITE: else the merged FC58 fix never runs live
-     (update-config; CONFIRM WITH ALEX before editing global settings). Then run a live probe:
-     orchestrator allowlisted python → GREEN, worker python → DEFERRED.
-  3. Coexistence re-validation run (firebreak ACTIVE through the tail) → closes [079-W3].
-  4. sandbox-g1 worktree teardown + delete the 4 merged feature branches (incl.
-     feat/fc58-firebreak-trusted-indirection), local+remote.
+  3. ⬅ Coexistence re-validation run (firebreak ACTIVE through the tail) → closes [079-W3].
+     A full unattended autopilot run; needs a throwaway spec + dangerouslySkipPermissions env.
+  4. sandbox-g1 worktree teardown (now safe — no longer load-bearing) + delete the 4 merged
+     feature branches (incl. feat/fc58-firebreak-trusted-indirection), local+remote.
   5. THEN G2/G4/G5 via /workflows:brainstorm from the governance scorecard.
   Also: write the FC58 compound/solution-doc AFTER Step 3 (so the coexistence proof lands with it).
 
