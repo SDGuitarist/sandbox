@@ -106,7 +106,11 @@ DONE this session: Step 1 (FC58 fix cycle, merged 2c23724) + Step 2 (hook repoin
 
 NEXT, in order (do NOT jump to G2/G4/G5):
   3. ⬅ Coexistence re-validation run (firebreak ACTIVE through the tail) → closes [079-W3].
-     A full unattended autopilot run; needs a throwaway spec + dangerouslySkipPermissions env.
+     READY-TO-LAUNCH BRIEF: docs/plans/2026-06-30-step3-coexistence-revalidation-brief.md
+     MUST launch in a FRESH session (hook-load certainty + autopilot loop/context budget).
+     In a fresh session in ~/Projects/sandbox, verify settings.json:114 points at the MAIN
+     repo gate, then run /autopilot with the ShelfTrack throwaway described in the brief.
+     Close [079-W3] only if all 5 success criteria in the brief hold.
   4. sandbox-g1 worktree teardown (now safe — no longer load-bearing) + delete the 4 merged
      feature branches (incl. feat/fc58-firebreak-trusted-indirection), local+remote.
   5. THEN G2/G4/G5 via /workflows:brainstorm from the governance scorecard.
