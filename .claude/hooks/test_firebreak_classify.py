@@ -197,6 +197,45 @@ def main():
     d, _, _ = run(bash("make release", WORKER), s)
     check("worker make (not auto-allowed)", d, True)
 
+    # ---------------- FC58: TRUSTED pipeline-script indirection carve-out ----------
+    # The G1 firebreak's bash_indirection defers ALL python; FC58 waives that defer
+    # for a TRUSTED identity running python on one of the named pipeline scripts.
+    # POSITIVE -- orchestrator lifecycle + disk-verify gates run GREEN under sentinel:
+    d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", ORCH), s)
+    check("FC58 orch verify_delegated_status.py allowed", d, False)
+
+    d, _, _ = run(
+        bash("python3 .claude/hooks/firebreak-activate.py set-phase tail", ORCH), s)
+    check("FC58 orch firebreak set-phase allowed", d, False)
+
+    d, _, _ = run(
+        bash("python3 .claude/hooks/firebreak-activate.py deactivate", ORCH), s)
+    check("FC58 orch firebreak deactivate allowed", d, False)
+
+    d, _, _ = run(bash("python3 tools/check_spec_provenance.py", SWARM), s)
+    check("FC58 swarm-runner check_spec_provenance.py allowed", d, False)
+
+    d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", TAIL), s)
+    check("FC58 tail-runner verify_delegated_status.py allowed", d, False)
+
+    # Confirmed non-python teardown fallback (rm is not an interpreter):
+    d, _, _ = run(
+        bash(f"rm {repo}/.claude/firebreak-active.json", ORCH), s)
+    check("FC58 orch rm sentinel allowed", d, False)
+
+    # NEGATIVE -- the carve-out stays narrow (these MUST still defer):
+    d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", WORKER), s)
+    check("FC58 worker verify_delegated_status.py STILL denied", d, True)
+
+    d, _, _ = run(bash("python3 deploy.py", ORCH), s)
+    check("FC58 orch non-allowlisted python STILL denied", d, True)
+
+    d, _, _ = run(bash("node verify_delegated_status.py", ORCH), s)
+    check("FC58 orch non-python interpreter STILL denied", d, True)
+
+    d, _, _ = run(bash("python3 .claude/hooks/firebreak-classify.py", ORCH), s)
+    check("FC58 orch non-allowlisted .py (classifier) STILL denied", d, True)
+
     # ---------------- control-plane writes (F1 + F5 + F9) ----------------
     d, _, _ = run(write(f"{HOME}/.claude/settings.json", WORKER), s)
     check("worker Write control-plane settings", d, True)
