@@ -109,3 +109,10 @@ writers-room-council/
 
 # Build output (PDFs, HTML, compiled guides)
 output/
+
+# Retired throwaway build output -- untracked (git rm --cached) to keep master's tree
+# clean AND to stop worker worktrees (rooted on master) inheriting a colliding shared
+# `app/` namespace (film-PM, run 070). Files stay on disk; recovery tag:
+# archive/pre-hygiene-2026-07-01. CONVENTION: new autopilot builds MUST namespace under
+# their own top-level dir (e.g. shelftrack/), never the shared `app/`.
+/app/

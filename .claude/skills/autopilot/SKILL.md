@@ -579,6 +579,15 @@ Before launching swarm agents, check for files left over from prior builds
 in the same repo (FC48). Ghost files from prior projects silently ship with
 the new build and create import landmines.
 
+**FC59 (run 080) — Build Namespace Convention (see CLAUDE.md):** this build MUST write
+under its OWN top-level dir (e.g. `shelftrack/`), NEVER the shared `app/`. Before the
+per-dir ghost scan below, confirm the plan's File Assignment Boundaries target the
+build's own namespace dir. If the plan targets a top-level dir already tracked on
+`master` from a prior build (check `git ls-tree master --name-only`), STOP and
+re-namespace the assignments under the build's own dir — do not delete the prior
+build's tracked files to make room. (`/app/` is gitignored as of 2026-07-01; substitute
+the build's namespace dir for `app/` in the scan steps below.)
+
 1. Read the File Assignment Boundaries section from the plan. Collect ALL
    prescribed file paths into a set.
 2. Check for unexpected files in `app/`:

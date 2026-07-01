@@ -30,6 +30,24 @@ These files are written by `/update-learnings-noninteractive` (autopilot) or `/u
 - `~/.claude/projects/[project-key]/memory/workflow.md` -- workflow lessons
 - `~/.claude/projects/[project-key]/memory/patterns.md` -- code patterns
 
+## Build Namespace Convention (MANDATORY — prevents ghost-file collisions)
+
+Every autopilot build MUST write its application code under its **own top-level
+directory** named for the build (e.g. `shelftrack/`, `gigsheet/`) — **never** the
+shared top-level `app/` namespace.
+
+**Why:** worker worktrees root on `master`, so any tracked top-level dir a build
+writes is inherited by every future build's workers. A build that writes into a shared
+`app/` collides with the next build's `app/` (run 070's film-PM `app/models/` package
+shadowed run 080 ShelfTrack's `app/models.py` → import landmine, and blocked the run at
+the 9w.9 ghost-file gate). Per-build namespacing makes prior builds inert clutter, not
+blockers. (`/app/` is now gitignored; film-PM's files remain on disk, recovery tag
+`archive/pre-hygiene-2026-07-01`.)
+
+The 9w.9 ghost-file cleanup step enforces this: if the plan's file assignments target a
+top-level dir already tracked on `master` from a prior build, re-namespace under the
+build's own dir before spawning workers.
+
 ## Required Artifacts
 
 Every completed autopilot run must produce:
