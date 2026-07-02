@@ -1,8 +1,8 @@
-# HANDOFF — Sandbox · [079-W3] CLOSED · run-080 knowledge on master · master-hygiene unblock done · NEXT = Step 4 cleanup
+# HANDOFF — Sandbox · Steps 1–4 DONE · [079-W3] CLOSED · master clean · NEXT = Step 5 (G2/G4/G5)
 
 **Date:** 2026-07-02
-**Branch:** `master` (run-080 KNOWLEDGE artifacts brought to master; throwaway `shelftrack/` app CODE stays on local branch `feat/shelftrack-reading-list`, unmerged, safe to delete once you're satisfied the knowledge is preserved).
-**Phase:** **Step 3 (coexistence re-validation) COMPLETE — [079-W3] CLOSED (G1+G3 confirmed live, firebreak active through tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock DONE (film-PM `app/` untracked, namespace convention set). NEXT = Step 4 (sandbox-g1 worktree teardown + branch cleanup), then G2/G4/G5. Full 50-dir master declutter DEFERRED.**
+**Branch:** `master` @ `f0590fc` (clean, in sync with origin, single worktree). Run-080 KNOWLEDGE is on master; the throwaway `shelftrack/` app CODE was on `feat/shelftrack-reading-list`, now DELETED (Step 4).
+**Phase:** **Steps 1–4 all COMPLETE. `[079-W3]` CLOSED (G1+G3 confirmed live, firebreak active through the tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock done; Step-4 teardown done (worktree + 5 branches removed). NEXT = Step 5 (G2/G4/G5) via `/workflows:brainstorm`. Deferred: full ~50-dir master declutter, `[080-W2 HIGH]` review artifact.**
 
 ## Honest validation status
 
@@ -71,30 +71,24 @@ gitignored data), archive-tagged first. See Deferred Items `[MASTER-DECLUTTER]`.
 - **[G3-RESIDUAL-DISPOSITION]** Disposition monoculture — lone Sonnet still disposes disconfirmer findings. No independent verification of disposition correctness. Candidate future G-gate. Prefer after coexistence is confirmed (it now is — CLOSED means this is the next priority).
 - **[MASTER-DECLUTTER, deferred]** Master carries ~50 top-level dirs from ~80 prior runs — a mix of throwaway builds (bookmark-manager, todo.py, error-test-app, …) and REAL projects with data (`lead-scraper` = 150 `leads.db` backups incl. `leads.backup-SAFE-DO-NOT-DELETE.db`; `eval-harness`; likely `gigsheet`/`venue-scraper`). Only film-PM `app/` was untracked so far (it caused the active block). A full "clean master to infra+docs" pass is worthwhile before scaling G2/G4/G5 builds, but MUST: (1) archive-tag first, (2) use `git rm --cached` ONLY — NEVER `rm -rf` (would destroy gitignored `.db` data, incl. lead-scraper production data — four prior data-loss incidents), (3) get per-dir keep/untrack sign-off from Alex (real-vs-throwaway needs his knowledge). Do NOT bulk-automate.
 
-## Step Sequence (what comes next)
+## Step Sequence
 
-**[079-W3] CLOSED.** Proceed in order:
+**Steps 1–4 DONE. `[079-W3]` CLOSED.**
 
-4. **Step 4 — sandbox-g1 worktree teardown + branch cleanup.** Branches to delete:
-   - `feat/g1-risk-tiered-firebreak` (merged)
-   - `feat/g3-verification-diversity` (merged)
-   - `feat/g1-g3-live-validation` (merged)
-   - `feat/fc58-firebreak-trusted-indirection` (merged)
-   - `feat/shelftrack-reading-list` — run 080 is NOT merged (throwaway), but its KNOWLEDGE
-     artifacts are now on master, so this branch is safe to delete. (It is LOCAL-ONLY /
-     unpushed — deletion needs `git branch -D`, no remote delete.) The throwaway
-     `shelftrack/` app code is discarded with it, by design.
-   - Remove `sandbox-g1` worktree (no longer load-bearing since Step-2 hook repoint).
-   - NOTE: several OTHER stale local branches + old `swarm-0**-assembly` branches exist —
-     candidates for the same cleanup if you want (list via `git branch`).
+- ✅ **Step 1 — FC58 fix cycle** (merged): TRUSTED_PIPELINE_SCRIPTS carve-out + hybrid lifecycle + 14 tests (279/279); reviewed SAFE/mergeable.
+- ✅ **Step 2 — hook repoint**: global firebreak hook → main-repo classifier; live-probe verified.
+- ✅ **Step 3 — coexistence re-validation (run 080)**: `[079-W3]` CLOSED; firebreak active through the tail; honest status `PIPELINE_PASS_WITH_DEFERRED_RISK`.
+- ✅ **Master-hygiene (minimal)**: film-PM `app/` untracked, `/app/` gitignored, namespace convention (FC59), recovery tag `archive/pre-hygiene-2026-07-01`; run-080 knowledge preserved on master.
+- ✅ **Step 4 — teardown**: removed `sandbox-g1` worktree; deleted 5 branches — `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, `feat/fc58-firebreak-trusted-indirection` (all merged), `feat/shelftrack-reading-list` (throwaway, knowledge preserved). 2 also removed from origin. Master = single worktree, clean.
+  - NOTE: other stale local branches + old `swarm-0**-assembly` branches remain — optional future cleanup (`git branch -a`).
 
-5. **Step 5 — G2/G4/G5** via `/workflows:brainstorm` from the governance scorecard.
-   - G2: in-flight AI monitor
-   - G4: per-run-nonce ledger
-   - G5: delegation-as-authority
+### ⬅ NEXT — Step 5 — G2/G4/G5 (fresh start)
+Via `/workflows:brainstorm` from the governance scorecard (`docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`):
+- **G2**: in-flight AI monitor
+- **G4**: per-run-nonce ledger
+- **G5**: delegation-as-authority
 
-Smoke re-run + auto-memory + agent-pitfalls were all completed post-teardown (see 080-W4 /
-AUTO-MEMORY-DEFERRED — both RESOLVED). Full master declutter = `[MASTER-DECLUTTER]` (deferred).
+Before scaling more builds, consider two deferred items: `[MASTER-DECLUTTER]` (full ~50-dir master cleanup — `git rm --cached` ONLY, never `rm -rf`; production data on disk) and `[080-W2, HIGH]` (produce a real review-summary.md so a governance run's "0 P1" verdict is artifact-backed).
 
 ## Three Questions
 
@@ -105,31 +99,42 @@ AUTO-MEMORY-DEFERRED — both RESOLVED). Full master declutter = `[MASTER-DECLUT
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md, "Step Sequence" section first. This is sandbox, on master.
+Read HANDOFF.md, "Step Sequence" section first. This is sandbox, on master (f0590fc,
+clean, pushed, single worktree).
 
-Run 080 (ShelfTrack G1+G3 coexistence re-validation) is COMPLETE. Honest status =
-PIPELINE_PASS_WITH_DEFERRED_RISK (NOT clean PASS — the self-audit + disconfirmer flagged
-overclaims; do not repeat them):
-  - [079-W3] CLOSED: G1+G3 coexistence confirmed live, firebreak ACTIVE through the tail,
-    FC58 resolved FOR TRUSTED PIPELINE SCRIPTS (the smoke test's FIREBREAK_DEFERRED is the
-    carve-out working as designed, NOT a recurrence).
-  - The "10/10 tests" during the run were the FILM-PM ghost tests (app.*), NOT ShelfTrack.
-    ShelfTrack's real coverage = the POST-teardown smoke re-run (16/16 PASS). During the
-    governed run, ShelfTrack had ZERO executed tests.
-  - [080-W2, HIGH] still open: the "0 P1 review findings" verdict has NO on-disk review
-    artifact (review was inline). Produce a real review-summary.md for future gov runs.
+Steps 1-4 are ALL DONE. [079-W3] CLOSED: the G1 firebreak and the G3 self-audit
+disconfirmer now provably COEXIST under live governance — the firebreak stayed ACTIVE
+through the tail (run 080), the thing run 079 couldn't test. FC58 is resolved for the
+trusted pipeline scripts.
 
-DONE: Steps 1-3 (FC58 fixes, hook repoint, coexistence re-validation) + master-hygiene
-MINIMAL unblock (film-PM app/ untracked, namespace convention, run-080 knowledge on master).
+Honest-status guardrails (the run's own self-audit + disconfirmer flagged these — do NOT
+repeat the overclaims):
+  - run 080 = PIPELINE_PASS_WITH_DEFERRED_RISK, NOT clean PASS.
+  - FC58 "resolved" is scoped to TRUSTED pipeline scripts; the smoke test's
+    FIREBREAK_DEFERRED is the carve-out working as designed, not a recurrence.
+  - "10/10 tests" during the run were FILM-PM ghost tests, NOT ShelfTrack. ShelfTrack's
+    real coverage = the post-teardown smoke re-run (16/16). Zero ShelfTrack tests ran
+    DURING the governed run.
 
-NEXT, in order:
-  4. sandbox-g1 worktree teardown + delete the 5 merged/superseded feature branches
-     (incl. LOCAL-ONLY feat/shelftrack-reading-list — knowledge already on master).
-  5. Then G2/G4/G5 via /workflows:brainstorm from the governance scorecard.
-  Deferred: [MASTER-DECLUTTER] full ~50-dir master cleanup (git rm --cached ONLY, never
-     rm -rf — lead-scraper production data lives on disk; archive-tag + per-dir sign-off).
-  Open: [080-W2 HIGH] review artifact, [080-W5 MED] compounded darkness, [FC58-PATHPIN P2] todo 074.
+NEXT — Step 5: G2/G4/G5 via /workflows:brainstorm, seeding from the governance scorecard
+(docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md):
+  - G2 in-flight AI monitor · G4 per-run-nonce ledger · G5 delegation-as-authority
 
-Solution doc: docs/solutions/2026-06-30-shelftrack-run-080-g1-g3-coexistence-revalidation.md
+Consider first (optional, before scaling builds):
+  - [080-W2, HIGH] produce a real docs/reports/<run>/review-summary.md so a governance
+    run's "0 P1" verdict is artifact-backed (it was inline-only in run 080).
+  - [MASTER-DECLUTTER] full ~50-dir master cleanup. MUST: archive-tag first, git rm
+    --cached ONLY (NEVER rm -rf — lead-scraper has 150 production leads.db backups on
+    disk, four prior data-loss incidents), per-dir keep/untrack sign-off from Alex.
+  - [FC58-PATHPIN, P2] todo 074 · [080-W5, MED] compounded verification darkness.
+
+INVARIANTS (don't touch designs): firebreak classifier = deny-known-bad; FC58 carve-out
+is TRUSTED-only + python-only + allowlist matches script BASENAMES only; self-audit-
+reviewer stays model: sonnet; Gate 8 fail-closed + literal-token, no binding LLM verdict;
+builds namespace under their OWN top-level dir, never shared app/ (FC59). Recovery tag if
+hygiene needs rollback: archive/pre-hygiene-2026-07-01.
+
+Governance scorecard: docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md
+Run-080 solution doc: docs/solutions/2026-06-30-shelftrack-run-080-g1-g3-coexistence-revalidation.md
 Self-audit (honest grades): docs/reports/080/self-audit.md
 ```
