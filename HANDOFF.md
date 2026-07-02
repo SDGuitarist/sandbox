@@ -1,127 +1,135 @@
-# HANDOFF — Sandbox · FC58 FIXED + MERGED + HOOK REPOINTED · NEXT = COEXISTENCE RE-VALIDATION
+# HANDOFF — Sandbox · [079-W3] CLOSED · run-080 knowledge on master · master-hygiene unblock done · NEXT = Step 4 cleanup
 
-**Date:** 2026-06-29
-**Branch:** `master` @ `2c23724`+ (HANDOFF commits after) — **FC58 fix cycle merged (`--no-ff`) and pushed.** Working tree clean.
-**Phase:** **FC58 (the run-079 P1) is FIXED + reviewed (security=SAFE, architecture=mergeable) + merged (279/279 tests). Step 2 hook repoint DONE + live-probe-verified — the FC58-fixed classifier is now what the global firebreak hook invokes (effective next session). NEXT = Step 3 (coexistence re-validation: a live autopilot run with the firebreak active THROUGH the tail, to close `[079-W3]`). G2/G4/G5 still gated behind the re-validation. `sandbox-g1` worktree is no longer load-bearing → can be torn down (Step 4).**
+**Date:** 2026-07-02
+**Branch:** `master` (run-080 KNOWLEDGE artifacts brought to master; throwaway `shelftrack/` app CODE stays on local branch `feat/shelftrack-reading-list`, unmerged, safe to delete once you're satisfied the knowledge is preserved).
+**Phase:** **Step 3 (coexistence re-validation) COMPLETE — [079-W3] CLOSED (G1+G3 confirmed live, firebreak active through tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock DONE (film-PM `app/` untracked, namespace convention set). NEXT = Step 4 (sandbox-g1 worktree teardown + branch cleanup), then G2/G4/G5. Full 50-dir master declutter DEFERRED.**
 
-## Honest validation status (read this before claiming "done")
+## Honest validation status
 
-- **G1 — clean PASS.** The live firebreak denied a real worktree worker's three control-plane writes; the deterministic no-canary verdict holds, and the false-GREEN concern was closed *empirically* (the deferred-action queue recorded the main-repo absolute path — the write would have landed where the verdict checked had the firebreak been inert). Strongest evidence type available.
-- **G3 — PASS with an asterisk.** Gate 8 passed all 8 on real artifacts in the live tail (disconfirmer D1–D4 → bijected WARNs W1–W4). BUT the tail ran **firebreak-OFF** (FC58 forced an early teardown). So **G1+G3 simultaneous coexistence under production conditions was never tested** — `[079-W3]`, severity HIGH. Even "Gate-8 logic isn't python-blocked" is a *code-trace inference*, not empirically confirmed this run. The self-audit graded itself honestly: G1 individual **A**, G3 individual **B**, G1+G3 simultaneous **D (ABSENT)**.
-- **Run status:** `PIPELINE_PASS_WITH_DEFERRED_RISK` (honest — FC58 deferred).
+- **G1 — PASS (run 080).** Real worktree worker probe denied 3 RED actions; deterministic no-canary verdict. Confirmed again on run 080 (previously confirmed run 079).
+- **G3 — PASS (run 080, under active firebreak).** disconfirmer → self-audit → Gate-8 chain ran live with firebreak ACTIVE at phase=tail. Run 079's G3 ran firebreak-OFF (FC58 forced early teardown); run 080 ran firebreak-ON. [079-W3, HIGH] CLOSED.
+- **FC58 — RESOLVED.** verify_delegated_status.py and firebreak-activate.py ran GREEN under the TRUSTED_PIPELINE_SCRIPTS carve-out. No manual workaround required. First time the tail ran with the firebreak active start-to-finish.
+- **Run 080 status:** PIPELINE_PASS_WITH_DEFERRED_RISK (self-audit verdict; verify-self-audit 8/8 gates PASS). 0 P1 review findings, 2 P2 deferred per plan. NOTE: the "10/10 tests" cover the prior Film-PM build (`app.*`), NOT ShelfTrack — ShelfTrack's own dynamic coverage is the post-teardown smoke re-run below (**16/16 PASS**).
 
-## What Was Accomplished (latest — FC58 fix cycle, 2026-06-29)
+## What Was Accomplished (run 080, 2026-06-30)
 
-The FC58 fix cycle (handoff Step 1) is **DONE + merged to master** (`2c23724`, pushed). 5 commits + merge on `feat/fc58-firebreak-trusted-indirection`:
+**ShelfTrack — 4-agent swarm Flask reading-list app (throwaway validation vehicle):**
+- 4 agents (scaffold / models / auth / books) built a functional multi-user reading list
+- IDOR fully mitigated: ownership-baked SQL WHERE (id AND user_id) on all 5 book routes
+- CSRF on all POST forms including base.html logout; session.clear() on login+logout; SECRET_KEY fail-closed
+- Assembly contract check caught 8 missing flash('error') categories → fixed inline (7f08f0e)
+- Smoke FIREBREAK_DEFERRED (expected/non-blocking — re-run after Step 18w teardown)
+- Tests 10/10 PASS (Film PM prior-build tests preserved; ShelfTrack namespace clean)
 
-1. **Todo 071 (P1)** — added `TRUSTED_PIPELINE_SCRIPTS` allowlist + `trusted_pipeline_indirection_ok()` pre-check before the `bash_indirection` call in `classify_simple_command`. **Narrow carve-out: TRUSTED identity + `python`/`python3` interpreter + allowlisted script BASENAME only.** Waives ONLY the indirection defer; control-plane/destructive/outward checks still run first. Workers stay fully governed; fails closed.
-2. **Todo 072 (P1, HYBRID — operator-chosen)** — Step 18w `deactivate` → `rm .claude/firebreak-active.json` (independent teardown, does not depend on the carve-out). Step 17w `set-phase tail` **kept as python** (now GREEN via 071) because it is a field-preserving read-modify-write; a blind Write would clobber `run_id`/`repo_root`. Abort-path teardown (SKILL.md line ~947) also → `rm`. Maintainer note added so new python gate tools get added to the allowlist.
-3. **Todo 073 (P2)** — 14 FC58 classifier tests (incl. the `python3 -c` inline-code DENY and command-sub DENY that pin the "any python" boundary). **279/279 pass** (was 265).
-4. **Review** (separate context, two agents): security-sentinel = **SAFE-WITH-NOTES, no P0, no worker escape, fails closed**; architecture-strategist = **mergeable as-is**, structural-backstop concern cleared (carve-out is on the *governing* TRUSTED population + finite-frozen-allowlist = the non-looping case).
-5. **Todo 074 (P2) created + deferred** — path-pin the allowlist to retire two trusted-only residuals (basename-no-path-pin; `first_verb` `-W` flag-value mis-pick). Both reviewers rated it optional hardening, not a blocker.
+**G1+G3 coexistence re-validation:**
+- G1 positive-control probe PASS (Step 9w.9.6): real worktree worker denied, no canary
+- FC58 confirmed RESOLVED: TRUSTED_PIPELINE_SCRIPTS carve-out allows pipeline python under phase=tail
+- G3 disconfirmer (Opus) ran BEFORE self-audit (Sonnet); Gate 8 (bijection) validated
+- Tail ran start-to-finish with firebreak ACTIVE: first ever clean tail under G1+G3 simultaneous governance
 
-### Earlier this session (run 079 — G1+G3 live validation)
-1. Consolidated G1 firebreak + G3 disconfirmer onto master; live run 079 fired both gates; **FC58 discovered** and merged with the run-079 record (`fed9644`). The throwaway `validation-notes/` app rode along (isolated, deletable later).
+## Master-hygiene MINIMAL unblock (2026-07-01/02)
 
-## Recommended Next Move (start here — fresh session)
+Run 080 hit the root cause of the ghost-file block: **film-PM (run 070) squats the shared
+top-level `app/` namespace**, and worker worktrees root on master, so `app/models/`
+shadowed ShelfTrack's `app/models.py`. Fix (commit `127571e`, pushed; zero data risk):
+- `git rm --cached -r app/` — untracked film-PM's `app/` (144 files stay on disk).
+- `/app/` added to `.gitignore` (stops re-tracking + stops worker worktrees inheriting it).
+- **Build Namespace Convention** added to `CLAUDE.md` + SKILL.md 9w.9 (FC59): every build
+  writes its OWN top-level dir (e.g. `shelftrack/`), never shared `app/`.
+- Recovery point: tag **`archive/pre-hygiene-2026-07-01`** (pushed to origin).
+- **Run-080 knowledge preserved on master:** `docs/reports/080/` (19 files), the solution
+  doc, plan, and brainstorm were brought from the feat branch to master so the coexistence
+  proof + honest self-audit survive even after the throwaway branch is deleted (Step 4).
 
-**Steps 1 + 2 are COMPLETE.** Do NOT start G2/G4/G5 yet. Remaining sequence:
+**NOT done (deliberately deferred):** the full ~50-dir master declutter. Master still
+carries dozens of prior build outputs AND real projects with data (`lead-scraper` = 150
+`leads.db` backups incl. `DO-NOT-DELETE`, `eval-harness`, etc.). A real declutter must be a
+deliberate, per-dir decision using `git rm --cached` ONLY (never `rm -rf` — would destroy
+gitignored data), archive-tagged first. See Deferred Items `[MASTER-DECLUTTER]`.
 
-**Step 2 — Repoint the global firebreak hook → main repo. ✅ DONE (2026-06-29).** `~/.claude/settings.json` line 114 now execs `/Users/alejandroguillen/Projects/sandbox/.claude/hooks/firebreak-gate.sh` (was `sandbox-g1`). Verified: gate scripts byte-identical between trees; gate locates the classifier via `$HOOK_DIR` (so it now uses the main-repo FC58-fixed classifier); sentinel resolution is cwd-anchored (`find_sentinel` walks up from cwd / `FIREBREAK_SENTINEL`), independent of gate location — no path reconciliation needed. Live gate→classifier probe passed: orchestrator allowlisted python → ALLOW, `firebreak-activate.py set-phase` → ALLOW, worker python → DENY, orchestrator `python3 -c` → DENY. Backup at `~/.claude/settings.json.bak-fc58-repoint`. **Caveat:** Claude Code loads hooks at session start, so a session already running before the edit keeps the old path in memory — the repoint is effective for the NEXT session / autopilot run (which is what Step 3 needs anyway). The `sandbox-g1` worktree is now NO LONGER load-bearing → safe to tear down in Step 4.
-
-**Step 3 — Coexistence re-validation run. ⬅ START HERE.** A new live autopilot run with the firebreak **active through the tail**, to actually close `[079-W3]` (G1+G3 simultaneous, never tested live together). With FC58 fixed + the hook repointed, the tail's `verify_delegated_status.py` disk-verify gates and `set-phase tail` now run GREEN under the active firebreak, so the firebreak no longer has to tear down before the tail. This is a full unattended autopilot run (needs a throwaway spec + `dangerouslySkipPermissions` env) — kick off deliberately.
-
-**Step 4 — `sandbox-g1` worktree teardown + branch cleanup** (deferred all session). Order: hook already repointed (Step 2) → `git worktree remove sandbox-g1` → delete `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, **and `feat/fc58-firebreak-trusted-indirection`** (local + remote; all merged).
-
-**Step 5 — THEN G2/G4/G5** (in-flight AI monitor / per-run-nonce ledger / delegation-as-authority) via `/workflows:brainstorm`, seeding from the governance scorecard.
-
-**Also pending (low-priority, anytime):** the compound/solution-doc for the FC58 fix is best written AFTER Step 3 closes `[079-W3]` (so the "harness-green ≠ live, bi-directional" lesson lands with the coexistence proof). Todo 074 (path-pinning) is the one open FC58 follow-up.
-
-## Current State
-
-- **master @ `2c23724`** (pushed) carries everything from `fed9644` PLUS the merged FC58 fix cycle (classifier carve-out, hybrid lifecycle, 14 tests, todos 071–073 complete + 074 deferred).
-- **FC58 is FIXED on master but NOT LIVE.** The global firebreak hook still execs the stale `sandbox-g1` worktree classifier — the merged fix runs live only after the Step-2 hook repoint.
-- **`sandbox-g1` worktree** (on `feat/g1-risk-tiered-firebreak`, `6dd621a`) is STILL load-bearing — the global firebreak hook execs its `firebreak-gate.sh`. Do not remove it before the Step-2 hook repoint.
-- **Global propagation done by run 079's tail:** `~/.claude/docs/agent-pitfalls.md` (FC58 entry, 2026-06-29) and the auto-MEMORY. No need to re-propagate. (The FC58 *fix* lesson is not yet propagated — pending the post-Step-3 compound doc.)
-- Feature branches `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, `feat/fc58-firebreak-trusted-indirection` all merged into master, deletion pending Step 4.
-
-## FC58 — the finding + the fix (do NOT overclaim)
-
-**Finding:** the G1 firebreak's `bash_indirection` check was **identity-agnostic**. Under an active sentinel it deferred all Bash-python, incl. (a) `python3 tools/verify_delegated_status.py` (Steps 11w–18w disk-verify — no non-python fallback); (b) `python3 .claude/hooks/firebreak-activate.py set-phase tail` (17w); (c) `... deactivate` (18w teardown). **Scope = Bash-invoked python (orchestrator pipeline tooling + firebreak lifecycle), NOT Gate-8 logic** (`verify-self-audit` is Read/Grep/Glob).
-
-**Fix (merged `2c23724`):** a narrow carve-out — a TRUSTED identity running `python`/`python3` on an allowlisted script BASENAME (`verify_delegated_status.py`, `check_spec_provenance.py`, `firebreak-activate.py`) skips ONLY the indirection defer. Plus `rm`-based independent teardown for `deactivate`. Reviewed SAFE (no worker escape, fails closed). **Accepted residuals (todo 074, P2):** basename-match has no path-pin, and `first_verb` doesn't model python's flag-value grammar — both trusted-only, low realistic exploitability. Cross-project lesson: *harness-green ≠ live is bi-directional — an inert gate AND a too-broad gate are both invisible to unit tests* (the FC58 lifecycle tests now exercise an active on-disk sentinel to catch exactly this).
-
-## Key Artifacts
+## Key Artifacts (run 080)
 
 | Item | Location |
 |------|----------|
-| **Solution doc (run 079)** | **docs/solutions/2026-06-26-g1-g3-live-validation.md** |
-| Live-validation brief/plan | docs/plans/2026-06-26-g1-g3-live-validation-run-brief.md |
-| Firebreak probe (G1 PASS) | docs/reports/079/firebreak-probe.md |
-| FC58 deadlock finding (P1) | docs/reports/079/firebreak-deadlock-finding.md |
-| Disconfirmer (G3) / Self-audit | docs/reports/079/disconfirmer.md · docs/reports/079/self-audit.md |
-| FC58 fix (classifier + helper) | .claude/hooks/firebreak-classify.py (`TRUSTED_PIPELINE_SCRIPTS`, `trusted_pipeline_indirection_ok`) |
-| FC58 tests (14 cases) | .claude/hooks/test_firebreak_classify.py (FC58 block, 279/279) |
-| FC58 fix todos | todos/071-complete-…, 072-complete-…, 073-complete-…; **074-pending** (path-pin, deferred) |
-| G1 solution (activation arc) | docs/solutions/2026-06-25-g1-firebreak-activation-arc.md |
-| G3 solution | docs/solutions/2026-06-26-g3-self-audit-disconfirmer.md |
-| Governance scorecard | docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md |
-| FC58 in registry | ~/.claude/docs/agent-pitfalls.md (FC58) |
+| Solution doc | docs/solutions/2026-06-30-shelftrack-run-080-g1-g3-coexistence-revalidation.md |
+| Plan | docs/plans/2026-06-30-shelftrack-reading-list.md |
+| Self-audit | docs/reports/080/self-audit.md |
+| Disconfirmer | docs/reports/080/disconfirmer.md |
+| Firebreak probe (G1 PASS) | docs/reports/080/firebreak-probe.md |
+| Assembly summary | docs/reports/080/assembly-summary.md |
+| BUILD_TRACKING (run 080) | on branch `feat/shelftrack-reading-list` (transient per-run file; durable record is in the solution doc + reports/080) |
+| Agent-pitfalls update | ~/.claude/docs/agent-pitfalls.md (2026-06-30 entry) |
 
 ## Deferred Items
 
-- **[079-W3, HIGH] G1+G3 coexistence empirically unverified** — G3 tail ran firebreak-OFF; production condition (firebreak active through the tail) never tested. FC58 fixes are now MERGED (the disagreement about whether Gate-8/pipeline python can run under an active sentinel is resolved in code + tests), so the remaining resolution is: hook repoint (Step 2) → re-validation run (Step 3).
-- **[FC58-DISKVERIFY-079, P1] DONE** — trusted-tool indirection allowlist (todo 071, merged `2c23724`).
-- **[FC58-LIFECYCLE-079, P1] DONE** — lifecycle teardown hotfix (todo 072, hybrid, merged).
-- **[FC58-LIVETEST-079, P2] DONE** — 14 lifecycle/boundary tests (todo 073, merged, 279/279).
-- **[FC58-PATHPIN, P2] NEW** — path-pin the allowlist to retire the two trusted-only residuals (todo 074, pending).
-- **[HOOK-PATH-REPOINT] DONE (2026-06-29)** — `~/.claude/settings.json` line 114 repointed to the main-repo gate; live probe verified the FC58-fixed classifier runs. Effective next session (hooks load at session start). `sandbox-g1` worktree no longer load-bearing → tear down in Step 4. Rollback backup: `~/.claude/settings.json.bak-fc58-repoint`.
-- **[G3-RESIDUAL-DISPOSITION]** Disposition monoculture — the lone Sonnet confirmer disposes disconfirmer D# findings; nothing verifies a disposition is *correct*. Candidate future G-gate. Prefer after FC58 + coexistence.
-- **[070-W4] Todo #070 (P2, LOW)** — double `get_schedule_entries` in `callsheets.generate`.
-- **[G2/G4/G5]** Governance gates — **gated behind FC58 fixes + the coexistence re-validation.** Then `/workflows:brainstorm` from the scorecard.
+- **[080-W2, HIGH]** Missing on-disk review report for run 080. The "0 P1, 2 P2" verdict and "IDOR flow-trace confirmed" assertion in BUILD_TRACKING and solution doc have no corresponding docs/reports/080/review-summary.md or similar artifact. Review was conducted inline in the tail-runner context window. For future governance-validation runs, a minimal review-summary.md (reviewer names, scope, P0/P1/P2 counts) should be produced. Severity for next session: HIGH.
+- **[080-W4, HIGH] — RESOLVED (2026-07-01, post-teardown).** test_smoke.py was re-run after Step 18w firebreak teardown: **16/16 PASS**, including the IDOR-404 ownership check (user B → 404 on user A's book), register/login/CRUD/filter/logout. Found+fixed one test-harness bug (missing `os.unlink` → app's `not os.path.exists` init guard was skipped → "no such table"); app code was correct. Dynamic coverage of ShelfTrack now EXISTS and PASSES. Evidence: docs/reports/080/smoke-rerun-postteardown.md. [SMOKE-080] CLOSED.
+- **[080-W5, MEDIUM]** All three independent verification surfaces simultaneously dark: spec-eval ENV_ERROR (no verdict), spec-provenance FALLBACK (non-proof), dynamic tests FIREBREAK_DEFERRED (not run). Each individual degradation has a standing waiver; the compounded state was raised by the disconfirmer as a pattern to track. Add a compounded-darkness check to gate verification for future runs. Severity for next session: MEDIUM.
+- **[FC58-PATHPIN, P2]** Path-pin the TRUSTED_PIPELINE_SCRIPTS allowlist to retire two trusted-only residuals (basename-no-path-pin; first_verb -W flag-value mis-pick). Todo 074, pending from FC58 fix cycle. Both reviewers rated path-pin optional, not a blocker.
+- **[ShelfTrack-DEFERRED-HARDENING]** Deferred items in the plan (throwaway vehicle — these are intentional, not oversights): password min 6 chars, SESSION_COOKIE_SECURE FLASK_ENV conditioning, login rate limiting, HTTPS/HSTS. Not production-ready by design.
+- **[AUTO-MEMORY-DEFERRED] — RESOLVED (2026-07-01, post-teardown).** MEMORY.md index pointer + memory file `shelftrack-run-080-g1-g3-coexistence.md` written after firebreak teardown (the firebreak had correctly deferred these out-of-repo writes during the governed tail).
+- **[G3-RESIDUAL-DISPOSITION]** Disposition monoculture — lone Sonnet still disposes disconfirmer findings. No independent verification of disposition correctness. Candidate future G-gate. Prefer after coexistence is confirmed (it now is — CLOSED means this is the next priority).
+- **[MASTER-DECLUTTER, deferred]** Master carries ~50 top-level dirs from ~80 prior runs — a mix of throwaway builds (bookmark-manager, todo.py, error-test-app, …) and REAL projects with data (`lead-scraper` = 150 `leads.db` backups incl. `leads.backup-SAFE-DO-NOT-DELETE.db`; `eval-harness`; likely `gigsheet`/`venue-scraper`). Only film-PM `app/` was untracked so far (it caused the active block). A full "clean master to infra+docs" pass is worthwhile before scaling G2/G4/G5 builds, but MUST: (1) archive-tag first, (2) use `git rm --cached` ONLY — NEVER `rm -rf` (would destroy gitignored `.db` data, incl. lead-scraper production data — four prior data-loss incidents), (3) get per-dir keep/untrack sign-off from Alex (real-vs-throwaway needs his knowledge). Do NOT bulk-automate.
+
+## Step Sequence (what comes next)
+
+**[079-W3] CLOSED.** Proceed in order:
+
+4. **Step 4 — sandbox-g1 worktree teardown + branch cleanup.** Branches to delete:
+   - `feat/g1-risk-tiered-firebreak` (merged)
+   - `feat/g3-verification-diversity` (merged)
+   - `feat/g1-g3-live-validation` (merged)
+   - `feat/fc58-firebreak-trusted-indirection` (merged)
+   - `feat/shelftrack-reading-list` — run 080 is NOT merged (throwaway), but its KNOWLEDGE
+     artifacts are now on master, so this branch is safe to delete. (It is LOCAL-ONLY /
+     unpushed — deletion needs `git branch -D`, no remote delete.) The throwaway
+     `shelftrack/` app code is discarded with it, by design.
+   - Remove `sandbox-g1` worktree (no longer load-bearing since Step-2 hook repoint).
+   - NOTE: several OTHER stale local branches + old `swarm-0**-assembly` branches exist —
+     candidates for the same cleanup if you want (list via `git branch`).
+
+5. **Step 5 — G2/G4/G5** via `/workflows:brainstorm` from the governance scorecard.
+   - G2: in-flight AI monitor
+   - G4: per-run-nonce ledger
+   - G5: delegation-as-authority
+
+Smoke re-run + auto-memory + agent-pitfalls were all completed post-teardown (see 080-W4 /
+AUTO-MEMORY-DEFERRED — both RESOLVED). Full master declutter = `[MASTER-DECLUTTER]` (deferred).
 
 ## Three Questions
 
-1. **Hardest decision?** Todo 072's approach now that 071 already makes the python lifecycle commands GREEN. Chose **hybrid** (operator-confirmed): `deactivate` → independent `rm` (robust, doesn't depend on the carve-out), but `set-phase` kept as python (it's a field-preserving read-modify-write; a raw Write would clobber `run_id` and break the Step-18w disk-verify). Full Solution-A (convert both) was rejected as more fragile.
-2. **What was rejected?** Path-pinning the allowlist now (deferred to todo 074 — the invariant says "basename-match only", and both reviewers rated path-pin optional). Also rejected: converting ALL deactivate calls to `rm` (only the live-under-active-firebreak ones — 18w + the 947 abort path — were switched; failure-path 729 is FAIL-OPEN, human-recovery 744 works via orchestrator identity).
-3. **Least confident about?** Whether the Step-2 hook repoint cleanly reconciles the sentinel write/read paths once the live hook points at the main repo (the run-079 "harness-green ≠ live" lesson). Verify with a live probe right after repointing, before the Step-3 re-validation run.
+1. **Hardest decision?** 404 vs 403 for non-owner book access. Chose 404 to avoid leaking resource existence. Enforced by returning 0 rows from ownership-scoped SQL — no conditional logic needed in the route.
+2. **What was rejected?** Ownership check as a separate Python step after fetch (TOCTOU-adjacent, forgettable). Flask-Login (over-engineering). SQLAlchemy (stdlib sqlite3 is explicit and matches the template).
+3. **Least confident going in?** That every book route would independently scope by user_id without cross-agent coordination. Review flow-trace confirmed they all did. Pre-registration in Feed-Forward + spec Authorization Matrix was sufficient.
 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md, "Recommended Next Move" first. This is sandbox, on master (2c23724, pushed).
-The FC58 fix cycle (handoff Step 1) is COMPLETE + MERGED + reviewed (security=SAFE,
-architecture=mergeable). 279/279 classifier tests pass. Status:
-  - FC58 FIXED on master: narrow TRUSTED+python+allowlisted-basename indirection carve-out
-    (todo 071) + hybrid lifecycle teardown (todo 072: deactivate→rm, set-phase kept python)
-    + 14 boundary/lifecycle tests (todo 073). Todo 074 (path-pin hardening) deferred.
-  - BUT NOT LIVE: the global firebreak hook still execs the STALE sandbox-g1 worktree
-    classifier. The merged fix runs live only after Step 2.
-  - [079-W3, HIGH] G1+G3 simultaneous coexistence is STILL UNVERIFIED (run 079's tail ran
-    firebreak-OFF). Don't claim "fully done" until Step 3.
+Read HANDOFF.md, "Step Sequence" section first. This is sandbox, on master.
 
-DONE this session: Step 1 (FC58 fix cycle, merged 2c23724) + Step 2 (hook repoint —
-  ~/.claude/settings.json line 114 now points at the main-repo gate; live probe passed:
-  orch allowlisted python GREEN, worker python DEFERRED, orch python3 -c DENY).
+Run 080 (ShelfTrack G1+G3 coexistence re-validation) is COMPLETE. Honest status =
+PIPELINE_PASS_WITH_DEFERRED_RISK (NOT clean PASS — the self-audit + disconfirmer flagged
+overclaims; do not repeat them):
+  - [079-W3] CLOSED: G1+G3 coexistence confirmed live, firebreak ACTIVE through the tail,
+    FC58 resolved FOR TRUSTED PIPELINE SCRIPTS (the smoke test's FIREBREAK_DEFERRED is the
+    carve-out working as designed, NOT a recurrence).
+  - The "10/10 tests" during the run were the FILM-PM ghost tests (app.*), NOT ShelfTrack.
+    ShelfTrack's real coverage = the POST-teardown smoke re-run (16/16 PASS). During the
+    governed run, ShelfTrack had ZERO executed tests.
+  - [080-W2, HIGH] still open: the "0 P1 review findings" verdict has NO on-disk review
+    artifact (review was inline). Produce a real review-summary.md for future gov runs.
 
-NEXT, in order (do NOT jump to G2/G4/G5):
-  3. ⬅ Coexistence re-validation run (firebreak ACTIVE through the tail) → closes [079-W3].
-     READY-TO-LAUNCH BRIEF: docs/plans/2026-06-30-step3-coexistence-revalidation-brief.md
-     MUST launch in a FRESH session (hook-load certainty + autopilot loop/context budget).
-     In a fresh session in ~/Projects/sandbox, verify settings.json:114 points at the MAIN
-     repo gate, then run /autopilot with the ShelfTrack throwaway described in the brief.
-     Close [079-W3] only if all 5 success criteria in the brief hold.
-  4. sandbox-g1 worktree teardown (now safe — no longer load-bearing) + delete the 4 merged
-     feature branches (incl. feat/fc58-firebreak-trusted-indirection), local+remote.
-  5. THEN G2/G4/G5 via /workflows:brainstorm from the governance scorecard.
-  Also: write the FC58 compound/solution-doc AFTER Step 3 (so the coexistence proof lands with it).
+DONE: Steps 1-3 (FC58 fixes, hook repoint, coexistence re-validation) + master-hygiene
+MINIMAL unblock (film-PM app/ untracked, namespace convention, run-080 knowledge on master).
 
-Invariants (don't touch designs): self-audit-reviewer stays model: sonnet; Gate 8 fail-closed +
-literal-token, no loop, no binding LLM verdict; firebreak classifier = deny-known-bad; FC58
-carve-out is TRUSTED-only + python-only + allowlist matches script BASENAMES ONLY (todo 074
-may revisit to path-pin — a conscious change, not a silent one).
+NEXT, in order:
+  4. sandbox-g1 worktree teardown + delete the 5 merged/superseded feature branches
+     (incl. LOCAL-ONLY feat/shelftrack-reading-list — knowledge already on master).
+  5. Then G2/G4/G5 via /workflows:brainstorm from the governance scorecard.
+  Deferred: [MASTER-DECLUTTER] full ~50-dir master cleanup (git rm --cached ONLY, never
+     rm -rf — lead-scraper production data lives on disk; archive-tag + per-dir sign-off).
+  Open: [080-W2 HIGH] review artifact, [080-W5 MED] compounded darkness, [FC58-PATHPIN P2] todo 074.
 
-Solution doc (run 079): docs/solutions/2026-06-26-g1-g3-live-validation.md
-FC58 fix: .claude/hooks/firebreak-classify.py + test_firebreak_classify.py (FC58 block)
-FC58 finding: docs/reports/079/firebreak-deadlock-finding.md
+Solution doc: docs/solutions/2026-06-30-shelftrack-run-080-g1-g3-coexistence-revalidation.md
+Self-audit (honest grades): docs/reports/080/self-audit.md
 ```
