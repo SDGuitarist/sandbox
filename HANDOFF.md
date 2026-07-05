@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-02
 **Branch:** `master` @ `f0590fc` (clean, in sync with origin, single worktree). Run-080 KNOWLEDGE is on master; the throwaway `shelftrack/` app CODE was on `feat/shelftrack-reading-list`, now DELETED (Step 4).
-**Phase:** **Steps 1–4 all COMPLETE. `[079-W3]` CLOSED (G1+G3 confirmed live, firebreak active through the tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock done; Step-4 teardown done (worktree + 5 branches removed). NEXT = Step 5 (G2/G4/G5) via `/workflows:brainstorm`. Deferred: full ~50-dir master declutter, `[080-W2 HIGH]` review artifact.**
+**Phase:** **Steps 1–4 all COMPLETE. `[079-W3]` CLOSED (G1+G3 confirmed live, firebreak active through the tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock done; Step-4 teardown done (worktree + 5 branches removed). NEXT = Step 5 (G2/G4/G5) via `/workflows:brainstorm`. Deferred: full ~50-dir master declutter. UPDATE 2026-07-04: G2 brainstormed → SHELVED (evidence found zero observed worker stalls; real liveness failure is orchestrator context death, which a worker-monitor doesn't catch — see `docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md`). `[080-W2 HIGH]` review artifact RESOLVED (`docs/reports/080/review-summary.md`).**
 
 ## Honest validation status
 
@@ -62,7 +62,7 @@ gitignored data), archive-tagged first. See Deferred Items `[MASTER-DECLUTTER]`.
 
 ## Deferred Items
 
-- **[080-W2, HIGH]** Missing on-disk review report for run 080. The "0 P1, 2 P2" verdict and "IDOR flow-trace confirmed" assertion in BUILD_TRACKING and solution doc have no corresponding docs/reports/080/review-summary.md or similar artifact. Review was conducted inline in the tail-runner context window. For future governance-validation runs, a minimal review-summary.md (reviewer names, scope, P0/P1/P2 counts) should be produced. Severity for next session: HIGH.
+- **[080-W2, HIGH] — RESOLVED (2026-07-04).** The missing on-disk review report now exists: `docs/reports/080/review-summary.md`. It consolidates the recorded review (2 inline reviewers: security flow-trace + learnings researcher; scope: ShelfTrack security; verdict **0 P1, 2 P2 both deferred** = 080-W6/W7) into the canonical location/format, backed by self-audit.md + disconfirmer.md + contract-check.md (FC35 14/14) + the solution-doc flow-trace table (5 routes PASS). **Provenance is explicit in the artifact:** it is a *reconstruction from the durable record*, NOT a fresh independent re-review — the ShelfTrack source is gone (deleted throwaway branch; only `shelftrack/__pycache__/` remains on master), so findings are reproduced, not re-derived. The original review was static-only; dynamic coverage came later via the post-teardown smoke re-run (16/16, see [080-W4]). Verdict is now artifact-backed. **Standing process fix for future governance runs:** use the full review roster AND write `review-summary.md` DURING the run, not inline-only. [080-W2] CLOSED.
 - **[080-W4, HIGH] — RESOLVED (2026-07-01, post-teardown).** test_smoke.py was re-run after Step 18w firebreak teardown: **16/16 PASS**, including the IDOR-404 ownership check (user B → 404 on user A's book), register/login/CRUD/filter/logout. Found+fixed one test-harness bug (missing `os.unlink` → app's `not os.path.exists` init guard was skipped → "no such table"); app code was correct. Dynamic coverage of ShelfTrack now EXISTS and PASSES. Evidence: docs/reports/080/smoke-rerun-postteardown.md. [SMOKE-080] CLOSED.
 - **[080-W5, MEDIUM]** All three independent verification surfaces simultaneously dark: spec-eval ENV_ERROR (no verdict), spec-provenance FALLBACK (non-proof), dynamic tests FIREBREAK_DEFERRED (not run). Each individual degradation has a standing waiver; the compounded state was raised by the disconfirmer as a pattern to track. Add a compounded-darkness check to gate verification for future runs. Severity for next session: MEDIUM.
 - **[FC58-PATHPIN, P2]** Path-pin the TRUSTED_PIPELINE_SCRIPTS allowlist to retire two trusted-only residuals (basename-no-path-pin; first_verb -W flag-value mis-pick). Todo 074, pending from FC58 fix cycle. Both reviewers rated path-pin optional, not a blocker.
@@ -82,13 +82,13 @@ gitignored data), archive-tagged first. See Deferred Items `[MASTER-DECLUTTER]`.
 - ✅ **Step 4 — teardown**: removed `sandbox-g1` worktree; deleted 5 branches — `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, `feat/fc58-firebreak-trusted-indirection` (all merged), `feat/shelftrack-reading-list` (throwaway, knowledge preserved). 2 also removed from origin. Master = single worktree, clean.
   - NOTE: other stale local branches + old `swarm-0**-assembly` branches remain — optional future cleanup (`git branch -a`).
 
-### ⬅ NEXT — Step 5 — G2/G4/G5 (fresh start)
+### ⬅ NEXT — Step 5 — G4/G5 (G2 shelved)
 Via `/workflows:brainstorm` from the governance scorecard (`docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`):
-- **G2**: in-flight AI monitor
-- **G4**: per-run-nonce ledger
+- **G2**: in-flight AI monitor — **SHELVED 2026-07-04.** Brainstormed + evidence-checked: **zero observed worker stalls** across all runs (no such failure class in agent-pitfalls); the real in-flight liveness failure is **orchestrator context death** (runs 050, 061), which a worker-watching monitor does NOT catch. Building the worker-liveness monitor = YAGNI / simulation-vs-building trap. If revisited, start from the Fork section of `docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md`: pivot #1 (orchestrator context-death watchdog / "Tier 2 Pre-Review Resume checkpoint" — the evidenced pain) or pivot #2 (cross-worker semantic divergence — the real worker-level failure). Do NOT rebuild the worker-liveness design.
+- **G4**: per-run-nonce ledger ← **next brainstorm target**
 - **G5**: delegation-as-authority
 
-Before scaling more builds, consider two deferred items: `[MASTER-DECLUTTER]` (full ~50-dir master cleanup — `git rm --cached` ONLY, never `rm -rf`; production data on disk) and `[080-W2, HIGH]` (produce a real review-summary.md so a governance run's "0 P1" verdict is artifact-backed).
+Before scaling more builds, consider the remaining deferred item: `[MASTER-DECLUTTER]` (full ~50-dir master cleanup — `git rm --cached` ONLY, never `rm -rf`; production data on disk). (`[080-W2]` review artifact is now RESOLVED — `docs/reports/080/review-summary.md`.)
 
 ## Three Questions
 
@@ -116,13 +116,16 @@ repeat the overclaims):
     real coverage = the post-teardown smoke re-run (16/16). Zero ShelfTrack tests ran
     DURING the governed run.
 
-NEXT — Step 5: G2/G4/G5 via /workflows:brainstorm, seeding from the governance scorecard
+NEXT — Step 5: G4/G5 via /workflows:brainstorm, seeding from the governance scorecard
 (docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md):
-  - G2 in-flight AI monitor · G4 per-run-nonce ledger · G5 delegation-as-authority
+  - G2 in-flight AI monitor — SHELVED 2026-07-04 (evidence: zero observed worker stalls;
+    real liveness failure is orchestrator context death, which a worker-monitor misses).
+    See docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md (Fork section).
+  - G4 per-run-nonce ledger (next brainstorm target) · G5 delegation-as-authority
 
 Consider first (optional, before scaling builds):
-  - [080-W2, HIGH] produce a real docs/reports/<run>/review-summary.md so a governance
-    run's "0 P1" verdict is artifact-backed (it was inline-only in run 080).
+  - [080-W2] RESOLVED 2026-07-04 — docs/reports/080/review-summary.md now backs the
+    "0 P1, 2 P2" verdict (reconstructed-from-record; provenance explicit in the artifact).
   - [MASTER-DECLUTTER] full ~50-dir master cleanup. MUST: archive-tag first, git rm
     --cached ONLY (NEVER rm -rf — lead-scraper has 150 production leads.db backups on
     disk, four prior data-loss incidents), per-dir keep/untrack sign-off from Alex.
