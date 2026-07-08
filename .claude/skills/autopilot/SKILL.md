@@ -181,6 +181,14 @@ orchestrator nearly saturated before it could hand off, which feeds the
 context-death-architecture follow-up decision. The self-audit picks it up as a
 WARN like any other.
 
+**Scale-validation note (2026-07-07 — interpretive safeguard).** This protocol has
+only ever been exercised on small builds (runs 079/080 = 3–4 agents). On a ≥20-agent
+run, a *missing* boundary row in `context-telemetry.md` is an instrument FAILURE —
+the orchestrator dropping the manual update under context pressure (cf. run 050,
+which dropped BUILD_TRACKING bookkeeping during its context death) — and MUST be read
+as a trigger to harden the capture, NOT as a healthy pass. See
+`docs/plans/2026-07-07-chore-validate-orchestrator-context-telemetry-at-scale-plan.md`.
+
 ### Step 1.55: Advisory Baseline Capture (non-blocking)
 
 Run `/advisory-audit baseline`

@@ -3,7 +3,8 @@ title: "Orchestrator Pre-Tail Context Saturation — Measure Before Building"
 date: 2026-07-07
 type: brainstorm
 phase: brainstorm
-status: ready-for-decision
+status: planned-instrument-already-exists
+decision: "PLANNED 2026-07-07. verify-first found the proposed telemetry ALREADY EXISTS (SKILL.md Step 1.52 / M29, since 2026-06-08). Not rebuilt. Outcome = minimal validate-at-scale plan (docs/plans/2026-07-07-chore-validate-orchestrator-context-telemetry-at-scale-plan.md): next >=20-agent build validates the existing instrument; missing boundary row = failure trigger; >70% WARN = size-a-fix trigger. One clarifying note added to Step 1.52."
 traces_to:
   - docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md (G2 shelved → pivot #1 was context-death)
   - docs/solutions/2026-05-20-autopilot-context-window-optimization.md (Tier 1 checkpoint)
