@@ -8,7 +8,7 @@ agents: 30
 namespace: studio/
 origin: docs/brainstorms/2026-07-09-scale-validation-swarm-vehicle-brainstorm.md
 feed_forward:
-  risk: "The lessons (schedule) row is a 4-way FK seam (instructor + student + room + course) and is consumed by attendance + dashboard + search — the densest cross-boundary coupling in the spec. A single name/return-type mismatch there fails the schedule page AND the aggregates that read it. This is the deliberately-hardest seam, chosen to stress the contract machinery."
+  risk: "The lessons (schedule) row is a 4-way FK seam (instructor + student + room + course) and is consumed by lesson routes + attendance + dashboard — the densest cross-boundary coupling in the spec. A single name/return-type mismatch there fails the schedule page AND the aggregates that read it. This is the deliberately-hardest seam, chosen to stress the contract machinery. (Search deliberately does NOT read lessons — private-record leakage; see search_models scope boundary.)"
   verify_first: true
 ---
 
@@ -212,6 +212,10 @@ CREATE TABLE invoices (
     -- NOTE: no amount column. The invoice total is the SUM of invoice_items.amount_cents,
     -- computed in invoice_models.get_invoice() — single source of truth (avoids drift).
 );
+-- One-open-draft-per-student invariant is SCHEMA-ENFORCED (not just app logic): a partial
+-- UNIQUE index over the draft state. get_or_create_draft_invoice_in_tx relies on this, and a
+-- concurrent double-enroll can no longer create two drafts (the 2nd INSERT fails the index).
+CREATE UNIQUE INDEX ux_one_draft_per_student ON invoices(student_id) WHERE status = 'draft';
 
 CREATE TABLE invoice_items (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -323,7 +327,7 @@ attendance · invoice · practice_log · announcement · dashboard.
 | instruments | instrument_models | instrument routes | checkout flips status (transaction) |
 | courses | course_models | course routes | FK→instructor; consumed by enrollment, lesson |
 | enrollments | enrollment_models | enrollment routes | FK→student+course; UNIQUE; may create invoice_item |
-| lessons | lesson_models | lesson routes | **4-way FK** (instructor+student+room+course); read by attendance, dashboard, search |
+| lessons | lesson_models | lesson routes | **4-way FK** (instructor+student+room+course); read by attendance, dashboard (NOT search — private records) |
 | attendance | attendance_models | attendance routes | FK→lesson+student |
 | checkouts | checkout_models | (instrument routes host checkout/return) | **transaction**: flips instrument.status |
 | invoices | invoice_models | invoice routes | **multi-table transaction** (invoice+items); total = SUM(items) |
@@ -380,19 +384,26 @@ separate post-commit statement, never nested inside the checkout/return/enroll t
 - `login_required(view)` — 302→/auth/login when anonymous.
 - `role_required(*roles)` — decorator; 403 when `current_user().role not in roles`.
 
-**Ownership pattern (run-080 IDOR lesson — the PRIMARY 404 mechanism):** ownership is
-enforced by **ownership-scoped model queries** that return `None`/`[]` when the actor does
-not own the row; the route does `row = <get>_for(...) or abort(404)`. No post-fetch
-conditional. `require_self_or_staff(student_id) -> None` remains as a lightweight guard for
-the *write* routes (abort 404 if a student targets a `student_id` that isn't their own), but
-all `role+own` **reads** go through the `*_for(actor, ...)` scoped getters below.
+**Ownership-Scoped Getter Contract (UNIFORM across all 4 owning agents — student, lesson,
+invoice, practice; run-080 IDOR lesson).** To prevent per-agent drift (FC5), every
+ownership-scoped getter obeys the SAME actor-based SQL-predicate rule:
+
+- Signature: `get_<x>_for(<id>, actor) -> dict | None` and `list_<x>_for(actor, **filters) -> list[dict]`. `actor` is the `current_user()` dict (`{id, role, ...}`), always the trailing arg on getters.
+- The ownership check is a **SQL WHERE predicate in the query itself**, never a fetch-then-compare in Python. The predicate is exactly:
+  - `actor['role'] in ('admin','instructor')` → **no ownership restriction** (staff see all);
+  - else (student) → restrict to rows whose `student_id = (SELECT id FROM students WHERE user_id = :actor_id)`.
+- A non-owner therefore gets **0 rows → `None`/`[]`**; the route does `row = get_<x>_for(...) or abort(404)`. No 403, no existence leak.
+
+`require_self_or_staff(student_id) -> None` remains only as a pre-write guard on `role+own`
+POST routes (abort 404 if a student's supplied `student_id` isn't their own); all `role+own`
+**reads** go through the `*_for` getters below.
 
 ### student_models.py  (student model agent)
 - `list_students(active_only=False, q=None) -> list[dict]` — `q` LIKE-matches name/email.
 - `get_student(sid) -> dict | None` — unscoped (staff-only callers).
-- `get_student_for(sid, actor) -> dict | None` — **ownership-scoped**: returns the row iff
-  `actor.role in ('admin','instructor')` OR `actor` is the student whose `user_id == actor.id`;
-  else `None`. The `/students/<sid>` view uses this → `abort(404)` on None (no 403 leak).
+- `get_student_for(sid, actor) -> dict | None` — **Ownership-Scoped Getter Contract**. The
+  students table is the ownership root, so the predicate specializes to: `WHERE students.id = :sid
+  AND (:staff OR students.user_id = :actor_id)`. Non-owner → `None`. `/students/<sid>` → `abort(404)`.
 - `create_student(first_name, last_name, email=None, phone=None, skill_level='beginner', user_id=None) -> int`
 - `update_student(sid, **fields) -> None` — whitelist: first_name,last_name,email,phone,skill_level,notes.
 - `set_student_active(sid, active) -> None` — soft deactivate.
@@ -429,14 +440,14 @@ all `role+own` **reads** go through the `*_for(actor, ...)` scoped getters below
 ### enrollment_models.py  (enrollment model agent)
 - `list_enrollments(student_id=None, course_id=None, status=None) -> list[dict]` — joins student + course names.
 - `get_enrollment(eid) -> dict | None`
-- `enroll(student_id, course_id, created_by) -> int` — **OWNS one `transaction()` internally** (opens `with transaction() as conn`, commits as a single atomic unit). Inserts the enrollment (UNIQUE guard → raises `ValueError('already enrolled')`); if the course `price_cents > 0`, threads the SAME `conn` through `invoice_models.get_or_create_draft_invoice_in_tx(conn, student_id, created_by)` then `invoice_models.add_item_in_tx(conn, invoice_id, ...)`. A UNIQUE violation rolls back the whole unit — no orphan invoice_item. **Does NOT audit** (the route audits post-commit). See Transaction Contracts.
+- `enroll(student_id, course_id, created_by) -> int` — **OWNS one `transaction()` internally** (`with transaction() as conn`, one atomic unit). **All guards run INSIDE the BEGIN IMMEDIATE** (no route-level pre-check is authoritative — avoids TOCTOU): (1) re-read the course FOR the capacity check — `count_enrolled(course_id) < course.capacity` (else `ValueError('course full')`); (2) insert the enrollment, relying on the DB `UNIQUE(student_id,course_id)` → `ValueError('already enrolled')` on conflict. If `course.price_cents > 0`, thread the SAME `conn` through `get_or_create_draft_invoice_in_tx(conn, student_id, created_by)` then `add_item_in_tx(conn, invoice_id, description=course['name'], amount_cents=course['price_cents'], source_type='enrollment', source_id=<new enrollment id>)`. Any failure rolls back the whole unit — no orphan invoice_item, no over-capacity enrollment. **Does NOT audit** (route audits post-commit). See Transaction Contracts.
 - `set_enrollment_status(eid, status) -> None` — commits.
 
 ### lesson_models.py  (lesson model agent — THE 4-way seam)
 - `list_lessons(student_id=None, instructor_id=None, room_id=None, date_from=None, date_to=None, status=None) -> list[dict]` — joins instructor/student/room/course names (unscoped; staff callers).
-- `list_lessons_for(actor, **filters) -> list[dict]` — **ownership-scoped**: staff → all (honoring `filters`); a student → forced `student_id = current_student_id()`; an instructor → forced `instructor_id = current_instructor_id()`. The `/lessons` list uses this.
+- `list_lessons_for(actor, **filters) -> list[dict]` — **Ownership-Scoped Getter Contract** (extended for the instructor role, since a lesson has both a student and an instructor owner): admin → all (honoring `filters`); student → predicate `student_id = (SELECT id FROM students WHERE user_id=:actor_id)`; instructor → predicate `instructor_id = (SELECT id FROM instructors WHERE user_id=:actor_id)`. Applied in SQL. `/lessons` list uses this.
 - `get_lesson(lid) -> dict | None` — unscoped (staff callers).
-- `get_lesson_for(lid, actor) -> dict | None` — **ownership-scoped**: returns the lesson iff staff, OR the lesson's `student_id == current_student_id()`, OR its `instructor_id == current_instructor_id()`; else `None`. `/lessons/<lid>` → `abort(404)` on None.
+- `get_lesson_for(lid, actor) -> dict | None` — **Ownership-Scoped Getter Contract** (student OR instructor owner): `WHERE lessons.id = :lid AND (:admin OR student_id = <actor student> OR instructor_id = <actor instructor>)`; else `None`. `/lessons/<lid>` → `abort(404)`.
 - `create_lesson(instructor_id, student_id, starts_at, ends_at, course_id=None, room_id=None, notes=None) -> int` — validates FKs exist + `ends_at > starts_at`; commits.
 - `update_lesson(lid, **fields) -> None`
 - `set_lesson_status(lid, status) -> None`
@@ -460,7 +471,7 @@ all `role+own` **reads** go through the `*_for(actor, ...)` scoped getters below
 ### invoice_models.py  (invoice model agent — multi-table transaction)
 - `list_invoices(student_id=None, status=None) -> list[dict]` — each row includes computed `total_cents = SUM(items)` (unscoped; staff callers).
 - `get_invoice(iid) -> dict | None` — dict includes `items: list[dict]` and `total_cents` (unscoped; staff callers).
-- `get_invoice_for(iid, actor) -> dict | None` — **ownership-scoped**: returns the invoice (with items + total) iff staff OR the invoice's `student_id == current_student_id()`; else `None`. `/invoices/<iid>` → `abort(404)` on None.
+- `get_invoice_for(iid, actor) -> dict | None` — **Ownership-Scoped Getter Contract**: `WHERE invoices.id = :iid AND (:staff OR student_id = (SELECT id FROM students WHERE user_id=:actor_id))`; returns the invoice with `items` + `total_cents`, else `None`. `/invoices/<iid>` → `abort(404)`.
 - `create_invoice(student_id, description=None, due_at=None, created_by=None) -> int` — commits; empty draft.
 - `add_item(invoice_id, description, amount_cents, source_type='manual', source_id=None) -> int` — commits (standalone, staff manual add).
 - `add_item_in_tx(conn, invoice_id, description, amount_cents, source_type, source_id) -> int` — inserts on the **caller-supplied** `conn`; **does NOT commit**. Called only by `enroll` inside its transaction.
@@ -468,11 +479,17 @@ all `role+own` **reads** go through the `*_for(actor, ...)` scoped getters below
 - `set_invoice_status(iid, status) -> None` — commits; on 'paid' sets `paid_at`. **Does NOT audit** (route audits post-commit).
 
 ### practice_log_models.py  (practice_log model agent — ownership-scoped)
-- `list_practice_logs_for(actor, student_id=None) -> list[dict]` — **ownership-scoped**: a student is forced to their own `current_student_id()` (the `student_id` arg is ignored for students); staff may pass a `student_id` to view that student's logs (else all). This is the `/practice` list source.
-- `get_practice_log_for(log_id, actor) -> dict | None` — **ownership-scoped**: returns the log iff staff OR it belongs to the actor's `current_student_id()`; else `None`. `/practice/<log_id>/delete` → `abort(404)` on None BEFORE deleting.
-- `create_practice_log(student_id, minutes, notes=None) -> int` — commits; route supplies `student_id = current_student_id()` for a student actor.
+- `list_practice_logs_for(actor, target_student_id=None) -> list[dict]` — **Ownership-Scoped Getter Contract**: student → predicate `student_id = (SELECT id FROM students WHERE user_id=:actor_id)` (the `target_student_id` arg is IGNORED for students — they can never widen scope); staff → all, or scoped to `target_student_id` when supplied. `/practice` list source.
+- `get_practice_log_for(log_id, actor) -> dict | None` — **Ownership-Scoped Getter Contract**: `WHERE practice_logs.id = :log_id AND (:staff OR student_id = (SELECT id FROM students WHERE user_id=:actor_id))`; else `None`. `/practice/<log_id>/delete` → `abort(404)` BEFORE deleting.
+- `create_practice_log(student_id, minutes, notes=None) -> int` — commits.
 - `delete_practice_log(log_id) -> None` — commits (called only after `get_practice_log_for` passes).
 - `total_minutes(student_id, since=None) -> int` — dashboard aggregate helper.
+
+> **Practice-creation authorization (Codex round 2):** practice logging is **student
+> self-service ONLY**. The `/practice/new` route requires `current_student_id() is not None`
+> and always sets `student_id = current_student_id()` — a client-supplied `student_id` is
+> ignored. Staff have no student identity, so a staff POST to `/practice/new` → **403**
+> (staff can VIEW a student's logs via `?target_student_id`, never create on their behalf).
 
 ### announcement_models.py  (announcement model agent — role-scoped)
 - `list_for_role(role) -> list[dict]` — returns announcements whose `audience IN ('all', <role-bucket>)` (student→'students', instructor→'instructors', admin→all).
@@ -487,10 +504,10 @@ all `role+own` **reads** go through the `*_for(actor, ...)` scoped getters below
 - `list_audit(entity_type=None, limit=200) -> list[dict]` — admin audit view (routes/dashboard.py `/audit`).
 
 ### dashboard_models.py  (dashboard agent — cross-entity aggregates; READ-only)
-- `admin_summary() -> dict` — counts: students, instructors, active courses, lessons_this_week, outstanding_invoice_cents, instruments_out.
+- `admin_summary() -> dict` — simple counts (students, instructors, active courses, lessons_this_week, outstanding_invoice_cents, instruments_out) computed via **direct `get_db()` COUNT/SUM queries** (no student/instructor/course/instrument model imports — keeps the cross-boundary surface to exactly the FIVE relational imports below).
 - `instructor_summary(instructor_id) -> dict` — my upcoming lessons, my courses, my students count.
 - `student_summary(student_id) -> dict` — my upcoming lessons, my enrollments, my balance_cents, my practice_minutes_this_week, my attendance_rate.
-- Reads via imports from lesson/invoice/enrollment/attendance/practice_log models (see Cross-Boundary Wiring).
+- **Imports exactly FIVE model modules** for the per-actor aggregates — lesson (upcoming lessons), invoice (balance), enrollment (my enrollments), attendance (attendance_rate), practice_log (practice minutes) — matching §2. Plain admin counts use direct SQL, NOT model imports.
 
 ### search_models.py  (search agent — cross-entity)
 - `search_all(q, role, actor_student_id=None) -> dict` — `{students:[...], instructors:[...], courses:[...]}`; results role-filtered (a student sees only self + the public course catalog; staff see all matches). LIKE-based.
@@ -570,8 +587,8 @@ ownership) · **admin**. Full rules in the Authorization Matrix.
 | POST | /<int:iid>/status | set_status | role:admin,instructor |
 
 ### practice  (/practice — practice_log route agent)
-| GET | / | `list_practice_logs_for(current_user(), request.args.get('student_id'))` | role+own |
-| POST | /new | `create_log` (student_id = current_student_id() for a student) | role+own |
+| GET | / | `list_practice_logs_for(current_user(), request.args.get('target_student_id'))` | role+own |
+| POST | /new | student-only: `sid = current_student_id() or abort(403)` → `create_practice_log(sid, minutes, notes)` | role+own |
 | POST | /<int:log_id>/delete | `get_practice_log_for(log_id, current_user()) or abort(404)` → delete_log | role+own |
 
 ### announcements  (/announcements — announcement route agent)
@@ -625,13 +642,13 @@ transaction-changed signatures are included.
 | list_instructors, get_instructor, create_instructor, update_instructor, set_instructor_active | instructor_models.py | routes/instructors.py; routes/courses.py, routes/lessons.py; search_models.py |
 | list_rooms, get_room, create_room, update_room, set_room_active | room_models.py | routes/rooms.py (scaffold); routes/lessons.py |
 | list_instruments, get_instrument, create_instrument, update_instrument, `set_instrument_status(conn, iid, status)` | instrument_models.py | routes/instruments.py; **checkout_models.py** (set_instrument_status, in-tx) |
-| list_courses, get_course, create_course, update_course, set_course_active, count_enrolled | course_models.py | routes/courses.py, routes/enrollments.py, routes/lessons.py; search_models.py |
+| list_courses, get_course, create_course, update_course, set_course_active, count_enrolled | course_models.py | routes/courses.py, routes/enrollments.py, routes/lessons.py; **enrollment_models.py** (in-tx capacity/price/name read by enroll); search_models.py |
 | list_enrollments, get_enrollment, `enroll(student_id, course_id, created_by)`, set_enrollment_status | enrollment_models.py | routes/enrollments.py; dashboard_models.py |
 | list_lessons, `list_lessons_for(actor, **filters)`, get_lesson, `get_lesson_for(lid, actor)`, create_lesson, update_lesson, set_lesson_status, check_conflicts | lesson_models.py | routes/lessons.py, routes/attendance.py; dashboard_models.py |
 | list_attendance, `mark_attendance(lesson_id, present, marked_by)`, attendance_rate | attendance_models.py | routes/attendance.py; dashboard_models.py |
 | list_checkouts, get_checkout, checkout_instrument, return_instrument | checkout_models.py | routes/instruments.py |
-| list_invoices, get_invoice, `get_invoice_for(iid, actor)`, create_invoice, add_item, `add_item_in_tx(conn,...)`, `get_or_create_draft_invoice_in_tx(conn,...)`, set_invoice_status | invoice_models.py | routes/invoices.py; **enrollment_models.py** (both in-tx helpers) |
-| `list_practice_logs_for(actor, student_id=None)`, `get_practice_log_for(log_id, actor)`, create_practice_log, delete_practice_log, total_minutes | practice_log_models.py | routes/practice.py; dashboard_models.py |
+| list_invoices, get_invoice, `get_invoice_for(iid, actor)`, create_invoice, add_item, `add_item_in_tx(conn,...)`, `get_or_create_draft_invoice_in_tx(conn,...)`, set_invoice_status | invoice_models.py | routes/invoices.py; **enrollment_models.py** (in-tx helpers); dashboard_models.py (balance) |
+| `list_practice_logs_for(actor, target_student_id=None)`, `get_practice_log_for(log_id, actor)`, create_practice_log, delete_practice_log, total_minutes | practice_log_models.py | routes/practice.py; dashboard_models.py |
 | list_for_role, get_announcement, create_announcement, delete_announcement | announcement_models.py | routes/announcements.py |
 | record, list_audit | audit_models.py | ALL mutating routes (record); routes/dashboard.py (list_audit) |
 | admin_summary, instructor_summary, student_summary | dashboard_models.py | routes/dashboard.py |
@@ -653,6 +670,7 @@ the url_prefixes in the Route Table. `url_for` targets: `<blueprint>.<view>` (e.
 | `instrument_models.set_instrument_status` | orchestration entrypoint | instrument_models.py | checkout_models.checkout_instrument / return_instrument (SAME conn) | `set_instrument_status(conn, iid, status) -> None  # no commit` |
 | `dashboard_models.*_summary` | orchestration entrypoint | dashboard_models.py | dashboard.index | `admin_summary() -> dict` / `instructor_summary(instructor_id) -> dict` / `student_summary(student_id) -> dict` |
 | `lesson_models.check_conflicts` | orchestration entrypoint | lesson_models.py | lessons.create_lesson/edit_lesson | `check_conflicts(instructor_id, room_id, starts_at, ends_at, exclude_lesson_id=None) -> list[dict]` |
+| `course_models.count_enrolled` / `get_course` | orchestration entrypoint | course_models.py | enrollment_models.enroll (in-tx capacity/price/name read) | `count_enrolled(cid) -> int` / `get_course(cid) -> dict | None` |
 | `search_models.search_all` | orchestration entrypoint | search_models.py | search.search | `search_all(q, role, actor_student_id=None) -> dict` |
 
 ---
@@ -661,15 +679,15 @@ the url_prefixes in the Route Table. `url_for` targets: `<blueprint>.<view>` (e.
 
 | Producer | Consumer | Import |
 |----------|----------|--------|
-| studio/database.py | every model | `from studio.database import get_db, query, transaction` |
+| studio/database.py | every model **+ studio/auth.py** (current_user / current_student_id / current_instructor_id direct queries) | `from studio.database import get_db, query, transaction` |
 | studio/auth.py | every route | `from studio.auth import login_required, role_required, current_user, current_student_id, current_instructor_id, require_self_or_staff` |
 | studio/models/student_models.py | routes/students.py, routes/lessons.py, routes/invoices.py, routes/enrollments.py, dashboard_models.py, search_models.py | `from studio.models.student_models import ...` |
 | studio/models/instructor_models.py | routes/instructors.py, routes/courses.py, routes/lessons.py, search_models.py | `from studio.models.instructor_models import ...` |
 | studio/models/audit_models.py | every mutating route (`record`); routes/dashboard.py (`list_audit`) | `from studio.models.audit_models import record  # or list_audit` |
 | studio/models/room_models.py | routes/rooms.py (scaffold), routes/lessons.py | `from studio.models.room_models import ...` |
-| studio/models/course_models.py | routes/courses.py, routes/enrollments.py, routes/lessons.py, search_models.py | `from studio.models.course_models import ...` |
-| studio/models/enrollment_models.py | routes/enrollments.py | `from studio.models.enrollment_models import ...` |
-| studio/models/invoice_models.py | routes/invoices.py, **enrollment_models.py** | `from studio.models.invoice_models import add_item_in_tx, get_or_create_draft_invoice_in_tx` |
+| studio/models/course_models.py | routes/courses.py, routes/enrollments.py, routes/lessons.py, **enrollment_models.py** (enroll reads get_course + count_enrolled in-tx), search_models.py | `from studio.models.course_models import ...` |
+| studio/models/enrollment_models.py | routes/enrollments.py, dashboard_models.py | `from studio.models.enrollment_models import ...` |
+| studio/models/invoice_models.py | routes/invoices.py, **enrollment_models.py** (in-tx helpers), dashboard_models.py (balance) | `from studio.models.invoice_models import ...  # add_item_in_tx + get_or_create_draft_invoice_in_tx for enroll; list/get for routes+dashboard` |
 | studio/models/instrument_models.py | routes/instruments.py, **checkout_models.py** | `from studio.models.instrument_models import set_instrument_status` |
 | studio/models/checkout_models.py | routes/instruments.py | `from studio.models.checkout_models import ...` |
 | studio/models/lesson_models.py | routes/lessons.py, routes/attendance.py, dashboard_models.py | `from studio.models.lesson_models import ...` |
@@ -697,10 +715,10 @@ FOUR (instructor, student, room, course) for its FK dropdowns + create validatio
 | POST /instructors/new, /edit | first_name, last_name, hourly_rate_cents? | names non-empty; rate ≥ 0 int | 400 + re-render |
 | POST /rooms/new, /edit | name, capacity | name non-empty; capacity ≥ 1 int | 400 |
 | POST /instruments/new, /edit | name, category, condition | name+category non-empty; condition ∈ enum | 400 |
-| POST /instruments/<iid>/checkout | student_id, due_at | student exists; instrument.status=='available'; due_at future ISO | 400 + flash "instrument unavailable" |
+| POST /instruments/<iid>/checkout | student_id, due_at | presence: student exists + due_at future ISO (route-level). **The `status=='available'` guard is AUTHORITATIVE inside `checkout_instrument`'s BEGIN IMMEDIATE** (not a route pre-check — avoids TOCTOU) | 400 on bad input; flash "instrument unavailable" when the in-tx guard raises |
 | POST /instruments/checkouts/<cid>/return | (cid path) | checkout exists + status=='out' | 404 / 400 |
 | POST /courses/new, /edit | name, level, capacity, price_cents, instructor_id? | name non-empty; level ∈ enum; capacity ≥ 1; price ≥ 0; instructor exists if given | 400 |
-| POST /enrollments/enroll | student_id, course_id | both exist; not already enrolled (UNIQUE); course active + under capacity | 400 + flash "already enrolled / full" |
+| POST /enrollments/enroll | student_id, course_id | presence: student + course exist and course is `active` (route-level). **The `already-enrolled` (UNIQUE) and `under-capacity` guards are AUTHORITATIVE inside `enroll`'s BEGIN IMMEDIATE** (not route pre-checks — avoids TOCTOU) | 400 + flash "already enrolled / course full" when the in-tx guard raises |
 | POST /enrollments/<eid>/withdraw | (eid path) | enrollment exists | 404 |
 | POST /lessons/new, /edit | instructor_id, student_id, starts_at, ends_at, room_id?, course_id? | FKs exist; `ends_at > starts_at`; ISO datetimes | 400 + re-render; conflicts → warn flash (non-blocking) |
 | POST /lessons/<lid>/status | status | status ∈ enum | 400 |
@@ -708,7 +726,7 @@ FOUR (instructor, student, room, course) for its FK dropdowns + create validatio
 | POST /invoices/new | student_id, description?, due_at? | student exists | 400 |
 | POST /invoices/<iid>/items | description, amount_cents, source_type | description non-empty; amount_cents int (may be negative for credit); source_type ∈ enum | 400 |
 | POST /invoices/<iid>/status | status | status ∈ enum; 'paid' sets paid_at | 400 |
-| POST /practice/new | minutes, notes? | minutes int > 0 | 400 |
+| POST /practice/new | minutes, notes? | minutes int > 0; **actor must be a student** (`current_student_id()` not None) — student_id is derived, never client-supplied | 400 on bad minutes; **403** if a staff/admin actor (no student identity) |
 | POST /practice/<log_id>/delete | (path) | log exists AND belongs to actor (or staff) | 404 |
 | POST /announcements/new | title, body, audience | title+body non-empty; audience ∈ enum | 400 |
 | POST /announcements/<aid>/delete | (path) | announcement exists | 404 |
@@ -789,7 +807,6 @@ persisted total.
 |-------|------|------|
 | /auth/register, /auth/login | public | anonymous allowed; authenticated → redirect to / |
 | /auth/logout | auth | any logged-in |
-| / , /dashboard | auth | content dispatched by role (admin/instructor/student summary) |
 | /students (list, new, edit) | role:admin,instructor | staff manage students |
 | /students/<sid> (view) | role+own | admin/instructor OR the student themselves; else **404** |
 | /students/<sid>/deactivate | admin | admin only |
@@ -810,7 +827,8 @@ persisted total.
 | /attendance/* | role:admin,instructor | staff mark |
 | /invoices (list, new, items, status) | role:admin,instructor | staff billing |
 | /invoices/<iid> (view) | role+own | `get_invoice_for(iid, actor)` → None → **404** for non-owner student |
-| /practice (list, new) | role+own | `list_practice_logs_for(actor, ?student_id)`; student forced to own, staff may pass `?student_id` |
+| /practice (list) | role+own | `list_practice_logs_for(actor, ?target_student_id)`; student forced to own, staff may pass `?target_student_id` |
+| /practice/new | role+own (**student self-service ONLY**) | student → creates own log; **staff → 403** (no student identity; cannot log for a student) |
 | /practice/<log_id>/delete | role+own | `get_practice_log_for(log_id, actor)` → None → **404** before delete |
 | /announcements (list) | auth | role-scoped audience filter (`list_for_role`) |
 | /announcements/new, /delete | role:admin,instructor | |
@@ -838,7 +856,7 @@ throwaway temp DB), with representative `curl` for the HTTP-status criteria.
   - Verify (smoke): after checkout, `get_instrument(iid)['status'] == 'checked_out'` AND a `checkouts` row exists.
 - WHEN a staff user enrolls a student in a priced course THE SYSTEM SHALL create the enrollment AND a matching `invoice_item` on the student's draft invoice **atomically**.
 - WHEN a student logs practice minutes THE SYSTEM SHALL store the log under their own `student_id`.
-- WHEN `/dashboard` loads THE SYSTEM SHALL render the summary for the caller's role (admin/instructor/student).
+- WHEN `/` (dashboard index) loads THE SYSTEM SHALL render the summary for the caller's role (admin→admin_summary, instructor→instructor_summary(current_instructor_id()), student→student_summary(current_student_id())).
 - WHEN an invoice is viewed THE SYSTEM SHALL display `total = SUM(invoice_items.amount_cents)`.
 
 ### Error Cases
@@ -920,6 +938,20 @@ dashboard registered prefix-less; ownership-scoped `*_for` getters (student/less
 practice) that return None→404; two missing validation rows + `current_instructor_id` mapping
 + explicit room-route authz. Self-review round 2 additionally reconciled the "sanctioned
 cross-agent write" rule (4 calls, not 1) and the `transaction()` opener set.
+
+**Round-2 Codex review: COMPLETE (2026-07-10).** Applied: (1) uniform Ownership-Scoped Getter
+Contract — all four `*_for` getters standardized as actor-based SQL predicates (kills FC5
+drift); (2) practice creation resolved to student-self-service-ONLY (staff→403); (3) removed
+the stale `/ , /dashboard` §6 row + reconciled EARS to `/`; (4) moved the checkout
+availability + enroll capacity/UNIQUE guards INSIDE `BEGIN IMMEDIATE` (TOCTOU-safe; §3 rows
+now mark them advisory-only at route level); (5) pinned the enroll invoice-item values
+(description=course.name, amount=price_cents, source_type='enrollment', source_id=enrollment id);
+(6) enforced one-draft-per-student in the SCHEMA (`ux_one_draft_per_student` partial unique
+index); (7) fully reconciled dashboard + infra wiring — `database.py`→`auth.py`,
+`dashboard_models` consumes invoice+enrollment (the FIVE-module claim now holds), `course_models`
+→`enrollment_models` (in-tx capacity/price/name read) added to §1b/§1d/§2; (8) lessons/search
+fully reconciled (search never reads lessons). Fresh cross-section re-review (Model Functions ×
+§1a/§1b/§1d/§2/§3/§5/§6/schema/Route Table/EARS) found no remaining contradictions.
 
 Then: **human P0 structural pass (Alex — non-optional cross-section field-matching)** → flip
 `status: draft`→`active` → launch as the next run-id via autopilot swarm
