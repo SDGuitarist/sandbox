@@ -20,6 +20,7 @@
 | gates-completeness | PASS | docs/reports/081/spec-completeness-check.md |
 | spec-eval (9w.8) | ENV_ERROR (advisory, no spec verdict — ANTHROPIC_API_KEY not set; not a spec pass, not a spawn gate) | (no report — harness exited 2 before writing) |
 | ghost-file gate (9w.9) | PASS — studio/ untracked+absent (collision-free); NOTE: top-level test_smoke.py is a prior-build ghost (imports dead app/) but is IN the prescribed set (smoke-test agent overwrites it; history preserved) | (inline) |
+| swarm | PASS | docs/reports/081/assembly-summary.md |
 
 **Run State:**
 - run_id: 081
@@ -28,7 +29,7 @@
 - branch: master
 - context_proxy_chars: 424000
 - manual_resume: false
-- final_status: null
+- final_status: PIPELINE_PASS (assembly PASS; smoke/test FIREBREAK_DEFERRED — post-teardown re-run pending)
 
 ---
 
