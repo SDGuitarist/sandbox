@@ -13,3 +13,12 @@ Run 081 — pre-spawn spec-provenance gate (Step 9w.9.5, FC52/FC51).
   by construction once pushed. No repair needed; no cleanup disposition applicable.
 - Workers will read the exact spec the 9w.5/9w.6 gates validated (including the
   delete_practice_log fix and the Swarm Agent Assignment section).
+
+UPDATE (pre-spawn, FC54 pin): one further spec edit after the first verdict — §4 pinned
+base.html block names (`title`, `content`) to close an FC54 gap before 12+ template
+agents spawn. The orchestrator's push of that commit was FIREBREAK_DEFERRED (correct
+governance of an outward action; RED record retained in todos/approvals/). Sanctioned
+lifecycle used: deactivate → push 1c18252..4b06360 → re-activate 081 → positive-control
+probe re-run (PASS, no canaries). Detector re-run:
+  STATUS: PROVENANCE_OK — blob 62b61c3b51f43fa880bd00e5f28362e7dfad9c1b identical on
+  master and origin/master. This is the blob workers must report as SPEC_BLOB.

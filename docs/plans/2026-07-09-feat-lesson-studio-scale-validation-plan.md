@@ -63,6 +63,11 @@ test_smoke.py              # top-level smoke suite (smoke-test agent) — import
 - CSRF: a lightweight session-token scheme (mirror ShelfTrack run 080). `csrf_token()`
   injected into Jinja globals; every mutating form posts `_csrf`; a `before_request`
   validates it on POST/PUT/PATCH/DELETE and returns **400** on mismatch.
+- Database path (pinned — scaffold/database/smoke-test MUST agree): `create_app()` sets
+  `app.config['DATABASE'] = os.environ.get('DATABASE', 'studio.db')`. `database.py` reads
+  the path ONLY via `flask.current_app.config['DATABASE']` (never the env var directly).
+  The init_db guard checks `os.path.exists(app.config['DATABASE'])`. Smoke tests override
+  by setting the `DATABASE` env var BEFORE calling `create_app()`.
 - Registers all blueprints (see Roster). Calls `init_db()` once if the DB file is absent.
 - Injects `current_user` (dict or None) and `csrf_token` into the template context.
 
