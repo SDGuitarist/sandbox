@@ -487,6 +487,7 @@ POST routes (abort 404 if a student's supplied `student_id` isn't their own); al
 
 ### invoice_models.py  (invoice model agent — multi-table transaction)
 - `list_invoices(student_id=None, status=None) -> list[dict]` — each row includes computed `total_cents = SUM(items)` (unscoped; staff callers).
+- `list_invoices_for(actor, status=None) -> list[dict]` — **Ownership-Scoped Getter Contract**: staff → all (optionally filtered by `status`); student → predicate `student_id = (SELECT id FROM students WHERE user_id=:actor_id)`. This is the `/invoices` list source (makes the student "my-invoices" nav real).
 - `get_invoice(iid) -> dict | None` — dict includes `items: list[dict]` and `total_cents` (unscoped; staff callers).
 - `get_invoice_for(iid, actor) -> dict | None` — **Ownership-Scoped Getter Contract**: `WHERE invoices.id = :iid AND (:staff OR student_id = (SELECT id FROM students WHERE user_id=:actor_id))`; returns the invoice with `items` + `total_cents`, else `None`. `/invoices/<iid>` → `abort(404)`.
 - `create_invoice(student_id, description=None, due_at=None, created_by=None) -> int` — **get-or-create the student's single `draft`** (index-safe): if a `draft` already exists for the student, returns it (optionally updating description/due_at); else inserts one. This guarantees `create_invoice` can NEVER violate `ux_one_draft_per_student`. Commits. (The staff "New invoice" route lands the user on that one open draft to add items.)
@@ -597,7 +598,7 @@ ownership) · **admin**. Full rules in the Authorization Matrix.
 | POST | /lesson/<int:lid>/mark | `mark_attendance(lid, present, marked_by=current_user()['id'])` — student derived from lesson | role:admin,instructor |
 
 ### invoices  (/invoices — invoice route agent)
-| GET | / | list_invoices | role:admin,instructor |
+| GET | / | `list_invoices_for(current_user())` (staff→all, student→own) | role+own |
 | GET/POST | /new | create_invoice | role:admin,instructor |
 | GET | /<int:iid> | view_invoice → `get_invoice_for(iid, current_user()) or abort(404)` | role+own |
 | POST | /<int:iid>/items | add_item | role:admin,instructor |
@@ -664,7 +665,7 @@ transaction-changed signatures are included.
 | list_lessons, `list_lessons_for(actor, **filters)`, get_lesson, `get_lesson_for(lid, actor)`, create_lesson, update_lesson, set_lesson_status, check_conflicts | lesson_models.py | routes/lessons.py, routes/attendance.py; dashboard_models.py |
 | list_attendance, `mark_attendance(lesson_id, present, marked_by)`, attendance_rate | attendance_models.py | routes/attendance.py; dashboard_models.py |
 | list_checkouts, get_checkout, checkout_instrument, return_instrument | checkout_models.py | routes/instruments.py |
-| list_invoices, get_invoice, `get_invoice_for(iid, actor)`, create_invoice, add_item, `add_item_in_tx(conn,...)`, `get_or_create_draft_invoice_in_tx(conn,...)`, set_invoice_status | invoice_models.py | routes/invoices.py; **enrollment_models.py** (in-tx helpers); dashboard_models.py (balance) |
+| list_invoices, `list_invoices_for(actor, status=None)`, get_invoice, `get_invoice_for(iid, actor)`, create_invoice, add_item, `add_item_in_tx(conn,...)`, `get_or_create_draft_invoice_in_tx(conn,...)`, set_invoice_status | invoice_models.py | routes/invoices.py; **enrollment_models.py** (in-tx helpers); dashboard_models.py (balance) |
 | `list_practice_logs_for(actor, target_student_id=None)`, `get_practice_log_for(log_id, actor)`, create_practice_log, delete_practice_log, total_minutes | practice_log_models.py | routes/practice.py; dashboard_models.py |
 | list_for_role, get_announcement, create_announcement, delete_announcement | announcement_models.py | routes/announcements.py |
 | record, list_audit | audit_models.py | ALL mutating routes (record); routes/dashboard.py (list_audit) |
@@ -848,7 +849,8 @@ the unique index never fires at runtime — it is a backstop, not a hot error pa
 | /lessons/<lid> (view) | role+own | `get_lesson_for(lid, actor)` returns None → **404** for non-owner student/instructor |
 | /lessons/new, /edit, /status | role:admin,instructor | |
 | /attendance/* | role:admin,instructor | staff mark |
-| /invoices (list, new, items, status) | role:admin,instructor | staff billing |
+| /invoices (list) | role+own | `list_invoices_for(actor)` — staff→all, student→own (powers student "my-invoices") |
+| /invoices/new, /items, /status | role:admin,instructor | staff billing |
 | /invoices/<iid> (view) | role+own | `get_invoice_for(iid, actor)` → None → **404** for non-owner student |
 | /practice (list) | role+own | `list_practice_logs_for(actor, ?target_student_id)`; student forced to own, staff may pass `?target_student_id` |
 | /practice/new | role+own (**student self-service ONLY**) | student → creates own log; **staff → 403** (no student identity; cannot log for a student) |

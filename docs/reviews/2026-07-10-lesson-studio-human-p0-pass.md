@@ -52,10 +52,14 @@
 ---
 
 ## P0 Log (record any `[!]`)
-| # | Section(s) in conflict | The contradiction | Proposed fix |
-|---|------------------------|-------------------|--------------|
-|   |                        |                   |              |
+| # | Section(s) in conflict | The contradiction | Proposed fix | Status |
+|---|------------------------|-------------------|--------------|--------|
+| P0-1 | §4 Coordinated Behaviors (nav) ↔ §6 Authorization Matrix ↔ Route Table | Student nav promises a "my-invoices" link, but `/invoices` (list) was `role:admin,instructor` — no route lists a student's own invoices, so the nav link had no valid student destination. | Option 1 (Alex): add `list_invoices_for(actor)` ownership-scoped getter; `/invoices` list → `role+own` (staff→all, student→own); billing actions (new/items/status) stay staff-only. Updated Model Functions, §1b, Route Table, §6. | **FIXED** (commit pending) |
+
+## Pass Result (2026-07-10)
+- **Domain-logic calls (human judgment):** 1:1 lessons + single-student attendance ✓; instructor own-lessons-only ✓; auto-accrue billing on enroll ✓ — all confirmed by Alex.
+- **Mechanical field-matches (A–G):** verified against the current file — types (money=cents), enum consistency, route↔§3↔§6 bijection, dashboard/url_for, cross-agent write rule, ownership-contract uniformity, seed-constraint coverage — all clean.
+- **P0s found:** 1 (P0-1, nav↔route mismatch) — **FIXED**. Reuses the already-Codex-vetted ownership-scoped-getter pattern (not a new structural design), so **no fresh Codex round required**.
 
 ## Exit
-- [ ] **Zero P0s** → tell the session; it flips the plan to `status: active` and sets up the swarm launch (inject agent-pitfalls, copy BUILD_TRACKING, verify namespace `studio/`).
-- [ ] **≥1 P0** → hand the log back; the session applies fixes, then (if structural) one more Codex round before re-running this pass.
+- [x] **Zero P0s remaining** → flip the plan to `status: active` and set up the swarm launch (inject agent-pitfalls, copy BUILD_TRACKING, verify namespace `studio/`).
