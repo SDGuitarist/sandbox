@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Instructors{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Instructors</h1>
+  {% if current_user and current_user.role == 'admin' %}
+  <a class="btn btn-primary" href="{{ url_for('instructors.create_instructor') }}">New instructor</a>
+  {% endif %}
+</div>
+
+{% if instructors %}
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Hourly rate</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for instructor in instructors %}
+      <tr>
+        <td>{{ instructor.first_name }} {{ instructor.last_name }}</td>
+        <td>{{ instructor.email or '' }}</td>
+        <td>{{ instructor.phone or '' }}</td>
+        <td>{{ instructor.hourly_rate_cents|cents }}</td>
+        <td>
+          {% if instructor.active %}
+          <span class="badge bg-success">Active</span>
+          {% else %}
+          <span class="badge bg-secondary">Inactive</span>
+          {% endif %}
+        </td>
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('instructors.view_instructor', iid=instructor.id) }}">View</a>
+          {% if current_user and current_user.role == 'admin' %}
+          <a class="btn btn-sm btn-outline-primary" href="{{ url_for('instructors.edit_instructor', iid=instructor.id) }}">Edit</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No instructors yet.</p>
+{% endif %}
+{% endblock %}

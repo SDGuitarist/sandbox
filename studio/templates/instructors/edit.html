@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Edit instructor{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Edit instructor</h1>
+
+<form method="post" action="{{ url_for('instructors.edit_instructor', iid=instructor.id) }}" class="col-md-8">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label class="form-label" for="first_name">First name</label>
+    <input class="form-control" id="first_name" name="first_name" value="{{ values.first_name or '' }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="last_name">Last name</label>
+    <input class="form-control" id="last_name" name="last_name" value="{{ values.last_name or '' }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="email">Email</label>
+    <input class="form-control" type="email" id="email" name="email" value="{{ values.email or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="phone">Phone</label>
+    <input class="form-control" id="phone" name="phone" value="{{ values.phone or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="bio">Bio</label>
+    <textarea class="form-control" id="bio" name="bio" rows="3">{{ values.bio or '' }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="hourly_rate_cents">Hourly rate (cents)</label>
+    <input class="form-control" type="number" min="0" step="1" id="hourly_rate_cents" name="hourly_rate_cents" value="{{ values.hourly_rate_cents if values.hourly_rate_cents is not none else '' }}">
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save</button>
+  <a class="btn btn-outline-secondary" href="{{ url_for('instructors.view_instructor', iid=instructor.id) }}">Cancel</a>
+</form>
+{% endblock %}
