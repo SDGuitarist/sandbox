@@ -1006,3 +1006,299 @@ Then: **human P0 structural pass (Alex — non-optional cross-section field-matc
 `status: draft`→`active` → launch as the next run-id via autopilot swarm
 (`dangerouslySkipPermissions` already set; inject agent-pitfalls per CLAUDE.md; copy
 BUILD_TRACKING template).
+
+---
+
+## Swarm Agent Assignment
+
+**Total agents:** 30
+**Total files:** 75
+**Validation:** No file appears in multiple assignments
+
+---
+
+### Agent: scaffold
+**Files:**
+- `studio/__init__.py`
+- `studio/templates/base.html`
+- `studio/static/style.css`
+- `studio/routes/rooms.py`
+- `studio/templates/rooms/list.html`
+- `studio/templates/rooms/form.html`
+
+**Responsibility:** App factory, blueprint registration, CSRF middleware, Jinja filters, base template with role-aware nav, and the /rooms CRUD blueprint (list/new/edit).
+
+---
+
+### Agent: database
+**Files:**
+- `studio/schema.sql`
+- `studio/database.py`
+
+**Responsibility:** DDL schema, seed data, `get_db`, `query`, `init_db`, and the `transaction()` context manager.
+
+---
+
+### Agent: auth-core
+**Files:**
+- `studio/auth.py`
+- `studio/models/auth_models.py`
+- `studio/routes/auth.py`
+- `studio/templates/auth/login.html`
+- `studio/templates/auth/register.html`
+
+**Responsibility:** User creation/verification, session helpers (`login_user`/`logout_user`/`current_user`/`current_student_id`/`current_instructor_id`), auth decorators (`login_required`/`role_required`/`require_self_or_staff`), and the /auth register/login/logout routes.
+
+---
+
+### Agent: model-student
+**Files:**
+- `studio/models/student_models.py`
+
+**Responsibility:** All CRUD + ownership-scoped getters (`get_student_for`, `list_students`) for the students table.
+
+---
+
+### Agent: model-instructor
+**Files:**
+- `studio/models/instructor_models.py`
+
+**Responsibility:** All CRUD functions for the instructors table.
+
+---
+
+### Agent: model-room
+**Files:**
+- `studio/models/room_models.py`
+
+**Responsibility:** All CRUD functions for the rooms table.
+
+---
+
+### Agent: model-instrument
+**Files:**
+- `studio/models/instrument_models.py`
+
+**Responsibility:** All CRUD functions for the instruments table, including the in-tx helper `set_instrument_status(conn, iid, status)`.
+
+---
+
+### Agent: model-course
+**Files:**
+- `studio/models/course_models.py`
+
+**Responsibility:** All CRUD functions for the courses table, including `count_enrolled` used as an in-tx capacity guard by enrollment_models.
+
+---
+
+### Agent: model-enrollment
+**Files:**
+- `studio/models/enrollment_models.py`
+
+**Responsibility:** `list_enrollments`, `get_enrollment`, `set_enrollment_status`, and the `enroll` function which owns one BEGIN IMMEDIATE transaction and calls invoice in-tx helpers on the same connection.
+
+---
+
+### Agent: model-lesson
+**Files:**
+- `studio/models/lesson_models.py`
+
+**Responsibility:** All CRUD + ownership-scoped getters (`list_lessons_for`, `get_lesson_for`) and conflict-checking for the lessons table (the 4-way FK seam).
+
+---
+
+### Agent: model-attendance
+**Files:**
+- `studio/models/attendance_models.py`
+
+**Responsibility:** `list_attendance`, `mark_attendance` (single-student UPSERT derived from lesson), and `attendance_rate` aggregate.
+
+---
+
+### Agent: model-checkout
+**Files:**
+- `studio/models/checkout_models.py`
+
+**Responsibility:** `list_checkouts`, `get_checkout`, and the two BEGIN IMMEDIATE transaction owners `checkout_instrument` and `return_instrument` (both call `instrument_models.set_instrument_status` on the shared conn).
+
+---
+
+### Agent: model-invoice
+**Files:**
+- `studio/models/invoice_models.py`
+
+**Responsibility:** All invoice + invoice_items CRUD, ownership-scoped getters (`list_invoices_for`, `get_invoice_for`), and the in-tx helpers (`add_item_in_tx`, `get_or_create_draft_invoice_in_tx`) used by enrollment_models.
+
+---
+
+### Agent: model-practice-log
+**Files:**
+- `studio/models/practice_log_models.py`
+
+**Responsibility:** Ownership-scoped getters (`list_practice_logs_for`, `get_practice_log_for`), `create_practice_log`, `delete_practice_log`, and `total_minutes` aggregate.
+
+---
+
+### Agent: model-announcement
+**Files:**
+- `studio/models/announcement_models.py`
+
+**Responsibility:** `list_for_role` (role-scoped audience filter), `get_announcement`, `create_announcement`, and `delete_announcement`.
+
+---
+
+### Agent: model-audit
+**Files:**
+- `studio/models/audit_models.py`
+
+**Responsibility:** `record` (write-only cross-cutting audit insert, called post-commit by every mutating route) and `list_audit` (admin read).
+
+---
+
+### Agent: model-dashboard
+**Files:**
+- `studio/models/dashboard_models.py`
+
+**Responsibility:** Cross-entity aggregate queries: `admin_summary`, `instructor_summary`, and `student_summary`, importing exactly five model modules (lesson, invoice, enrollment, attendance, practice_log).
+
+---
+
+### Agent: route-student
+**Files:**
+- `studio/routes/students.py`
+- `studio/templates/students/list.html`
+- `studio/templates/students/new.html`
+- `studio/templates/students/edit.html`
+- `studio/templates/students/view.html`
+
+**Responsibility:** /students blueprint: list, create, view (ownership-scoped via `get_student_for`), edit, and deactivate routes.
+
+---
+
+### Agent: route-instructor
+**Files:**
+- `studio/routes/instructors.py`
+- `studio/templates/instructors/list.html`
+- `studio/templates/instructors/new.html`
+- `studio/templates/instructors/edit.html`
+- `studio/templates/instructors/view.html`
+
+**Responsibility:** /instructors blueprint: list, create (admin), view, and edit routes.
+
+---
+
+### Agent: route-instrument
+**Files:**
+- `studio/routes/instruments.py`
+- `studio/templates/instruments/list.html`
+- `studio/templates/instruments/new.html`
+- `studio/templates/instruments/edit.html`
+- `studio/templates/instruments/checkouts.html`
+
+**Responsibility:** /instruments blueprint: list, create, edit, checkout list, checkout action, and return action routes (hosts all checkout/return surface).
+
+---
+
+### Agent: route-course
+**Files:**
+- `studio/routes/courses.py`
+- `studio/templates/courses/list.html`
+- `studio/templates/courses/new.html`
+- `studio/templates/courses/edit.html`
+- `studio/templates/courses/view.html`
+
+**Responsibility:** /courses blueprint: list, create, view, and edit routes (public catalog browse for any logged-in user).
+
+---
+
+### Agent: route-enrollment
+**Files:**
+- `studio/routes/enrollments.py`
+- `studio/templates/enrollments/list.html`
+- `studio/templates/enrollments/enroll.html`
+
+**Responsibility:** /enrollments blueprint: list, enroll (calls `enroll(student_id, course_id, created_by)` and handles ValueError flash), and withdraw routes.
+
+---
+
+### Agent: route-lesson
+**Files:**
+- `studio/routes/lessons.py`
+- `studio/templates/lessons/list.html`
+- `studio/templates/lessons/new.html`
+- `studio/templates/lessons/edit.html`
+- `studio/templates/lessons/view.html`
+
+**Responsibility:** /lessons blueprint: ownership-scoped list (`list_lessons_for`), create, view (`get_lesson_for`), edit, and status routes; conflict-warning via `check_conflicts`.
+
+---
+
+### Agent: route-attendance
+**Files:**
+- `studio/routes/attendance.py`
+- `studio/templates/attendance/lesson.html`
+
+**Responsibility:** /attendance blueprint: lesson attendance view (shows the lesson's single student) and mark route (student derived from lesson, never client-supplied).
+
+---
+
+### Agent: route-invoice
+**Files:**
+- `studio/routes/invoices.py`
+- `studio/templates/invoices/list.html`
+- `studio/templates/invoices/new.html`
+- `studio/templates/invoices/view.html`
+
+**Responsibility:** /invoices blueprint: ownership-scoped list (`list_invoices_for`), create (get-or-create draft), view (`get_invoice_for`), add item, and status transition routes.
+
+---
+
+### Agent: route-practice-log
+**Files:**
+- `studio/routes/practice.py`
+- `studio/templates/practice/list.html`
+- `studio/templates/practice/new.html`
+
+**Responsibility:** /practice blueprint: ownership-scoped list, student-only create (derives student_id from `current_student_id()`, 403 for staff), and delete routes.
+
+---
+
+### Agent: route-announcement
+**Files:**
+- `studio/routes/announcements.py`
+- `studio/templates/announcements/list.html`
+- `studio/templates/announcements/new.html`
+
+**Responsibility:** /announcements blueprint: role-scoped list (`list_for_role`), create, and delete routes.
+
+---
+
+### Agent: route-dashboard
+**Files:**
+- `studio/routes/dashboard.py`
+- `studio/templates/dashboard/index.html`
+- `studio/templates/dashboard/audit.html`
+
+**Responsibility:** Dashboard blueprint (no url_prefix, owns `/` and `/audit`): role-dispatched summary index and admin-only audit log view.
+
+---
+
+### Agent: search
+**Files:**
+- `studio/models/search_models.py`
+- `studio/routes/search.py`
+- `studio/templates/search/results.html`
+
+**Responsibility:** Full search vertical: `search_all` model (LIKE queries across students/instructors/courses only, role-filtered), /search route, and results template.
+
+---
+
+### Agent: smoke-test
+**Files:**
+- `test_smoke.py`
+
+**Responsibility:** Top-level smoke suite covering happy-path CRUD, IDOR-404, transaction atomicity (checkout + enroll), CSRF validation, SECRET_KEY fail-closed, and one-draft-per-student invariant.
+
+---
+
+STATUS: PASS
