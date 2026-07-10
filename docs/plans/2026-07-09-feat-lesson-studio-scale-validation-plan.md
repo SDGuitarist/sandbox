@@ -264,6 +264,12 @@ CREATE TABLE audit_log (
 3 rooms, 4 instruments, 3 courses, a handful of enrollments/lessons/invoices so the
 smoke suite exercises real relationships (dynamic surface must be genuinely LIT, not
 trivially green — see brainstorm Open Questions).
+**Seed invoice statuses MUST respect `ux_one_draft_per_student`:** seed **at most ONE
+`draft` invoice per student** (give student A one `draft`, student B one `paid`, student C
+one `sent`) — never two drafts for the same student, or `init_db` fails on the partial
+unique index. Every seeded row must satisfy all NOT NULL / CHECK / UNIQUE constraints
+(roles ∈ enum, `ends_at > starts_at` on lessons, unique enrollment pairs, instrument status
+consistent with any seeded checkout).
 
 ---
 
@@ -346,9 +352,15 @@ attendance · invoice · practice_log · announcement · dashboard.
 - `init_db() -> None` — executes `schema.sql`, then inserts seed rows. Idempotent guard:
   the app factory calls it only when the DB file does not already exist.
 - `query(sql, params=(), one=False)` — thin helper returning `list[dict]` (or one `dict`/None).
-- **Transaction helper:** `transaction()` — a context manager yielding the connection with
-  `BEGIN IMMEDIATE`; commits on clean exit, rolls back on exception. Used by every
-  multi-statement writer (checkout, invoice, enrollment→invoice_item).
+- **Transaction helper:** `transaction()` — a context manager that wraps the **single
+  `get_db()` request connection** (one connection per request, cached on `g`) with
+  `BEGIN IMMEDIATE`; commits on clean exit, rolls back on exception. Because it is the SAME
+  connection every model function uses, any read done DURING the transaction (e.g.
+  `count_enrolled`, `get_course` inside `enroll`) sees the transaction's own uncommitted
+  writes — so the in-tx capacity/active/availability guards are consistent. `BEGIN IMMEDIATE`
+  takes the write lock up front, so two concurrent class-B transactions on separate requests
+  serialize (the second blocks, then re-reads current state) — no lost-update / double-book.
+  Nested `transaction()` is forbidden (a class-B writer never calls another class-B writer).
 
 All model functions convert `sqlite3.Row` → plain `dict` before returning (never leak Row
 across a boundary — FC2). "Returns dict" below means a plain dict with the table's columns.
@@ -390,9 +402,15 @@ ownership-scoped getter obeys the SAME actor-based SQL-predicate rule:
 
 - Signature: `get_<x>_for(<id>, actor) -> dict | None` and `list_<x>_for(actor, **filters) -> list[dict]`. `actor` is the `current_user()` dict (`{id, role, ...}`), always the trailing arg on getters.
 - The ownership check is a **SQL WHERE predicate in the query itself**, never a fetch-then-compare in Python. The predicate is exactly:
-  - `actor['role'] in ('admin','instructor')` → **no ownership restriction** (staff see all);
-  - else (student) → restrict to rows whose `student_id = (SELECT id FROM students WHERE user_id = :actor_id)`.
+  - `actor['role'] == 'admin'` → **no ownership restriction** (admin sees all);
+  - `actor['role'] == 'instructor'` → **no restriction for student-owned entities** (students, invoices, practice logs — an instructor is staff over those). **Lessons are the ONE exception:** a lesson has BOTH a student and an instructor owner, so for `list_lessons_for`/`get_lesson_for` an instructor is scoped to `instructor_id = (SELECT id FROM instructors WHERE user_id = :actor_id)` (an instructor sees only THEIR OWN lessons, not every lesson). Admin still sees all.
+  - `actor['role'] == 'student'` → restrict to rows whose `student_id = (SELECT id FROM students WHERE user_id = :actor_id)`.
 - A non-owner therefore gets **0 rows → `None`/`[]`**; the route does `row = get_<x>_for(...) or abort(404)`. No 403, no existence leak.
+
+> **Instructor-scope note:** the instructor exception applies ONLY to lessons (dual-owner
+> entity). For students / invoices / practice-logs, instructors are full staff (see all).
+> This is the single asymmetry in the contract — called out here so the four owning agents
+> don't diverge on it.
 
 `require_self_or_staff(student_id) -> None` remains only as a pre-write guard on `role+own`
 POST routes (abort 404 if a student's supplied `student_id` isn't their own); all `role+own`
@@ -440,7 +458,7 @@ POST routes (abort 404 if a student's supplied `student_id` isn't their own); al
 ### enrollment_models.py  (enrollment model agent)
 - `list_enrollments(student_id=None, course_id=None, status=None) -> list[dict]` — joins student + course names.
 - `get_enrollment(eid) -> dict | None`
-- `enroll(student_id, course_id, created_by) -> int` — **OWNS one `transaction()` internally** (`with transaction() as conn`, one atomic unit). **All guards run INSIDE the BEGIN IMMEDIATE** (no route-level pre-check is authoritative — avoids TOCTOU): (1) re-read the course FOR the capacity check — `count_enrolled(course_id) < course.capacity` (else `ValueError('course full')`); (2) insert the enrollment, relying on the DB `UNIQUE(student_id,course_id)` → `ValueError('already enrolled')` on conflict. If `course.price_cents > 0`, thread the SAME `conn` through `get_or_create_draft_invoice_in_tx(conn, student_id, created_by)` then `add_item_in_tx(conn, invoice_id, description=course['name'], amount_cents=course['price_cents'], source_type='enrollment', source_id=<new enrollment id>)`. Any failure rolls back the whole unit — no orphan invoice_item, no over-capacity enrollment. **Does NOT audit** (route audits post-commit). See Transaction Contracts.
+- `enroll(student_id, course_id, created_by) -> int` — **OWNS one `transaction()` internally** (`with transaction() as conn`, one atomic unit). **All guards run INSIDE the BEGIN IMMEDIATE** (no route-level pre-check is authoritative — avoids TOCTOU): (1) re-read the course on `conn` and require `course['active'] == 1` (else `ValueError('course inactive')`) — a concurrent deactivation can't slip through; (2) capacity — `count_enrolled(course_id) < course['capacity']` (else `ValueError('course full')`); (3) insert the enrollment, relying on the DB `UNIQUE(student_id,course_id)` → `ValueError('already enrolled')` on conflict. If `course.price_cents > 0`, thread the SAME `conn` through `get_or_create_draft_invoice_in_tx(conn, student_id, created_by)` then `add_item_in_tx(conn, invoice_id, description=course['name'], amount_cents=course['price_cents'], source_type='enrollment', source_id=<new enrollment id>)`. Any failure rolls back the whole unit — no orphan invoice_item, no over-capacity enrollment. **Does NOT audit** (route audits post-commit). See Transaction Contracts.
 - `set_enrollment_status(eid, status) -> None` — commits.
 
 ### lesson_models.py  (lesson model agent — THE 4-way seam)
@@ -472,11 +490,11 @@ POST routes (abort 404 if a student's supplied `student_id` isn't their own); al
 - `list_invoices(student_id=None, status=None) -> list[dict]` — each row includes computed `total_cents = SUM(items)` (unscoped; staff callers).
 - `get_invoice(iid) -> dict | None` — dict includes `items: list[dict]` and `total_cents` (unscoped; staff callers).
 - `get_invoice_for(iid, actor) -> dict | None` — **Ownership-Scoped Getter Contract**: `WHERE invoices.id = :iid AND (:staff OR student_id = (SELECT id FROM students WHERE user_id=:actor_id))`; returns the invoice with `items` + `total_cents`, else `None`. `/invoices/<iid>` → `abort(404)`.
-- `create_invoice(student_id, description=None, due_at=None, created_by=None) -> int` — commits; empty draft.
-- `add_item(invoice_id, description, amount_cents, source_type='manual', source_id=None) -> int` — commits (standalone, staff manual add).
+- `create_invoice(student_id, description=None, due_at=None, created_by=None) -> int` — **get-or-create the student's single `draft`** (index-safe): if a `draft` already exists for the student, returns it (optionally updating description/due_at); else inserts one. This guarantees `create_invoice` can NEVER violate `ux_one_draft_per_student`. Commits. (The staff "New invoice" route lands the user on that one open draft to add items.)
+- `add_item(invoice_id, description, amount_cents, source_type='manual', source_id=None) -> int` — commits (standalone, staff manual add). No index interaction (invoice_items is unconstrained by the draft index).
 - `add_item_in_tx(conn, invoice_id, description, amount_cents, source_type, source_id) -> int` — inserts on the **caller-supplied** `conn`; **does NOT commit**. Called only by `enroll` inside its transaction.
 - `get_or_create_draft_invoice_in_tx(conn, student_id, created_by) -> int` — on the **caller-supplied** `conn`; returns the student's SINGLE open `draft` invoice id, or creates one (recording `created_by`); **does NOT commit**. Called only by `enroll` inside its transaction. **Invariant: at most one `draft` invoice per student** — enforced by selecting the most-recent `draft` for reuse (a draft only leaves `draft` when staff explicitly `set_invoice_status` to `sent`), so enroll-driven items always accrete onto one open draft; no duplicate drafts.
-- `set_invoice_status(iid, status) -> None` — commits; on 'paid' sets `paid_at`. **Does NOT audit** (route audits post-commit).
+- `set_invoice_status(iid, status) -> None` — commits; on 'paid' sets `paid_at`. **Forward-only transitions** (`draft→sent`, `sent→paid`, `draft|sent→void`); it MUST reject any transition BACK to `draft` (`ValueError('cannot reopen to draft')`) so it can never mint a second draft and collide with `ux_one_draft_per_student`. Once an invoice leaves `draft`, the student's next enroll get-or-creates a fresh draft. **Does NOT audit** (route audits post-commit).
 
 ### practice_log_models.py  (practice_log model agent — ownership-scoped)
 - `list_practice_logs_for(actor, target_student_id=None) -> list[dict]` — **Ownership-Scoped Getter Contract**: student → predicate `student_id = (SELECT id FROM students WHERE user_id=:actor_id)` (the `target_student_id` arg is IGNORED for students — they can never widen scope); staff → all, or scoped to `target_student_id` when supplied. `/practice` list source.
@@ -638,7 +656,7 @@ transaction-changed signatures are included.
 | Function | Defined By | Used By (consumers = §2) |
 |----------|-----------|--------------------------|
 | create_user, get_user, get_user_by_email, verify_credentials | auth_models.py | routes/auth.py, studio/auth.py (INTRA-agent: all auth-core; not a cross-agent boundary) |
-| list_students, get_student, `get_student_for(sid, actor)`, create_student, update_student, set_student_active | student_models.py | routes/students.py; routes/lessons.py, routes/invoices.py, routes/enrollments.py (name lookups); dashboard_models.py; search_models.py |
+| list_students, get_student, `get_student_for(sid, actor)`, create_student, update_student, set_student_active | student_models.py | routes/students.py; routes/lessons.py, routes/invoices.py, routes/enrollments.py (name lookups); search_models.py |
 | list_instructors, get_instructor, create_instructor, update_instructor, set_instructor_active | instructor_models.py | routes/instructors.py; routes/courses.py, routes/lessons.py; search_models.py |
 | list_rooms, get_room, create_room, update_room, set_room_active | room_models.py | routes/rooms.py (scaffold); routes/lessons.py |
 | list_instruments, get_instrument, create_instrument, update_instrument, `set_instrument_status(conn, iid, status)` | instrument_models.py | routes/instruments.py; **checkout_models.py** (set_instrument_status, in-tx) |
@@ -681,7 +699,7 @@ the url_prefixes in the Route Table. `url_for` targets: `<blueprint>.<view>` (e.
 |----------|----------|--------|
 | studio/database.py | every model **+ studio/auth.py** (current_user / current_student_id / current_instructor_id direct queries) | `from studio.database import get_db, query, transaction` |
 | studio/auth.py | every route | `from studio.auth import login_required, role_required, current_user, current_student_id, current_instructor_id, require_self_or_staff` |
-| studio/models/student_models.py | routes/students.py, routes/lessons.py, routes/invoices.py, routes/enrollments.py, dashboard_models.py, search_models.py | `from studio.models.student_models import ...` |
+| studio/models/student_models.py | routes/students.py, routes/lessons.py, routes/invoices.py, routes/enrollments.py, search_models.py | `from studio.models.student_models import ...` |
 | studio/models/instructor_models.py | routes/instructors.py, routes/courses.py, routes/lessons.py, search_models.py | `from studio.models.instructor_models import ...` |
 | studio/models/audit_models.py | every mutating route (`record`); routes/dashboard.py (`list_audit`) | `from studio.models.audit_models import record  # or list_audit` |
 | studio/models/room_models.py | routes/rooms.py (scaffold), routes/lessons.py | `from studio.models.room_models import ...` |
@@ -795,9 +813,15 @@ transaction:** `instrument_models.set_instrument_status(conn, iid, status)`,
 ROUTE, after the class-(A)/(B) call returns and commits — so it is a separate post-commit
 statement, never nested inside a class-(B) transaction.
 
-**Invariant:** the invoice total is always `SUM(invoice_items.amount_cents)` computed at
-read time — never a stored column — so a partially-applied item write can never desync a
+**Invariant (total):** the invoice total is always `SUM(invoice_items.amount_cents)` computed
+at read time — never a stored column — so a partially-applied item write can never desync a
 persisted total.
+
+**Invariant (one draft/student):** schema-enforced by `ux_one_draft_per_student`. Every path
+that could touch a `draft` respects it: `enroll`→`get_or_create_draft_invoice_in_tx` (reuse),
+`create_invoice` (get-or-create, never a raw insert), `set_invoice_status` (forward-only,
+never back to `draft`), and seed data (≤1 draft/student). No path issues a second draft, so
+the unique index never fires at runtime — it is a backstop, not a hot error path.
 
 ---
 
@@ -870,6 +894,18 @@ throwaway temp DB), with representative `curl` for the HTTP-status criteria.
 - WHEN `SECRET_KEY` is unset and `FLASK_ENV != development` THE SYSTEM SHALL refuse to start.
   - Verify (smoke): `create_app()` with no SECRET_KEY + `FLASK_ENV=production` raises.
 - WHEN a lesson is created with `ends_at <= starts_at` THE SYSTEM SHALL return **400**.
+
+### Invariant Coverage (concurrency / uniqueness / practice-auth / ownership — round 2/3)
+- WHEN a student is enrolled in a second course that is also priced THE SYSTEM SHALL add the new `invoice_item` to that student's **existing single draft** invoice (no second draft created).
+  - Verify (smoke): after two priced enrollments, `SELECT COUNT(*) FROM invoices WHERE student_id=? AND status='draft'` == 1.
+- WHEN a raw second `draft` invoice is attempted for a student who already has one THE SYSTEM SHALL reject it (`ux_one_draft_per_student` IntegrityError) — and `create_invoice` avoids it by get-or-create.
+  - Verify (smoke): a direct `INSERT` of a 2nd draft for the same student raises `sqlite3.IntegrityError`.
+- WHEN a student enrolls in a course already at `capacity` THE SYSTEM SHALL return **400** ("course full") and create NO enrollment and NO invoice_item (in-tx capacity guard).
+- WHEN a student enrolls in an `inactive` course THE SYSTEM SHALL return **400** ("course inactive") with no enrollment (in-tx active guard).
+- WHEN a staff/admin (no student identity) POSTs `/practice/new` THE SYSTEM SHALL return **403** (practice is student self-service only).
+- WHEN a student requests another student's GET `/lessons/<lid>` THE SYSTEM SHALL return **404**; WHEN an instructor requests a lesson that is not theirs THE SYSTEM SHALL return **404** (instructor-scoped lesson ownership).
+- WHEN a student lists `/lessons` THE SYSTEM SHALL return only lessons where they are the student; WHEN an instructor lists `/lessons` THE SYSTEM SHALL return only lessons they teach.
+- WHEN two checkouts race for the same `available` instrument THE SYSTEM SHALL let exactly one succeed and the other get **400** (BEGIN IMMEDIATE serialization; the loser sees `status != 'available'`).
 
 ### Verification Commands
 - `python3 test_smoke.py` — full happy-path + IDOR-404 + transaction-atomicity + CSRF + SECRET_KEY suite (must PASS; this is the dynamic surface that keeps the 080-W5 compounded-darkness gate LIT).
@@ -952,6 +988,19 @@ index); (7) fully reconciled dashboard + infra wiring — `database.py`→`auth.
 →`enrollment_models` (in-tx capacity/price/name read) added to §1b/§1d/§2; (8) lessons/search
 fully reconciled (search never reads lessons). Fresh cross-section re-review (Model Functions ×
 §1a/§1b/§1d/§2/§3/§5/§6/schema/Route Table/EARS) found no remaining contradictions.
+
+**Round-3 Codex review: COMPLETE (2026-07-10).** Applied: (1) clarified the instructor-scope
+lesson-ownership exception in the uniform contract (instructor scoped to own lessons only;
+full staff over students/invoices/practice); (2) moved the `course.active` guard INSIDE
+enroll's BEGIN IMMEDIATE (concurrent-deactivation-safe); (3) reconciled every class-A invoice
+path with the partial index — `create_invoice` = get-or-create draft, `set_invoice_status` =
+forward-only (never back to draft), +§5 one-draft invariant; (4) pinned seed invoice statuses
+(≤1 draft/student) + all-constraint seed note; (5) removed the stale `dashboard_models`→
+`student_models` edge (§1b + §2); (6) documented `transaction()` = the single `get_db()`
+request connection (so in-tx reads see uncommitted state; BEGIN IMMEDIATE serializes writers);
+(7) added an EARS "Invariant Coverage" block for one-draft, in-tx capacity/active rejection,
+practice-403, instructor/student lesson ownership, and checkout race. Fresh full cross-section
+re-review: no remaining P0.
 
 Then: **human P0 structural pass (Alex — non-optional cross-section field-matching)** → flip
 `status: draft`→`active` → launch as the next run-id via autopilot swarm
