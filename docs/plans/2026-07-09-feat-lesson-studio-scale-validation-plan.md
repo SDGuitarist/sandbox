@@ -21,13 +21,12 @@ compounded-darkness gate, G3 self-audit chain, Step 1.52 telemetry) live at ≥2
 scale, under maximum context pressure. Domain chosen to maximize coordination-seam
 surface. (See brainstorm: `docs/brainstorms/2026-07-09-scale-validation-swarm-vehicle-brainstorm.md`.)
 
-> **PLAN STATUS: `draft` — COMPLETE, convergence-ready (NOT launch-ready).** All sections
-> are authored: App Config, Database Schema, Database Connection, Model Functions, Route
-> Table, the six MANDATORY contract sections (Export Names, Cross-Boundary Wiring, Input
-> Validation, Coordinated Behaviors, Transaction Contracts, Authorization Matrix), EARS
-> Acceptance, and the Convergence Handoff (Codex prompt). Next: Codex P0 review → fixes →
-> Alex's human structural pass → flip to `status: active` → launch. **Do NOT launch on a
-> draft** — the convergence loop + human P0 gate are non-optional.
+> **PLAN STATUS: `draft` — CODEX-CONVERGED (3 rounds, clean); HUMAN P0 PASS IN PROGRESS.**
+> All sections authored + hardened through three Codex rounds (structural → reconciliation →
+> concurrency edges), each round narrower than the last. Convergence criterion = Codex clean
+> AND human finds zero P0s. **The human structural pass is the remaining non-optional gate**
+> (worksheet: `docs/reviews/2026-07-10-lesson-studio-human-p0-pass.md`). Flip to `active` ONLY
+> after the worksheet reports zero P0s. **Do NOT launch on a draft.**
 
 ---
 
