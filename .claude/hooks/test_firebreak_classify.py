@@ -218,6 +218,11 @@ def main():
     d, _, _ = run(bash("python3 tools/verify_delegated_status.py 079", TAIL), s)
     check("FC58 tail-runner verify_delegated_status.py allowed", d, False)
 
+    # 080-W5 compounded-darkness gate runs in the tail under an active firebreak:
+    d, _, _ = run(
+        bash("python3 tools/check_compounded_darkness.py --reports-dir docs/reports/080", TAIL), s)
+    check("FC58 tail-runner check_compounded_darkness.py allowed", d, False)
+
     # Confirmed non-python teardown fallback (rm is not an interpreter):
     d, _, _ = run(
         bash(f"rm {repo}/.claude/firebreak-active.json", ORCH), s)

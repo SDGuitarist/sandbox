@@ -46,8 +46,8 @@ variable content. See CLAUDE.md Bash Command Rules for the full list.
 
 ## Steps
 
-<!-- TAIL_SYNC_POINT: These tail STEPS (review/compound/learnings/disconfirmer/
-self-audit) are duplicated in SKILL.md Shared Tail (solo path). Changes to those steps
+<!-- TAIL_SYNC_POINT: These tail STEPS (review/compound/learnings/compounded-darkness/
+disconfirmer/self-audit) are duplicated in SKILL.md Shared Tail (solo path). Changes to those steps
 MUST be mirrored there, and vice versa. In particular, the Disconfirmer (Step 7.5) MUST
 run BEFORE the Self-Audit (Step 8) -- mirror of the solo Disconfirmer-before-Self-Audit
 ordering; the self-audit disposes the disconfirmer's findings, so the order is
@@ -194,6 +194,25 @@ Read BUILD_TRACKING.md and verify these sections are non-empty:
 
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
+
+### Step 7.4: Compounded-Darkness Check (observability — runs BEFORE the Disconfirmer) [080-W5]
+
+Deterministically detects the 080-W5 pattern: all THREE independent verification
+surfaces dark at once — spec-eval (no verdict), spec-provenance (FALLBACK / non-proof),
+dynamic tests (FIREBREAK_DEFERRED / not run). Any single dark surface is a routine waiver;
+all three together means correctness rests only on by-construction claims + static
+analysis. Run as a single Bash call (the script is FC58-pinned, so it runs even under the
+active tail firebreak):
+
+`python3 tools/check_compounded_darkness.py --reports-dir <reports_dir>`
+
+It writes `<reports_dir>/compounded-darkness.md` and prints a STATUS line.
+**OBSERVABILITY-ONLY — always exits 0, NEVER blocks:**
+- `STATUS: OK` — at least one surface produced a real verdict. Proceed.
+- `STATUS: COMPOUNDED_DARKNESS` — append a WARN row to BUILD_TRACKING `## FAILURES`
+  (`080-W5: all independent verification surfaces dark — correctness rests on static
+  analysis only`) and proceed. The Disconfirmer + Self-Audit read the reports dir; the
+  on-disk `compounded-darkness.md` gives the self-audit a WARN to dispose.
 
 ### Step 7.5: Disconfirmer (runs BEFORE the Self-Audit)
 

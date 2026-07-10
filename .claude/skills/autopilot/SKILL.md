@@ -1102,7 +1102,7 @@ Step 17w (Delegate Shared Tail) which spawns the tail-runner agent.
 The steps below only run inline for solo builds.
 
 <!-- TAIL_SYNC_POINT: The Shared Tail STEPS below (review/compound/learnings/
-disconfirmer/self-audit) are duplicated in .claude/agents/tail-runner.md (swarm path).
+compounded-darkness/disconfirmer/self-audit) are duplicated in .claude/agents/tail-runner.md (swarm path).
 Changes to those steps MUST be mirrored there, and vice versa. In particular, the
 Disconfirmer MUST run BEFORE the Self-Audit in BOTH paths (solo: Disconfirmer section
 before Self-Audit section; swarm: tail-runner Step 7.5 before Step 8) -- this ordering
@@ -1265,6 +1265,26 @@ Read BUILD_TRACKING.md and verify these sections are non-empty:
 
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
+
+### Compounded-Darkness Check (observability -- runs BEFORE the Disconfirmer) [080-W5]
+
+Deterministically detects the 080-W5 pattern: all THREE independent verification
+surfaces dark at once -- spec-eval (no verdict), spec-provenance (FALLBACK / non-proof),
+dynamic tests (FIREBREAK_DEFERRED / not run). Any single dark surface is a routine
+waiver; all three together means the run's correctness rests only on by-construction
+claims + static analysis (no independent mechanism produced a verdict). This gate is the
+deterministic detector the 080 disconfirmer's D5 finding asked for. Run as a single Bash
+call (the script is FC58-pinned, so it runs even under the active tail firebreak):
+
+`python3 tools/check_compounded_darkness.py --reports-dir docs/reports/<run-id>`
+
+It reads the on-disk artifacts, writes `docs/reports/<run-id>/compounded-darkness.md`,
+and prints a STATUS line. **OBSERVABILITY-ONLY -- it always exits 0 and NEVER blocks:**
+- `STATUS: OK` -- at least one surface produced a real verdict. Proceed.
+- `STATUS: COMPOUNDED_DARKNESS` -- append a WARN row to BUILD_TRACKING `## FAILURES`
+  (`080-W5: all independent verification surfaces dark -- correctness rests on static
+  analysis only`) and proceed. The Disconfirmer and Self-Audit below both read the reports
+  dir; the on-disk `compounded-darkness.md` gives the self-audit a WARN to dispose.
 
 ### Disconfirmer (MANDATORY -- DO NOT SKIP -- runs BEFORE the Self-Audit)
 
