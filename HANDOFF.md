@@ -71,13 +71,30 @@ Run 081 (30-agent Lesson Studio scale-validation swarm) is COMPLETE end-to-end. 
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. Run 081 (Lesson Studio 30-agent scale-validation swarm) is COMPOUND-COMPLETE with PIPELINE_PASS_WITH_DEFERRED_RISK. 
+Read HANDOFF.md for context. This is sandbox, on master (pushed through a976609+, clean).
 
-Immediate tasks:
-1. Approve and commit the P1 template fix: see todos/approvals/RED-081-indirection-03a24cdd5e52.md
-2. Run firebreak teardown: python3 .claude/hooks/firebreak-activate.py deactivate
-3. Run smoke suite: python3 test_smoke.py (watch for F5 practice/new 403 — expected)
-4. Complete deferred learnings propagation: update ~/.claude/projects/.../memory/MEMORY.md, workflow.md, patterns.md and ~/.claude/docs/agent-pitfalls.md (blocked by firebreak during tail)
+Run 081 (Lesson Studio 30-agent scale-validation swarm) is FULLY CLOSED — same-session
+post-teardown closure done: smoke 23/23 PASS (docs/reports/081/smoke-rerun-postteardown.md),
+FC61 P1 fix verified committed (7ba77d3), FC62 found+fixed (invoice.items Jinja
+dict-method shadowing — dynamic-surface-only catch), all learnings propagated (FC61+FC62
+in agent-pitfalls; LESSONS_LEARNED, memory, journal all updated). Self-audit verdict
+stays PIPELINE_PASS_WITH_DEFERRED_RISK as the point-in-time record; the post-teardown
+evidence artifact documents the closure — do NOT rewrite self-audit.md.
 
-After smoke passes: update docs/reports/081/self-audit.md with final PIPELINE_PASS verdict.
+Honest-status guardrails: 30-agent run = resilience confirmed, context-death path
+attempted-not-reproduced (NOT "solved"); proxy-budget calibration finding needs a 2nd
+≥20-agent data point before changing SKILL.md Step 1.52.
+
+NEXT — pick one:
+1. [MASTER-DECLUTTER] — needs Alex: per-dir keep/untrack sign-off, archive-tag first,
+   git rm --cached ONLY (NEVER rm -rf — lead-scraper production data on disk).
+2. Pipeline folds from run 081 (small, autonomous): add the FC62 template scan
+   (grep .items/.keys/.values) to the cross-worker scan step; add "Injected As" column
+   mandate to spec template + completeness checker; decide proxy-budget recalibration
+   posture (measure-again vs adjust now).
+3. P2 cleanups on studio/ (throwaway — only if used as a vehicle again).
+
+INVARIANTS unchanged: firebreak deny-known-bad + path-pinned FC58 carve-out; Gate 8
+fail-closed; builds namespace under their OWN top-level dir (FC59); self-audit-reviewer
+stays sonnet.
 ```
