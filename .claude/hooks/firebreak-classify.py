@@ -55,16 +55,35 @@ LEARNINGS_WRITERS = {"orchestrator", "tail-runner"}  # NOT swarm-runner (F3+F5)
 # lifecycle commands during run 079 -- a too-broad gate is as invisible to unit
 # tests as an inert one. These three scripts are the TRUSTED orchestrator's known
 # pipeline tooling; a TRUSTED `python3 <one-of-these>` invocation skips the
-# indirection defer. SECURITY: basename-match ONLY, TRUSTED identities ONLY, and
-# only the `python`/`python3` interpreter -- this is a narrow named-script carve-out,
-# NEVER a blanket "TRUSTED may run any python" bypass. Workers stay fully governed
-# (they are not in TRUSTED). All the control-plane / destructive / outward checks
-# still run first; only the opaque-indirection defer is waived.
-TRUSTED_PIPELINE_SCRIPTS = {
-    "verify_delegated_status.py",   # Steps 11w-18w disk-verify gate (no non-py fallback)
-    "check_spec_provenance.py",     # pre-swarm spec provenance gate
-    "firebreak-activate.py",        # the firebreak's own set-phase / deactivate lifecycle
+# indirection defer. SECURITY: TRUSTED identities ONLY, only the `python`/`python3`
+# interpreter, and PATH-PINNED to these exact repo-relative files -- this is a narrow
+# named-script carve-out, NEVER a blanket "TRUSTED may run any python" bypass.
+# Workers stay fully governed (they are not in TRUSTED). All the control-plane /
+# destructive / outward checks still run first; only the opaque-indirection defer is
+# waived.
+#
+# PATH PINNING (todo 074, 2026-07-09): the carve-out matches the RESOLVED
+# repo-relative path of python's ACTUAL script target, not the basename. This retired
+# two trusted-only residuals of the old basename design:
+#   A) `python3 /tmp/evil/verify_delegated_status.py` -- basename matched, path was
+#      ignored. Now the path must resolve to a pinned file -> a /tmp copy DEFERS.
+#   B) `python3 -W verify_delegated_status.py realscript.py` -- `first_verb` returned
+#      the `-W` flag VALUE (an allowlisted basename) while python actually ran
+#      `realscript.py`. Now python_script_target() skips value-flags and resolves the
+#      real target -> `realscript.py` DEFERS.
+# NOTE: this deliberately SUPERSEDES the earlier "basename-match only" invariant --
+# it was pre-registered as a conscious follow-up in todo 074.
+TRUSTED_PIPELINE_SCRIPT_PATHS = {
+    "tools/verify_delegated_status.py",     # Steps 11w-18w disk-verify gate (no non-py fallback)
+    "tools/check_spec_provenance.py",       # pre-swarm spec provenance gate
+    ".claude/hooks/firebreak-activate.py",  # the firebreak's own set-phase / deactivate lifecycle
 }
+
+# python interpreter flags that consume a SEPARATE value token, so the value is not
+# mistaken for the script path (`python3 -W error script.py` -> value `error`, target
+# `script.py`). `-c`/`-m` are handled separately -- they switch python to command /
+# module mode, so there is NO script FILE and the carve-out never applies.
+PY_VALUE_FLAGS = {"-W", "-X", "--check-hash-based-pycs"}
 
 # F13 recognized command dispatchers (a literal argv[0] whose VERB may be opaque)
 DISPATCHERS = {
@@ -1802,13 +1821,59 @@ def bash_outward(words, sentinel, identity, repo_root, depth):
     return None
 
 
-def trusted_pipeline_indirection_ok(words, identity, sentinel):
+def python_script_target(rest):
+    """The .py FILE python will actually run, resolving args the way python does:
+    skip interpreter flags -- including the SEPARATE value of `-W`/`-X`/... -- and
+    return the first bare (non-flag) token, which is python's script path. Returns
+    None when python is in `-c` (command) or `-m` (module) mode (no script file), or
+    when no script token follows (e.g. reads from stdin). This defeats the residual-B
+    mis-pick where a value-flag's VALUE was read as the target."""
+    i = 0
+    while i < len(rest):
+        w = rest[i]
+        if w == "--":                       # end of interpreter options
+            i += 1
+            break
+        if not w.startswith("-") or w == "-":   # first bare token (or `-` = stdin)
+            break
+        # command / module mode -> no script FILE target (joined `-cCODE`/`-mMOD` too)
+        if w in ("-c", "-m") or (len(w) > 2 and w[:2] in ("-c", "-m")):
+            return None
+        if w in PY_VALUE_FLAGS:             # `-W filter` -> skip the flag AND its value
+            i += 2
+            continue
+        i += 1                              # `-Wfilter`, `-OO`, `-I`, ... one token
+    if i >= len(rest):
+        return None
+    tok = rest[i]
+    return None if tok.startswith("-") else tok
+
+
+def _is_pinned_pipeline_script(script_tok, repo_root):
+    """True iff `script_tok` resolves to one of the TRUSTED_PIPELINE_SCRIPT_PATHS
+    under repo_root. A relative token resolves against repo_root (the orchestrator
+    runs from the repo root; the carve-out is TRUSTED-only so worktree-relative paths
+    are not a concern). An opaque token (var/cmd-subst/glob) cannot be statically
+    pinned -> not allowed (defer)."""
+    if not script_tok or not repo_root:
+        return False
+    tok = cp_normalize(strip_quotes(script_tok))
+    if is_opaque(tok) or GLOB_RE.search(tok):
+        return False
+    rr = os.path.realpath(repo_root)
+    cand = os.path.realpath(tok if os.path.isabs(tok) else os.path.join(rr, tok))
+    return any(cand == os.path.realpath(os.path.join(rr, rel))
+               for rel in TRUSTED_PIPELINE_SCRIPT_PATHS)
+
+
+def trusted_pipeline_indirection_ok(words, identity, sentinel, repo_root):
     """FC58: True only for a TRUSTED identity running `python`/`python3` on one of
-    the hardcoded TRUSTED_PIPELINE_SCRIPTS (basename match). This is the SOLE
-    indirection carve-out for TRUSTED -- it is NOT a blanket interpreter bypass:
-    the interpreter must be python, and the target script's basename must be in the
-    fixed allowlist. Returns False for any worker, any other interpreter, and any
-    non-allowlisted script (those fall through to the normal indirection defer)."""
+    the TRUSTED_PIPELINE_SCRIPT_PATHS (path-pinned -- todo 074). This is the SOLE
+    indirection carve-out for TRUSTED -- NOT a blanket interpreter bypass: the
+    interpreter must be python, and python's ACTUAL script target must resolve to a
+    pinned repo-relative path. Returns False for any worker, any other interpreter,
+    `-c`/`-m` modes, and any non-pinned script (those fall through to the normal
+    indirection defer)."""
     if identity not in TRUSTED:
         return False
     argv0, rest = resolve_argv0(words, sentinel)
@@ -1816,10 +1881,8 @@ def trusted_pipeline_indirection_ok(words, identity, sentinel):
         return False
     if base_name(argv0) not in ("python", "python3"):
         return False
-    script = first_verb(rest)               # first non-flag token = the .py target
-    if script is None:
-        return False
-    return base_name(strip_quotes(script)) in TRUSTED_PIPELINE_SCRIPTS
+    script = python_script_target(rest)     # python's real .py target (past -W/-X/...)
+    return _is_pinned_pipeline_script(script, repo_root)
 
 
 def bash_indirection(words, cmd, sentinel):
@@ -2106,7 +2169,7 @@ def classify_simple_command(cmd, identity, repo_root, sentinel, depth=0, assigns
     # FC58: TRUSTED orchestrator pipeline tooling (named .py scripts) is exempt from
     # the opaque-indirection defer; everything above (control-plane/destructive/
     # outward) has already run, so this waives ONLY the indirection check.
-    if not trusted_pipeline_indirection_ok(words, identity, sentinel):
+    if not trusted_pipeline_indirection_ok(words, identity, sentinel, repo_root):
         c = bash_indirection(words, cmd, sentinel)
         if c:
             return c

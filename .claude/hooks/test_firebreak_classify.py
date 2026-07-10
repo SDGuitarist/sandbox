@@ -255,12 +255,28 @@ def main():
         bash("env X=1 python3 tools/verify_delegated_status.py 079", ORCH), s)
     check("FC58 orch env-prefixed allowlisted python allowed", d, False)
 
-    # DOCUMENTED RESIDUAL (accepted by design -- basename-match, no path pinning):
-    # a TRUSTED identity running an allowlisted BASENAME from ANY path is allowed.
-    # Pinned here so any future path-pinning change is a conscious decision, not a
-    # silent break. Exposure is trusted-only (a worker cannot run as a trusted identity).
+    # PATH PINNING (todo 074, 2026-07-09): retired the two basename-match residuals.
+    # Residual A -- an allowlisted BASENAME from a NON-pinned path (`/tmp/x/...`) now
+    # DEFERS: the path must resolve to a pinned repo-relative file. (Was ALLOW under
+    # the old basename design; this flip is the conscious change todo 074 pre-registered.)
     d, _, _ = run(bash("python3 /tmp/x/verify_delegated_status.py 079", ORCH), s)
-    check("FC58 orch path-prefixed allowlisted basename allowed (residual)", d, False)
+    check("FC58 orch path-prefixed allowlisted basename NOW denied (074 residual A)", d, True)
+
+    # Residual B -- `-W <value>` flag-value mis-pick: python's `-W` consumes
+    # `verify_delegated_status.py` as its warning-filter VALUE while python actually
+    # runs `realscript.py`. The old first_verb() returned the allowlisted VALUE and
+    # granted the carve-out; python_script_target() now resolves the REAL target
+    # (`realscript.py`, non-pinned) -> DEFER.
+    d, _, _ = run(
+        bash("python3 -W verify_delegated_status.py realscript.py", ORCH), s)
+    check("FC58 orch -W flag-value mis-pick NOW denied (074 residual B)", d, True)
+
+    # Positive control for B: the SAME script as a real pinned target (with a
+    # legitimate `-W` warning filter) still ALLOWS -- the fix pins the path, it does
+    # not break flagged invocations of the real tool.
+    d, _, _ = run(
+        bash("python3 -W ignore tools/verify_delegated_status.py 079", ORCH), s)
+    check("FC58 orch -W ignore + pinned target still allowed (074)", d, False)
 
     # ---------------- control-plane writes (F1 + F5 + F9) ----------------
     d, _, _ = run(write(f"{HOME}/.claude/settings.json", WORKER), s)

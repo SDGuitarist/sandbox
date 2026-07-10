@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p2
 issue_id: "074"
 tags: [code-review, firebreak, g1, security, hardening]
@@ -43,11 +43,11 @@ committing (the run-079 lesson: harness-green ≠ live).
 
 ## Acceptance Criteria
 
-- [ ] `python3 /tmp/x/verify_delegated_status.py` from orchestrator → DEFERRED (residual A closed)
-- [ ] `python3 -W verify_delegated_status.py realscript.py` from orchestrator → DEFERRED (residual B closed)
-- [ ] All existing positive carve-out tests still ALLOW (correct relative paths)
-- [ ] Update the `(residual)` test to assert the new DENY, with a comment noting the change
-- [ ] Full classifier bench passes
+- [x] `python3 /tmp/x/verify_delegated_status.py` from orchestrator → DEFERRED (residual A closed)
+- [x] `python3 -W verify_delegated_status.py realscript.py` from orchestrator → DEFERRED (residual B closed)
+- [x] All existing positive carve-out tests still ALLOW (correct relative paths)
+- [x] Update the `(residual)` test to assert the new DENY, with a comment noting the change
+- [x] Full classifier bench passes
 
 ## Work Log
 
@@ -55,3 +55,16 @@ committing (the run-079 lesson: harness-green ≠ live).
   the genuine structural hardening that retires residuals A+B; both rated it P2 optional,
   not a merge blocker. Deferred from the FC58 fix cycle (todos 071-073) per the invariant
   "basename-match only" — changing to path-match is a conscious follow-up decision.
+- 2026-07-09: RESOLVED. Replaced the basename set `TRUSTED_PIPELINE_SCRIPTS` with the
+  path-pinned set `TRUSTED_PIPELINE_SCRIPT_PATHS` (`tools/verify_delegated_status.py`,
+  `tools/check_spec_provenance.py`, `.claude/hooks/firebreak-activate.py`). Added
+  `python_script_target()` (resolves python's REAL `.py` target past `-W`/`-X` value-flags
+  and returns None for `-c`/`-m` modes, closing residual B) and `_is_pinned_pipeline_script()`
+  (resolves the target against `repo_root` from the sentinel and matches the pinned set,
+  closing residual A). `trusted_pipeline_indirection_ok` now takes `repo_root`. Flipped the
+  residual-A test to DENY, added residual-B DENY test + a `-W ignore` positive control.
+  Benches: classifier 281/281, soundness 319 RED + 129 GREEN, superset 297/297. Verified
+  live-safe: all SKILL.md invocations are repo-relative python/python3 by the TRUSTED
+  orchestrator from repo root (no `$VAR`/absolute forms that would newly defer).
+  **Supersedes the "basename-match only" invariant** (this change was its pre-registered
+  follow-up).
