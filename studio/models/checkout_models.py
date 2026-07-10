@@ -32,7 +32,8 @@ def list_checkouts(student_id=None, status=None):
                i.name           AS instrument_name,
                i.category       AS instrument_category,
                s.first_name     AS student_first_name,
-               s.last_name      AS student_last_name
+               s.last_name      AS student_last_name,
+               (s.first_name || ' ' || s.last_name) AS student_name
           FROM instrument_checkouts c
           JOIN instruments i ON i.id = c.instrument_id
           JOIN students    s ON s.id = c.student_id
@@ -64,7 +65,8 @@ def get_checkout(cid):
                i.name           AS instrument_name,
                i.category       AS instrument_category,
                s.first_name     AS student_first_name,
-               s.last_name      AS student_last_name
+               s.last_name      AS student_last_name,
+               (s.first_name || ' ' || s.last_name) AS student_name
           FROM instrument_checkouts c
           JOIN instruments i ON i.id = c.instrument_id
           JOIN students    s ON s.id = c.student_id

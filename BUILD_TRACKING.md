@@ -26,7 +26,7 @@
 - run_start_ts: 1783716871
 - plan_path: docs/plans/2026-07-09-feat-lesson-studio-scale-validation-plan.md
 - branch: master
-- context_proxy_chars: 323000
+- context_proxy_chars: 424000
 - manual_resume: false
 - final_status: null
 
@@ -36,6 +36,69 @@
 
 | # | Agent | Commit | Status |
 |---|-------|--------|--------|
+| 1 | scaffold | 4482bde | COMPLETED |
+| 2 | database | d908c1b | COMPLETED |
+| 3 | auth-core | ead2a98 | COMPLETED |
+| 4 | model-student | b221ca7 | COMPLETED |
+| 5 | model-instructor | a734d28 | COMPLETED |
+| 6 | model-room | 6a3a9dc | COMPLETED |
+| 7 | model-instrument | 76e4f04 | COMPLETED |
+| 8 | model-course | e9dd50d | COMPLETED |
+| 9 | model-enrollment | b775b07 | COMPLETED |
+| 10 | model-lesson | 0f7a186 | COMPLETED |
+| 11 | model-attendance | f28efc5 | COMPLETED |
+| 12 | model-checkout | facd24b | COMPLETED |
+| 13 | model-invoice | 7a3d341 | COMPLETED |
+| 14 | model-practice-log | 1e2553f | COMPLETED |
+| 15 | model-announcement | 7e20d29 | COMPLETED |
+| 16 | model-audit | f9c6238 | COMPLETED |
+| 17 | model-dashboard | 1cdd87c | COMPLETED |
+| 18 | route-student | de9257f | COMPLETED |
+| 19 | route-instructor | aa08f57 | COMPLETED |
+| 20 | route-instrument | bf23276 | COMPLETED |
+| 21 | route-course | 22086bd | COMPLETED |
+| 22 | route-enrollment | 38c14a6 | COMPLETED |
+| 23 | route-lesson | 2392988 | COMPLETED |
+| 24 | route-attendance | 575ce61 | COMPLETED |
+| 25 | route-invoice | 3f60dd2 | COMPLETED |
+| 26 | route-practice-log | 5f011c3 | COMPLETED |
+| 27 | route-announcement | acf1264 | COMPLETED |
+| 28 | route-dashboard | 808b80d | COMPLETED |
+| 29 | search | 229a298 | COMPLETED |
+| 30 | smoke-test | 81c70cd | COMPLETED |
+
+| 1 | scaffold | 3616433 | PASS |
+| 2 | database | a890a2a | PASS |
+| 3 | auth-core | 62da427 | PASS |
+| 4 | model-student | 615ddd5 | PASS |
+| 5 | model-instructor | 4e35229 | PASS |
+| 6 | model-room | 8c08dbd | PASS |
+| 7 | model-instrument | 67af631 | PASS |
+| 8 | model-course | 6113c71 | PASS |
+| 9 | model-enrollment | 2522f9a | PASS |
+| 10 | model-lesson | 5d5521c | PASS |
+| 11 | model-attendance | 8f16376 | PASS |
+| 12 | model-checkout | 3e6783a | PASS |
+| 13 | model-invoice | d0eca69 | PASS |
+| 14 | model-practice-log | 48cc689 | PASS |
+| 15 | model-announcement | c647b1a | PASS |
+| 16 | model-audit | 9c5cb44 | PASS |
+| 17 | model-dashboard | 459b3fa | PASS |
+| 18 | route-student | 47031b4 | PASS |
+| 19 | route-instructor | 5f22548 | PASS |
+| 20 | route-instrument | 58892cc | PASS |
+| 21 | route-course | 220ba6d | PASS |
+| 22 | route-enrollment | ff008d5 | PASS |
+| 23 | route-lesson | 86272f3 | PASS |
+| 24 | route-attendance | c8e3bc9 | PASS |
+| 25 | route-invoice | bee47ba | PASS |
+| 26 | route-practice-log | 10b76ec | PASS |
+| 27 | route-announcement | 0090a18 | PASS |
+| 28 | route-dashboard | 0ea1c47 | PASS |
+| 29 | search | 2aaeb73 | PASS |
+| 30 | smoke-test | 4a9bc04 | PASS |
+
+### Ownership Gate: PASS (30 agents)
 
 ---
 

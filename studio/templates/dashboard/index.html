@@ -68,7 +68,7 @@
     <div class="col-md-6">
       <div class="card text-center">
         <div class="card-body">
-          <h2 class="card-title">{{ summary.my_courses }}</h2>
+          <h2 class="card-title">{{ summary.courses | length }}</h2>
           <p class="card-text text-muted">My Courses</p>
         </div>
       </div>
@@ -76,7 +76,7 @@
     <div class="col-md-6">
       <div class="card text-center">
         <div class="card-body">
-          <h2 class="card-title">{{ summary.my_students }}</h2>
+          <h2 class="card-title">{{ summary.students_count }}</h2>
           <p class="card-text text-muted">My Students</p>
         </div>
       </div>
