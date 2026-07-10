@@ -606,7 +606,7 @@ ownership) · **admin**. Full rules in the Authorization Matrix.
 ### practice  (/practice — practice_log route agent)
 | GET | / | `list_practice_logs_for(current_user(), request.args.get('target_student_id'))` | role+own |
 | POST | /new | student-only: `sid = current_student_id() or abort(403)` → `create_practice_log(sid, minutes, notes)` | role+own |
-| POST | /<int:log_id>/delete | `get_practice_log_for(log_id, current_user()) or abort(404)` → delete_log | role+own |
+| POST | /<int:log_id>/delete | `get_practice_log_for(log_id, current_user()) or abort(404)` → delete_practice_log | role+own |
 
 ### announcements  (/announcements — announcement route agent)
 | GET | / | list_announcements (role-scoped) | auth |
@@ -742,7 +742,7 @@ FOUR (instructor, student, room, course) for its FK dropdowns + create validatio
 | POST /attendance/lesson/<lid>/mark | present (bool) | lesson exists (else 404); student is derived from `lessons.student_id`, NOT client-supplied | 400 on bad `present`; 404 on missing lesson |
 | POST /invoices/new | student_id, description?, due_at? | student exists | 400 |
 | POST /invoices/<iid>/items | description, amount_cents, source_type | description non-empty; amount_cents int (may be negative for credit); source_type ∈ enum | 400 |
-| POST /invoices/<iid>/status | status | status ∈ enum; 'paid' sets paid_at | 400 |
+| POST /invoices/<iid>/status | status | status ∈ {sent,paid,void} (never back to 'draft' — forward-only, matches `set_invoice_status`); 'paid' sets paid_at | 400 |
 | POST /practice/new | minutes, notes? | minutes int > 0; **actor must be a student** (`current_student_id()` not None) — student_id is derived, never client-supplied | 400 on bad minutes; **403** if a staff/admin actor (no student identity) |
 | POST /practice/<log_id>/delete | (path) | log exists AND belongs to actor (or staff) | 404 |
 | POST /announcements/new | title, body, audience | title+body non-empty; audience ∈ enum | 400 |
