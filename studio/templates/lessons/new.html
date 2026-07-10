@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}New lesson{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New lesson</h1>
+
+<form method="post" action="{{ url_for('lessons.create_lesson') }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label class="form-label" for="instructor_id">Instructor</label>
+    <select class="form-select" id="instructor_id" name="instructor_id" required>
+      <option value="">Select an instructor…</option>
+      {% for i in instructors %}
+      <option value="{{ i.id }}" {% if form.instructor_id == i.id|string %}selected{% endif %}>
+        {{ i.first_name }} {{ i.last_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="student_id">Student</label>
+    <select class="form-select" id="student_id" name="student_id" required>
+      <option value="">Select a student…</option>
+      {% for s in students %}
+      <option value="{{ s.id }}" {% if form.student_id == s.id|string %}selected{% endif %}>
+        {{ s.first_name }} {{ s.last_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="course_id">Course <span class="text-muted">(optional)</span></label>
+    <select class="form-select" id="course_id" name="course_id">
+      <option value="">None</option>
+      {% for c in courses %}
+      <option value="{{ c.id }}" {% if form.course_id == c.id|string %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="room_id">Room <span class="text-muted">(optional)</span></label>
+    <select class="form-select" id="room_id" name="room_id">
+      <option value="">None</option>
+      {% for r in rooms %}
+      <option value="{{ r.id }}" {% if form.room_id == r.id|string %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <label class="form-label" for="starts_at">Starts at</label>
+      <input type="datetime-local" class="form-control" id="starts_at" name="starts_at"
+             value="{{ form.starts_at if form.starts_at is not none else '' }}" required>
+    </div>
+    <div class="col-md-6 mb-3">
+      <label class="form-label" for="ends_at">Ends at</label>
+      <input type="datetime-local" class="form-control" id="ends_at" name="ends_at"
+             value="{{ form.ends_at if form.ends_at is not none else '' }}" required>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="notes">Notes</label>
+    <textarea class="form-control" id="notes" name="notes" rows="3">{{ form.notes if form.notes is not none else '' }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Create lesson</button>
+  <a class="btn btn-link" href="{{ url_for('lessons.list_lessons') }}">Cancel</a>
+</form>
+{% endblock %}

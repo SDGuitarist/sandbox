@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Lessons{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Lessons</h1>
+  {% if current_user() and current_user().role in ('admin', 'instructor') %}
+  <a class="btn btn-primary" href="{{ url_for('lessons.create_lesson') }}">New lesson</a>
+  {% endif %}
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-auto">
+    <label class="form-label" for="date_from">From</label>
+    <input type="date" class="form-control" id="date_from" name="date_from"
+           value="{{ filters.date_from if filters.date_from is not none else '' }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label" for="date_to">To</label>
+    <input type="date" class="form-control" id="date_to" name="date_to"
+           value="{{ filters.date_to if filters.date_to is not none else '' }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label" for="status">Status</label>
+    <select class="form-select" id="status" name="status">
+      <option value="">All</option>
+      {% for s in ('scheduled', 'completed', 'cancelled', 'no_show') %}
+      <option value="{{ s }}" {% if filters.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary">Filter</button>
+  </div>
+</form>
+
+{% if lessons %}
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>When</th>
+        <th>Instructor</th>
+        <th>Student</th>
+        <th>Course</th>
+        <th>Room</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lesson in lessons %}
+      <tr>
+        <td>{{ lesson.starts_at|dt }} &ndash; {{ lesson.ends_at|dt }}</td>
+        <td>{{ lesson.instructor_name if lesson.instructor_name is not none else '—' }}</td>
+        <td>{{ lesson.student_name if lesson.student_name is not none else '—' }}</td>
+        <td>{{ lesson.course_name if lesson.course_name is not none else '—' }}</td>
+        <td>{{ lesson.room_name if lesson.room_name is not none else '—' }}</td>
+        <td><span class="badge bg-secondary">{{ lesson.status }}</span></td>
+        <td><a href="{{ url_for('lessons.view_lesson', lid=lesson.id) }}">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No lessons found.</p>
+{% endif %}
+{% endblock %}
