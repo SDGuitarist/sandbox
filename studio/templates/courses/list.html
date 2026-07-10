@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Courses{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Courses</h1>
+  {% if current_user() and current_user().role in ('admin', 'instructor') %}
+    <a class="btn btn-primary" href="{{ url_for('courses.create_course') }}">New course</a>
+  {% endif %}
+</div>
+
+{% if courses %}
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Instructor</th>
+        <th>Level</th>
+        <th class="text-end">Capacity</th>
+        <th class="text-end">Price</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for course in courses %}
+      <tr>
+        <td>
+          <a href="{{ url_for('courses.view_course', cid=course.id) }}">{{ course.name }}</a>
+        </td>
+        <td>{{ course.instructor_name or '—' }}</td>
+        <td>{{ course.level }}</td>
+        <td class="text-end">{{ course.capacity }}</td>
+        <td class="text-end">{{ course.price_cents|cents }}</td>
+        <td class="text-end">
+          {% if current_user() and current_user().role in ('admin', 'instructor') %}
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{{ url_for('courses.edit_course', cid=course.id) }}">Edit</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No courses yet.</p>
+{% endif %}
+{% endblock %}

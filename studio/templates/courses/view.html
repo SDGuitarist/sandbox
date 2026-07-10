@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ course.name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">{{ course.name }}</h1>
+  {% if current_user() and current_user().role in ('admin', 'instructor') %}
+    <a class="btn btn-outline-secondary"
+       href="{{ url_for('courses.edit_course', cid=course.id) }}">Edit</a>
+  {% endif %}
+</div>
+
+{% if not course.active %}
+<div class="alert alert-warning">This course is inactive.</div>
+{% endif %}
+
+<dl class="row">
+  <dt class="col-sm-3">Instructor</dt>
+  <dd class="col-sm-9">{{ course.instructor_name or '—' }}</dd>
+
+  <dt class="col-sm-3">Level</dt>
+  <dd class="col-sm-9">{{ course.level }}</dd>
+
+  <dt class="col-sm-3">Capacity</dt>
+  <dd class="col-sm-9">{{ enrolled }} / {{ course.capacity }} enrolled</dd>
+
+  <dt class="col-sm-3">Price</dt>
+  <dd class="col-sm-9">{{ course.price_cents|cents }}</dd>
+
+  {% if course.description %}
+  <dt class="col-sm-3">Description</dt>
+  <dd class="col-sm-9">{{ course.description }}</dd>
+  {% endif %}
+</dl>
+
+<a class="btn btn-outline-secondary" href="{{ url_for('courses.list_courses') }}">Back to courses</a>
+{% endblock %}
