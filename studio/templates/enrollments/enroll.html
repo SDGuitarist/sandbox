@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Enroll a student{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Enroll a student</h1>
+  <a href="{{ url_for('enrollments.list_enrollments') }}" class="btn btn-outline-secondary btn-sm">
+    Back to enrollments
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" action="{{ url_for('enrollments.enroll') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label for="student_id" class="form-label">Student</label>
+        <select class="form-select" id="student_id" name="student_id" required>
+          <option value="" selected disabled>Choose a student…</option>
+          {% for student in students %}
+          <option value="{{ student.id }}">
+            {{ student.first_name }} {{ student.last_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="course_id" class="form-label">Course</label>
+        <select class="form-select" id="course_id" name="course_id" required>
+          <option value="" selected disabled>Choose a course…</option>
+          {% for course in courses %}
+          <option value="{{ course.id }}">
+            {{ course.name }}
+            {% if course.price_cents %}({{ course.price_cents|cents }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Enroll</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
