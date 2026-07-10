@@ -82,10 +82,11 @@ gitignored data), archive-tagged first. See Deferred Items `[MASTER-DECLUTTER]`.
 - ✅ **Step 4 — teardown**: removed `sandbox-g1` worktree; deleted 5 branches — `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, `feat/fc58-firebreak-trusted-indirection` (all merged), `feat/shelftrack-reading-list` (throwaway, knowledge preserved). 2 also removed from origin. Master = single worktree, clean.
   - NOTE: other stale local branches + old `swarm-0**-assembly` branches remain — optional future cleanup (`git branch -a`).
 
-### ⬅ NEXT — Step-5 governance audit ~COMPLETE (G2 shelved · G4 deferred · telemetry planned); pick from the menu
+### ⬅ NEXT — Step-5 governance audit COMPLETE (G2 shelved · G4 deferred · G5 evaporated · telemetry planned); pick from the menu
+**G5 EVIDENCE-CHECKED 2026-07-09 → EVAPORATES (already built).** All three delegation dimensions already live in the record: **authority** = `run_id`+`run_start_ts` enforced by `tools/verify_delegated_status.py` (existence+freshness+run-id; docstring literally "moves authority to" the deterministic check); **responsibility** = line-1 `STATUS: PASS/FAIL` + cross-boundary imports/exports contract + Phase Status table; **accountability** = AGENT_STATUS `#|Agent|Commit|Status` (named agent + git commit hash, non-repudiable) + FAILURES log + post-review trace-to-agent. No OBSERVED accountability-vacuum failure (all 20+ pitfall classes are technical seam bugs). The only genuine authority-hardening gap (tamper-proof nonce vs a reused run-id) IS G4 — deferred, trigger unfired. **All three Step-5 governance items now resolved by local evidence; Step 5 is DONE.** Scorecard G5 row updated. Fourth consecutive framework-backlog item to evaporate under local evidence-check (G2 · G4 · telemetry-pivot · G5) — `feedback_evidence-check-framework-backlog` now 4/4.
+
 **Menu for the next session (in recommended order):**
-1. **G5 (delegation-as-authority)** — the last unexamined Step-5 item. Evidence-check its LOCAL premise FIRST (per `feedback_evidence-check-framework-backlog` — G2+G4+telemetry all evaporated this way). Likely closes Step 5 cleanly whether it's real or evaporates.
-2. **`[FC58-PATHPIN]` (todo 074)** — concrete P2, no sign-off needed: path-pin the `TRUSTED_PIPELINE_SCRIPTS` allowlist (retire 2 trusted-only residuals). Most "ship a thing" option.
+1. **`[FC58-PATHPIN]` (todo 074)** — concrete P2, no sign-off needed: path-pin the `TRUSTED_PIPELINE_SCRIPTS` allowlist (retire 2 trusted-only residuals). Most "ship a thing" option.
 3. **`[080-W5, MED]`** — add a compounded-darkness gate signal (flag when spec-eval + provenance + dynamic tests are ALL dark at once). Real observability gap.
 4. **`[MASTER-DECLUTTER]`** — needs Alex: per-dir keep/untrack sign-off + archive-tag + `git rm --cached` ONLY (production data on disk).
 
