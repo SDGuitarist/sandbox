@@ -67,8 +67,13 @@ def csrf_from(html):
 
 
 def get_token(client, path):
-    """GET a form page and return its _csrf token (or None)."""
-    resp = client.get(path)
+    """GET a form page and return its _csrf token (or None).
+
+    follow_redirects=True so collection URLs without a trailing slash
+    (e.g. /students) survive Flask's 308 canonical redirect instead of
+    returning the token-less redirect stub page.
+    """
+    resp = client.get(path, follow_redirects=True)
     return csrf_from(resp.get_data(as_text=True))
 
 
@@ -88,6 +93,33 @@ def login(client, email, password):
         data={"email": email, "password": password, "_csrf": token},
         follow_redirects=False,
     )
+
+
+def link_student_row(email, first_name, last_name):
+    """Test setup: link a registered student user to a students row.
+
+    Registration deliberately does NOT auto-create a students row (spec:
+    staff/seed create them), so ownership flows for registered users need
+    this explicit setup insert.
+    """
+    conn = db_conn()
+    try:
+        user = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        if user is None:
+            return None
+        row = conn.execute(
+            "SELECT id FROM students WHERE user_id=?", (user["id"],)
+        ).fetchone()
+        if row is not None:
+            return row["id"]
+        cur = conn.execute(
+            "INSERT INTO students (user_id, first_name, last_name, email) VALUES (?,?,?,?)",
+            (user["id"], first_name, last_name, email),
+        )
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
 
 
 def register(client, email, password, name, role):
@@ -241,7 +273,7 @@ def test_admin_creates_student():
         },
         follow_redirects=True,
     )
-    listing = c.get("/students").get_data(as_text=True)
+    listing = c.get("/students", follow_redirects=True).get_data(as_text=True)
     check(
         "admin creates student -> persisted and listed at GET /students",
         resp.status_code in (200, 302) and "Smokey" in listing,
@@ -404,7 +436,10 @@ def test_student_practice_self():
     c = app.test_client()
     register(c, "practicer@smoke.test", "studiopass", "Practicer", "student")
     login(c, "practicer@smoke.test", "studiopass")
-    token = get_token(c, "/practice/new")
+    link_student_row("practicer@smoke.test", "Practicer", "Smoke")
+    # token from "/" — base.html's logout form carries _csrf for any logged-in
+    # user (/practice/new is POST-only, so it serves no token page)
+    token = get_token(c, "/")
     resp = c.post(
         "/practice/new",
         data={"minutes": "30", "notes": "scales", "_csrf": token},
@@ -443,19 +478,9 @@ def two_students():
     cb = app.test_client()
     register(cb, "idor_b@smoke.test", "studiopass", "IDOR B", "student")
     login(cb, "idor_b@smoke.test", "studiopass")
-    conn = db_conn()
-    try:
-        sid_a = conn.execute(
-            "SELECT s.id FROM students s JOIN users u ON u.id=s.user_id WHERE u.email=?",
-            ("idor_a@smoke.test",),
-        ).fetchone()
-        sid_b = conn.execute(
-            "SELECT s.id FROM students s JOIN users u ON u.id=s.user_id WHERE u.email=?",
-            ("idor_b@smoke.test",),
-        ).fetchone()
-    finally:
-        conn.close()
-    return ca, (sid_a["id"] if sid_a else None), cb, (sid_b["id"] if sid_b else None)
+    sid_a = link_student_row("idor_a@smoke.test", "IDOR", "A")
+    sid_b = link_student_row("idor_b@smoke.test", "IDOR", "B")
+    return ca, sid_a, cb, sid_b
 
 
 # -- IDOR: student B -> student A's /students/<sid> -> 404 (+ owner sees own -> 200)
@@ -540,7 +565,10 @@ def test_student_forbidden_create_instrument():
     c = app.test_client()
     register(c, "role_probe@smoke.test", "studiopass", "Role Probe", "student")
     login(c, "role_probe@smoke.test", "studiopass")
-    token = get_token(c, "/instruments/new")  # likely 403 -> token None
+    # token from "/" — a student cannot GET /instruments/new (403, no form),
+    # and a valid _csrf is required so the POST reaches the authz layer (403)
+    # instead of dying at the CSRF gate (400)
+    token = get_token(c, "/")
     resp = c.post(
         "/instruments/new",
         data={"name": "Cello", "category": "strings", "condition": "good",
@@ -561,7 +589,9 @@ test_student_forbidden_create_instrument()
 def test_staff_practice_forbidden():
     c = app.test_client()
     login(c, ADMIN_EMAIL, ADMIN_PASSWORD)
-    token = get_token(c, "/practice/new")
+    # token from "/" — /practice/new is POST-only; a valid _csrf lets the POST
+    # reach the student-identity check (403) instead of the CSRF gate (400)
+    token = get_token(c, "/")
     resp = c.post(
         "/practice/new",
         data={"minutes": "20", "notes": "n/a", "_csrf": token or "x"},

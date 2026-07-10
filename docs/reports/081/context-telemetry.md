@@ -15,3 +15,12 @@ literal 200K-char budget for cross-run comparability, so >100% is expected on a
 | pre-gates (Step 6 equivalent — deepen pre-converged, skipped) | 311000 | 156% (≈39% of 800K-char/200K-token window) | HANDOFF 13K + agent returns 12K + template/tracking 6K + agent-pitfalls partial reads 157K + full plan 123K |
 | Step 9w.6 (structural gates done, 9w.7 CLEARED) | 323000 | 162% (≈40% of 800K-char window) | swarm-planner + 9w.5 FAIL/fix/rerun PASS + 9w.6 PASS agent returns ~12K |
 | Step 10w (all 30 workers returned) | 424000 | 212% (≈53% of 800K-char window) | assignment section 12K + 3 probe returns + 30 launch confirmations + 30 worker completion summaries ~75K + firebreak lifecycle bash ~3K |
+| pre-17w (ownership gate + swarm-runner done, tail handoff) | 430000 | 215% (≈54% of 800K-char window) | 30 ownership diffs ~2K + swarm-runner return ~2.5K + disk-verify output |
+
+WARN: orchestrator context proxy >70% before tail delegation (430K chars vs the protocol's
+literal ~140K/70% line — crossed before the first recorded boundary). Calibration note
+applies: against the 800K-char (≈200K-token) window this is ≈54%, i.e. the orchestrator
+finished all inline phases at ~30-agent scale with headroom, no PAUSED_FOR_CONTEXT, no
+dropped boundary rows (4/4 recorded). Both readings recorded for the validate-at-scale
+deliverable; the >70%-of-200K-chars trip is a protocol-calibration finding, not observed
+saturation.

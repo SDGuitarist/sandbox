@@ -31,7 +31,7 @@
 </dl>
 
 <h2 class="h5 mt-4">Line items</h2>
-{% if invoice.items %}
+{% if invoice['items'] %}
   <div class="table-responsive">
     <table class="table table-sm align-middle">
       <thead>
@@ -42,7 +42,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for item in invoice.items %}
+        {% for item in invoice['items'] %}
           <tr>
             <td>{{ item.description }}</td>
             <td>{{ item.source_type }}</td>

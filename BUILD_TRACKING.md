@@ -27,9 +27,9 @@
 - run_start_ts: 1783716871
 - plan_path: docs/plans/2026-07-09-feat-lesson-studio-scale-validation-plan.md
 - branch: master
-- context_proxy_chars: 424000
+- context_proxy_chars: 430000
 - manual_resume: false
-- final_status: PIPELINE_PASS (assembly PASS; smoke/test FIREBREAK_DEFERRED — post-teardown re-run pending)
+- final_status: PIPELINE_PASS_WITH_DEFERRED_RISK (self-audit verdict; post-teardown closure same session — smoke 23/23 PASS, 081-W2/W4 RESOLVED, remaining deferreds are P2)
 
 ---
 
@@ -100,22 +100,59 @@
 | 30 | smoke-test | 4a9bc04 | PASS |
 
 ### Ownership Gate: PASS (30 agents)
+### Review: 1 P1, 3 P2 | Fix commits: FIREBREAK_DEFERRED (staged; approval at todos/approvals/RED-081-indirection-03a24cdd5e52.md)
 
 ---
 
 ## FAILURES
 
-<!-- Filled after review -->
+| Severity | Finding | Resolution | Failure Class |
+|----------|---------|------------|---------------|
+| P1 | `current_user()` called as function in 5 templates (8 occurrences) — TypeError 500 for all logged-in users on lesson/course/instrument pages | FIXED + COMMITTED (verified post-teardown: rode in 7ba77d3; the "staged/deferred" state was a stale self-report). Approval record retained as audit trail. | FC61 (new) |
+| P1 | `invoice.items` in invoices/view.html resolved the dict METHOD, not the key (Jinja getattr wins) — always-truthy guard + TypeError 500 on EVERY invoice view. Found ONLY by the post-teardown dynamic smoke run (static review + contract check + disconfirmer all missed it). | FIXED post-teardown (`invoice['items']` ×2); template scan clean; smoke 23/23 PASS | FC62 (new) |
+| P2 | `require_self_or_staff` implemented but never invoked — defense-in-depth gap, non-exploitable with current role guards | Deferred — throwaway vehicle | FC3 (dead wiring) |
+| P2 | `target_student_id` raw string not coerced to int — silent bad input returns empty results instead of 400 | Deferred | FC4 (validation gap) |
+| P2 | `count_enrolled` / `get_course` use implicit connection identity inside `enroll()` transaction — portability risk if get_db() ever returns new connection per call | Deferred — correct for current single-conn design | FC6 variant (implicit conn identity) |
+| WARN | M29: orchestrator context proxy >70% before tail delegation — 430K chars vs 200K-char proxy budget literal (215%); ≈54% of real ≈800K-char window. All 4/4 boundary rows recorded (no missing-row failure). Calibration finding: budget was built for ≤16-agent runs; raise trigger to 85% for 17–32 agent swarms. | Non-blocking — feeds context-proxy recalibration | FC context-proxy calibration gap |
 
 ---
 
 ## RUN_METRICS
 
-<!-- Filled after review -->
+### Final Build Metrics
 
-- firebreak: ACTIVE (run=081 phase=build; positive-control probe PASS — 3/3 RED actions denied, deterministic no-canary verdict)
-- spec-provenance: PROVENANCE_OK (pushed 7952be0..1c18252 pre-verdict; blob c4c2e09... identical on master + origin/master)
-- spec-eval: ENV_ERROR (advisory, no verdict — ANTHROPIC_API_KEY not set)
+| Metric | Value |
+|--------|-------|
+| Agent count | 30 workers (all COMPLETED+PASS) |
+| FC37 (no-commit) rate | 0/30 (0%) — all workers committed |
+| Integration health | contract-check: PASS (2 inline fixes: F1 dashboard keys, F2 student_name alias); import-resolution at boot: FIREBREAK_DEFERRED (smoke deferred; pytest 10/10 PASS as proxy) |
+| Merge conflicts (tautological under disjoint ownership — not a quality signal) | 0 |
+| File count | ~120 files (30-agent vertical split, studio/ namespace) |
+| LOC estimate | ~6,500 LOC (30 agents × ~217 LOC average) |
+| Smoke test results | 23/23 PASS (post-teardown re-run, same session; 1 real bug FC62 fixed + harness fixes — docs/reports/081/smoke-rerun-postteardown.md). In-run status was FIREBREAK_DEFERRED (expected). |
+| Pytest (existing suite) | 10/10 PASS |
+| Review findings | 1 P1 (fixed/staged), 3 P2 (deferred) |
+| Spec-provenance gate | PROVENANCE_OK (pushed 7952be0..1c18252 pre-verdict; blob c4c2e09... identical on master + origin/master) |
+| Spec-eval gate | ENV_ERROR (advisory, no verdict — ANTHROPIC_API_KEY not set) |
+| Firebreak | ACTIVE (phase=tail); 3/3 RED actions denied; positive-control probe PASS; trusted pipeline scripts (verify_delegated_status.py, check_compounded_darkness.py) ran GREEN under active firebreak (FC58 CONFIRMED) |
+
+### Agent Performance Summary
+
+| Agent Role | Finding | ROI |
+|------------|---------|-----|
+| security-IDOR-flow-trace | Found P1-01 (current_user callable) + PASS on FC35 IDOR, transactions, CSRF | High |
+| learnings-researcher | Confirmed F4 VERIFY flag underweighted; surfaced FC61 pattern; checked prior lessons | High |
+| enrollment-invoice-flow-trace | PASS on 4-way FK seam (F3), transaction atomicity (enroll/invoice/checkout), auth gaps | High |
+
+All 3 review agents reached independent consensus on P1-01. Feed-Forward risk (F3 4-way FK lesson seam) resolved PASS — the deliberately-hardest seam survived 30 agents intact.
+
+### Run Health Instruments (M34)
+
+| Instrument | Value | Reading |
+|------------|-------|---------|
+| Tools-per-assigned-file (per worker; flag outliers) | Median ~4–6 per worker based on worker roster; no extreme outliers flagged in worker reports | All workers operated within normal range; no spec-gap early-warning signals |
+| Spec-eval pass-RATE (not just binary verdict) | ENV_ERROR — no rate computed (ANTHROPIC_API_KEY not set; advisory non-gate) | Cannot compute; third consecutive ENV_ERROR advisory; pattern is environment, not spec quality |
+| Judgment-call count (worker SPEC_ISSUES / gap-fills) | ~12 total gap-fills across 30 workers (mostly naming and template convention; no structural gaps) | Low-moderate; high judgment-call workers are scout + dashboard (consumed most seam-crossing specs) |
 
 ## Template Version
 
