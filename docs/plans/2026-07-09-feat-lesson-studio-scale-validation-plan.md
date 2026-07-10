@@ -764,6 +764,10 @@ non-int. Unknown row id on any GET detail → 404.
   agent (not a dedicated route agent) but still as `Blueprint('rooms', __name__, url_prefix='/rooms')`.
 - **Base template:** every page `{% extends "base.html" %}`; base owns the nav, flash
   rendering, and `{{ csrf_token() }}` availability.
+- **Template inheritance blocks (FC54 — pinned):** `base.html` defines exactly TWO
+  child-overridable blocks: `{% block title %}` and `{% block content %}`. Every child
+  template overrides ONLY these two block names — no other block names exist across
+  agent boundaries.
 - **Role-aware nav (base.html, scaffold):** admin sees all links; instructor sees
   students/courses/lessons/attendance/instruments/announcements/dashboard; student sees
   dashboard/my-lessons/my-practice/my-invoices/courses/announcements. Driven by
