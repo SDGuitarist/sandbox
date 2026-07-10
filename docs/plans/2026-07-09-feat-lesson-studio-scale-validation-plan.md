@@ -1,7 +1,7 @@
 ---
 title: "Lesson-Studio Manager — Scale-Validation Swarm Vehicle"
 type: feat
-status: draft
+status: active
 date: 2026-07-09
 swarm: true
 agents: 30
@@ -21,12 +21,11 @@ compounded-darkness gate, G3 self-audit chain, Step 1.52 telemetry) live at ≥2
 scale, under maximum context pressure. Domain chosen to maximize coordination-seam
 surface. (See brainstorm: `docs/brainstorms/2026-07-09-scale-validation-swarm-vehicle-brainstorm.md`.)
 
-> **PLAN STATUS: `draft` — CODEX-CONVERGED (3 rounds, clean); HUMAN P0 PASS IN PROGRESS.**
-> All sections authored + hardened through three Codex rounds (structural → reconciliation →
-> concurrency edges), each round narrower than the last. Convergence criterion = Codex clean
-> AND human finds zero P0s. **The human structural pass is the remaining non-optional gate**
-> (worksheet: `docs/reviews/2026-07-10-lesson-studio-human-p0-pass.md`). Flip to `active` ONLY
-> after the worksheet reports zero P0s. **Do NOT launch on a draft.**
+> **PLAN STATUS: `active` — LAUNCH-READY (2026-07-10).** Convergence complete: 3 Codex rounds
+> (clean) AND human P0 pass found 1 P0 (student my-invoices nav↔route), fixed, zero remaining
+> (`docs/reviews/2026-07-10-lesson-studio-human-p0-pass.md`). Namespace `studio/` verified
+> collision-free. **Launch as run 081 (validate-at-scale) in a fresh session** — see the
+> "LAUNCH — NEXT SESSION" block at the top of HANDOFF.md.
 
 ---
 

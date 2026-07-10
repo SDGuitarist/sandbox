@@ -1,4 +1,45 @@
-# HANDOFF — Sandbox · Steps 1–4 DONE · [079-W3] CLOSED · master clean · NEXT = Step 5 (G2/G4/G5)
+# HANDOFF — Sandbox · NEXT = LAUNCH run 081 (lesson-studio scale-validation swarm)
+
+## ⬅⬅ LAUNCH — NEXT SESSION (start here) ⬅⬅
+
+**A ~30-agent autopilot SWARM is queued and launch-ready.** Spec is convergence-complete
+(3 Codex rounds clean + human P0 pass, zero P0s) and `status: active`.
+
+**Before you start:** this is a token-heavy unattended run — run it in a session started with
+`--dangerously-skip-permissions` (Alex enables it in the launch terminal; the flag is also in
+`.claude/settings.local.json`). Complete ALL phases in ONE session — do NOT break the loop to
+save context (breaking causes skill-loading failures next session).
+
+**To launch:**
+1. Read the spec: `docs/plans/2026-07-09-feat-lesson-studio-scale-validation-plan.md`
+   (swarm: true, agents: 30, namespace `studio/`, all 6 contract sections + EARS).
+2. Invoke the autopilot swarm on that plan (per `.claude/skills/autopilot/SKILL.md`). The skill
+   assigns the run-id (**081**), re-inits `BUILD_TRACKING.md` (current root copy is the stale
+   run-080 one — already captured in `docs/reports/080`; safe to overwrite), runs the 9w.9
+   ghost-file gate (`studio/` verified free), injects agent-pitfalls into every worker brief
+   (MANDATORY — `~/.claude/docs/agent-pitfalls.md`), and spawns.
+
+**Why this run exists (the REAL deliverable = validation, NOT the app):** first live exercise
+at ≥20-agent scale of the governance stack — G1 firebreak on a real swarm, today's FC58
+path-pin + 080-W5 compounded-darkness gate, G3 self-audit chain, and Step 1.52 context
+telemetry. The app is a throwaway vehicle chosen to maximize coordination-seam surface.
+
+**Honest-status guardrails (do NOT overclaim):**
+- A **MISSING** Step 1.52 telemetry boundary row at ≥20 agents = **instrument FAILURE**
+  (harden trigger), NEVER a pass.
+- Read a "clean" run **skeptically**: 30 agents may VALIDATE RESILIENCE without reproducing
+  the context-death path — report that honestly (attempted-not-reproduced), don't dress it up.
+- Success criteria + the two hardest seams (4-way lessons FK; enroll→invoice transaction) are
+  in the plan's "Scale-Validation Acceptance" + Feed-Forward.
+- `dangerouslySkipPermissions` billing: stay on Max subscription, NOT the 1M-Sonnet variant.
+
+**Provenance:** brainstorm `docs/brainstorms/2026-07-09-scale-validation-swarm-vehicle-brainstorm.md`;
+human P0 pass `docs/reviews/2026-07-10-lesson-studio-human-p0-pass.md`; validate-at-scale plan
+`docs/plans/2026-07-07-chore-validate-orchestrator-context-telemetry-at-scale-plan.md`.
+
+---
+
+# (prior handoff — Steps 1–4 DONE · [079-W3] CLOSED · Step 5 governance COMPLETE)
 
 **Date:** 2026-07-02
 **Branch:** `master` @ `f0590fc` (clean, in sync with origin, single worktree). Run-080 KNOWLEDGE is on master; the throwaway `shelftrack/` app CODE was on `feat/shelftrack-reading-list`, now DELETED (Step 4).
