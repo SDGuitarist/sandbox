@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-02
 **Branch:** `master` @ `f0590fc` (clean, in sync with origin, single worktree). Run-080 KNOWLEDGE is on master; the throwaway `shelftrack/` app CODE was on `feat/shelftrack-reading-list`, now DELETED (Step 4).
-**Phase:** **Steps 1–4 all COMPLETE. `[079-W3]` CLOSED (G1+G3 confirmed live, firebreak active through the tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock done; Step-4 teardown done (worktree + 5 branches removed). NEXT = Step 5 (G2/G4/G5) via `/workflows:brainstorm`. Deferred: full ~50-dir master declutter. UPDATE 2026-07-04: G2 brainstormed → SHELVED (evidence found zero observed worker stalls; real liveness failure is orchestrator context death, which a worker-monitor doesn't catch — see `docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md`). `[080-W2 HIGH]` review artifact RESOLVED (`docs/reports/080/review-summary.md`).**
+**Phase:** **Steps 1–4 all COMPLETE. `[079-W3]` CLOSED (G1+G3 confirmed live, firebreak active through the tail; FC58 resolved for pipeline scripts). Run-080 honest status = `PIPELINE_PASS_WITH_DEFERRED_RISK` (NOT clean PASS — see below). Master-hygiene MINIMAL unblock done; Step-4 teardown done (worktree + 5 branches removed). **UPDATE 2026-07-04→09: Step-5 governance audit essentially COMPLETE — no speculative builds. G2 SHELVED (zero observed worker stalls); G4 STAYS DEFERRED (consciously-accepted residual, revisit trigger unfired); context-death pivot → telemetry ALREADY EXISTS (SKILL.md Step 1.52, since 2026-06-08), validate-at-scale plan written; `[080-W2 HIGH]` RESOLVED (`docs/reports/080/review-summary.md`). NEXT = pick from the menu in the "NEXT" section (G5 evidence-check · `[FC58-PATHPIN]` · `[080-W5]` · master declutter). Discipline saved: memory `feedback_evidence-check-framework-backlog`.**
 
 ## Honest validation status
 
@@ -82,8 +82,14 @@ gitignored data), archive-tagged first. See Deferred Items `[MASTER-DECLUTTER]`.
 - ✅ **Step 4 — teardown**: removed `sandbox-g1` worktree; deleted 5 branches — `feat/g1-risk-tiered-firebreak`, `feat/g3-verification-diversity`, `feat/g1-g3-live-validation`, `feat/fc58-firebreak-trusted-indirection` (all merged), `feat/shelftrack-reading-list` (throwaway, knowledge preserved). 2 also removed from origin. Master = single worktree, clean.
   - NOTE: other stale local branches + old `swarm-0**-assembly` branches remain — optional future cleanup (`git branch -a`).
 
-### ⬅ NEXT — Step 5 — G4/G5 (G2 shelved)
-Via `/workflows:brainstorm` from the governance scorecard (`docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`):
+### ⬅ NEXT — Step-5 governance audit ~COMPLETE (G2 shelved · G4 deferred · telemetry planned); pick from the menu
+**Menu for the next session (in recommended order):**
+1. **G5 (delegation-as-authority)** — the last unexamined Step-5 item. Evidence-check its LOCAL premise FIRST (per `feedback_evidence-check-framework-backlog` — G2+G4+telemetry all evaporated this way). Likely closes Step 5 cleanly whether it's real or evaporates.
+2. **`[FC58-PATHPIN]` (todo 074)** — concrete P2, no sign-off needed: path-pin the `TRUSTED_PIPELINE_SCRIPTS` allowlist (retire 2 trusted-only residuals). Most "ship a thing" option.
+3. **`[080-W5, MED]`** — add a compounded-darkness gate signal (flag when spec-eval + provenance + dynamic tests are ALL dark at once). Real observability gap.
+4. **`[MASTER-DECLUTTER]`** — needs Alex: per-dir keep/untrack sign-off + archive-tag + `git rm --cached` ONLY (production data on disk).
+
+Scorecard context (`docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md`):
 - **G2**: in-flight AI monitor — **SHELVED 2026-07-04.** Brainstormed + evidence-checked: **zero observed worker stalls** across all runs (no such failure class in agent-pitfalls); the real in-flight liveness failure is **orchestrator context death** (runs 050, 061), which a worker-watching monitor does NOT catch. Building the worker-liveness monitor = YAGNI / simulation-vs-building trap. If revisited, start from the Fork section of `docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md`: pivot #1 (orchestrator context-death watchdog / "Tier 2 Pre-Review Resume checkpoint" — the evidenced pain) or pivot #2 (cross-worker semantic divergence — the real worker-level failure). Do NOT rebuild the worker-liveness design.
 - **G4**: per-run-nonce ledger — **EVIDENCE-CHECKED 2026-07-07 → STAYS DEFERRED.** Not an open design question: it is a *consciously accepted, pre-registered residual risk* from the 2026-06-06 orchestration-hardening work (`verify_delegated_status.py` already does existence + freshness `mtime≥run_start_ts` + run-id match). The residual (future-dated stale artifact under a reused run-id) requires a backwards clock on a single-host sandbox; the fix (per-run nonce embedded by producers) was held out of scope. **Pre-registered revisit trigger: multi-host / networked-FS infra OR observed clock-skew anomaly.** Trigger has NOT fired (single-host, local-FS). Building it now = solving a non-triggered residual. See `docs/solutions/2026-06-06-autopilot-orchestration-hardening-A-reliability.md` §ACCEPTED RESIDUAL RISK.
 - **G5**: delegation-as-authority — not yet examined (evidence-check its premise first, given G2+G4 both evaporated).
@@ -103,37 +109,36 @@ Before scaling more builds, consider the remaining deferred item: `[MASTER-DECLU
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md, "Step Sequence" section first. This is sandbox, on master (f0590fc,
-clean, pushed, single worktree).
+Read HANDOFF.md "NEXT" section first. This is sandbox, on master (e5be782, clean,
+pushed, single worktree).
 
-Steps 1-4 are ALL DONE. [079-W3] CLOSED: the G1 firebreak and the G3 self-audit
-disconfirmer now provably COEXIST under live governance — the firebreak stayed ACTIVE
-through the tail (run 080), the thing run 079 couldn't test. FC58 is resolved for the
-trusted pipeline scripts.
+Steps 1-4 DONE + Step-5 governance audit essentially COMPLETE. The 2026-07-04→09
+session audited the Step-5 scorecard items and NONE needed a speculative build — the
+win was disproving the premises cheaply:
+  - G2 in-flight monitor → SHELVED (zero observed worker stalls in any run).
+  - G4 per-run-nonce → STAYS DEFERRED (consciously-accepted residual; revisit trigger =
+    multi-host/networked-FS or clock-skew, NOT fired on this single-host sandbox).
+  - context-death pivot → telemetry ALREADY EXISTS (SKILL.md Step 1.52 / M29, added
+    2026-06-08); wrote a validate-at-scale plan, no build.
+  - [080-W2] → RESOLVED (docs/reports/080/review-summary.md; reconstructed-from-record).
+The discipline that did this is saved as memory feedback_evidence-check-framework-backlog:
+ALWAYS evidence-check a framework/backlog item's LOCAL premise (observed? already built?
+consciously deferred w/ unfired trigger?) BEFORE brainstorming or building it.
 
-Honest-status guardrails (the run's own self-audit + disconfirmer flagged these — do NOT
-repeat the overclaims):
+Honest-status guardrails (do NOT repeat prior overclaims):
   - run 080 = PIPELINE_PASS_WITH_DEFERRED_RISK, NOT clean PASS.
-  - FC58 "resolved" is scoped to TRUSTED pipeline scripts; the smoke test's
-    FIREBREAK_DEFERRED is the carve-out working as designed, not a recurrence.
-  - "10/10 tests" during the run were FILM-PM ghost tests, NOT ShelfTrack. ShelfTrack's
-    real coverage = the post-teardown smoke re-run (16/16). Zero ShelfTrack tests ran
-    DURING the governed run.
+  - FC58 "resolved" is scoped to TRUSTED pipeline scripts.
+  - the Step 1.52 telemetry is UNEXERCISED at >=20 agents; a MISSING boundary row on a
+    big build = instrument FAILURE (harden trigger), never a pass.
 
-NEXT — Step 5: G4/G5 via /workflows:brainstorm, seeding from the governance scorecard
-(docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md):
-  - G2 in-flight AI monitor — SHELVED 2026-07-04 (evidence: zero observed worker stalls;
-    real liveness failure is orchestrator context death, which a worker-monitor misses).
-    See docs/brainstorms/2026-07-04-g2-inflight-liveness-monitor-brainstorm.md (Fork section).
-  - G4 per-run-nonce ledger (next brainstorm target) · G5 delegation-as-authority
-
-Consider first (optional, before scaling builds):
-  - [080-W2] RESOLVED 2026-07-04 — docs/reports/080/review-summary.md now backs the
-    "0 P1, 2 P2" verdict (reconstructed-from-record; provenance explicit in the artifact).
-  - [MASTER-DECLUTTER] full ~50-dir master cleanup. MUST: archive-tag first, git rm
-    --cached ONLY (NEVER rm -rf — lead-scraper has 150 production leads.db backups on
-    disk, four prior data-loss incidents), per-dir keep/untrack sign-off from Alex.
-  - [FC58-PATHPIN, P2] todo 074 · [080-W5, MED] compounded verification darkness.
+NEXT — pick from the menu (recommended order):
+  1. G5 (delegation-as-authority) — last Step-5 item. EVIDENCE-CHECK its local premise
+     FIRST (likely evaporates like G2/G4; either way it closes Step 5). Scorecard:
+     docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md
+  2. [FC58-PATHPIN] todo 074 — concrete P2, path-pin TRUSTED_PIPELINE_SCRIPTS. Ship-a-thing.
+  3. [080-W5, MED] — compounded-darkness gate signal (spec-eval + provenance + tests all dark).
+  4. [MASTER-DECLUTTER] — needs Alex: per-dir sign-off + archive-tag + git rm --cached
+     ONLY (NEVER rm -rf — lead-scraper has 150 production leads.db backups on disk).
 
 INVARIANTS (don't touch designs): firebreak classifier = deny-known-bad; FC58 carve-out
 is TRUSTED-only + python-only + allowlist matches script BASENAMES only; self-audit-
