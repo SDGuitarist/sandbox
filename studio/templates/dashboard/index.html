@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Dashboard</h1>
+
+{% if summary is none or not summary %}
+  <div class="alert alert-info" role="alert">
+    Nothing to show yet.
+  </div>
+{% elif role == 'admin' %}
+  {# admin_summary(): counts across the studio #}
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.students }}</h2>
+          <p class="card-text text-muted">Students</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.instructors }}</h2>
+          <p class="card-text text-muted">Instructors</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.active_courses }}</h2>
+          <p class="card-text text-muted">Active Courses</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.lessons_this_week }}</h2>
+          <p class="card-text text-muted">Lessons This Week</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.outstanding_invoice_cents|cents }}</h2>
+          <p class="card-text text-muted">Outstanding Invoices</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.instruments_out }}</h2>
+          <p class="card-text text-muted">Instruments Out</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+{% elif role == 'instructor' %}
+  {# instructor_summary(id): my upcoming lessons, my courses, my students count #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.my_courses }}</h2>
+          <p class="card-text text-muted">My Courses</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.my_students }}</h2>
+          <p class="card-text text-muted">My Students</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="h5">Upcoming Lessons</h2>
+  {% if summary.upcoming_lessons %}
+    <table class="table table-striped">
+      <thead>
+        <tr><th>When</th><th>Student</th><th>Course</th><th>Room</th></tr>
+      </thead>
+      <tbody>
+        {% for lesson in summary.upcoming_lessons %}
+          <tr>
+            <td>{{ lesson.starts_at|dt }}</td>
+            <td>{{ lesson.student_name }}</td>
+            <td>{{ lesson.course_name }}</td>
+            <td>{{ lesson.room_name }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="text-muted">No upcoming lessons.</p>
+  {% endif %}
+
+{% elif role == 'student' %}
+  {# student_summary(id): upcoming lessons, enrollments, balance, practice minutes, attendance #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.balance_cents|cents }}</h2>
+          <p class="card-text text-muted">Balance</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.practice_minutes_this_week }}</h2>
+          <p class="card-text text-muted">Practice Minutes This Week</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card text-center">
+        <div class="card-body">
+          <h2 class="card-title">{{ summary.attendance_rate }}</h2>
+          <p class="card-text text-muted">Attendance Rate</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="h5">Upcoming Lessons</h2>
+  {% if summary.upcoming_lessons %}
+    <table class="table table-striped">
+      <thead>
+        <tr><th>When</th><th>Instructor</th><th>Course</th><th>Room</th></tr>
+      </thead>
+      <tbody>
+        {% for lesson in summary.upcoming_lessons %}
+          <tr>
+            <td>{{ lesson.starts_at|dt }}</td>
+            <td>{{ lesson.instructor_name }}</td>
+            <td>{{ lesson.course_name }}</td>
+            <td>{{ lesson.room_name }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="text-muted">No upcoming lessons.</p>
+  {% endif %}
+
+  <h2 class="h5 mt-4">My Enrollments</h2>
+  {% if summary.enrollments %}
+    <ul class="list-group">
+      {% for enrollment in summary.enrollments %}
+        <li class="list-group-item">{{ enrollment.course_name }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">No enrollments.</p>
+  {% endif %}
+{% endif %}
+{% endblock %}
