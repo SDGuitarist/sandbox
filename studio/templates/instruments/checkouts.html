@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Instrument checkouts{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Instrument checkouts</h1>
+  <a class="btn btn-outline-secondary" href="{{ url_for('instruments.list_instruments') }}">Instruments</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <select name="status" class="form-select">
+      <option value="">All statuses</option>
+      <option value="out" {% if status == 'out' %}selected{% endif %}>Out</option>
+      <option value="returned" {% if status == 'returned' %}selected{% endif %}>Returned</option>
+      <option value="overdue" {% if status == 'overdue' %}selected{% endif %}>Overdue</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-primary">Filter</button>
+  </div>
+</form>
+
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Instrument</th>
+      <th>Student</th>
+      <th>Checked out</th>
+      <th>Due</th>
+      <th>Returned</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for checkout in checkouts %}
+    <tr>
+      <td>{{ checkout.instrument_name }}</td>
+      <td>{{ checkout.student_name }}</td>
+      <td>{{ checkout.checked_out_at|dt }}</td>
+      <td>{{ checkout.due_at|dt }}</td>
+      <td>{{ checkout.returned_at|dt if checkout.returned_at else '—' }}</td>
+      <td>{{ checkout.status }}</td>
+      <td class="text-end">
+        {% if checkout.status == 'out' %}
+        <form method="post" action="{{ url_for('instruments.return_instrument', cid=checkout.id) }}" class="d-inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Return</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="text-muted">No checkouts found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
