@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Log Practice{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Log practice</h1>
+<form method="post" action="{{ url_for('practice.create_practice_log') }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="mb-3">
+    <label for="minutes" class="form-label">Minutes</label>
+    <input type="number" min="1" step="1" class="form-control"
+           id="minutes" name="minutes" required>
+  </div>
+  <div class="mb-3">
+    <label for="notes" class="form-label">Notes</label>
+    <textarea class="form-control" id="notes" name="notes" rows="3"
+              placeholder="What did you work on?"></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Add practice log</button>
+  <a href="{{ url_for('practice.list_practice_logs') }}" class="btn btn-link">Cancel</a>
+</form>
+{% endblock %}
