@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Rooms{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Rooms</h1>
+  {% if current_user is not none and current_user.role == 'admin' %}
+    <a class="btn btn-primary" href="{{ url_for('rooms.create_room') }}">New room</a>
+  {% endif %}
+</div>
+
+{% if rooms %}
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Capacity</th>
+      <th>Location</th>
+      <th>Status</th>
+      {% if current_user is not none and current_user.role == 'admin' %}<th></th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for room in rooms %}
+    <tr>
+      <td>{{ room.name }}</td>
+      <td>{{ room.capacity }}</td>
+      <td>{{ room.location or '—' }}</td>
+      <td>{% if room.active %}Active{% else %}Inactive{% endif %}</td>
+      {% if current_user is not none and current_user.role == 'admin' %}
+      <td><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('rooms.edit_room', rid=room.id) }}">Edit</a></td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-muted">No rooms yet.</p>
+{% endif %}
+{% endblock %}

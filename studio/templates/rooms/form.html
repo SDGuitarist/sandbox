@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{% if room is none %}New room{% else %}Edit room{% endif %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{% if room is none %}New room{% else %}Edit room{% endif %}</h1>
+</div>
+
+<form method="post" class="col-md-6">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="mb-3">
+    <label for="name" class="form-label">Name</label>
+    <input type="text" class="form-control" id="name" name="name" required
+           value="{{ (room.name if room is not none else request.form.get('name', '')) }}">
+  </div>
+  <div class="mb-3">
+    <label for="capacity" class="form-label">Capacity</label>
+    <input type="number" min="1" step="1" class="form-control" id="capacity" name="capacity" required
+           value="{{ (room.capacity if room is not none else request.form.get('capacity', '1')) }}">
+  </div>
+  <div class="mb-3">
+    <label for="location" class="form-label">Location</label>
+    <input type="text" class="form-control" id="location" name="location"
+           value="{{ (room.location or '' if room is not none else request.form.get('location', '')) }}">
+  </div>
+  <button type="submit" class="btn btn-primary">Save</button>
+  <a class="btn btn-secondary" href="{{ url_for('rooms.list_rooms') }}">Cancel</a>
+</form>
+{% endblock %}
