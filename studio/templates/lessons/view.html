@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h3 mb-0">Lesson detail</h1>
-  {% if current_user() and current_user().role in ('admin', 'instructor') %}
+  {% if current_user and current_user.role in ('admin', 'instructor') %}
   <a class="btn btn-outline-secondary" href="{{ url_for('lessons.edit_lesson', lid=lesson.id) }}">Edit</a>
   {% endif %}
 </div>
@@ -34,7 +34,7 @@
   <dd class="col-sm-9">{{ lesson.notes if lesson.notes is not none else '—' }}</dd>
 </dl>
 
-{% if current_user() and current_user().role in ('admin', 'instructor') %}
+{% if current_user and current_user.role in ('admin', 'instructor') %}
 <form method="post" action="{{ url_for('lessons.set_status', lid=lesson.id) }}" class="row g-2 align-items-end">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
   <div class="col-auto">

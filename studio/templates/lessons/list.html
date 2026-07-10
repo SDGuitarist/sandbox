@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h3 mb-0">Lessons</h1>
-  {% if current_user() and current_user().role in ('admin', 'instructor') %}
+  {% if current_user and current_user.role in ('admin', 'instructor') %}
   <a class="btn btn-primary" href="{{ url_for('lessons.create_lesson') }}">New lesson</a>
   {% endif %}
 </div>

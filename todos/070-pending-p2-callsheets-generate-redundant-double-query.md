@@ -1,5 +1,5 @@
 ---
-status: pending
+status: resolved
 priority: p2
 issue_id: "070"
 tags: [code-review, performance, callsheets, run-070]

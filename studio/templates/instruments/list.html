@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h3 mb-0">Instruments</h1>
   <div>
-    {% if current_user() and current_user().role == 'admin' %}
+    {% if current_user and current_user.role == 'admin' %}
     <a class="btn btn-primary" href="{{ url_for('instruments.create_instrument') }}">New instrument</a>
     {% endif %}
     <a class="btn btn-outline-secondary" href="{{ url_for('instruments.list_checkouts') }}">Checkouts</a>
@@ -48,7 +48,7 @@
       <td>{{ instrument.condition }}</td>
       <td>{{ instrument.status }}</td>
       <td class="text-end">
-        {% if current_user() and current_user().role == 'admin' %}
+        {% if current_user and current_user.role == 'admin' %}
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('instruments.edit_instrument', iid=instrument.id) }}">Edit</a>
         {% endif %}
         {% if instrument.status == 'available' %}
