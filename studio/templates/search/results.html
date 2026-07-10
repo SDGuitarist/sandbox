@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Search{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Search</h1>
+
+<form method="get" action="{{ url_for('search.search') }}" class="mb-4">
+  <div class="input-group">
+    <input type="text" name="q" class="form-control" placeholder="Search students, instructors, courses"
+           value="{{ q }}" autofocus>
+    <button type="submit" class="btn btn-primary">Search</button>
+  </div>
+</form>
+
+{% if q %}
+  {% set total = (results.students | length) + (results.instructors | length) + (results.courses | length) %}
+  {% if total == 0 %}
+    <p class="text-muted">No results for "{{ q }}".</p>
+  {% endif %}
+
+  {% if results.students %}
+    <section class="mb-4">
+      <h2 class="h5">Students</h2>
+      <ul class="list-group">
+        {% for s in results.students %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('students.view_student', sid=s.id) }}">
+              {{ s.first_name }} {{ s.last_name }}
+            </a>
+            <span>
+              {% if s.email %}<span class="text-muted me-2">{{ s.email }}</span>{% endif %}
+              <span class="badge bg-secondary">{{ s.skill_level }}</span>
+              {% if not s.active %}<span class="badge bg-warning text-dark">inactive</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if results.instructors %}
+    <section class="mb-4">
+      <h2 class="h5">Instructors</h2>
+      <ul class="list-group">
+        {% for i in results.instructors %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('instructors.view_instructor', iid=i.id) }}">
+              {{ i.first_name }} {{ i.last_name }}
+            </a>
+            <span>
+              {% if i.email %}<span class="text-muted me-2">{{ i.email }}</span>{% endif %}
+              {% if not i.active %}<span class="badge bg-warning text-dark">inactive</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% if results.courses %}
+    <section class="mb-4">
+      <h2 class="h5">Courses</h2>
+      <ul class="list-group">
+        {% for c in results.courses %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ url_for('courses.view_course', cid=c.id) }}">{{ c.name }}</a>
+            <span>
+              <span class="badge bg-secondary">{{ c.level }}</span>
+              <span class="text-muted me-2">{{ c.price_cents | cents }}</span>
+              {% if not c.active %}<span class="badge bg-warning text-dark">inactive</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+{% endif %}
+{% endblock %}

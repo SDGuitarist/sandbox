@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}New Course{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New course</h1>
+
+<form method="post" action="{{ url_for('courses.create_course') }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label class="form-label" for="name">Name</label>
+    <input class="form-control" id="name" name="name" type="text"
+           value="{{ values.name or '' }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="description">Description</label>
+    <textarea class="form-control" id="description" name="description"
+              rows="3">{{ values.description or '' }}</textarea>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="instructor_id">Instructor</label>
+    <select class="form-select" id="instructor_id" name="instructor_id">
+      <option value="">— none —</option>
+      {% for instructor in instructors %}
+      <option value="{{ instructor.id }}"
+        {% if values.instructor_id and values.instructor_id|string == instructor.id|string %}selected{% endif %}>
+        {{ instructor.first_name }} {{ instructor.last_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="level">Level</label>
+    <select class="form-select" id="level" name="level">
+      {% for lvl in ('beginner', 'intermediate', 'advanced') %}
+      <option value="{{ lvl }}" {% if values.level == lvl %}selected{% endif %}>{{ lvl }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="capacity">Capacity</label>
+    <input class="form-control" id="capacity" name="capacity" type="number" min="1"
+           value="{{ values.capacity if values.capacity is not none else 10 }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" for="price_cents">Price (cents)</label>
+    <input class="form-control" id="price_cents" name="price_cents" type="number" min="0"
+           value="{{ values.price_cents if values.price_cents is not none else 0 }}" required>
+  </div>
+
+  <button class="btn btn-primary" type="submit">Create course</button>
+  <a class="btn btn-outline-secondary" href="{{ url_for('courses.list_courses') }}">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Practice Logs{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Practice Logs</h1>
+</div>
+
+{% if can_log %}
+<div class="card mb-4">
+  <div class="card-body">
+    <h2 class="h5 card-title">Log practice</h2>
+    <form method="post" action="{{ url_for('practice.create_practice_log') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="row g-2 align-items-end">
+        <div class="col-sm-3">
+          <label for="minutes" class="form-label">Minutes</label>
+          <input type="number" min="1" step="1" class="form-control"
+                 id="minutes" name="minutes" required>
+        </div>
+        <div class="col-sm-7">
+          <label for="notes" class="form-label">Notes</label>
+          <input type="text" class="form-control" id="notes" name="notes"
+                 placeholder="What did you work on?">
+        </div>
+        <div class="col-sm-2">
+          <button type="submit" class="btn btn-primary w-100">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if logs %}
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th scope="col">Logged</th>
+        <th scope="col">Minutes</th>
+        <th scope="col">Notes</th>
+        <th scope="col" class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.logged_at|dt }}</td>
+        <td>{{ log.minutes }}</td>
+        <td>{{ log.notes if log.notes else '' }}</td>
+        <td class="text-end">
+          <form method="post"
+                action="{{ url_for('practice.delete_practice_log', log_id=log.id) }}"
+                onsubmit="return confirm('Delete this practice log?');">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No practice logs yet.</p>
+{% endif %}
+{% endblock %}

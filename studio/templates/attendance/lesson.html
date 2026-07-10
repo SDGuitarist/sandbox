@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Lesson Attendance{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Lesson Attendance</h1>
+  <a href="{{ url_for('lessons.view_lesson', lid=lesson.id) }}" class="btn btn-outline-secondary btn-sm">Back to lesson</a>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">Lesson</dt>
+      <dd class="col-sm-9">#{{ lesson.id }}</dd>
+
+      <dt class="col-sm-3">Student</dt>
+      <dd class="col-sm-9">
+        {% if lesson.student_name is defined and lesson.student_name %}
+          {{ lesson.student_name }}
+        {% else %}
+          Student #{{ lesson.student_id }}
+        {% endif %}
+      </dd>
+
+      <dt class="col-sm-3">When</dt>
+      <dd class="col-sm-9">{{ lesson.starts_at|dt }} &ndash; {{ lesson.ends_at|dt }}</dd>
+
+      <dt class="col-sm-3">Status</dt>
+      <dd class="col-sm-9">{{ lesson.status }}</dd>
+
+      <dt class="col-sm-3">Current mark</dt>
+      <dd class="col-sm-9">
+        {% if attendance is none %}
+          <span class="badge bg-secondary">Not yet marked</span>
+        {% elif attendance.present %}
+          <span class="badge bg-success">Present</span>
+          {% if attendance.marked_at %}<small class="text-muted ms-2">at {{ attendance.marked_at|dt }}</small>{% endif %}
+        {% else %}
+          <span class="badge bg-danger">Absent</span>
+          {% if attendance.marked_at %}<small class="text-muted ms-2">at {{ attendance.marked_at|dt }}</small>{% endif %}
+        {% endif %}
+      </dd>
+    </dl>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('attendance.mark_attendance', lid=lesson.id) }}" class="d-flex gap-2">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <button type="submit" name="present" value="1" class="btn btn-success">Mark present</button>
+  <button type="submit" name="present" value="0" class="btn btn-danger">Mark absent</button>
+</form>
+{% endblock %}

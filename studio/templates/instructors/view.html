@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ instructor.first_name }} {{ instructor.last_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">{{ instructor.first_name }} {{ instructor.last_name }}</h1>
+  {% if current_user and current_user.role == 'admin' %}
+  <a class="btn btn-primary" href="{{ url_for('instructors.edit_instructor', iid=instructor.id) }}">Edit</a>
+  {% endif %}
+</div>
+
+<dl class="row col-md-8">
+  <dt class="col-sm-3">Status</dt>
+  <dd class="col-sm-9">
+    {% if instructor.active %}
+    <span class="badge bg-success">Active</span>
+    {% else %}
+    <span class="badge bg-secondary">Inactive</span>
+    {% endif %}
+  </dd>
+
+  <dt class="col-sm-3">Email</dt>
+  <dd class="col-sm-9">{{ instructor.email or '—' }}</dd>
+
+  <dt class="col-sm-3">Phone</dt>
+  <dd class="col-sm-9">{{ instructor.phone or '—' }}</dd>
+
+  <dt class="col-sm-3">Hourly rate</dt>
+  <dd class="col-sm-9">{{ instructor.hourly_rate_cents|cents }}</dd>
+
+  <dt class="col-sm-3">Bio</dt>
+  <dd class="col-sm-9">{{ instructor.bio or '—' }}</dd>
+</dl>
+
+<a class="btn btn-outline-secondary" href="{{ url_for('instructors.list_instructors') }}">Back to instructors</a>
+{% endblock %}

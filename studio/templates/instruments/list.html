@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Instruments{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Instruments</h1>
+  <div>
+    {% if current_user() and current_user().role == 'admin' %}
+    <a class="btn btn-primary" href="{{ url_for('instruments.create_instrument') }}">New instrument</a>
+    {% endif %}
+    <a class="btn btn-outline-secondary" href="{{ url_for('instruments.list_checkouts') }}">Checkouts</a>
+  </div>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-auto">
+    <input type="text" name="q" class="form-control" placeholder="Search name" value="{{ q or '' }}">
+  </div>
+  <div class="col-auto">
+    <select name="status" class="form-select">
+      <option value="">All statuses</option>
+      <option value="available" {% if status == 'available' %}selected{% endif %}>Available</option>
+      <option value="checked_out" {% if status == 'checked_out' %}selected{% endif %}>Checked out</option>
+      <option value="maintenance" {% if status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-primary">Filter</button>
+  </div>
+</form>
+
+<table class="table table-striped align-middle">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Category</th>
+      <th>Serial</th>
+      <th>Condition</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for instrument in instruments %}
+    <tr>
+      <td>{{ instrument.name }}</td>
+      <td>{{ instrument.category }}</td>
+      <td>{{ instrument.serial_number or '—' }}</td>
+      <td>{{ instrument.condition }}</td>
+      <td>{{ instrument.status }}</td>
+      <td class="text-end">
+        {% if current_user() and current_user().role == 'admin' %}
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('instruments.edit_instrument', iid=instrument.id) }}">Edit</a>
+        {% endif %}
+        {% if instrument.status == 'available' %}
+        <form method="post" action="{{ url_for('instruments.checkout_instrument', iid=instrument.id) }}" class="d-inline-flex gap-1 align-items-center">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <select name="student_id" class="form-select form-select-sm" required>
+            <option value="">Student…</option>
+            {% for student in students %}
+            <option value="{{ student.id }}">{{ student.first_name }} {{ student.last_name }}</option>
+            {% endfor %}
+          </select>
+          <input type="datetime-local" name="due_at" class="form-control form-control-sm" required>
+          <button type="submit" class="btn btn-sm btn-primary">Check out</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="text-muted">No instruments found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

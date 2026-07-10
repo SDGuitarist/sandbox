@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Invoices{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Invoices</h1>
+  {% if current_user and current_user.role in ('admin', 'instructor') %}
+    <a class="btn btn-primary" href="{{ url_for('invoices.create_invoice') }}">New invoice</a>
+  {% endif %}
+</div>
+
+<form method="get" action="{{ url_for('invoices.list_invoices') }}" class="row g-2 mb-3">
+  <div class="col-auto">
+    <label for="status" class="visually-hidden">Filter by status</label>
+    <select id="status" name="status" class="form-select" onchange="this.form.submit()">
+      <option value="" {% if not status %}selected{% endif %}>All statuses</option>
+      {% for s in ('draft', 'sent', 'paid', 'void') %}
+        <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s|capitalize }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <noscript>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-outline-secondary">Filter</button>
+    </div>
+  </noscript>
+</form>
+
+{% if invoices %}
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Student</th>
+          <th scope="col">Description</th>
+          <th scope="col">Status</th>
+          <th scope="col">Issued</th>
+          <th scope="col" class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+          <tr>
+            <td><a href="{{ url_for('invoices.view_invoice', iid=inv.id) }}">{{ inv.id }}</a></td>
+            <td>{{ inv.student_name if inv.student_name is defined else inv.student_id }}</td>
+            <td>{{ inv.description or '—' }}</td>
+            <td><span class="badge bg-secondary">{{ inv.status }}</span></td>
+            <td>{{ inv.issued_at|dt }}</td>
+            <td class="text-end">{{ inv.total_cents|cents }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="text-muted">No invoices found.</p>
+{% endif %}
+{% endblock %}

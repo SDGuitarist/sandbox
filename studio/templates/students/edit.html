@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Edit Student{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Edit Student</h1>
+
+<form method="post" action="{{ url_for('students.edit_student', sid=student.id) }}" class="col-md-6">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div class="mb-3">
+    <label for="first_name" class="form-label">First Name</label>
+    <input type="text" class="form-control" id="first_name" name="first_name"
+           value="{{ student.first_name }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="last_name" class="form-label">Last Name</label>
+    <input type="text" class="form-control" id="last_name" name="last_name"
+           value="{{ student.last_name }}" required>
+  </div>
+
+  <div class="mb-3">
+    <label for="email" class="form-label">Email</label>
+    <input type="email" class="form-control" id="email" name="email"
+           value="{{ student.email or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="phone" class="form-label">Phone</label>
+    <input type="text" class="form-control" id="phone" name="phone"
+           value="{{ student.phone or '' }}">
+  </div>
+
+  <div class="mb-3">
+    <label for="skill_level" class="form-label">Skill Level</label>
+    <select class="form-select" id="skill_level" name="skill_level">
+      {% for level in skill_levels %}
+      <option value="{{ level }}"
+        {% if student.skill_level == level %}selected{% endif %}>
+        {{ level|capitalize }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="mb-3">
+    <label for="notes" class="form-label">Notes</label>
+    <textarea class="form-control" id="notes" name="notes" rows="3">{{ student.notes or '' }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save Changes</button>
+  <a href="{{ url_for('students.view_student', sid=student.id) }}" class="btn btn-outline-secondary">Cancel</a>
+</form>
+{% endblock %}

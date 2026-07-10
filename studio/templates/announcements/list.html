@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Announcements{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Announcements</h1>
+  {% if current_user and current_user.role in ('admin', 'instructor') %}
+  <a class="btn btn-primary" href="{{ url_for('announcements.create_announcement') }}">New announcement</a>
+  {% endif %}
+</div>
+
+{% if announcements %}
+<div class="list-group">
+  {% for a in announcements %}
+  <div class="list-group-item">
+    <div class="d-flex justify-content-between align-items-start">
+      <div>
+        <h2 class="h5 mb-1">{{ a.title }}</h2>
+        <p class="mb-1">{{ a.body }}</p>
+        <small class="text-muted">
+          Audience: {{ a.audience }} &middot; {{ a.created_at|dt }}
+        </small>
+      </div>
+      {% if current_user and current_user.role in ('admin', 'instructor') %}
+      <form method="post"
+            action="{{ url_for('announcements.delete_announcement', aid=a.id) }}"
+            onsubmit="return confirm('Delete this announcement?');">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted">No announcements yet.</p>
+{% endif %}
+{% endblock %}

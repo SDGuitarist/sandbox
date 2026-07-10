@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Enrollments{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Enrollments</h1>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Enroll a student</div>
+  <div class="card-body">
+    <form method="post" action="{{ url_for('enrollments.enroll') }}" class="row g-2 align-items-end">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="col-md-5">
+        <label for="student_id" class="form-label">Student</label>
+        <select class="form-select" id="student_id" name="student_id" required>
+          <option value="" selected disabled>Choose a student…</option>
+          {% for student in students %}
+          <option value="{{ student.id }}">
+            {{ student.first_name }} {{ student.last_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label for="course_id" class="form-label">Course</label>
+        <select class="form-select" id="course_id" name="course_id" required>
+          <option value="" selected disabled>Choose a course…</option>
+          {% for course in courses %}
+          <option value="{{ course.id }}">
+            {{ course.name }}
+            {% if course.price_cents %}({{ course.price_cents|cents }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Enroll</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Current enrollments</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Course</th>
+          <th>Status</th>
+          <th>Enrolled</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+        <tr>
+          <td>{{ enrollment.student_name }}</td>
+          <td>{{ enrollment.course_name }}</td>
+          <td>
+            <span class="badge bg-secondary">{{ enrollment.status }}</span>
+          </td>
+          <td>{{ enrollment.enrolled_at|dt }}</td>
+          <td class="text-end">
+            {% if enrollment.status == 'active' %}
+            <form method="post"
+                  action="{{ url_for('enrollments.withdraw', eid=enrollment.id) }}"
+                  class="d-inline">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                Withdraw
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">
+            No enrollments yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}New instrument{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">New instrument</h1>
+
+<form method="post" action="{{ url_for('instruments.create_instrument') }}" class="col-md-6">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="mb-3">
+    <label class="form-label" for="name">Name</label>
+    <input type="text" class="form-control" id="name" name="name" value="{{ form.name or '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="category">Category</label>
+    <input type="text" class="form-control" id="category" name="category" value="{{ form.category or '' }}" required>
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="serial_number">Serial number</label>
+    <input type="text" class="form-control" id="serial_number" name="serial_number" value="{{ form.serial_number or '' }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="condition">Condition</label>
+    <select class="form-select" id="condition" name="condition">
+      <option value="good" {% if form.condition == 'good' or not form.condition %}selected{% endif %}>Good</option>
+      <option value="fair" {% if form.condition == 'fair' %}selected{% endif %}>Fair</option>
+      <option value="needs_repair" {% if form.condition == 'needs_repair' %}selected{% endif %}>Needs repair</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="notes">Notes</label>
+    <textarea class="form-control" id="notes" name="notes" rows="3">{{ form.notes or '' }}</textarea>
+  </div>
+  <button type="submit" class="btn btn-primary">Create</button>
+  <a class="btn btn-outline-secondary" href="{{ url_for('instruments.list_instruments') }}">Cancel</a>
+</form>
+{% endblock %}
