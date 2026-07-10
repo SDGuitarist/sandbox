@@ -4,7 +4,7 @@ date: 2026-07-09
 type: brainstorm
 phase: brainstorm
 status: proposed
-decision: "GOAL chosen 2026-07-09 = validate the governance stack at scale (throwaway app; maximize coordination-seam surface). Vehicle = a disposable lesson-studio / music-school manager, Flask+SQLite+Jinja, ~22-26 agents, own top-level namespace dir. App usefulness is irrelevant; the deliverable is a legible at-scale exercise of G1 firebreak + FC58 path-pin + 080-W5 compounded-darkness gate + G3 chain + Step 1.52 telemetry. Next phase = Plan (6 contract sections + EARS, sized ≥20), then convergence hardening (Codex + human P0 pass) before launch."
+decision: "GOAL chosen 2026-07-09 = validate the governance stack at scale (throwaway app; maximize coordination-seam surface). Vehicle = a disposable lesson-studio / music-school manager, Flask+SQLite+Jinja, own top-level namespace dir. SIZING (human decision 2026-07-09): ~30 agents — match/exceed the run-050 record of 31 — DELIBERATELY to force pre-tail orchestrator saturation and test the context-death path (not just resilience). App usefulness is irrelevant; the deliverable is a legible at-scale exercise of G1 firebreak + FC58 path-pin + 080-W5 compounded-darkness gate + G3 chain + Step 1.52 telemetry, under maximum context pressure. Next phase = Plan (6 contract sections + EARS, sized ~30), then convergence hardening (Codex + human P0 pass) before launch."
 traces_to:
   - docs/plans/2026-07-07-chore-validate-orchestrator-context-telemetry-at-scale-plan.md (the validation criteria this vehicle serves)
   - docs/governance/2026-06-21-autopilot-vs-three-layers-agent-security.md (the G1/G3 stack being validated; Step 5 complete)
@@ -112,8 +112,13 @@ nav/layout, dashboard-aggregator, smoke-test.
 ## Key Decisions
 
 1. **Throwaway domain in Alex's wheelhouse** — eases the human P0 pass.
-2. **~22–26 agents** — past the ≥20 residual threshold, near the 070 precedent (16) so
-   build reliability holds, below the 050 record (31) to avoid gratuitous token burn.
+2. **~30 agents (human decision, 2026-07-09)** — match/exceed the run-050 record of 31,
+   DELIBERATELY to force pre-tail orchestrator saturation and test the **context-death
+   path**, not just resilience. This accepts a higher token burn and a real chance of an
+   uncontrolled orchestrator death as the *point* of the test: if the delegation
+   architecture holds at 30, that's strong resilience evidence; if it breaks, we get the
+   evidenced failure (and a telemetry-instrument check) the plan has been waiting for.
+   Superseded the brainstorm's initial ~22–26 proposal.
 3. **Proven Flask stack** — isolate the seam signal from stack noise.
 4. **Own namespace dir (FC59)** — no ghost-file collision with prior builds.
 
@@ -135,8 +140,13 @@ nav/layout, dashboard-aggregator, smoke-test.
   shakedown — won't hit the scale-only residuals the plan targets; (c) maxing to 31+ —
   token burn for marginal validation gain; (d) an unfamiliar domain — raises the human P0
   cost with no benefit for a disposable app.
-- **Least confident:** whether ~22–26 agents actually *reproduces* orchestrator pre-tail
-  saturation. The June-5 delegation architecture (run 069 survived 24 agents) may simply
-  hold — in which case the telemetry stays green and we've validated **resilience**, not
-  stressed the **death path**. That is still a real result, but we must report it honestly:
-  a green run confirms the happy path, it does not prove the failure path was exercised.
+- **Least confident (updated for the ~30 decision):** whether even ~30 agents reproduces
+  orchestrator pre-tail saturation. The June-5 delegation architecture held at 24 (run
+  069); pushing to 30–31 raises the odds but does not guarantee it — the delegation stack
+  may be robust enough that the telemetry stays green even at the record scale. Two honest
+  outcomes to pre-commit to reading correctly: (1) **holds green** → strong resilience
+  evidence, but report plainly that the death path was *attempted, not reproduced*; (2)
+  **dies** → the evidenced failure we wanted, and the acid test of Step 1.52 — a death that
+  LOSES boundary rows is itself the instrument-failure finding (run 050 dropped
+  BUILD_TRACKING under pressure). Either way, do not dress an attempted-but-survived run
+  as "proved resilient under death."
