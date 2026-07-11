@@ -1,8 +1,11 @@
 """Amplify AI content-engine — data-driven card renderer.
 
 Two clean layers (per plan §Architecture):
-  render_template(data) -> html   PURE. No I/O, no browser. Fills template/card.html.
-  render_to_png(html, out)        Playwright I/O. Screenshots the html to a PNG.
+  render_template(data, fmt) -> html   PURE. No I/O, no browser. Fills template/card.html
+                                       and stamps the fmt class (fmt-4x5 / fmt-1x1).
+  render_to_png(html, out, fmt)        Playwright I/O. Screenshots the html to a PNG.
+                                       Raises on format/HTML mismatch or DOM overflow
+                                       (never silently clips).
 
 Card data schema (JSON):
   {
@@ -18,8 +21,8 @@ Card data schema (JSON):
   }
 
 CLI:
-  lead-scraper/.venv/bin/python content-engine/render.py [data.json] [out.png]
-  (defaults: data/the-5-layer-prompt.json -> out/<stem>.png)
+  lead-scraper/.venv/bin/python content-engine/render.py [data.json] [out.png] [4x5|1x1]
+  (defaults: data/the-5-layer-prompt.json -> out/<stem>-<fmt>.png, fmt 4x5)
 """
 import base64
 import json
@@ -78,8 +81,59 @@ def render_template(data: dict, fmt: str = DEFAULT_FORMAT) -> str:
     )
 
 
+# How far a content element may bleed past the card edge before we call it overflow.
+# 1px covers sub-pixel rounding; anything more would be visibly clipped by overflow:hidden.
+_OVERFLOW_TOL_PX = 1.0
+
+# Content flow elements to bounds-check. The decorative .echo cube and .grid-dots
+# intentionally bleed past the card edge, so they are deliberately excluded.
+_CONTENT_SELECTOR = ".head, .lede, .layers, .layers .layer, .foot"
+
+
+def _assert_format_matches(html: str, fmt: str) -> None:
+    """Reject an HTML/canvas format mismatch: the html must carry this fmt's card
+    class and NOT another format's class (a template regression that drops @@FMT@@
+    also fails here, since the expected class is then absent)."""
+    want = f"fmt-{fmt}"
+    if want not in html:
+        raise ValueError(
+            f"format mismatch: html does not contain '{want}' "
+            f"(template token unreplaced, or built for a different format)"
+        )
+    for other in FORMATS:
+        if other != fmt and f"fmt-{other}" in html:
+            raise ValueError(
+                f"format mismatch: rendering as {fmt!r} but html carries 'fmt-{other}'"
+            )
+
+
+# Measures how far the content flow bleeds past the card on each edge (px).
+_OVERFLOW_JS = """() => {
+  const card = document.querySelector('.card');
+  const cr = card.getBoundingClientRect();
+  let maxBottom = -1e9, maxRight = -1e9, minLeft = 1e9, minTop = 1e9;
+  document.querySelectorAll(%s).forEach(el => {
+    const r = el.getBoundingClientRect();
+    maxBottom = Math.max(maxBottom, r.bottom);
+    maxRight  = Math.max(maxRight,  r.right);
+    minLeft   = Math.min(minLeft,   r.left);
+    minTop    = Math.min(minTop,    r.top);
+  });
+  return {bottom: maxBottom - cr.bottom, right: maxRight - cr.right,
+          left: cr.left - minLeft, top: cr.top - minTop};
+}""" % repr(_CONTENT_SELECTOR)
+
+
 def render_to_png(html: str, out: Path, fmt: str = DEFAULT_FORMAT) -> Path:
-    """Playwright I/O: render `html` and screenshot the format's canvas to `out`."""
+    """Playwright I/O: render `html` and screenshot the format's canvas to `out`.
+
+    Fails loudly instead of silently clipping: raises ValueError on an unknown fmt,
+    on an HTML/canvas format mismatch, or on DOM overflow (content bleeding past the
+    card edge, which `overflow:hidden` would otherwise crop invisibly)."""
+    if fmt not in FORMATS:
+        raise ValueError(f"unknown format {fmt!r}; expected one of {sorted(FORMATS)}")
+    _assert_format_matches(html, fmt)
+
     from playwright.sync_api import sync_playwright
 
     w, h = FORMATS[fmt]
@@ -91,6 +145,15 @@ def render_to_png(html: str, out: Path, fmt: str = DEFAULT_FORMAT) -> Path:
         page.set_content(html, wait_until="networkidle")
         page.evaluate("async () => { await document.fonts.ready; }")
         page.wait_for_timeout(500)
+        over = page.evaluate(_OVERFLOW_JS)
+        bad = {k: round(v, 1) for k, v in over.items() if v > _OVERFLOW_TOL_PX}
+        if bad:
+            browser.close()
+            raise ValueError(
+                f"card content overflows the {fmt} canvas by {bad} px "
+                f"(would be clipped by overflow:hidden) — shorten the title/labels "
+                f"or drop an item, then re-render"
+            )
         page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": w, "height": h})
         browser.close()
     return out

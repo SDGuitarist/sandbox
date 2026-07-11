@@ -159,13 +159,16 @@ lead-scraper/.venv/bin/python content-engine/render.py content-engine/staging/<I
   especially, it has the least room** — shorten the offending text and re-render. Never ship a
   clipped card.
 
-### 7. Write the draft `batch.md`
+### 7. Write the BLOCKED `batch.md` (pre-review — not yet approvable)
 
 Create `content-engine/staging/<ISO-week>/batch.md` using the **Batch File Contract** below:
-all 9 posts organized under their 3 angles, each angle's graphic paths, the Self-Check,
-`voice_verdict: PENDING`, and `status: draft`.
+all 9 posts under their 3 angles, each angle's graphic paths, the Self-Check, and the
+Voice-Guardian Verdict placeholder — with **`voice_verdict: PENDING` and `status: blocked`**,
+and **WITHOUT the `## Review & Publish (Alex)` section**. A batch that has not passed the gate
+is not approvable, so the approval prompt must not exist yet. State transitions:
+`blocked → (voice-guardian GO) → draft → approved → posted`.
 
-### 8. Voice-guardian gate (GO / FIX)
+### 8. Voice-guardian gate (the ONLY thing that unblocks the batch)
 
 Invoke the **voice-guardian** subagent (Task tool, `subagent_type: voice-guardian`) pointed at
 the batch file:
@@ -174,37 +177,40 @@ the batch file:
 > IG/LI/FB). Return your GO/FIX verdict.
 
 - **GO** → record the verdict verbatim under `## Voice-Guardian Verdict`, set
-  `voice_verdict: GO`, keep `status: draft`. Done.
+  `voice_verdict: GO`, flip `status: blocked → draft`, and **now append the
+  `## Review & Publish (Alex)` section**. Only a GO produces `voice_verdict: GO` + a
+  `draft`/approvable state + the approval prompt.
 - **FIX** → rewrite the flagged posts addressing every hard fail, rewrite `batch.md`, re-run
   voice-guardian. Loop **at most 3 times**. If it still returns FIX after 3 passes, record the
-  last verdict, set `voice_verdict: FIX (unresolved)`, keep `status: draft`, and flag the
-  specific blockers for Alex at the top of `batch.md`. Never mark a batch clean that the gate
-  rejected.
+  last verdict, set `voice_verdict: FIX (unresolved)`, **keep `status: blocked`, do NOT add the
+  approval section**, and flag the specific blockers for Alex at the top of `batch.md`. A
+  FIX/PENDING batch NEVER becomes draft and NEVER shows the approval prompt.
 
-### 9. Final guards (prove the invariants)
+### 9. Final guards — run the runnable checkers (all must pass)
 
-Run these (one Bash call each) and confirm before reporting done:
+Run these (one Bash call each). All exit 0 on pass; any non-zero means stop and fix.
 
-- **Billing guard** — must return NO matches:
-  `grep -rn "ANTHROPIC_API_KEY\|api.anthropic.com" content-engine/`
-- **Voice grep** — em-dash / common banned words, must return NO matches anywhere in the file
-  (keep the whole batch em-dash-free, scaffolding included — the brand bans em-dashes
-  everywhere, so use `:`, `.`, `,`, or `·` in headings/meta, never `—`):
-  `grep -nE "—|\bdelve\b|\bleverage\b|\bseamless\b|\butilize\b" content-engine/staging/<ISO-week>/batch.md`
-  (If you NAME a banned word as an example inside a post, prefer one outside this grep set —
-  e.g. `unlock`/`elevate`/`tapestry` — so this guard stays a clean pass.)
-- **Post count** — must return `9` (3 angles × 3 platforms):
-  `grep -c "^### \(Instagram\|LinkedIn\|Facebook\) Post" content-engine/staging/<ISO-week>/batch.md`
-- **Angle count** — must return `3`:
-  `grep -c "^## Angle " content-engine/staging/<ISO-week>/batch.md`
-- **Graphic count** — must return `6` (1:1 + 4:5 per angle):
-  `ls content-engine/staging/<ISO-week>/*.png | wc -l`
+- **Billing guard** (inspects executable commands in the skill + scripts, ignores explanatory
+  mentions of the forbidden names — a plain grep would false-positive on the prose):
+  `lead-scraper/.venv/bin/python content-engine/tests/check_billing.py`
+- **Batch contract** (shape = 9 posts / 3 angles; GATE ORDERING = draft/approved/posted only
+  when `voice_verdict: GO`, non-GO must be `blocked` with no approval section; VOICE = zero
+  em-dashes + zero banned-vocabulary words from the complete list, in the post bodies):
+  `lead-scraper/.venv/bin/python content-engine/tests/check_batch.py content-engine/staging/<ISO-week>/batch.md`
+- **Graphics pairs + dims** (exactly 3 slug-matched `-1x1`/`-4x5` pairs, each at the right
+  size — not merely six valid PNGs):
+  `lead-scraper/.venv/bin/python content-engine/tests/check_render.py --pairs content-engine/staging/<ISO-week>`
+
+(If you NAME a banned word as an example inside a post, the batch checker will flag it — prefer
+an example outside the ban, or rephrase; the ban is on Alex USING the words, not the checker.)
 
 ### 10. Report
 
 Tell Alex: the staging path, the voice verdict, the counts (9 posts / 6 graphics / 3 angles),
-and the one next action — "review `batch.md`, flip `status: draft` → `approved`, then upload:
-Instagram takes the `-1x1` graphic, LinkedIn + Facebook take the `-4x5`." Do not post anything.
+and the one next action. If GO: "review `batch.md`, flip `status: draft` → `approved`, then
+upload: Instagram takes the `-1x1` graphic, LinkedIn + Facebook take the `-4x5`." If the batch
+is still `blocked` (FIX unresolved), report the blockers and that nothing is approvable yet. Do
+not post anything.
 
 ---
 
@@ -232,7 +238,7 @@ angles:
     ig_graphic: <angle-3-slug>-1x1.png
     li_fb_graphic: <angle-3-slug>-4x5.png
 voice_verdict: <PENDING | GO | FIX (unresolved)>
-status: draft            # draft → approved → posted (Alex flips these by hand)
+status: <blocked | draft | approved | posted>   # blocked until GO; GO->draft; Alex flips draft->approved->posted
 generated_by: claude-code (Max, zero usage credits)
 generated_on: <YYYY-MM-DD>
 ---
@@ -295,6 +301,9 @@ generated_on: <YYYY-MM-DD>
 ## Voice-Guardian Verdict
 <paste the voice-guardian GO/FIX output verbatim>
 
+<!-- The section below is GO-ONLY. Step 7 writes the batch WITHOUT it (status: blocked).
+     Step 8 appends it ONLY when voice-guardian returns GO and status flips to draft. A
+     blocked/FIX batch must not contain this approval prompt. -->
 ## Review & Publish (Alex)
 1. Read the 9 posts. Light tweaks are fine.
 2. Eyeball the 6 graphics: on-brand, legible, nothing clipped (check the 1:1s especially).
@@ -308,6 +317,8 @@ generated_on: <YYYY-MM-DD>
 ## Done when
 
 `content-engine/staging/<ISO-week>/` holds ONE `batch.md` (9 posts under 3 angles + self-check +
-voice verdict, `status: draft`) + 3 card JSONs + 6 PNGs (a `-1x1` and a `-4x5` per angle, all
-passing `check_render.py`), the voice-guardian verdict is recorded, and all Step-9 guards pass.
-Zero usage credits spent.
+voice verdict) + 3 card JSONs + 6 PNGs (a `-1x1` and a `-4x5` per angle) and **all three Step-9
+checkers exit 0** (`check_billing.py`, `check_batch.py`, `check_render.py --pairs`). If
+voice-guardian returned GO the batch is `status: draft` with the approval section; if it could
+not be cleared the batch stays `status: blocked` with the blockers flagged and no approval
+prompt. Either way, zero usage credits spent.

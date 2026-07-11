@@ -140,42 +140,60 @@ and eyeball: correct dims, legible fonts, and **text overflow** behavior.
 
 ## Acceptance Tests (EARS)
 
+> **Cadence note (updated post-build):** a week is **one theme → 3 angles → 9 posts (3 IG /
+> 3 LI / 3 FB) + 6 graphics**. Each angle has ONE card rendered in **both** a 4:5 portrait
+> (1080×1350, LinkedIn/Facebook) and a 1:1 square (1080×1080, Instagram). Posts are `###`
+> headers nested under `## Angle N` headers. The single-topic / 3-post / 1080×1080-only shape
+> in the earlier draft of this plan is superseded.
+
 ### Happy path
-- WHEN given a weekly topic, THE SYSTEM SHALL write a `batch.md` containing exactly 3
-  posts labeled `## Instagram Post`, `## LinkedIn Post`, `## Facebook Post`, each in
-  Alex's voice.
-- WHEN copy is generated, THE SYSTEM SHALL run a voice-guardian pass and record a GO
-  verdict (or an itemized FIX list) in `batch.md` before any graphic is rendered.
-- WHEN `render_template(data)` is called with a valid headline, THE SYSTEM SHALL emit a
-  PNG of exactly 1080×1080 px at the staging path, filename stamped with `v1`.
-- WHEN a weekly batch completes, THE SYSTEM SHALL leave ONE staging folder with 3 posts +
-  3 PNGs + `batch.md` at `status: draft`.
+- WHEN given a weekly theme, THE SYSTEM SHALL write ONE `batch.md` containing exactly **3
+  angle headers** (`## Angle N`) and exactly **9 posts** labeled `### Instagram Post`,
+  `### LinkedIn Post`, `### Facebook Post` (one trio per angle), each in Alex's voice.
+- WHEN copy is generated, THE SYSTEM SHALL first write the batch as `status: blocked` /
+  `voice_verdict: PENDING` with NO approval section, run a voice-guardian pass, and record the
+  verdict in `batch.md`.
+- WHEN voice-guardian returns GO, THE SYSTEM SHALL set `voice_verdict: GO`, flip
+  `status: blocked → draft`, and append the `## Review & Publish (Alex)` section — and ONLY a
+  GO shall produce that draft/approvable state (GO-before-draft).
+- WHEN a card is rendered, THE SYSTEM SHALL emit a PNG of exactly 1080×1350 for `4x5` and
+  1080×1080 for `1x1`, filename suffixed with the format (`<slug>-4x5.png` / `<slug>-1x1.png`).
+- WHEN a weekly batch completes with GO, THE SYSTEM SHALL leave ONE staging folder with 9 posts
+  + 3 card JSONs + **exactly 3 slug-matched `-1x1`/`-4x5` graphic pairs** + `batch.md` at
+  `status: draft`.
 
 ### Error cases
-- WHEN generated copy contains an em-dash or a banned-vocabulary word, THE SYSTEM SHALL
-  mark the voice-guardian verdict FIX and SHALL NOT advance the batch to `draft`-ready.
-- WHEN a headline exceeds the template's safe length, THE SYSTEM SHALL wrap or flag
-  overflow (never silently clip past the card edge).
-- WHEN the rendered image is not exactly 1080×1080, THE SYSTEM SHALL fail the render
-  fixture check.
-- WHEN copy-gen runs, THE SYSTEM SHALL NOT read `ANTHROPIC_API_KEY` or call
-  `api.anthropic.com` (billing invariant — Max-covered Claude Code only).
+- WHEN generated copy contains an em-dash or any word from the complete banned-vocabulary list,
+  THE SYSTEM SHALL fail the batch-contract check and SHALL NOT advance the batch out of
+  `blocked` (never `draft`).
+- WHEN voice-guardian returns FIX (unresolved after retries), THE SYSTEM SHALL keep
+  `status: blocked`, omit the approval section, and flag the blockers — never present the
+  approval prompt for a non-GO batch.
+- WHEN a card's content overflows the canvas, THE SYSTEM SHALL raise and refuse to write the
+  PNG (never silently clip past the card edge via `overflow:hidden`).
+- WHEN a rendered PNG's pixels do not match its format suffix (e.g. a `-1x1.png` that is not
+  1080×1080), or the week does not have exactly 3 slug-matched pairs, THE SYSTEM SHALL fail the
+  render pairs check.
+- WHEN the skill or a content-engine script would EXECUTE `content_pipeline.py`, use
+  `ANTHROPIC_API_KEY`, or call `api.anthropic.com`, THE SYSTEM SHALL fail the billing check
+  (explanatory prose mentions of those names do NOT fail it).
 
 ### Verification commands
-- Render fixture → dims check: `.venv/bin/python content-engine/tests/check_render.py`
-  — prints `1080x1080 OK` for each fixture PNG (write to a file, run the file — no
-  inline `python -c`, per repo Bash rules).
-- Billing guard: `grep -rn "ANTHROPIC_API_KEY\|api.anthropic.com" content-engine/`
-  — returns **no matches** (empty = pass).
-- Voice check: `grep -nE "—|\bdelve\b|\bleverage\b|\bseamless\b" content-engine/staging/<week>/batch.md`
-  — no matches in the post bodies.
-- Batch shape: `grep -c "^## \(Instagram\|LinkedIn\|Facebook\) Post" content-engine/staging/<week>/batch.md`
-  — returns `3`.
+- Billing guard: `lead-scraper/.venv/bin/python content-engine/tests/check_billing.py`
+  — inspects executable commands in the skill + scripts, ignores explanatory mentions; **exit 0**.
+- Batch contract (shape + GO-before-draft gate ordering + em-dash + complete banned vocab):
+  `lead-scraper/.venv/bin/python content-engine/tests/check_batch.py content-engine/staging/<week>/batch.md`
+  — **exit 0**.
+- Graphics pairs + dims: `lead-scraper/.venv/bin/python content-engine/tests/check_render.py --pairs content-engine/staging/<week>`
+  — prints `N slug-matched 1x1/4x5 pairs OK` (N=3); **exit 0**.
+- Render dims (all fixtures): `lead-scraper/.venv/bin/python content-engine/tests/check_render.py`
+  — each PNG prints `1080x1350 OK (4x5)` or `1080x1080 OK (1x1)`; **exit 0**.
 
 ## Cost / Billing
 Whole loop is **$0 recurring**: Claude Code copy-gen is Max-covered, Playwright is a
 local dep already in the repo, native schedulers are free, no Metricool subscription.
-No usage-credit path exists by design (enforced by the billing-guard acceptance test).
+No usage-credit path exists by design (enforced by `check_billing.py`, which flags any
+executable use of `content_pipeline.py` / `ANTHROPIC_API_KEY` / `api.anthropic.com`).
 
 ## Open decisions (small, for Alex — none block Phase 0)
 - **Brand tokens for template v1:** Amplify color/logo/font. Provide assets or approve a
