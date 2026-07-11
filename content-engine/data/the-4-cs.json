@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Amplify Framework",
+  "title": "The Four",
+  "accent": "C's",
+  "items": [
+    {"label": "Consent",      "desc": "permission first"},
+    {"label": "Control",      "desc": "you set the terms"},
+    {"label": "Compensation", "desc": "paid fairly"},
+    {"label": "Credit",       "desc": "named and attributed"}
+  ]
+}

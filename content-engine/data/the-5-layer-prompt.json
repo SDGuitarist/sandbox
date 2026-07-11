@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Prompting 101",
+  "title": "The 5-Layer",
+  "accent": "Prompt",
+  "items": [
+    {"label": "Identity",    "desc": "who the AI is"},
+    {"label": "World",       "desc": "the situation"},
+    {"label": "Task",        "desc": "what you actually want"},
+    {"label": "Example",     "desc": "one sample of good"},
+    {"label": "Constraints", "desc": "the limits"}
+  ]
+}
