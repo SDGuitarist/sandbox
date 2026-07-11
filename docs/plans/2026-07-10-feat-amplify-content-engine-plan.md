@@ -103,6 +103,10 @@ question: *"Would I publish these as-is (or with only light tweaks)?"*
 - PASS → proceed. FAIL → fix the copy-gen prompt/approach and re-spike. **Do not build
   the loop on failing copy.** This directly tests the dormancy cause.
 - *Executable in-session by Claude Code (Max-covered) — cheap, immediate.*
+- ✅ **RESULT (2026-07-10): PASS.** Topic "five-layer prompt for beginners." Alex
+  confirmed he'd publish as-is. Copy-gen ran on Max (zero credits), voice spec reused
+  verbatim. Dormancy/copy-quality risk retired with evidence. Raw output:
+  `content-engine/spikes/2026-07-10-spike-a-five-layer-prompt.md`.
 
 **Spike B — Render fidelity.** Render 2–3 real headlines through template `v1` to PNG
 and eyeball: correct 1080×1080 dims, legible fonts, emoji render (or are stripped
