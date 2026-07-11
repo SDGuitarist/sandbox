@@ -1,3 +1,41 @@
+# ⬅⬅ NEXT SESSION — Amplify content-engine: build the COPY-GEN step (plan P3) ⬅⬅
+
+**Start here.** Read `docs/plans/2026-07-10-feat-amplify-content-engine-plan.md` (§Build
+Phases P2/P3) and `content-engine/spikes/2026-07-10-spike-a-five-layer-prompt.md` (Spike A
+already proved copy quality — Alex confirmed publishable). Then build the copy-gen step.
+
+**What it is:** a Claude Code skill/subagent that turns a weekly **topic** (one line) into
+(a) 3 platform posts (Instagram / LinkedIn / Facebook) in Alex's voice, and (b) a
+card-data JSON matching `render.py`'s schema (the graphic content); runs the copy through
+the **voice-guardian** gate; and writes a single per-week staging file (`batch.md`,
+`status: draft`). `render.py` already turns the JSON → 1080×1350 PNG.
+
+**Contracts (match exactly):**
+- `render.py` data schema: `{eyebrow, title, accent?, items:[{label,desc}] (3–6), site?, tagline?}`.
+  Validate by rendering: `lead-scraper/.venv/bin/python content-engine/render.py <data.json>`.
+- Voice spec: reuse `content_pipeline.py` `SYSTEM_PROMPT` **VERBATIM** (voice DNA, banned-vocab
+  list, em-dash ban, one-CTA, "LinkedIn=data / IG=hook / FB=story"). It's at
+  `content_pipeline.py` lines ~35–153.
+- Gate: run the **voice-guardian** subagent → GO/FIX before the batch is marked ready.
+
+**GUARDRAILS — do not violate:**
+- **BILLING:** copy-gen runs on **Claude Code (Max-covered)**. NEVER the raw Anthropic API /
+  `ANTHROPIC_API_KEY`. `content_pipeline.py` is the **voice-spec source ONLY — do NOT execute
+  it** (it's credit-billed; the suspected dormancy cause). No usage-credit path anywhere.
+- Scheduling stays **manual** (native free tools — Meta Business Suite + LinkedIn). No Metricool.
+- Nothing posts without Alex's review (staging stays `status: draft`).
+
+**Where things are (all committed on master @ a7ae0d2, pushed):**
+- Plan: `docs/plans/2026-07-10-feat-amplify-content-engine-plan.md` (Phase 0 COMPLETE, **P1 done**)
+- Engine: `content-engine/render.py` (`render_template` pure + `render_to_png`) + `template/card.html`
+- Data examples: `content-engine/data/{the-5-layer-prompt,the-4-cs}.json`
+- Voice-spec source: `content_pipeline.py`
+
+**Done when:** one skill turns a topic into `batch.md` (3 posts + card JSON + voice verdict,
+`status: draft`) AND `render.py` produces the graphic from that JSON. Then P4 (weekly glue).
+
+---
+
 # HANDOFF — Sandbox · Run 081 COMPLETE (lesson-studio scale-validation swarm)
 
 **Date:** 2026-07-10
