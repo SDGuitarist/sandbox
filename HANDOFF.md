@@ -42,7 +42,7 @@ Run 081 (30-agent Lesson Studio scale-validation swarm) is COMPLETE end-to-end. 
 | ~~[081-W6] MEMORY.md / workflow.md / patterns.md updates~~ | DONE 2026-07-10 | Written post-teardown same session (run-081 memory + MEMORY.md pointer) |
 | agent-pitfalls.md update | DONE | FC61 + FC62 added, Update Log rows appended (2026-07-10) |
 | **Keep dynamic surface lit** (FC62 mitigation) | **P1 — standing** | Runtime bugs are invisible to every static reviewer (FC62 passed the Opus disconfirmer). Enforce post-teardown smoke re-run whenever the firebreak defers it. |
-| **Diversify the DISPOSER** (monoculture mitigation) | **P2 — before next real swarm** | The lone Sonnet `self-audit-reviewer` grades alone. Disconfirmer is already Opus, so the lever is a second-model disposition pass on the disposer, NOT the disconfirmer. Note added to `.claude/agents/self-audit-reviewer.md`. Needs a per-agent model-override at launch (may need building). Evidence: FC62, run 081. |
+| ~~Diversify the DISPOSER~~ (monoculture mitigation) | **CLOSED 2026-07-10 — evidence-check, premise did not fire** | Minimal-loop probe (`disposer-diversity-probe/`): a planted seduction trap (schema/model contradiction dressed as a "denormalized cache") was DEFERRED by ALL 4 disposers — 2/2 Sonnet matched 2/2 Opus on the crux. Lone Sonnet not seduced; no miss-divergence. Do NOT build the second-model pass (same shape as G5 evaporating). Fixture kept for re-test if a real disposer failure is ever observed. |
 
 ## Governance Validation Summary (Run 081)
 
@@ -95,12 +95,11 @@ NEXT — pick one:
    mandate to spec template + completeness checker; decide proxy-budget recalibration
    posture (measure-again vs adjust now).
 3. P2 cleanups on studio/ (throwaway — only if used as a vehicle again).
-4. [DISPOSER-MODEL-DIVERSITY] — before the next real swarm, break the disposition
-   monoculture by diversifying the lone Sonnet DISPOSER (self-audit-reviewer) — e.g. a
-   second-model disposition pass. NOTE the disconfirmer is already Opus, so it is NOT the
-   lever. FC62 proof: it passed the Opus disconfirmer; only the dynamic surface caught it,
-   so also keep smoke lit (080-W5). Structural note in .claude/agents/self-audit-reviewer.md;
-   this item is the launch-mechanism work (per-agent model override).
+4. ~~[DISPOSER-MODEL-DIVERSITY]~~ — CLOSED 2026-07-10 by evidence-check probe
+   (`disposer-diversity-probe/`): all 4 disposers (2 Sonnet + 2 Opus) caught the planted
+   seduction trap; premise did not fire → not building it. The standing FC62 lesson
+   remains: keep the DYNAMIC smoke surface lit (080-W5) — that's the real monoculture
+   escape, not model diversity.
 
 INVARIANTS unchanged: firebreak deny-known-bad + path-pinned FC58 carve-out; Gate 8
 fail-closed; builds namespace under their OWN top-level dir (FC59); self-audit-reviewer
