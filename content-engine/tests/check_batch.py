@@ -46,8 +46,17 @@ APPROVAL_RX = re.compile(r"^##\s+Review & Publish")
 
 
 def frontmatter_field(text: str, field: str) -> str | None:
-    m = re.search(rf"^{field}:\s*(.+?)\s*$", text, re.M)
-    return m.group(1).strip().strip('"').strip("'") if m else None
+    # Look only inside the leading --- ... --- frontmatter block, and strip any inline
+    # "# comment" (the template annotates the status line), so parsing is robust.
+    fm = text
+    if text.startswith("---"):
+        end = text.find("\n---", 3)
+        fm = text[:end] if end != -1 else text
+    m = re.search(rf"^{field}:\s*(.+?)\s*$", fm, re.M)
+    if not m:
+        return None
+    val = re.sub(r"\s+#.*$", "", m.group(1)).strip()
+    return val.strip('"').strip("'")
 
 
 def post_bodies(lines: list[str]) -> list[tuple[int, str]]:
