@@ -28,14 +28,23 @@ notify() {  # best-effort desktop notification; ignore if not permitted
   /usr/bin/osascript -e "display notification \"$1\" with title \"Amplify weekly batch\"" 2>/dev/null || true
 }
 
-# Highest-named week folder (2026-W29 before 2026-W28) that contains a batch.md.
+# Pick the NEXT week to review: the earliest-named week (2026-W29 before 2026-W30) whose
+# batch.md is not yet `status: posted`. With a backlog of pre-generated future weeks, this
+# opens the nearest un-posted week, not the furthest-out one. If every week is already
+# posted, fall back to the most recent (highest-named) so the cron still opens something.
 LATEST_BATCH=""
+FALLBACK_BATCH=""
 while IFS= read -r dir; do
-  if [ -f "${dir}batch.md" ]; then
-    LATEST_BATCH="${dir}batch.md"
+  b="${dir}batch.md"
+  [ -f "$b" ] || continue
+  FALLBACK_BATCH="$b"                                   # ascending order -> ends as highest
+  st=$(grep -m1 '^status:' "$b" | awk '{print $2}')
+  if [ "$st" != "posted" ]; then
+    LATEST_BATCH="$b"                                   # earliest un-posted week
     break
   fi
-done < <(ls -1d "$STAGING"/*/ 2>/dev/null | sort -r)
+done < <(ls -1d "$STAGING"/*/ 2>/dev/null | sort)
+[ -z "$LATEST_BATCH" ] && LATEST_BATCH="$FALLBACK_BATCH"
 
 if [ -z "$LATEST_BATCH" ]; then
   echo "$(date '+%Y-%m-%d %H:%M') no staged batch.md found under $STAGING"
