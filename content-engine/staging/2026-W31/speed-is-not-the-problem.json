@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Speed Is Not",
+  "accent": "The Problem",
+  "items": [
+    {"label": "Faster", "desc": "more mediocre output"},
+    {"label": "Deeper", "desc": "one thing done right"},
+    {"label": "The gap", "desc": "your judgment"},
+    {"label": "The win", "desc": "work worth your name"}
+  ]
+}

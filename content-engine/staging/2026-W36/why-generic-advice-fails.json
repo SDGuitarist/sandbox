@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Why Borrowed",
+  "accent": "Workflows Fail",
+  "items": [
+    {"label": "Your work", "desc": "not the demo's"},
+    {"label": "Your tools", "desc": "not their stack"},
+    {"label": "Your voice", "desc": "not a template"},
+    {"label": "Your steps", "desc": "in your order"}
+  ]
+}

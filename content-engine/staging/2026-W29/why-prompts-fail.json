@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Why Prompts",
+  "accent": "Fail",
+  "items": [
+    {"label": "Too short", "desc": "one line, no context"},
+    {"label": "No role", "desc": "AI guesses who it is"},
+    {"label": "No audience", "desc": "writes for nobody"},
+    {"label": "No format", "desc": "shape is random"},
+    {"label": "Vague ask", "desc": "you get mush back"}
+  ]
+}

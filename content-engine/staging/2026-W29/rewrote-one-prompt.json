@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "One Prompt,",
+  "accent": "Rebuilt",
+  "items": [
+    {"label": "Named the role", "desc": "booking agent"},
+    {"label": "Added context", "desc": "my band, my rates"},
+    {"label": "One task", "desc": "reply to a lead"},
+    {"label": "Set format", "desc": "short, warm, done"},
+    {"label": "Gave checks", "desc": "sounds like me"}
+  ]
+}

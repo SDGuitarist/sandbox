@@ -1,0 +1,10 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Worth Automating?",
+  "accent": "3 Checks",
+  "items": [
+    {"label": "Often", "desc": "do you repeat it weekly"},
+    {"label": "Rules", "desc": "same steps each time"},
+    {"label": "Cheap miss", "desc": "low cost if wrong"}
+  ]
+}

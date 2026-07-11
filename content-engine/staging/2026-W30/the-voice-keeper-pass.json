@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The Voice",
+  "accent": "Keeper Pass",
+  "items": [
+    {"label": "Feed", "desc": "give it your words first"},
+    {"label": "Cut", "desc": "delete the fancy lines"},
+    {"label": "Add", "desc": "one thing only you know"},
+    {"label": "Read", "desc": "say it out loud"}
+  ]
+}

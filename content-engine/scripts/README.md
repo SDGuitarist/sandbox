@@ -2,9 +2,11 @@
 
 ## Weekly batch review (Sunday-evening cron)
 
-`open-weekly-batch.sh` opens the most recently staged weekly batch for review — `batch.md`
-in TextEdit and that week's graphics in Preview. It only OPENS an already-staged batch;
-generation is `/content-batch` (Max-covered Claude Code), never this script.
+`open-weekly-batch.sh` opens the NEXT weekly batch to review — the earliest-named week whose
+`batch.md` is not yet `status: posted` — `batch.md` in TextEdit and that week's graphics in
+Preview. So with a backlog of pre-generated future weeks it surfaces the nearest un-posted one;
+once you set a week to `status: posted`, the next Sunday it advances to the following week. It
+only OPENS an already-staged batch; generation is `/content-batch` (Max-covered), never this script.
 
 Scheduled by a **macOS LaunchAgent** (launchd), not a Claude session — so it runs whether or
 not Claude Code is open. A Claude cloud cron can't do this: it runs in the cloud and can't

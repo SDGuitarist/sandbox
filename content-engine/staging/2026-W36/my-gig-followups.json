@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "One Task,",
+  "accent": "One Workflow",
+  "items": [
+    {"label": "Pick", "desc": "the boring repeat"},
+    {"label": "Map", "desc": "how you do it"},
+    {"label": "Draft", "desc": "AI does one part"},
+    {"label": "Ship", "desc": "you send it"}
+  ]
+}

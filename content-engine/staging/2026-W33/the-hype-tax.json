@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The Hype",
+  "accent": "Tax",
+  "items": [
+    {"label": "New tool", "desc": "every week, unfinished"},
+    {"label": "Setup", "desc": "hours you never bill"},
+    {"label": "Switch cost", "desc": "relearn, remigrate, repeat"},
+    {"label": "The bill", "desc": "busy, not better"}
+  ]
+}

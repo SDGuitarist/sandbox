@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Build Your Own",
+  "accent": "Workflow",
+  "items": [
+    {"label": "Task", "desc": "one you repeat"},
+    {"label": "Steps", "desc": "write them down"},
+    {"label": "Hand off", "desc": "give AI one step"},
+    {"label": "Check", "desc": "you keep the last word"},
+    {"label": "Repeat", "desc": "add one step"}
+  ]
+}

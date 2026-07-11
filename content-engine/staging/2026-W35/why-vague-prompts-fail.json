@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "5 Beginner",
+  "accent": "Mistakes",
+  "items": [
+    {"label": "Vague ask", "desc": "no context, weak output"},
+    {"label": "Blind trust", "desc": "never checking the work"},
+    {"label": "One shot", "desc": "no back and forth"},
+    {"label": "Its voice", "desc": "sounds like a robot"},
+    {"label": "No goal", "desc": "unclear what good looks like"}
+  ]
+}

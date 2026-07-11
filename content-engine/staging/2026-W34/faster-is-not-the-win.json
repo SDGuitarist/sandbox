@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Faster Is Not",
+  "accent": "The Win",
+  "items": [
+    {"label": "Speed", "desc": "same work, less time"},
+    {"label": "Depth", "desc": "better work, your judgment"},
+    {"label": "Owner", "desc": "your name on it"},
+    {"label": "Choice", "desc": "you pick the goal"}
+  ]
+}

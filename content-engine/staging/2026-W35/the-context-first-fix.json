@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Context Before",
+  "accent": "Command",
+  "items": [
+    {"label": "Role", "desc": "who it is for you"},
+    {"label": "Facts", "desc": "what it needs to know"},
+    {"label": "Goal", "desc": "what good looks like"},
+    {"label": "Format", "desc": "shape of the answer"}
+  ]
+}

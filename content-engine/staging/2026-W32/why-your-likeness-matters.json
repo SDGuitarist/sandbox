@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Your Likeness Is",
+  "accent": "an Asset",
+  "items": [
+    {"label": "Voice", "desc": "cloned from seconds"},
+    {"label": "Face",  "desc": "copied from one photo"},
+    {"label": "Style", "desc": "trained from your work"},
+    {"label": "Name",  "desc": "used without a call"}
+  ]
+}

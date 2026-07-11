@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Who Holds",
+  "accent": "The Pen",
+  "items": [
+    {"label": "Taste", "desc": "you know good"},
+    {"label": "Context", "desc": "you know the room"},
+    {"label": "Stakes", "desc": "you carry the risk"},
+    {"label": "Voice", "desc": "you sound like you"}
+  ]
+}

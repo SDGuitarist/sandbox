@@ -26,6 +26,7 @@ CLI:
 """
 import base64
 import json
+import re
 import sys
 from html import escape
 from pathlib import Path
@@ -91,19 +92,26 @@ _CONTENT_SELECTOR = ".head, .lede, .layers, .layers .layer, .foot"
 
 
 def _assert_format_matches(html: str, fmt: str) -> None:
-    """Reject an HTML/canvas format mismatch: the html must carry this fmt's card
-    class and NOT another format's class (a template regression that drops @@FMT@@
-    also fails here, since the expected class is then absent)."""
+    """Reject an HTML/canvas format mismatch: the rendered card element must carry
+    this fmt's class and NOT another format's class (a template regression that drops
+    @@FMT@@ also fails here, since the expected class is then absent).
+
+    The check inspects the card's `class="card ..."` attribute specifically, not the
+    whole document, because the stylesheet legitimately names every format's class in
+    its `.card.fmt-*` selectors. Scanning the full html would false-positive on those
+    CSS rules (e.g. 4x5 render tripping on the `.card.fmt-1x1{...}` selector)."""
+    m = re.search(r'class="card ([^"]*)"', html)
+    card_classes = m.group(1) if m else ""
     want = f"fmt-{fmt}"
-    if want not in html:
+    if want not in card_classes.split():
         raise ValueError(
-            f"format mismatch: html does not contain '{want}' "
+            f"format mismatch: card element does not carry '{want}' "
             f"(template token unreplaced, or built for a different format)"
         )
     for other in FORMATS:
-        if other != fmt and f"fmt-{other}" in html:
+        if other != fmt and f"fmt-{other}" in card_classes.split():
             raise ValueError(
-                f"format mismatch: rendering as {fmt!r} but html carries 'fmt-{other}'"
+                f"format mismatch: rendering as {fmt!r} but card carries 'fmt-{other}'"
             )
 
 
