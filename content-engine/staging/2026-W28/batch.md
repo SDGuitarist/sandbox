@@ -24,7 +24,7 @@ I run every AI answer through three quick questions before I trust it. Takes abo
 
 Source. Where did it get this? If it cannot point to something real, treat it as a guess.
 
-Stake. What happens if this is wrong? A caption, no big deal. A client email or a price, now I check.
+Stake. What happens if this is wrong? The higher the stakes, the harder I look. A client email or a price gets a careful read before it goes anywhere.
 
 Sense. Does this match what I already know from doing the work? Your gut is data too.
 

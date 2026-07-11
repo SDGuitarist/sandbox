@@ -37,13 +37,21 @@ _LOGO_URI = "data:image/png;base64," + base64.b64encode(
 BRAND_SITE = "amplifyai.to"
 BRAND_TAGLINE = "Human-Led AI"
 
-# Canvas — 4:5 portrait, matches template/card.html.
-W, H = 1080, 1350
+# Canvas formats. 4:5 portrait is the LinkedIn/Facebook card; 1:1 square is the
+# Instagram card (same design, retuned spacing via .fmt-1x1 in template/card.html).
+FORMATS = {"4x5": (1080, 1350), "1x1": (1080, 1080)}
+DEFAULT_FORMAT = "4x5"
+
+# Back-compat: the default canvas size (used by check_render.py's older imports).
+W, H = FORMATS[DEFAULT_FORMAT]
 
 
-def render_template(data: dict) -> str:
+def render_template(data: dict, fmt: str = DEFAULT_FORMAT) -> str:
     """PURE: card data -> a fully self-contained HTML string (logo inlined as a
-    data URI, fonts via <link>). Deterministic given `data`. No I/O, no browser."""
+    data URI, fonts via <link>). Deterministic given `data` + `fmt`. No I/O, no
+    browser. `fmt` is one of FORMATS ("4x5" portrait or "1x1" square)."""
+    if fmt not in FORMATS:
+        raise ValueError(f"unknown format {fmt!r}; expected one of {sorted(FORMATS)}")
     title_html = escape(data["title"])
     accent = data.get("accent")
     if accent:
@@ -60,6 +68,7 @@ def render_template(data: dict) -> str:
 
     return (
         _TEMPLATE
+        .replace("@@FMT@@", "fmt-" + fmt)
         .replace("@@LOGO@@", _LOGO_URI)
         .replace("@@EYEBROW@@", escape(data.get("eyebrow", "")))
         .replace("@@TITLE_HTML@@", title_html)
@@ -69,30 +78,35 @@ def render_template(data: dict) -> str:
     )
 
 
-def render_to_png(html: str, out: Path) -> Path:
-    """Playwright I/O: render `html` and screenshot the WxH card to `out`."""
+def render_to_png(html: str, out: Path, fmt: str = DEFAULT_FORMAT) -> Path:
+    """Playwright I/O: render `html` and screenshot the format's canvas to `out`."""
     from playwright.sync_api import sync_playwright
 
+    w, h = FORMATS[fmt]
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
+        page = browser.new_page(viewport={"width": w, "height": h}, device_scale_factor=1)
         page.set_content(html, wait_until="networkidle")
         page.evaluate("async () => { await document.fonts.ready; }")
         page.wait_for_timeout(500)
-        page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
+        page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": w, "height": h})
         browser.close()
     return out
 
 
 def main():
+    # CLI: render.py [data.json] [out.png] [4x5|1x1]
     args = sys.argv[1:]
     data_path = Path(args[0]) if args else ROOT / "data" / "the-5-layer-prompt.json"
-    out = Path(args[1]) if len(args) > 1 else ROOT / "out" / f"{data_path.stem}.png"
+    fmt = args[2] if len(args) > 2 else DEFAULT_FORMAT
+    if fmt not in FORMATS:
+        sys.exit(f"unknown format {fmt!r}; expected one of {sorted(FORMATS)}")
+    out = Path(args[1]) if len(args) > 1 else ROOT / "out" / f"{data_path.stem}-{fmt}.png"
     data = json.loads(data_path.read_text())
-    render_to_png(render_template(data), out)
-    print("WROTE", out)
+    render_to_png(render_template(data, fmt), out, fmt)
+    print("WROTE", out, f"({FORMATS[fmt][0]}x{FORMATS[fmt][1]})")
 
 
 if __name__ == "__main__":
