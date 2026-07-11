@@ -25,8 +25,11 @@ related_runs: [079, 080]
 outcome: PIPELINE_PASS_WITH_DEFERRED_RISK
 outcome_detail: >
   Assembly PASS (all 30 workers, 0 conflicts, 2 inline contract fixes).
-  Smoke/test FIREBREAK_DEFERRED (expected, non-blocking; post-teardown re-run pending).
-  Existing pytest 10/10 GREEN. P1 template fix staged (commit deferred by firebreak).
+  Both HIGH deferreds closed post-teardown (same session): studio smoke 23/23 PASS
+  (commit 8d786b8, closes 081-W2); FC61 template fix committed (7ba77d3, closes 081-W4).
+  Post-teardown smoke surfaced FC62 (invoice.items dict-method shadowing) — a 500 on
+  every invoice view that static review, the contract check, and the G3 disconfirmer all
+  missed; only the dynamic surface caught it. Existing pytest 10/10 GREEN.
 governance_validated:
   - G1 firebreak (positive-control probe PASS — 3/3 RED actions denied, deterministic no-canary verdict)
   - FC58 path-pin (indirection approval file generated correctly; trusted scripts ran green)
@@ -41,12 +44,12 @@ gates:
   ownership_gate: "PASS 30/30"
   assembly: PASS
   contract_check: "PASS (2 inline fixes: F1 dashboard keys, F2 student_name alias)"
-  smoke: "FIREBREAK_DEFERRED (expected; post-teardown re-run pending)"
+  smoke: "PASS 23/23 (post-teardown re-run, commit 8d786b8; closes 081-W2)"
   test_suite: "PASS (pytest 10/10 — existing suite)"
 review:
   p1: 1
   p2: 3
-  fix_commits: "7ba77d3 (todo fixes); template fix staged, commit deferred by firebreak"
+  fix_commits: "7ba77d3 (FC61 template fix committed) + 8d786b8 (FC62 invoice.items fix + smoke 23/23)"
 warnings:
   - "M29: orchestrator context proxy 430K chars (215% of 200K-char protocol budget; ~54% of real 800K-char window) — non-blocking"
 context_proxy_chars: 430000
@@ -348,6 +351,29 @@ Result: `TypeError` 500 for all affected page loads.
    > a context-processor-injected name. Check the Coordinated Behaviors table column
    > "Injected As" before writing template expressions.
 
+### FC-JINJA-DICT-METHOD-SHADOW (FC62, Run 081 — new, post-teardown)
+
+**Pattern:** A model returns a dict with a key whose name collides with a `dict`
+method — most commonly `items` (also `keys`, `values`, `get`). In Jinja,
+`obj.items` resolves the METHOD (attribute lookup precedes key lookup), so
+`{% if invoice.items %}` is always-truthy and `{% for x in invoice.items %}` raises
+`TypeError: 'builtin_function_or_method' object is not iterable` — a 500 on every
+affected page. Here it broke EVERY invoice view for all staff.
+
+**Why it matters (monoculture proof):** static review, the contract check, AND the
+G3 disconfirmer all passed this bug. Only the DYNAMIC smoke surface caught it — the
+sole reviewer that *executes* rather than *reads*, and therefore the only one outside
+the disposition monoculture. Strongest evidence to date for the 080-W5 "keep the
+dynamic surface LIT" thesis, and the concrete argument for giving the disconfirmer a
+different model than the workers before the next real swarm.
+
+**Prevention:**
+1. Template authoring: use subscript, never attribute, for dict keys that shadow dict
+   methods — `{{ invoice['items'] }}`, never `{{ invoice.items }}`.
+2. Post-assembly scan (new): `grep -rEn "\.(items|keys|values|get)\b" <build_dir>/templates/`
+   — every hit on a dict variable is a candidate 500; require subscript form.
+3. Registered in `~/.claude/docs/agent-pitfalls.md` (FC62) with the template-worker rule.
+
 ### F4 Scanner Escalation Rule
 
 Any F4 VERIFY flag on a context processor export must be promoted to WARN in the
@@ -360,9 +386,9 @@ acceptable for Flask injection patterns where the type is deterministic.
 
 | Item | Type | Next Action |
 |------|------|-------------|
-| Smoke re-run | BLOCKED — firebreak deferred | Run after firebreak teardown + P1 fix committed |
-| P1 template fix commit | PENDING human approval | `todos/approvals/RED-081-indirection-03a24cdd5e52.md` |
-| FC-TEMPLATE-CONTEXT-CALLABLE pitfall registration | agent-pitfalls.md append | Compound tail (update-learnings) |
+| Smoke re-run | ✅ DONE — 23/23 PASS post-teardown (8d786b8; closes 081-W2) | — |
+| P1 template fix commit | ✅ DONE — FC61 committed 7ba77d3; FC62 found + fixed 8d786b8 (closes 081-W4) | — |
+| FC61 + FC62 pitfall registration | ✅ DONE — agent-pitfalls.md updated 2026-07-10 | — |
 | Spec §4 "Injected As" column mandate | Spec template update | Next spec authoring session |
 | Context proxy 85% threshold (17–32 agent swarms) | Orchestration skill update | Next autopilot skill update session |
 | P2-01 `require_self_or_staff` dead code | Deferred | Next Lesson Studio session (non-exploitable) |
@@ -403,4 +429,5 @@ The actual P1 came from the F4 flag — a lower-severity item the cross-worker s
 ### What was learned (delta)
 1. **Explicit constants beat prose.** Prescribing `_LESSON_SELECT` by name in the spec cost nothing and prevented the hardest seam from failing. Prescribing `current_user` as "a dict or None" in prose was insufficient — agents independently chose call syntax because another injected callable (`csrf_token`) trained the habit.
 2. **F4 VERIFY must become F4 WARN for injection-type seams.** The cross-worker scan's disposition was too weak for a deterministic Flask contract.
-3. **30-agent governance validation PASSED.** The governance stack (G1 + FC58 + 080-W5 gate + G3) functioned correctly at scale without manual workaround. The residual disposition monoculture (lone Sonnet as disposer) remains the primary governance gap.
+3. **30-agent governance validation PASSED.** The governance stack (G1 + FC58 + 080-W5 gate + G3) functioned correctly at scale without manual workaround. The residual disposition monoculture (lone Sonnet as disposer) remains the primary governance gap — and run 081 produced its sharpest proof yet: **FC62 (the `invoice.items` 500) slipped past static review, the contract check, AND the G3 disconfirmer, and was caught only by the dynamic smoke surface.** Three static AI reviewers share one blind spot; the executing surface is the only reviewer outside the monoculture. Direct evidence for keeping the dynamic surface LIT (080-W5) and for diversifying the disconfirmer's model before the next real swarm.
+4. **The "force context-death" hypothesis was attempted, not reproduced.** The 30-agent orchestrator finished all inline phases at ~54% of the real token window; the alarming "212% of budget" was a char-vs-token miscalibration (proxy budget sized in chars, compared against a token window). The vehicle validated *resilience*, not the death path. Reproducing context-death would need a materially larger run (50+ agents) — parked as not worth chasing unless a real build needs that scale.
