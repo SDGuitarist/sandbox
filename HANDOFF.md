@@ -4,18 +4,28 @@
 `feat/content-engine-copy-gen` (NOT yet merged to master, NOT pushed). Plan P3 (copy-gen +
 voice gate) and P4 (weekly glue + review gate) are both delivered by one skill.
 
+**Cadence (updated 2026-07-11):** a week = **one theme → 3 angles → 9 posts (3 IG / 3 LI /
+3 FB) + 6 graphics**. Each angle gets ONE card rendered in BOTH a **1:1 square (1080×1080)** for
+Instagram and a **4:5 portrait (1080×1350)** for LinkedIn + Facebook.
+
 **What shipped:**
-- **`/content-batch "<topic>" [ISO-week]`** — `.claude/skills/content-batch/SKILL.md`. Turns
-  one weekly topic into 3 posts (IG/LI/FB) in Alex's voice + a card JSON matching `render.py`'s
-  schema (rendered to a 1080×1350 PNG) + a single `content-engine/staging/<ISO-week>/batch.md`
-  at `status: draft`, gated by voice-guardian. Copy is generated IN-SESSION on Max (Claude Code
-  reasons the posts itself); it READS `content_pipeline.py`'s `SYSTEM_PROMPT` (lines 35–153)
-  verbatim as the voice spec but NEVER executes it. All invariants backed by Step-9 guards.
-- **`content-engine/tests/check_render.py`** — asserts each PNG is exactly 1080×1350 (closes the
-  plan's named dims-check verification command; the plan's older "1080×1080" text is stale).
-- **First real batch: `content-engine/staging/2026-W28/`** — topic "The 3-question test before
-  you trust any AI answer". voice-guardian = **GO** (0 hard fails). All 3 guards pass. This is
-  the P3/P4 acceptance evidence AND a ready-to-review batch for Alex.
+- **`/content-batch "<theme>" [ISO-week]`** — `.claude/skills/content-batch/SKILL.md`. Turns one
+  weekly theme into 3 angles, 9 posts in Alex's voice, and a per-angle card JSON (matching
+  `render.py`'s schema) rendered in both formats, into a single
+  `content-engine/staging/<ISO-week>/batch.md` at `status: draft`, gated by voice-guardian.
+  Copy is generated IN-SESSION on Max (Claude Code reasons the posts itself); it READS
+  `content_pipeline.py`'s `SYSTEM_PROMPT` (lines 35–153) verbatim as the voice spec but NEVER
+  executes it. Invariants backed by Step-9 guards (billing, em-dash/banned, 9 posts, 3 angles,
+  6 pngs).
+- **`content-engine/render.py`** — now dual-format: `FORMATS = {"4x5":1080×1350, "1x1":1080×1080}`,
+  `render_template(data, fmt)` / `render_to_png(html, out, fmt)`, CLI 3rd arg `[4x5|1x1]`.
+  `template/card.html` has a `.fmt-1x1` layout that RETUNES spacing for the square canvas (so 1:1
+  reads designed-for-square, not a squeezed 4:5). Verified clean at 3–5 items; 4:5 unchanged.
+- **`content-engine/tests/check_render.py`** — accepts either valid card size (1080×1350 or
+  1080×1080), prints which. Closes the plan's named dims-check verification command.
+- **First real week: `content-engine/staging/2026-W28/`** — theme "Trusting AI answers": Angle 1
+  "Why AI sounds so sure", Angle 2 "The 3-question test" (Alex-reviewed drop), Angle 3 "The time
+  it burned me". voice-guardian = **GO** on all 9. All guards pass. Ready for Alex to review.
 
 **GUARDRAILS (held; enforced by the skill):**
 - **BILLING:** copy-gen is Max-only. NEVER the raw Anthropic API / `ANTHROPIC_API_KEY`.
@@ -25,19 +35,19 @@ voice gate) and P4 (weekly glue + review gate) are both delivered by one skill.
 - Nothing posts without Alex's review (staging stays `status: draft`).
 
 **NEXT — pick one:**
-1. **[ALEX] Review the W28 batch** — read `content-engine/staging/2026-W28/batch.md`, confirm
-   the copy is publishable-as-is (the plan's true success bar), tweak the FB opener to a real
-   memory, flip `status: draft → approved`, and post it. This is also the 4-consecutive-weeks
-   expansion-trigger clock starting.
-2. **Review phase** (compound step 5) on `feat/content-engine-copy-gen` before merge: Codex
-   first, then Claude Code. Scrutinize the plan's "least confident" item (copy publishability)
-   + the billing invariant. Then merge + push.
-3. **Open decision (Alex):** one shared card/week (current) vs one graphic per post. Current
-   skill does one shared card. Flip only if you want three graphics.
+1. **[ALEX] Review the W28 week** — read `content-engine/staging/2026-W28/batch.md` (9 posts) and
+   eyeball the 6 graphics. Confirm the personal-anecdote posts (Angle 1 FB, all of Angle 3)
+   against real memories or swap them out, flip `status: draft → approved`, and post. Starts the
+   4-consecutive-weeks expansion-trigger clock.
+2. **Review phase** (compound step 5) on `feat/content-engine-copy-gen` before merge: Codex first,
+   then Claude Code. Scrutinize copy publishability + the billing invariant. Then merge + push.
+3. **Open (Alex):** 1:1 caps at ~5 card items (square has least room); 4:5 can take 6. If you ever
+   want 6-item cards on IG, the square layout needs another spacing pass.
 
 **Verify commands:**
-- Render + dims: `lead-scraper/.venv/bin/python content-engine/tests/check_render.py`
-- Re-run the batch: `/content-batch "<a new topic>"`
+- Dims (all staging + out): `lead-scraper/.venv/bin/python content-engine/tests/check_render.py`
+- Render one card both ways: `... render.py <data.json> <out>-1x1.png 1x1` and `... <out>-4x5.png 4x5`
+- Run a new week: `/content-batch "<a new theme>"`
 
 ---
 
