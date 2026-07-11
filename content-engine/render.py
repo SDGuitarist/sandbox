@@ -9,7 +9,7 @@ Card data schema (JSON):
     "eyebrow": "Prompting 101",        # small kicker above the headline (optional)
     "title":   "The 5-Layer",          # headline, ink-colored
     "accent":  "Prompt",               # optional trailing word, ember-colored, wraps
-    "items": [                          # 3-6 rows recommended for the 4:5 canvas
+    "items": [                          # 3-5 rows (the 1:1 square has the least room)
       {"label": "Identity", "desc": "who the AI is"},
       ...
     ],
@@ -98,11 +98,16 @@ def render_to_png(html: str, out: Path, fmt: str = DEFAULT_FORMAT) -> Path:
 
 def main():
     # CLI: render.py [data.json] [out.png] [4x5|1x1]
+    # A trailing format token is accepted in the last position even without an out
+    # path, so `render.py data.json 1x1` does what it looks like (renders 1:1 to the
+    # default -1x1 out path) instead of writing a file literally named "1x1".
     args = sys.argv[1:]
+    fmt = DEFAULT_FORMAT
+    if args and args[-1] in FORMATS:
+        fmt = args.pop()
+    if len(args) > 2 or (len(args) == 2 and args[1] in FORMATS):
+        sys.exit(f"usage: render.py [data.json] [out.png] [{'|'.join(FORMATS)}]")
     data_path = Path(args[0]) if args else ROOT / "data" / "the-5-layer-prompt.json"
-    fmt = args[2] if len(args) > 2 else DEFAULT_FORMAT
-    if fmt not in FORMATS:
-        sys.exit(f"unknown format {fmt!r}; expected one of {sorted(FORMATS)}")
     out = Path(args[1]) if len(args) > 1 else ROOT / "out" / f"{data_path.stem}-{fmt}.png"
     data = json.loads(data_path.read_text())
     render_to_png(render_template(data, fmt), out, fmt)

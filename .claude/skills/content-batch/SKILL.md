@@ -63,8 +63,9 @@ If no theme was passed, ask Alex for the one-line theme and stop until you have 
 
 ### 1. Load the voice spec VERBATIM (single source of truth)
 
-Read `content_pipeline.py` lines **35–153** — the `SYSTEM_PROMPT` string literal. That text
-is your governing instruction set for every post: Voice DNA, the Hard Rules (em-dash ban,
+Read `content_pipeline.py` and find the **`SYSTEM_PROMPT = """..."""`** string literal (around
+lines 35–153 — locate it by the `SYSTEM_PROMPT =` marker, since line numbers can drift if the
+file is edited). That text is your governing instruction set for every post: Voice DNA, the Hard Rules (em-dash ban,
 banned vocabulary, banned phrases/patterns, one-CTA, max-one-exclamation, no fabrication,
 read-aloud test), and the Platform Rules ("**LinkedIn gets the data. Instagram gets the hook.
 Facebook gets the story.**"). Reuse it verbatim — do not restate it in your own words.
@@ -130,8 +131,9 @@ For **each angle**, distill it into ONE framework card matching **`render.py`'s 
 ```
 
 Rules that keep BOTH formats rendering clean:
-- **3–5 items.** The 1:1 square (Instagram) has less height than the 4:5 — **cap at 5 items**
-  so the square version never crowds. 3–4 is the sweet spot. (4:5 can take 6, but match the two.)
+- **3–5 items for BOTH formats.** 3–4 is the sweet spot. The 1:1 square (Instagram) has the
+  least vertical room, so **never exceed 5** even though the 4:5 alone could fit 6 — keep the
+  two formats matched, and eyeball the 1:1 at 5 items (it is the one that crowds first).
 - Keep `label` ~1–2 words and `desc` ~2–5 words. Short — the card is a glance.
 - `title` + `accent` read as one short headline; keep it to ~one line at 1:1 (the square uses a
   slightly smaller headline, so a title that wraps to 2 lines on 4:5 is fine as long as it's short).
@@ -247,10 +249,10 @@ generated_on: <YYYY-MM-DD>
 <post copy incl. hashtags>
 
 ### LinkedIn Post
-<post copy — link goes in first comment, not body>
+<post copy. link goes in first comment, not body>
 
 ### Facebook Post
-<post copy — no hashtags>
+<post copy. no hashtags>
 
 ## Angle 2: <short angle title>
 
@@ -288,14 +290,14 @@ generated_on: <YYYY-MM-DD>
 - [ ] No fabricated stats / testimonials / seat counts
 - [ ] 3 angles are genuinely different, not one idea reworded
 - [ ] Each angle's card teaches the same idea as its 3 posts
-- [ ] All 6 graphics render clean at their dims (1:1 has the least room — check it)
+- [ ] All 6 graphics render clean at their dims (1:1 has the least room, check it)
 
 ## Voice-Guardian Verdict
 <paste the voice-guardian GO/FIX output verbatim>
 
 ## Review & Publish (Alex)
 1. Read the 9 posts. Light tweaks are fine.
-2. Eyeball the 6 graphics — on-brand, legible, nothing clipped (check the 1:1s especially).
+2. Eyeball the 6 graphics: on-brand, legible, nothing clipped (check the 1:1s especially).
 3. Flip `status: draft` → `approved`.
 4. Upload per angle: **Instagram** post + its `-1x1.png`; **LinkedIn** + **Facebook** post +
    the `-4x5.png`. Put each LinkedIn link in the first comment. Then set `status: posted`.

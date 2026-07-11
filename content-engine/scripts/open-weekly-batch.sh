@@ -9,26 +9,33 @@
 # runnable by hand any time:  bash open-weekly-batch.sh            (opens for real)
 #                             bash open-weekly-batch.sh --dry-run  (prints, opens nothing)
 #
-# "Most recent" = the staging/<ISO-week>/ folder with a batch.md, newest by mtime — so
-# whichever week you last generated is the one it opens. Nothing is generated here; this
-# only OPENS an already-staged batch (generation is /content-batch, on Max).
+# "Most recent" = the staging/<ISO-week>/ folder with a batch.md, chosen by HIGHEST
+# ISO-week NAME (2026-W29 > 2026-W28; %V is zero-padded so it sorts correctly, and the
+# year prefix orders across the new-year boundary). Name-based, not mtime, so incidentally
+# touching an old week's folder (adding a PNG, a .DS_Store) can't hijack the pick. Nothing
+# is generated here; this only OPENS an already-staged batch (generation is /content-batch).
 
 set -u
 STAGING="/Users/alejandroguillen/Projects/sandbox/content-engine/staging"
 DRY_RUN="${1:-}"
 
+if [ -n "$DRY_RUN" ] && [ "$DRY_RUN" != "--dry-run" ]; then
+  echo "unknown argument: $DRY_RUN (use --dry-run, or no args to open for real)"
+  exit 2
+fi
+
 notify() {  # best-effort desktop notification; ignore if not permitted
   /usr/bin/osascript -e "display notification \"$1\" with title \"Amplify weekly batch\"" 2>/dev/null || true
 }
 
-# Newest week folder (by mtime) that actually contains a batch.md.
+# Highest-named week folder (2026-W29 before 2026-W28) that contains a batch.md.
 LATEST_BATCH=""
 while IFS= read -r dir; do
   if [ -f "${dir}batch.md" ]; then
     LATEST_BATCH="${dir}batch.md"
     break
   fi
-done < <(ls -1dt "$STAGING"/*/ 2>/dev/null)
+done < <(ls -1d "$STAGING"/*/ 2>/dev/null | sort -r)
 
 if [ -z "$LATEST_BATCH" ]; then
   echo "$(date '+%Y-%m-%d %H:%M') no staged batch.md found under $STAGING"
