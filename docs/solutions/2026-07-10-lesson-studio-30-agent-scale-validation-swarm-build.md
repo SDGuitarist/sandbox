@@ -363,9 +363,10 @@ affected page. Here it broke EVERY invoice view for all staff.
 **Why it matters (monoculture proof):** static review, the contract check, AND the
 G3 disconfirmer all passed this bug. Only the DYNAMIC smoke surface caught it — the
 sole reviewer that *executes* rather than *reads*, and therefore the only one outside
-the disposition monoculture. Strongest evidence to date for the 080-W5 "keep the
-dynamic surface LIT" thesis, and the concrete argument for giving the disconfirmer a
-different model than the workers before the next real swarm.
+the disposition monoculture. The Opus disconfirmer (already a different model from the
+Sonnet workers) missed it too — so this is about SURFACE diversity, not model diversity.
+Strongest evidence to date for the 080-W5 "keep the dynamic surface LIT" thesis. (The
+separate static-side monoculture lever is the lone Sonnet *disposer*, not the disconfirmer.)
 
 **Prevention:**
 1. Template authoring: use subscript, never attribute, for dict keys that shadow dict
@@ -429,5 +430,5 @@ The actual P1 came from the F4 flag — a lower-severity item the cross-worker s
 ### What was learned (delta)
 1. **Explicit constants beat prose.** Prescribing `_LESSON_SELECT` by name in the spec cost nothing and prevented the hardest seam from failing. Prescribing `current_user` as "a dict or None" in prose was insufficient — agents independently chose call syntax because another injected callable (`csrf_token`) trained the habit.
 2. **F4 VERIFY must become F4 WARN for injection-type seams.** The cross-worker scan's disposition was too weak for a deterministic Flask contract.
-3. **30-agent governance validation PASSED.** The governance stack (G1 + FC58 + 080-W5 gate + G3) functioned correctly at scale without manual workaround. The residual disposition monoculture (lone Sonnet as disposer) remains the primary governance gap — and run 081 produced its sharpest proof yet: **FC62 (the `invoice.items` 500) slipped past static review, the contract check, AND the G3 disconfirmer, and was caught only by the dynamic smoke surface.** Three static AI reviewers share one blind spot; the executing surface is the only reviewer outside the monoculture. Direct evidence for keeping the dynamic surface LIT (080-W5) and for diversifying the disconfirmer's model before the next real swarm.
+3. **30-agent governance validation PASSED.** The governance stack (G1 + FC58 + 080-W5 gate + G3) functioned correctly at scale without manual workaround. The residual disposition monoculture (lone Sonnet as disposer) remains the primary governance gap — and run 081 produced its sharpest proof yet: **FC62 (the `invoice.items` 500) slipped past static review, the contract check, AND the G3 disconfirmer, and was caught only by the dynamic smoke surface.** Every static reviewer shares this blind spot — including the **Opus disconfirmer**, which is already a different model from the Sonnet workers and STILL missed it. So model diversity on the static side is not the fix; the executing surface is the only reviewer outside the monoculture. Direct evidence for keeping the dynamic surface LIT (080-W5). The remaining static-side single-point is the lone **Sonnet disposer** (`self-audit-reviewer`) — if hardening the static side, diversify the disposer (second-model disposition pass), not the disconfirmer.
 4. **The "force context-death" hypothesis was attempted, not reproduced.** The 30-agent orchestrator finished all inline phases at ~54% of the real token window; the alarming "212% of budget" was a char-vs-token miscalibration (proxy budget sized in chars, compared against a token window). The vehicle validated *resilience*, not the death path. Reproducing context-death would need a materially larger run (50+ agents) — parked as not worth chasing unless a real build needs that scale.

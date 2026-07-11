@@ -5,6 +5,19 @@ tools: Read, Write, Grep, Glob
 model: sonnet
 ---
 
+<!--
+GOVERNANCE NOTE (added 2026-07-10, run 081) — DISPOSITION MONOCULTURE SINGLE-POINT
+You are the LONE disposer: you dispose every WARN and assign the final grade alone,
+on Sonnet. That single point is the standing "disposition monoculture" residual.
+The disconfirmer already runs on Opus, so model diversity is covered on the adversarial
+side — the remaining lever is HERE. Mitigation queued before the next real swarm:
+add a SECOND disposition pass on a different model and reconcile, OR alternate the
+disposer model. Do NOT rely on model diversity alone to catch runtime bugs: run 081's
+FC62 (invoice.items 500) got past the Opus disconfirmer AND every static reviewer, and
+was caught only by the DYNAMIC smoke surface — keep smoke lit (080-W5). See HANDOFF.md
+"Deferred Items" [DISPOSER-MODEL-DIVERSITY] and memory dynamic-surface-outside-monoculture.
+-->
+
 ## Role
 
 You are the final quality gate for an autonomous build run. Your job is to

@@ -41,6 +41,8 @@ Run 081 (30-agent Lesson Studio scale-validation swarm) is COMPLETE end-to-end. 
 | FC-TEMPLATE-CONTEXT-CALLABLE brief injection | P2 | Add to agent-pitfalls.md template agent section |
 | ~~[081-W6] MEMORY.md / workflow.md / patterns.md updates~~ | DONE 2026-07-10 | Written post-teardown same session (run-081 memory + MEMORY.md pointer) |
 | agent-pitfalls.md update | DONE | FC61 + FC62 added, Update Log rows appended (2026-07-10) |
+| **Keep dynamic surface lit** (FC62 mitigation) | **P1 — standing** | Runtime bugs are invisible to every static reviewer (FC62 passed the Opus disconfirmer). Enforce post-teardown smoke re-run whenever the firebreak defers it. |
+| **Diversify the DISPOSER** (monoculture mitigation) | **P2 — before next real swarm** | The lone Sonnet `self-audit-reviewer` grades alone. Disconfirmer is already Opus, so the lever is a second-model disposition pass on the disposer, NOT the disconfirmer. Note added to `.claude/agents/self-audit-reviewer.md`. Needs a per-agent model-override at launch (may need building). Evidence: FC62, run 081. |
 
 ## Governance Validation Summary (Run 081)
 
@@ -49,7 +51,7 @@ Run 081 (30-agent Lesson Studio scale-validation swarm) is COMPLETE end-to-end. 
 - **080-W5 compounded-darkness gate:** PASS — check_compounded_darkness.py invoked, STATUS emitted
 - **G3 self-audit chain:** PASS — disconfirmer→self-audit→Gate-8 under active tail firebreak
 - **Context telemetry (Step 1.52):** PASS — all 4 boundary rows recorded
-- **Residual:** Disposition monoculture (lone Sonnet as disposer) — unchanged from run 080
+- **Residual:** Disposition monoculture — **the lone Sonnet DISPOSER** (`self-audit-reviewer`) makes the final disposition + grade alone. NOTE: the disconfirmer is ALREADY Opus, so "different model" is done there. Run 081's FC62 (invoice.items 500) passed static review + contract check + the **Opus** disconfirmer — every static reviewer regardless of model — and was caught ONLY by the dynamic smoke surface. Two accurate mitigations (do before next real swarm): **(1) keep the dynamic surface lit** (080-W5) — enforce post-teardown smoke re-run whenever the firebreak defers it; runtime bugs are invisible to every static reader. **(2) Diversify the DISPOSER**, not the disconfirmer — e.g. a second-model disposition pass on the self-audit-reviewer. See note in `.claude/agents/self-audit-reviewer.md` and memory `dynamic-surface-outside-monoculture`.
 
 ## Three Questions (from solution doc Feed-Forward)
 
@@ -93,6 +95,12 @@ NEXT — pick one:
    mandate to spec template + completeness checker; decide proxy-budget recalibration
    posture (measure-again vs adjust now).
 3. P2 cleanups on studio/ (throwaway — only if used as a vehicle again).
+4. [DISPOSER-MODEL-DIVERSITY] — before the next real swarm, break the disposition
+   monoculture by diversifying the lone Sonnet DISPOSER (self-audit-reviewer) — e.g. a
+   second-model disposition pass. NOTE the disconfirmer is already Opus, so it is NOT the
+   lever. FC62 proof: it passed the Opus disconfirmer; only the dynamic surface caught it,
+   so also keep smoke lit (080-W5). Structural note in .claude/agents/self-audit-reviewer.md;
+   this item is the launch-mechanism work (per-agent model override).
 
 INVARIANTS unchanged: firebreak deny-known-bad + path-pinned FC58 carve-out; Gate 8
 fail-closed; builds namespace under their OWN top-level dir (FC59); self-audit-reviewer
