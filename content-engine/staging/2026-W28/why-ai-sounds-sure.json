@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Why AI Sounds",
+  "accent": "Sure",
+  "items": [
+    {"label": "No hedging",     "desc": "it never says maybe"},
+    {"label": "Smooth prose",   "desc": "fluent reads as true"},
+    {"label": "No receipts",    "desc": "confidence, no sources"},
+    {"label": "Built to please","desc": "tuned to sound helpful"}
+  ]
+}

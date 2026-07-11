@@ -1,38 +1,53 @@
-# ⬅⬅ NEXT SESSION — Amplify content-engine: build the COPY-GEN step (plan P3) ⬅⬅
+# ⬅⬅ NEXT SESSION — Amplify content-engine: copy-gen BUILT (P3+P4). Next = REVIEW ⬅⬅
 
-**Start here.** Read `docs/plans/2026-07-10-feat-amplify-content-engine-plan.md` (§Build
-Phases P2/P3) and `content-engine/spikes/2026-07-10-spike-a-five-layer-prompt.md` (Spike A
-already proved copy quality — Alex confirmed publishable). Then build the copy-gen step.
+**Status:** the copy-gen step is built and proven end-to-end. On branch
+`feat/content-engine-copy-gen` (NOT yet merged to master, NOT pushed). Plan P3 (copy-gen +
+voice gate) and P4 (weekly glue + review gate) are both delivered by one skill.
 
-**What it is:** a Claude Code skill/subagent that turns a weekly **topic** (one line) into
-(a) 3 platform posts (Instagram / LinkedIn / Facebook) in Alex's voice, and (b) a
-card-data JSON matching `render.py`'s schema (the graphic content); runs the copy through
-the **voice-guardian** gate; and writes a single per-week staging file (`batch.md`,
-`status: draft`). `render.py` already turns the JSON → 1080×1350 PNG.
+**Cadence (updated 2026-07-11):** a week = **one theme → 3 angles → 9 posts (3 IG / 3 LI /
+3 FB) + 6 graphics**. Each angle gets ONE card rendered in BOTH a **1:1 square (1080×1080)** for
+Instagram and a **4:5 portrait (1080×1350)** for LinkedIn + Facebook.
 
-**Contracts (match exactly):**
-- `render.py` data schema: `{eyebrow, title, accent?, items:[{label,desc}] (3–6), site?, tagline?}`.
-  Validate by rendering: `lead-scraper/.venv/bin/python content-engine/render.py <data.json>`.
-- Voice spec: reuse `content_pipeline.py` `SYSTEM_PROMPT` **VERBATIM** (voice DNA, banned-vocab
-  list, em-dash ban, one-CTA, "LinkedIn=data / IG=hook / FB=story"). It's at
-  `content_pipeline.py` lines ~35–153.
-- Gate: run the **voice-guardian** subagent → GO/FIX before the batch is marked ready.
+**What shipped:**
+- **`/content-batch "<theme>" [ISO-week]`** — `.claude/skills/content-batch/SKILL.md`. Turns one
+  weekly theme into 3 angles, 9 posts in Alex's voice, and a per-angle card JSON (matching
+  `render.py`'s schema) rendered in both formats, into a single
+  `content-engine/staging/<ISO-week>/batch.md` at `status: draft`, gated by voice-guardian.
+  Copy is generated IN-SESSION on Max (Claude Code reasons the posts itself); it READS
+  `content_pipeline.py`'s `SYSTEM_PROMPT` (lines 35–153) verbatim as the voice spec but NEVER
+  executes it. Invariants backed by Step-9 guards (billing, em-dash/banned, 9 posts, 3 angles,
+  6 pngs).
+- **`content-engine/render.py`** — now dual-format: `FORMATS = {"4x5":1080×1350, "1x1":1080×1080}`,
+  `render_template(data, fmt)` / `render_to_png(html, out, fmt)`, CLI 3rd arg `[4x5|1x1]`.
+  `template/card.html` has a `.fmt-1x1` layout that RETUNES spacing for the square canvas (so 1:1
+  reads designed-for-square, not a squeezed 4:5). Verified clean at 3–5 items; 4:5 unchanged.
+- **`content-engine/tests/check_render.py`** — accepts either valid card size (1080×1350 or
+  1080×1080), prints which. Closes the plan's named dims-check verification command.
+- **First real week: `content-engine/staging/2026-W28/`** — theme "Trusting AI answers": Angle 1
+  "Why AI sounds so sure", Angle 2 "The 3-question test" (Alex-reviewed drop), Angle 3 "The time
+  it burned me". voice-guardian = **GO** on all 9. All guards pass. Ready for Alex to review.
 
-**GUARDRAILS — do not violate:**
-- **BILLING:** copy-gen runs on **Claude Code (Max-covered)**. NEVER the raw Anthropic API /
-  `ANTHROPIC_API_KEY`. `content_pipeline.py` is the **voice-spec source ONLY — do NOT execute
-  it** (it's credit-billed; the suspected dormancy cause). No usage-credit path anywhere.
-- Scheduling stays **manual** (native free tools — Meta Business Suite + LinkedIn). No Metricool.
+**GUARDRAILS (held; enforced by the skill):**
+- **BILLING:** copy-gen is Max-only. NEVER the raw Anthropic API / `ANTHROPIC_API_KEY`.
+  `content_pipeline.py` is the voice-spec source ONLY — do NOT execute it. Billing guard
+  (`grep -rn "ANTHROPIC_API_KEY\|api.anthropic.com" content-engine/`) returns empty.
+- Scheduling stays **manual** (Meta Business Suite + LinkedIn native). No Metricool.
 - Nothing posts without Alex's review (staging stays `status: draft`).
 
-**Where things are (all committed on master @ a7ae0d2, pushed):**
-- Plan: `docs/plans/2026-07-10-feat-amplify-content-engine-plan.md` (Phase 0 COMPLETE, **P1 done**)
-- Engine: `content-engine/render.py` (`render_template` pure + `render_to_png`) + `template/card.html`
-- Data examples: `content-engine/data/{the-5-layer-prompt,the-4-cs}.json`
-- Voice-spec source: `content_pipeline.py`
+**NEXT — pick one:**
+1. **[ALEX] Review the W28 week** — read `content-engine/staging/2026-W28/batch.md` (9 posts) and
+   eyeball the 6 graphics. Confirm the personal-anecdote posts (Angle 1 FB, all of Angle 3)
+   against real memories or swap them out, flip `status: draft → approved`, and post. Starts the
+   4-consecutive-weeks expansion-trigger clock.
+2. **Review phase** (compound step 5) on `feat/content-engine-copy-gen` before merge: Codex first,
+   then Claude Code. Scrutinize copy publishability + the billing invariant. Then merge + push.
+3. **Open (Alex):** 1:1 caps at ~5 card items (square has least room); 4:5 can take 6. If you ever
+   want 6-item cards on IG, the square layout needs another spacing pass.
 
-**Done when:** one skill turns a topic into `batch.md` (3 posts + card JSON + voice verdict,
-`status: draft`) AND `render.py` produces the graphic from that JSON. Then P4 (weekly glue).
+**Verify commands:**
+- Dims (all staging + out): `lead-scraper/.venv/bin/python content-engine/tests/check_render.py`
+- Render one card both ways: `... render.py <data.json> <out>-1x1.png 1x1` and `... <out>-4x5.png 4x5`
+- Run a new week: `/content-batch "<a new theme>"`
 
 ---
 
