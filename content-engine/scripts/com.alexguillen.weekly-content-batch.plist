@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.alexguillen.weekly-content-batch</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/alejandroguillen/Projects/sandbox/content-engine/scripts/open-weekly-batch.sh</string>
+  </array>
+
+  <!-- Sunday (Weekday 0) at 18:00 local. Change Hour/Minute to move the time. -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>0</integer>
+    <key>Hour</key>
+    <integer>18</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/alejandroguillen/Library/Logs/weekly-content-batch.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/alejandroguillen/Library/Logs/weekly-content-batch.log</string>
+</dict>
+</plist>
