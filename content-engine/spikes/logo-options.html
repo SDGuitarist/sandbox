@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amplify AI — Logo Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0E0E10; --panel:#141417; --ink:#F4EFE6; --muted:#8E8A80;
+    --line:#26262B; --accent:#FF5C38; --accent-soft:#F2A65A;
+    --card-size:1080px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(255,92,56,.10), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Bricolage Grotesque",system-ui,sans-serif;
+    padding:56px 40px 96px;
+  }
+  .page-head{max-width:1180px;margin:0 auto 44px}
+  .page-head .kick{font-family:"Space Mono",monospace;color:var(--accent);
+    letter-spacing:.28em;font-size:12px;text-transform:uppercase;margin:0 0 14px}
+  .page-head h1{font-size:44px;font-weight:800;letter-spacing:-.02em;margin:0 0 12px;line-height:1.02}
+  .page-head p{color:var(--muted);font-size:15px;line-height:1.6;max-width:720px;margin:0}
+  .page-head code{font-family:"Space Mono",monospace;color:var(--accent-soft);font-size:13px}
+
+  .section-label{max-width:1180px;margin:0 auto 20px;font-family:"Space Mono",monospace;
+    font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);
+    border-top:1px solid var(--line);padding-top:16px}
+
+  /* ---- marks strip ---- */
+  .marks{max-width:1180px;margin:0 auto 64px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+  .mark{background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:34px 26px;display:flex;flex-direction:column;gap:22px;align-items:flex-start;min-height:150px;justify-content:space-between}
+  .mark .num{font-family:"Space Mono",monospace;font-size:12px;color:var(--muted);letter-spacing:.2em}
+  .mark .nm{font-family:"Space Mono",monospace;font-size:12px;color:var(--accent);letter-spacing:.12em;text-transform:uppercase}
+
+  /* ---- logo primitives (asset-free) ---- */
+  .logo{display:flex;align-items:center;gap:14px;color:var(--ink)}
+  .wordmark{font-family:"Bricolage Grotesque";font-weight:800;letter-spacing:-.02em;
+    font-size:30px;line-height:1}
+  .wordmark .ai{color:var(--accent);margin-left:.14em}
+  .logo--col{flex-direction:column;align-items:flex-start;gap:8px}
+
+  /* 1 waveform underline */
+  .wave{display:flex;align-items:center;gap:3px;height:22px}
+  .wave i{width:4px;border-radius:3px;background:var(--accent);display:block}
+
+  /* 2 signal-bars A */
+  .bars{display:flex;align-items:flex-end;gap:4px;height:38px}
+  .bars i{width:7px;border-radius:3px 3px 1px 1px;background:var(--accent);display:block}
+
+  /* 3 broadcast pulse / 5 dial use inline svg (stroke via currentColor) */
+  .glyph{color:var(--accent)}
+
+  /* 4 prompt mark */
+  .prompt-mark{font-family:"Space Mono",monospace;font-weight:700;color:var(--accent);
+    font-size:30px;line-height:1}
+  .cursor{display:inline-block;width:12px;height:26px;background:var(--accent);
+    margin-left:8px;vertical-align:-4px;border-radius:1px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{50%{opacity:.15}}
+
+  /* ---- card grid ---- */
+  .grid{max-width:1180px;margin:0 auto;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:34px;justify-items:center}
+  .cardwrap{display:flex;flex-direction:column;gap:14px;align-items:center}
+  .frame{width:475px;height:475px;border-radius:22px;overflow:hidden;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);border:1px solid var(--line)}
+  .scale{transform:scale(.4398);transform-origin:top left}
+  .caption{font-family:"Space Mono",monospace;font-size:13px;color:var(--muted);letter-spacing:.06em}
+  .caption b{color:var(--ink);font-weight:700}
+
+  /* ---- THE CARD (true 1080x1080) ---- */
+  .card{width:var(--card-size);height:var(--card-size);position:relative;
+    background:
+      radial-gradient(760px 440px at 82% 8%, rgba(255,92,56,.14), transparent 58%),
+      linear-gradient(180deg,#141417 0%,#0E0E10 100%);
+    color:var(--ink);padding:92px 88px;display:flex;flex-direction:column;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.35'/></svg>");
+    opacity:.05;mix-blend-mode:overlay}
+  /* corner signal rings */
+  .card .rings{position:absolute;right:-140px;bottom:-140px;width:520px;height:520px;opacity:.16}
+  .card .rings span{position:absolute;border:2px solid var(--accent);border-radius:50%;inset:0;margin:auto}
+  .card .rings span:nth-child(1){width:520px;height:520px}
+  .card .rings span:nth-child(2){width:380px;height:380px}
+  .card .rings span:nth-child(3){width:240px;height:240px}
+  .card .rings span:nth-child(4){width:110px;height:110px;background:var(--accent);opacity:.5}
+
+  .card-head{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1}
+  .card-head .card-logo{scale:1.55;transform-origin:left center}
+  .card-head .kicker{font-family:"Space Mono",monospace;font-size:22px;letter-spacing:.28em;
+    color:var(--muted);text-transform:uppercase}
+  .card .lede{position:relative;z-index:1;margin-top:78px}
+  .card .lede .eyebrow{font-family:"Space Mono",monospace;color:var(--accent);
+    font-size:26px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:26px}
+  .card h2{font-family:"Bricolage Grotesque";font-weight:800;font-size:118px;line-height:.94;
+    letter-spacing:-.03em;margin:0}
+  .card h2 em{font-style:normal;color:var(--accent)}
+  .card .layers{position:relative;z-index:1;margin-top:auto;display:flex;flex-direction:column;gap:20px}
+  .card .layer{display:flex;align-items:baseline;gap:26px;border-top:1px solid rgba(244,239,230,.12);padding-top:18px}
+  .card .layer .no{font-family:"Space Mono",monospace;color:var(--accent);font-size:26px;min-width:52px}
+  .card .layer .lab{font-family:"Bricolage Grotesque";font-weight:700;font-size:38px;min-width:300px;letter-spacing:-.01em}
+  .card .layer .dsc{font-family:"Space Mono",monospace;color:var(--muted);font-size:26px}
+  .card-foot{position:relative;z-index:1;margin-top:60px;display:flex;justify-content:space-between;align-items:center;
+    font-family:"Space Mono",monospace;font-size:22px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+  .card-foot .dot{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <p class="kick">Amplify AI · content-engine · template v1</p>
+  <h1>Logo directions, in the real card</h1>
+  <p>Five asset-free marks (pure CSS/SVG, no image files). Warm-dark editorial theme,
+     ember accent <code>#FF5C38</code>, Bricolage Grotesque + Space Mono. Each card is the true
+     1080×1080 render, scaled to fit. Judge the mark on its own (top strip) and in context (below).</p>
+</header>
+
+<div class="section-label">The marks</div>
+<section class="marks">
+  <div class="mark"><span class="num">01</span>
+    <div class="logo logo--col"><span class="wordmark">Amplify<span class="ai">AI</span></span>
+      <div class="wave"><i style="height:8px"></i><i style="height:15px"></i><i style="height:22px"></i><i style="height:11px"></i><i style="height:20px"></i><i style="height:6px"></i><i style="height:17px"></i><i style="height:12px"></i><i style="height:22px"></i><i style="height:9px"></i><i style="height:15px"></i><i style="height:7px"></i></div>
+    </div><span class="nm">Waveform underline</span></div>
+
+  <div class="mark"><span class="num">02</span>
+    <div class="logo"><div class="bars"><i style="height:12px"></i><i style="height:21px"></i><i style="height:29px"></i><i style="height:38px"></i></div>
+      <span class="wordmark">Amplify<span class="ai">AI</span></span></div>
+    <span class="nm">Signal-bars A</span></div>
+
+  <div class="mark"><span class="num">03</span>
+    <div class="logo"><svg class="glyph" width="40" height="40" viewBox="0 0 40 40" fill="none">
+      <circle cx="12" cy="28" r="5" fill="currentColor"/>
+      <path d="M20 24 a12 12 0 0 1 -8 -8" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M28 22 a20 20 0 0 1 -14 -14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/>
+    </svg><span class="wordmark">Amplify<span class="ai">AI</span></span></div>
+    <span class="nm">Broadcast pulse</span></div>
+
+  <div class="mark"><span class="num">04</span>
+    <div class="logo"><span class="prompt-mark">&gt;</span><span class="wordmark">Amplify<span class="ai">AI</span></span><span class="cursor"></span></div>
+    <span class="nm">Prompt mark</span></div>
+
+  <div class="mark"><span class="num">05</span>
+    <div class="logo"><svg class="glyph" width="40" height="40" viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="13" stroke="currentColor" stroke-width="3"/>
+      <line x1="20" y1="20" x2="27" y2="13" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      <g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55">
+        <line x1="20" y1="3" x2="20" y2="7"/><line x1="37" y1="20" x2="33" y2="20"/>
+        <line x1="20" y1="37" x2="20" y2="33"/><line x1="3" y1="20" x2="7" y2="20"/>
+      </g></svg><span class="wordmark">Amplify<span class="ai">AI</span></span></div>
+    <span class="nm">Amp dial</span></div>
+</section>
+
+<div class="section-label">In context — the 5-Layer Prompt card (true 1080×1080)</div>
+<section class="grid" id="grid"></section>
+
+<script>
+  // one card template, 5 logos injected — proves render fidelity + logo-in-context in one shot
+  const LOGOS = {
+    wave:  `<div class="logo logo--col card-logo"><span class="wordmark">Amplify<span class="ai">AI</span></span>
+             <div class="wave"><i style="height:8px"></i><i style="height:15px"></i><i style="height:22px"></i><i style="height:11px"></i><i style="height:20px"></i><i style="height:6px"></i><i style="height:17px"></i><i style="height:12px"></i><i style="height:22px"></i><i style="height:9px"></i><i style="height:15px"></i><i style="height:7px"></i></div></div>`,
+    bars:  `<div class="logo card-logo"><div class="bars"><i style="height:12px"></i><i style="height:21px"></i><i style="height:29px"></i><i style="height:38px"></i></div><span class="wordmark">Amplify<span class="ai">AI</span></span></div>`,
+    pulse: `<div class="logo card-logo"><svg class="glyph" width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="12" cy="28" r="5" fill="currentColor"/><path d="M20 24 a12 12 0 0 1 -8 -8" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M28 22 a20 20 0 0 1 -14 -14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" opacity=".6"/></svg><span class="wordmark">Amplify<span class="ai">AI</span></span></div>`,
+    prompt:`<div class="logo card-logo"><span class="prompt-mark">&gt;</span><span class="wordmark">Amplify<span class="ai">AI</span></span><span class="cursor"></span></div>`,
+    dial:  `<div class="logo card-logo"><svg class="glyph" width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="13" stroke="currentColor" stroke-width="3"/><line x1="20" y1="20" x2="27" y2="13" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><line x1="20" y1="3" x2="20" y2="7"/><line x1="37" y1="20" x2="33" y2="20"/><line x1="20" y1="37" x2="20" y2="33"/><line x1="3" y1="20" x2="7" y2="20"/></g></svg><span class="wordmark">Amplify<span class="ai">AI</span></span></div>`
+  };
+  const ORDER = [["wave","01 · Waveform underline"],["bars","02 · Signal-bars A"],["pulse","03 · Broadcast pulse"],["prompt","04 · Prompt mark"],["dial","05 · Amp dial"]];
+  const LAYERS = [
+    ["01","Identity","who the AI is"],["02","World","the situation"],
+    ["03","Task","what you actually want"],["04","Example","one sample of good"],
+    ["05","Constraints","the limits"]
+  ];
+  const layersHtml = LAYERS.map(l=>`<div class="layer"><span class="no">${l[0]}</span><span class="lab">${l[1]}</span><span class="dsc">${l[2]}</span></div>`).join("");
+  document.getElementById("grid").innerHTML = ORDER.map(([k,cap])=>`
+    <div class="cardwrap">
+      <div class="frame"><div class="scale">
+        <div class="card">
+          <div class="rings"><span></span><span></span><span></span><span></span></div>
+          <div class="card-head">${LOGOS[k]}<span class="kicker">Human-Led AI</span></div>
+          <div class="lede"><div class="eyebrow">Prompting 101</div>
+            <h2>The 5-Layer<br><em>Prompt</em></h2></div>
+          <div class="layers">${layersHtml}</div>
+          <div class="card-foot"><span>Amplify <span class="dot">·</span> AI</span><span>alexguillenmusic.com</span></div>
+        </div>
+      </div></div>
+      <div class="caption"><b>${cap}</b></div>
+    </div>`).join("");
+</script>
+</body>
+</html>

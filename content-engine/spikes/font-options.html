@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amplify AI — Card font families</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;700;800&family=Schibsted+Grotesk:wght@400;700;900&family=Manrope:wght@400;700;800&family=Sora:wght@400;600;700;800&family=Archivo:wght@400;700;800&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --paper:#F5F1EA; --ink:#242424; --muted:#8A857C; --accent:#E8471C;
+    --hair:rgba(36,36,36,.14); --mono:"Space Mono",monospace; --hw:800;}
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:#E7E1D6;color:var(--ink);font-family:var(--mono);padding:52px 40px 96px}
+  .page-head{max-width:1180px;margin:0 auto 40px}
+  .page-head .k{color:var(--accent);letter-spacing:.24em;font-size:12px;text-transform:uppercase;margin:0 0 12px}
+  .page-head h1{font-family:"Archivo";font-size:36px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+  .page-head p{color:#6f6a61;font-size:14px;line-height:1.6;max-width:720px;margin:0}
+  .grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:34px;justify-items:center}
+  .cardwrap{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .frame{width:460px;height:460px;border-radius:22px;overflow:hidden;box-shadow:0 22px 56px rgba(0,0,0,.26);position:relative}
+  .frame .card{position:absolute;top:0;left:0;transform:scale(.4259);transform-origin:top left}
+  .caption{font-size:13px;color:var(--muted);letter-spacing:.05em}
+  .caption b{color:var(--ink);font-weight:700}
+
+  /* ===== card (true 1080) ===== */
+  .card{width:1080px;height:1080px;position:relative;overflow:hidden;color:var(--ink);
+    padding:96px 92px;display:flex;flex-direction:column;
+    background:radial-gradient(820px 500px at 86% 4%, rgba(232,71,28,.08), transparent 60%),linear-gradient(180deg,#FAF7F1 0%,#F1ECE2 100%);}
+  .card .grid-dots{position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:radial-gradient(rgba(36,36,36,.05) 1.5px, transparent 1.6px);background-size:34px 34px;
+    mask-image:linear-gradient(180deg,transparent,#000 40%,#000 70%,transparent)}
+  .head{display:flex;align-items:center;position:relative;z-index:1}
+  .head img{height:104px;width:auto;display:block}
+  .lede{position:relative;z-index:1;margin-top:92px}
+  .lede .eyebrow{font-family:var(--mono);color:var(--accent);font-size:25px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:22px}
+  .lede h2{font-family:var(--display);font-weight:var(--hw);font-size:112px;line-height:.98;letter-spacing:-.02em;margin:0}
+  .lede h2 em{font-style:normal;color:var(--accent)}
+  .layers{position:relative;z-index:1;margin-top:auto;display:flex;flex-direction:column;gap:20px}
+  .layer{display:flex;align-items:baseline;gap:28px;border-top:1px solid var(--hair);padding-top:18px}
+  .layer .no{font-family:var(--mono);color:var(--accent);font-size:26px;min-width:56px;font-weight:700}
+  .layer .lab{font-family:var(--display);font-weight:700;font-size:44px;min-width:320px;letter-spacing:-.01em}
+  .layer .dsc{font-family:var(--mono);color:var(--muted);font-size:24px}
+  .foot{position:relative;z-index:1;margin-top:60px;display:flex;justify-content:space-between;align-items:flex-end;font-family:var(--mono)}
+  .foot .mark{font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+  .foot .site{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3;text-align:right}
+  .foot .site b{font-weight:700;font-size:24px;color:var(--accent)}
+  .foot .site span{font-size:19px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+</style>
+</head>
+<body>
+  <header class="page-head">
+    <p class="k">Amplify AI · content-engine · font families</p>
+    <h1>Pick a family for the card text</h1>
+    <p>Same card, same real logo, six display families for the headline + layer labels
+       (Space Mono stays on the technical bits). Accent #E8471C. Say a number and I'll lock it.</p>
+  </header>
+  <section class="grid" id="grid"></section>
+
+<script>
+  const FONTS=[
+    ["Hanken Grotesk","'Hanken Grotesk',sans-serif",800,"warm humanist grotesque"],
+    ["Schibsted Grotesk","'Schibsted Grotesk',sans-serif",900,"editorial grotesque, sharp"],
+    ["Manrope","'Manrope',sans-serif",800,"clean modern geometric"],
+    ["Sora","'Sora',sans-serif",700,"techy geometric"],
+    ["Archivo","'Archivo',sans-serif",800,"strong, poster-like grotesque"],
+    ["Instrument Serif","'Instrument Serif',serif",400,"light elegant serif (contrast)"],
+  ];
+  const LAYERS=[["01","Identity","who the AI is"],["02","World","the situation"],
+    ["03","Task","what you actually want"],["04","Example","one sample of good"],["05","Constraints","the limits"]];
+  const layersHtml=LAYERS.map(l=>`<div class="layer"><span class="no">${l[0]}</span><span class="lab">${l[1]}</span><span class="dsc">${l[2]}</span></div>`).join("");
+  document.getElementById("grid").innerHTML=FONTS.map(([name,css,hw,desc],i)=>`
+    <div class="cardwrap">
+      <div class="frame"><div class="card" style="--display:${css};--hw:${hw}">
+        <div class="grid-dots"></div>
+        <div class="head"><img src="../assets/logo-amplify-ai.png" alt="Amplify AI"></div>
+        <div class="lede"><div class="eyebrow">Prompting 101</div><h2>The 5-Layer <em>Prompt</em></h2></div>
+        <div class="layers">${layersHtml}</div>
+        <div class="foot"><span class="mark">Amplify AI</span><span class="site"><b>amplifyai.to</b><span>Human-Led AI</span></span></div>
+      </div></div>
+      <div class="caption"><b>${i+1}. ${name}</b> — ${desc}</div>
+    </div>`).join("");
+</script>
+</body>
+</html>

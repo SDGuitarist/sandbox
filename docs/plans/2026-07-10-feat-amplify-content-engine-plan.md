@@ -108,10 +108,18 @@ question: *"Would I publish these as-is (or with only light tweaks)?"*
   verbatim. Dormancy/copy-quality risk retired with evidence. Raw output:
   `content-engine/spikes/2026-07-10-spike-a-five-layer-prompt.md`.
 
-**Spike B — Render fidelity.** Render 2–3 real headlines through template `v1` to PNG
-and eyeball: correct 1080×1080 dims, legible fonts, emoji render (or are stripped
-deliberately), and **text overflow** behavior for a long headline.
+**Spike B — Render fidelity.** Render a real headline through template `v1` to PNG
+and eyeball: correct dims, legible fonts, and **text overflow** behavior.
 - PASS → template contract is sound. FAIL → fix wrapping/truncation before wiring the loop.
+- ✅ **RESULT (2026-07-11): PASS.** `content-engine/template/v1.html` renders via
+  `tests/render_card.py` (Playwright + chromium in `lead-scraper/.venv`) to
+  `content-engine/out/the-5-layer-prompt.png`, verified at exact pixel dims. **FORMAT
+  CHANGED after design iteration: 4:5 portrait (1080×1350), NOT 1:1** — a five-item
+  framework is text-forward and needs the extra height; 4:5 posts natively on IG/FB and
+  works on LinkedIn. Final design: light warm theme, real logo asset
+  (`assets/logo-amplify-ai.png`, trimmed transparent), sampled brand colors
+  (#E8471C / #242424), Hanken Grotesk + Space Mono, amplifyai.to · Human-Led AI footer
+  bottom-left. **Phase 0 COMPLETE** (both spikes green).
 
 *(The Metricool API spike from the brainstorm is DELETED — native scheduling has no API.)*
 

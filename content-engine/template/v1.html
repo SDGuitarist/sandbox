@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amplify AI — Card v1 (4:5 portrait, Hanken Grotesk)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F1EA; --ink:#242424; --muted:#8A857C; --accent:#E8471C;
+    --hair:rgba(36,36,36,.14); --cw:1080px; --ch:1350px;
+    --display:"Hanken Grotesk",system-ui,sans-serif; --mono:"Space Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:#E7E1D6;color:var(--ink);font-family:var(--display);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:48px 24px 80px;gap:26px}
+  .note{max-width:720px;text-align:center}
+  .note .k{font-family:var(--mono);color:var(--accent);letter-spacing:.24em;font-size:12px;text-transform:uppercase;margin:0 0 10px}
+  .note h1{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px}
+  .note p{font-family:var(--mono);color:#6f6a61;font-size:13px;line-height:1.6;margin:0}
+  .stage{width:min(560px,92vw)}
+  .stage .fit{width:100%;aspect-ratio:4/5;border-radius:24px;overflow:hidden;
+    box-shadow:0 30px 80px rgba(0,0,0,.28);position:relative}
+  .stage .fit .card{position:absolute;top:0;left:0;transform-origin:top left}
+
+  /* ===== THE CARD — true 1080×1350 (4:5), LIGHT ===== */
+  .card{width:var(--cw);height:var(--ch);position:relative;overflow:hidden;
+    color:var(--ink);padding:100px 92px 62px;display:flex;flex-direction:column;
+    background:
+      radial-gradient(860px 520px at 86% 4%, rgba(232,71,28,.08), transparent 60%),
+      linear-gradient(180deg,#FAF7F1 0%,#F1ECE2 100%);}
+  .card .echo{position:absolute;right:-130px;bottom:-150px;width:560px;height:560px;opacity:.06}
+  .card .echo svg{width:100%;height:100%}
+  .card .grid-dots{position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:radial-gradient(rgba(36,36,36,.05) 1.5px, transparent 1.6px);
+    background-size:34px 34px;mask-image:linear-gradient(180deg,transparent,#000 40%,#000 72%,transparent)}
+
+  .head{display:flex;align-items:center;position:relative;z-index:1}
+  .head img.logo{height:104px;width:auto;display:block}
+
+  .lede{position:relative;z-index:1;margin-top:96px}
+  .lede .eyebrow{font-family:var(--mono);color:var(--accent);font-size:25px;
+    letter-spacing:.16em;text-transform:uppercase;margin-bottom:24px}
+  .lede h2{font-weight:800;font-size:112px;line-height:1.04;letter-spacing:-.035em;margin:0}
+  .lede h2 em{font-style:normal;color:var(--accent);font-weight:800}
+
+  .layers{position:relative;z-index:1;margin-top:80px;display:flex;flex-direction:column;gap:22px}
+  .layer{display:flex;align-items:baseline;gap:28px;border-top:1px solid var(--hair);padding-top:18px}
+  .layer .no{font-family:var(--mono);color:var(--accent);font-size:26px;min-width:56px;font-weight:700}
+  .layer .lab{font-weight:700;font-size:46px;min-width:320px;letter-spacing:-.02em}
+  .layer .dsc{font-family:var(--mono);color:var(--muted);font-size:24px}
+
+  .foot{position:relative;z-index:1;margin-top:auto;display:flex;justify-content:flex-start;
+    align-items:flex-end;font-family:var(--mono)}
+  .foot .site{display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;text-align:left}
+  .foot .site b{font-weight:700;font-size:24px;color:var(--accent);letter-spacing:.01em}
+  .foot .site span{font-size:19px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+</style>
+</head>
+<body>
+  <div class="note">
+    <p class="k">Amplify AI · content-engine · template v1</p>
+    <h1>4:5 portrait — room to breathe</h1>
+    <p>Taller canvas (1080×1350). Headline line-height opened up so "Prompt" clears the
+       divider, a real gap before the layers, footer pinned to the bottom with air.</p>
+  </div>
+
+  <div class="stage">
+    <div class="fit" id="fit">
+      <div class="card" id="card">
+        <div class="grid-dots"></div>
+        <div class="echo">
+          <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="104,39 60,64 60,114 104,89" fill="#242424"/>
+            <polygon points="16,39 60,64 60,114 16,89" fill="#242424"/>
+            <polygon points="60,14 104,39 60,64 16,39" fill="#E8471C"/>
+          </svg>
+        </div>
+
+        <div class="head">
+          <img class="logo" src="../assets/logo-amplify-ai.png" alt="Amplify AI">
+        </div>
+
+        <div class="lede">
+          <div class="eyebrow">Prompting 101</div>
+          <h2>The 5-Layer <em>Prompt</em></h2>
+        </div>
+
+        <div class="layers">
+          <div class="layer"><span class="no">01</span><span class="lab">Identity</span><span class="dsc">who the AI is</span></div>
+          <div class="layer"><span class="no">02</span><span class="lab">World</span><span class="dsc">the situation</span></div>
+          <div class="layer"><span class="no">03</span><span class="lab">Task</span><span class="dsc">what you actually want</span></div>
+          <div class="layer"><span class="no">04</span><span class="lab">Example</span><span class="dsc">one sample of good</span></div>
+          <div class="layer"><span class="no">05</span><span class="lab">Constraints</span><span class="dsc">the limits</span></div>
+        </div>
+
+        <div class="foot">
+          <span class="site"><b>amplifyai.to</b><span>Human-Led AI</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function fit(){const box=document.getElementById('fit'),card=document.getElementById('card');
+    card.style.transform='scale('+(box.clientWidth/1080)+')';}
+  new ResizeObserver(fit).observe(document.getElementById('fit')); fit();
+</script>
+</body>
+</html>
