@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Before You",
+  "accent": "Hit Send",
+  "items": [
+    {"label": "Read it",       "desc": "all the way through"},
+    {"label": "Check facts",   "desc": "verify every number"},
+    {"label": "Sound like you","desc": "not the machine"},
+    {"label": "Own it",        "desc": "would you sign it"}
+  ]
+}
