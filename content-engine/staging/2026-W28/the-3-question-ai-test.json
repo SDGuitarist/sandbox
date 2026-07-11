@@ -1,0 +1,10 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The 3-Question",
+  "accent": "Test",
+  "items": [
+    {"label": "Source", "desc": "where did it get this"},
+    {"label": "Stake",  "desc": "what if it's wrong"},
+    {"label": "Sense",  "desc": "match what you know"}
+  ]
+}

@@ -173,10 +173,13 @@ Run these (one Bash call each) and confirm before reporting done:
 
 - **Billing guard** — must return NO matches:
   `grep -rn "ANTHROPIC_API_KEY\|api.anthropic.com" content-engine/`
-- **Voice grep** — em-dash / common banned words, must return no matches in the post bodies:
+- **Voice grep** — em-dash / common banned words, must return NO matches anywhere in the file
+  (keep the whole batch em-dash-free, scaffolding included — the brand bans em-dashes
+  everywhere, so use `:`, `.`, `,`, or `·` in headings/meta, never `—`):
   `grep -nE "—|\bdelve\b|\bleverage\b|\bseamless\b|\butilize\b" content-engine/staging/<ISO-week>/batch.md`
-  (matches inside a quoted "banned words" example line in a post about AI tells are OK — judge
-  in context; the ban is on Alex USING them, not naming them.)
+  (If you deliberately NAME a banned word as an example inside a post about AI writing, prefer an
+  example outside this grep set, e.g. `unlock`/`elevate`/`tapestry`, so this guard stays a clean
+  pass. The ban is on Alex USING the words, not naming them.)
 - **Batch shape** — must return `3`:
   `grep -c "^## \(Instagram\|LinkedIn\|Facebook\) Post" content-engine/staging/<ISO-week>/batch.md`
 
@@ -205,7 +208,7 @@ generated_by: claude-code (Max, zero usage credits)
 generated_on: <YYYY-MM-DD>
 ---
 
-# Weekly Batch — <topic>
+# Weekly Batch: <topic>
 
 **Graphic:** `<slug>.png` (1080×1350, template v1) · data `<slug>.json`
 
