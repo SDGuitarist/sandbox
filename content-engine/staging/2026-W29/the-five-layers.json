@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The Five-Layer",
+  "accent": "Prompt",
+  "items": [
+    {"label": "Role", "desc": "who the AI is"},
+    {"label": "Context", "desc": "what it needs to know"},
+    {"label": "Task", "desc": "the one clear ask"},
+    {"label": "Format", "desc": "shape of the output"},
+    {"label": "Checks", "desc": "what good looks like"}
+  ]
+}

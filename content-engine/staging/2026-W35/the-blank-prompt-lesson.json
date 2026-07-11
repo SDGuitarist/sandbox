@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Fix a Weak",
+  "accent": "Prompt",
+  "items": [
+    {"label": "Add who", "desc": "the audience and voice"},
+    {"label": "Add why", "desc": "the point of it"},
+    {"label": "Add facts", "desc": "your real details"},
+    {"label": "Then edit", "desc": "make it sound like you"}
+  ]
+}

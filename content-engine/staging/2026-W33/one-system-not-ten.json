@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "One System,",
+  "accent": "Not Ten",
+  "items": [
+    {"label": "Pick one", "desc": "your worst weekly chore"},
+    {"label": "Build small", "desc": "solve that alone"},
+    {"label": "Use it", "desc": "a month, unchanged"},
+    {"label": "Then add", "desc": "only if it earns it"}
+  ]
+}

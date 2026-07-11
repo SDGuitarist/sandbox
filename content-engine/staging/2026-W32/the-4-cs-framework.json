@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The 4 C's of",
+  "accent": "Your Likeness",
+  "items": [
+    {"label": "Consent",      "desc": "did you say yes"},
+    {"label": "Control",      "desc": "can you pull it back"},
+    {"label": "Compensation", "desc": "are you paid for it"},
+    {"label": "Credit",       "desc": "is your name on it"}
+  ]
+}

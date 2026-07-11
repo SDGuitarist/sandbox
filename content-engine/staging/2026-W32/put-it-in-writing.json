@@ -1,0 +1,12 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Put the 4 C's",
+  "accent": "in Writing",
+  "items": [
+    {"label": "Scope",   "desc": "what and where"},
+    {"label": "Term",    "desc": "for how long"},
+    {"label": "Kill",    "desc": "how you revoke"},
+    {"label": "Pay",     "desc": "flat or per use"},
+    {"label": "Byline",  "desc": "how you are named"}
+  ]
+}

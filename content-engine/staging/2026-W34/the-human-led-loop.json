@@ -1,0 +1,10 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The Human-Led",
+  "accent": "Loop",
+  "items": [
+    {"label": "Direct", "desc": "you set the intent"},
+    {"label": "Draft", "desc": "the tool does volume"},
+    {"label": "Decide", "desc": "you keep the call"}
+  ]
+}

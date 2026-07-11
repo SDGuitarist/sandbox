@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "The Recurring",
+  "accent": "Task Audit",
+  "items": [
+    {"label": "List", "desc": "tasks you redo weekly"},
+    {"label": "Rank", "desc": "by dread, not size"},
+    {"label": "Draft", "desc": "let AI take a first pass"},
+    {"label": "Keep", "desc": "the judgment for you"}
+  ]
+}

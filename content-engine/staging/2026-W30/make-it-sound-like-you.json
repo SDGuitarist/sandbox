@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Make It Sound",
+  "accent": "Like You",
+  "items": [
+    {"label": "Draft", "desc": "let AI do the bones"},
+    {"label": "Break", "desc": "shorten the long parts"},
+    {"label": "Swap", "desc": "trade stiff words for yours"},
+    {"label": "Sign", "desc": "add a line only you'd write"}
+  ]
+}

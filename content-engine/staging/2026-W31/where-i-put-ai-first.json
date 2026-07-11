@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Where I Put",
+  "accent": "AI First",
+  "items": [
+    {"label": "Follow-ups", "desc": "venues, after a gig"},
+    {"label": "Drafts", "desc": "I still edit them"},
+    {"label": "Sound like me", "desc": "voice stays mine"},
+    {"label": "Send", "desc": "I hit the button"}
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "eyebrow": "Human-Led AI",
+  "title": "Why AI Flattens",
+  "accent": "Your Voice",
+  "items": [
+    {"label": "Averages", "desc": "aims for the middle"},
+    {"label": "Smooths", "desc": "sands off your edges"},
+    {"label": "Polite", "desc": "picks safe words"},
+    {"label": "Generic", "desc": "sounds like everyone"}
+  ]
+}
