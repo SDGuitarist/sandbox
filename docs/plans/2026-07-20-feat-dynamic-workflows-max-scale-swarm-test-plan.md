@@ -1,9 +1,10 @@
 ---
 title: "Dynamic Workflows Max-Scale Swarm Test (Run 082)"
 type: feat
-status: active
+status: unlaunchable
 date: 2026-07-20
 last_revised: 2026-07-21
+launch_gate: "RESOLVED 2026-07-21 — UNLAUNCHABLE. Phase-0 identity spike returned Q1a = NO: a Workflow agent() presents an EMPTY agent_type to the PreToolUse firebreak → classify_identity = orchestrator = TRUSTED = every worker ungoverned. No agent() opt sets hook identity (agentType→registry, label→display-only, no name/identity field). Governance cannot ride inside the engine. Unblock = an engine capability (an agent() identity/name opt that writes the spawned agent's agent_type). Full evidence: docs/reports/082/identity-spike.md."
 origin: docs/brainstorms/2026-07-20-dynamic-workflows-scale-test-brainstorm.md
 run_id: "082"
 swarm: true              # governance class = autopilot-swarm: this run inherits EVERY autopilot-swarm prerequisite & gate
