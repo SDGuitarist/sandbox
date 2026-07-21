@@ -1,3 +1,45 @@
+# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): AWAITING FINAL CODEX ROUND, then converged ⬅⬅
+
+**Phase:** Spec convergence for the **manual autopilot-swarm** build (NOT the Workflow engine — that
+path is UNLAUNCHABLE: `docs/solutions/2026-07-21-workflow-engine-cannot-carry-firebreak-identity.md`).
+**No app code yet.** The deliverable is a converged 6-section shared-interface spec.
+
+**Artifacts (all on branch `feat/082-swarmlimit-spec`, committed, NOT pushed):**
+- Spec: `docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md` (status: **draft**)
+- Run-plan: `docs/plans/2026-07-21-feat-082-max-value-unattended-autopilot-limit-test-plan.md`
+- Commit chain: d5890c7 → b41315c → bb8f7d3 → a85e3c6 → f40b373 (+ this handoff).
+
+**Convergence state:** Codex round 1 (6P0+1P1+1P2) and round 2 (3P0+3P1+1P2) applied. **Human P0 pass
+DONE — ZERO P0s** (2 clarifications pinned + route-path notation unified to `<int:...>`). A **FINAL
+confirming Codex round** on the current spec is the ONLY remaining gate. Its single-paste prompt
+(preamble `/tmp/codex-082-preamble.txt` + the full spec) was copied to the clipboard at handoff.
+
+**YOU ARE RESUMING TO PROCESS THE CODEX RESULTS. Do exactly this:**
+1. **If Codex says CLEAN (zero P0):** convergence met (Codex-clean AND human-zero-P0). Flip the spec
+   frontmatter `status: draft → active`; add a one-line convergence note to the spec's Cross-Section
+   Self-Review Log; commit on the branch. **STOP — do NOT launch.** Report that a later session can
+   launch `/autopilot`.
+2. **If Codex returns findings:** apply them as the SMALLEST internally-consistent doc edits (no scope
+   creep). Re-verify cross-section — Route Table ↔ §3 ↔ §6 ↔ manifest agree; manifest = 31 endpoints
+   = Route Table (SET-EQUAL, `<int:...>` form); Path-B cases = exactly 10 (EARS ↔ table bijection);
+   exactly TWO class-B owners (create_order, process_return). Commit on the branch; regenerate a fresh
+   confirming Codex prompt (paste the FULL spec). Keep `status: draft`. **Do NOT launch.**
+
+**GUARDRAILS:**
+- Do NOT launch `/autopilot` this session — launch is a SEPARATE later session after `status: active`.
+- run_id is skill-computed at launch (`count(docs/solutions)+1` — currently **083**). Do NOT hardcode
+  082 (`docs/reports/082/` already exists from the identity spike). Assert `docs/reports/<run-id>/` is
+  ABSENT before any manifest freeze.
+- Do NOT change the ENGINE (manual `/autopilot`), the SIZING (path B; honest ~22 agents; **I1 >31 is
+  non-gating — never pad**), or the merge-barrier wave structure unless a P0 forces it.
+- NEVER pay usage credits — Max subscription only.
+- Known open item (NOT a spec P0): the run-plan §Decomposition prose still says
+  `swarmlimit/<resource>/model.py`, while the SPEC (authoritative) uses
+  `swarmlimit/models/<resource>_models.py` + `swarmlimit/routes/<resource>.py`. Reconcile the run-plan
+  prose if convenient; the spec wins.
+
+<details><summary>⚠️ SUPERSEDED — old Run-082 (Workflow-engine) handoff below, kept for history (engine path is UNLAUNCHABLE)</summary>
+
 # ⬅⬅ NEXT SESSION — Run 082 (Dynamic Workflows scale test): PLAN COMPLETE, BLOCKED-pending-spike ⬅⬅
 
 **Phase:** Planning DONE. Brainstorm (2 refinement passes) → 5-agent deepen-plan → TWO Codex
@@ -24,6 +66,8 @@ convergence (Claude→Codex→NotebookLM→human) then Phase A baseline slice. T
 next-session prompt is in the commit message and was copied to the clipboard this session.
 **A2 (run count) is non-gating, pass iff >31 (~34–38); "≥35" retired.** (The Run 081 prompt block
 lower in this file is superseded.)
+
+</details>
 
 <details><summary>Prior — Amplify content-engine: SHIPPED & MERGED (2026-07-19), no WIP blocking</summary>
 
