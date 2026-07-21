@@ -58,13 +58,23 @@ swarmlimit/
   routes/
     auth.py               # (auth-core)
     <resource>.py         # one blueprint per route agent
-smoke.py                  # top-level smoke harness (smoke-author) — imports `from swarmlimit import create_app`
+  smoke.py                # smoke harness (smoke-author) — INSIDE the package at swarmlimit/smoke.py; run via `python -m swarmlimit.smoke`
 ```
 
+**Canonical smoke harness location + invocation (pinned — the ONE authority; every reference below
+uses it):** the harness is `swarmlimit/smoke.py` (inside the package, NOT a loose top-level script)
+and is ALWAYS invoked as **`python -m swarmlimit.smoke`** (full run), **`python -m swarmlimit.smoke
+--case <name>`** (single Path-B case), or **`python -m swarmlimit.smoke --manifest
+<R>/planned-manifest.json`** (manifest-equality run). Being in-package means `python -m compileall
+swarmlimit` byte-compiles it too, and `import swarmlimit.smoke` resolves. No other path/command form
+(`python smoke.py`, `python swarmlimit/smoke.py`, `python swarmlimit smoke`) is valid. For `python -m`
+to work, `swarmlimit/smoke.py` MUST have an `if __name__ == '__main__':` block with an `argparse`
+parser accepting `--case <name>` and `--manifest <path>` (absent → the full default suite runs).
+
 `create_app()` is defined at **module level** in `swarmlimit/__init__.py` (FC50 orchestration
-entrypoint); `smoke.py` does `from swarmlimit import create_app`. A module-level `app = create_app()`
-is NOT created at import time (avoids side-effecting the DB on import); smoke builds its own app
-against a throwaway temp DB (FC49 — a real tempfile, never `:memory:`).
+entrypoint); `swarmlimit/smoke.py` does `from swarmlimit import create_app`. A module-level
+`app = create_app()` is NOT created at import time (avoids side-effecting the DB on import); smoke
+builds its own app against a throwaway temp DB (FC49 — a real tempfile, never `:memory:`).
 
 ---
 
@@ -187,7 +197,7 @@ CREATE TABLE returns (
     order_id    INTEGER NOT NULL REFERENCES orders(id) ON DELETE RESTRICT,      -- financial/fulfillment record
     ext_ref     TEXT NOT NULL UNIQUE,                                           -- intra-table backstop; cross-table via refs
     reason      TEXT,
-    refund_cents INTEGER NOT NULL CHECK (refund_cents >= 0),
+    refund_cents INTEGER NOT NULL CHECK (refund_cents > 0),   -- strictly positive; matches payments.amount_cents CHECK (a return always refunds >0)
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -400,7 +410,9 @@ fetch-then-compare in Python):
 - `refunded_total(conn, order_id) -> int` — `SUM(amount_cents) WHERE kind='refund'` for the order,
   on a caller `conn` (used in-tx by `process_return`'s refund guard). Read-only; no commit.
 - `add_refund_in_tx(conn, order_id, amount_cents) -> int` — **in-tx helper, caller `conn`, NO
-  commit.** Inserts a `kind='refund'` payment row. Called ONLY by `process_return`.
+  commit.** Inserts a `kind='refund'` payment row with `amount_cents = refund_cents` (always `> 0` —
+  the route + `returns.refund_cents` CHECK both enforce `> 0`, so the `payments.amount_cents > 0`
+  CHECK can never fire at runtime; it is a backstop). Called ONLY by `process_return`.
 
 > **"Original payment" definition (pin — the refund-guard reference):** swarmlimit does NOT ledger a
 > `charge` row (create_order touches no payments — faithful to the run-plan EARS enumeration of
@@ -581,7 +593,7 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 | POST /orders | ext_ref, items (`[{product_id,qty}]`), user_id? | ext_ref non-empty; items non-empty; each qty > 0 int; each product_id int; `user_id` only honored for admin (customer forced to own id) | 400 `validation`; **409 `conflict`** on ext_ref collision OR insufficient stock OR unavailable product (in-tx guards raise) |
 | POST /orders/<oid>/shipments | carrier?, tracking? | order exists | 404 if order absent; 201 on create |
 | POST /shipments/<sid>/advance | to_status | `to_status ∈ {shipped,delivered}` (never `returned` — not client-advanceable) | 400 on bad enum; **409 `conflict`** if `(current,to_status)` illegal (status unchanged) |
-| POST /returns | order_id, ext_ref, reason?, refund_cents | order_id resolves via `get_order_for` (else 404); ext_ref non-empty; refund_cents ≥ 0 int | 400 `validation`; 404 if non-owner/absent order; **409 `conflict`** on ext_ref collision / shipment-not-delivered / refund-exceeds-original |
+| POST /returns | order_id, ext_ref, reason?, refund_cents | order_id resolves via `get_order_for` (else 404); ext_ref non-empty; **refund_cents > 0 int** (a return always refunds a positive amount; `≤ 0` → 400) | 400 `validation`; 404 if non-owner/absent order; **409 `conflict`** on ext_ref collision / shipment-not-delivered / refund-exceeds-original |
 | GET/DELETE typed params `<int:...>` | — | Flask 404 on non-int | 404 |
 
 **Global:** every `POST/PUT/PATCH/DELETE` validates `X-CSRF-Token` against the session → **400
@@ -658,9 +670,12 @@ post-commit — never nested inside a class-(B) transaction.
 **Invariant (order total):** always `SUM(order_items.qty*unit_price_cents)` computed at read — never
 a stored column — so a partial item write can never desync a persisted total.
 
-**Invariant (refund ≤ original):** `SUM(payments.amount_cents WHERE kind='refund' for order) ≤
-order_total(order)` at all times, enforced by `process_return`'s in-tx guard. `payments` is
-refund-only (schema CHECK).
+**Invariant (refund bounds — lower AND upper):** every refund is strictly positive and cumulative
+refunds never exceed the original, i.e. `0 < refund_cents` (per-refund) AND
+`SUM(payments.amount_cents WHERE kind='refund' for order) ≤ order_total(order)` at all times. The
+lower bound is enforced by the route + the `returns.refund_cents > 0` / `payments.amount_cents > 0`
+CHECKs (agreeing rules); the upper bound by `process_return`'s in-tx guard. `payments` is refund-only
+(schema CHECK `kind IN ('refund')`).
 
 **Invariant (ext_ref cross-resource uniqueness):** no `ext_ref` value appears in `orders` ∪
 `returns`. Enforced by `refs.assert_ext_ref_unique` inside both class-B transactions (BEGIN IMMEDIATE
@@ -701,7 +716,7 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 
 ---
 
-## Acceptance Tests (EARS) — verified by `smoke.py` (imports `from swarmlimit import create_app`, temp DB)
+## Acceptance Tests (EARS) — verified by `swarmlimit/smoke.py`, run as `python -m swarmlimit.smoke` (imports `from swarmlimit import create_app`, temp DB)
 
 ### Happy Path
 - WHEN a new user registers with a valid email + password (≥8) THE SYSTEM SHALL create the user and return **201**.
@@ -710,16 +725,16 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+products.stock **atomically** (audit recorded post-commit); the response asserts integer ids and NO `{'`/`[object Object]` in the JSON. — smoke value assertions.
 - WHEN two `create_order` calls race the last unit of stock THE SYSTEM SHALL let exactly one succeed, the other → **409** `conflict` (`insufficient stock`), final stock non-negative and correct. — smoke concurrency case.
 - WHEN a forced failure fires AFTER the first item writes but BEFORE commit THE SYSTEM SHALL leave orders, order_items, and products.stock unchanged. — smoke rollback case (before/after counts).
-- **(Path B — state-machine)** WHEN a shipment is advanced `pending→shipped` then `shipped→delivered` THE SYSTEM SHALL update status and record audit. — `python swarmlimit smoke --case state-machine-legal; echo $?` → 0.
-- **(Path B — uniqueness)** WHEN an `ext_ref` is unique across orders+returns THE SYSTEM SHALL accept and persist it. — `--case uniqueness-ok` → 0.
-- **(Path B — soft-delete)** WHEN a product is soft-deleted THE SYSTEM SHALL set `deleted_at`, exclude it from `GET /products`, and preserve historical `order_items` referencing it. — `--case soft-delete` → 0.
-- **(Path B — 2nd transaction)** WHEN `process_return` succeeds THE SYSTEM SHALL atomically insert the return, set the delivered shipment `status='returned'`, restock every order_item's product, and insert a `payments` refund — all four visible together. — `--case process-return` → 0.
+- **(Path B — state-machine)** WHEN a shipment is advanced `pending→shipped` then `shipped→delivered` THE SYSTEM SHALL update status and record audit. — `python -m swarmlimit.smoke --case state-machine-legal; echo $?` → 0.
+- **(Path B — uniqueness)** WHEN an `ext_ref` is unique across orders+returns THE SYSTEM SHALL accept and persist it. — `python -m swarmlimit.smoke --case uniqueness-ok; echo $?` → 0.
+- **(Path B — soft-delete)** WHEN a product is soft-deleted THE SYSTEM SHALL set `deleted_at`, exclude it from `GET /products`, and preserve historical `order_items` referencing it. — `python -m swarmlimit.smoke --case soft-delete; echo $?` → 0.
+- **(Path B — 2nd transaction)** WHEN `process_return` succeeds THE SYSTEM SHALL atomically insert the return, set the delivered shipment `status='returned'`, restock every order_item's product, and insert a `payments` refund — all four visible together. — `python -m swarmlimit.smoke --case process-return; echo $?` → 0.
 
 ### Error Cases
-- **(Path B — state-machine)** WHEN an illegal transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`, or advancing to `returned`) THE SYSTEM SHALL return **409** and leave `status` unchanged. — `--case state-machine-illegal` → 0.
-- **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return **409** and create no return row. — `--case uniqueness-collision` → 0 (asserts 409 + `COUNT(returns)` unchanged).
-- **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (**409** `conflict`, product unavailable) and create no order/items/stock change. — `--case soft-delete-order` → 0.
-- **(Path B — 2nd transaction rollback)** WHEN `process_return` fails mid-transaction (refund exceeds original, or shipment not delivered) THE SYSTEM SHALL roll back all four writes. — `--case process-return-rollback` → 0 (before/after counts unchanged on returns, shipments.status, products.stock, payments).
+- **(Path B — state-machine)** WHEN an illegal transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`, or advancing to `returned`) THE SYSTEM SHALL return **409** and leave `status` unchanged. — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0.
+- **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return **409** and create no return row. — `python -m swarmlimit.smoke --case uniqueness-collision; echo $?` → 0 (asserts 409 + `COUNT(returns)` unchanged).
+- **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (**409** `conflict`, product unavailable) and create no order/items/stock change. — `python -m swarmlimit.smoke --case soft-delete-order; echo $?` → 0.
+- **(Path B — 2nd transaction rollback)** WHEN `process_return` fails mid-transaction (refund exceeds original, or shipment not delivered) THE SYSTEM SHALL roll back all four writes. — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0 (before/after counts unchanged on returns, shipments.status, products.stock, payments).
 - WHEN a customer requests another customer's `GET /orders/<oid>` THE SYSTEM SHALL return **404** (not 403).
 - WHEN a customer POSTs to an admin route (e.g. `POST /products`) THE SYSTEM SHALL return **403**.
 - WHEN an anonymous request hits a protected route THE SYSTEM SHALL return **401**.
@@ -728,16 +743,16 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - WHEN `DELETE /suppliers/<sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
 
 ### Verification Commands
-- `python swarmlimit/smoke.py` (or `python -m swarmlimit.smoke`) — full happy-path + all 8 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`.
-- `python -m compileall swarmlimit` — byte-compile every module (parse check; NOT `python3 -c`, per repo Bash rules).
+- `python -m swarmlimit.smoke` — full happy-path + all 8 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`. (Assembly C2 step also runs `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json`.)
+- `python -m compileall swarmlimit` — byte-compile every module INCLUDING `swarmlimit/smoke.py` (parse check; NOT `python3 -c`, per repo Bash rules). This is the **Wave-0 gate** (parse-only, since a full import of `swarmlimit` can't succeed until routes exist post-assembly).
 - Contract check (Step 9w.6) + ownership gate + assembly are enforced by the swarm pipeline.
 
 ---
 
-## The 8 Path-B `--case` harness (smoke.py owns; C2 + Path-B EARS both depend on it)
+## The 8 Path-B `--case` harness (`swarmlimit/smoke.py` owns; C2 + Path-B EARS both depend on it)
 
-`smoke.py` exposes `--case <name>` returning exit 0 on pass, non-0 on fail. The eight cases (each an
-independent Path-B EARS proof):
+`swarmlimit/smoke.py` exposes `--case <name>` (run as `python -m swarmlimit.smoke --case <name>`)
+returning exit 0 on pass, non-0 on fail. The eight cases (each an independent Path-B EARS proof):
 
 | `--case` | Proves | Asserts |
 |----------|--------|---------|
@@ -750,7 +765,7 @@ independent Path-B EARS proof):
 | `process-return` | 4-table atomic commit | return row + shipment `returned` + stock restocked + refund row all present together |
 | `process-return-rollback` | 4-table atomic rollback | refund>original (and shipment-not-delivered) → 409; before/after counts equal on all four tables |
 
-Plus the non-Path-B core cases (default `smoke.py` run): manifest-equality (planned == exercised),
+Plus the non-Path-B core cases (default `python -m swarmlimit.smoke` run): manifest-equality (planned == exercised),
 create_order value assertions, create_order concurrency stock-race, create_order inject-after-first-
 write rollback, IDOR-404, admin-403, anon-401, CSRF-400, SECRET_KEY fail-closed.
 
@@ -832,7 +847,7 @@ freezing). The canonical manifest content is below; at launch, Wave-0's smoke-au
 
 **Wave 0 — shared surface (5, single-owner; R1 split so no agent is overloaded):**
 scaffold · database · auth-core · **shared-services** (`refs.py` ext_ref owner + `audit_models.py`) ·
-**smoke-author** (`smoke.py` + freezes `<R>/pitfalls-baseline.txt`).
+**smoke-author** (`swarmlimit/smoke.py` + freezes `<R>/pitfalls-baseline.txt`).
 
 **Wave 1 — MODEL layer (7, parallel):**
 supplier · category · product · order(+order_items) · shipment · return · payment.

@@ -108,8 +108,9 @@ mechanism is merge-to-base-then-next-wave. So:
   manifest-equality + value + atomicity + race + Path-B `--case` harness; it WRITES `<R>/c2-smoke-report.md`
   — line-1 `STATUS: PASS|FAIL`, recording the exercised (method,path) set, the `planned_minus_exercised` and
   `exercised_minus_planned` deltas, and any non-2xx — so C2 is disk-verifiable, not exit-code-only). Build → ownership-gate → **merge to base → push to
-  `origin/<default>` → provenance re-verify (9w.9.5)**. Hard barrier. EARS gate: `smoke.py` imports cleanly
-  against the base before any Wave-1 spawn; else abort + tear down firebreak.
+  `origin/<default>` → provenance re-verify (9w.9.5)**. Hard barrier. EARS gate: `swarmlimit/smoke.py`
+  **compiles cleanly** (`python -m compileall swarmlimit`, parse check) against the base before any
+  Wave-1 spawn; else abort + tear down firebreak.
 - **Wave 1 — MODEL layer (all resources parallel):** each owns `swarmlimit/<resource>/model.py`. Cross-resource
   model imports minimal; tightly-coupled pairs co-assigned to one agent. Ownership-gate → merge → push →
   re-verify. Barrier.
@@ -206,17 +207,17 @@ tail-budget floor guarantees the harvest runs).
 
 ### Happy Path
 - WHEN the run completes THE SYSTEM SHALL have run unattended with **0 human interventions** (A1, gating). — BUILD_TRACKING shows no human-intervention events.
-- WHEN Wave 0 completes THE SYSTEM SHALL verify its artifacts are merged+pushed to `origin/<default>` AND `smoke.py` imports cleanly against the base before any Wave-1 spawn; on failure abort + tear down firebreak. — `python -c "import swarmlimit.smoke"` against base → exit 0.
+- WHEN Wave 0 completes THE SYSTEM SHALL verify its artifacts are merged+pushed to `origin/<default>` AND `swarmlimit/smoke.py` **compiles cleanly** (parse check) against the base before any Wave-1 spawn; on failure abort + tear down firebreak. — `python -m compileall swarmlimit` against base → exit 0. (Parse-only, not a full import: `swarmlimit/smoke.py` is in-package so `compileall` covers it, and it avoids the FC8/repo-Bash `python -c` prohibition; a full import that executes `create_app`→route registration can't resolve until routes exist post-assembly.)
 - WHEN each Wave→Wave transition occurs THE SYSTEM SHALL push the merged layer to `origin/<default>` and re-run 9w.9.5 before the next spawn. — `<R>/assembly-order.log` shows every wave's base contains the prior wave's merge SHA.
 - WHEN 9w.5/9w.6 pass THE SYSTEM SHALL write `STATUS: CLEARED` to `<R>/gate-verification.md` and only then spawn. — `grep -m1 STATUS <R>/gate-verification.md` → CLEARED.
-- WHEN assembly completes THE SYSTEM SHALL run `smoke.py`, which WRITES `<R>/c2-smoke-report.md` recording the exercised (method,path) set + planned-vs-exercised deltas, and the tail SHALL **disk-verify that artifact** (not the exit code alone): C2 passes iff line-1 `STATUS: PASS` AND both deltas are empty AND no non-2xx (C2, gating). — `python swarmlimit/smoke.py --manifest <R>/planned-manifest.json` then `grep -m1 STATUS <R>/c2-smoke-report.md` → `PASS` AND `grep -A2 'planned_minus_exercised' <R>/c2-smoke-report.md` shows both delta sets empty.
+- WHEN assembly completes THE SYSTEM SHALL run `smoke.py`, which WRITES `<R>/c2-smoke-report.md` recording the exercised (method,path) set + planned-vs-exercised deltas, and the tail SHALL **disk-verify that artifact** (not the exit code alone): C2 passes iff line-1 `STATUS: PASS` AND both deltas are empty AND no non-2xx (C2, gating). — `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json` then `grep -m1 STATUS <R>/c2-smoke-report.md` → `PASS` AND `grep -A2 'planned_minus_exercised' <R>/c2-smoke-report.md` shows both delta sets empty.
 - WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+stock atomically **and record audit POST-commit** (audit is class-A, never inside the transaction — FC5/FC6; corrected from an earlier "…+audit atomically" wording that contradicted the injection matrix + Wave-0 spec); values assert integer ids and NO `{'`/`[object Object]` in rendered JSON. — smoke value assertions pass.
 - WHEN two `create_order` calls race the last unit of stock THE SYSTEM SHALL let exactly one succeed, the other raise `insufficient stock`, final stock non-negative and correct. — smoke concurrency case.
 - WHEN a forced failure fires AFTER the first writes but BEFORE commit THE SYSTEM SHALL leave all four tables (orders, order_items, products.stock, audit_logs) unchanged. — smoke rollback case with before/after counts.
-- **(Path B — state-machine)** WHEN a shipment is advanced along a legal transition (`pending→shipped`, then `shipped→delivered`) THE SYSTEM SHALL update `status` and write an audit row. — `python swarmlimit/smoke.py --case state-machine-legal; echo $?` → 0.
-- **(Path B — uniqueness)** WHEN an `ext_ref` is unique across orders+returns THE SYSTEM SHALL accept the create and persist it. — `python swarmlimit/smoke.py --case uniqueness-ok; echo $?` → 0.
-- **(Path B — soft-delete)** WHEN a product is soft-deleted THE SYSTEM SHALL set `deleted_at`, exclude it from `GET /products`, and preserve historical `order_items` referencing it. — `python swarmlimit/smoke.py --case soft-delete; echo $?` → 0.
-- **(Path B — 2nd transaction)** WHEN `process_return` succeeds THE SYSTEM SHALL atomically create the return, set `shipments.status=returned`, restock `products.stock`, and write a `payments` refund — all four visible together. — `python swarmlimit/smoke.py --case process-return; echo $?` → 0.
+- **(Path B — state-machine)** WHEN a shipment is advanced along a legal transition (`pending→shipped`, then `shipped→delivered`) THE SYSTEM SHALL update `status` and write an audit row. — `python -m swarmlimit.smoke --case state-machine-legal; echo $?` → 0.
+- **(Path B — uniqueness)** WHEN an `ext_ref` is unique across orders+returns THE SYSTEM SHALL accept the create and persist it. — `python -m swarmlimit.smoke --case uniqueness-ok; echo $?` → 0.
+- **(Path B — soft-delete)** WHEN a product is soft-deleted THE SYSTEM SHALL set `deleted_at`, exclude it from `GET /products`, and preserve historical `order_items` referencing it. — `python -m swarmlimit.smoke --case soft-delete; echo $?` → 0.
+- **(Path B — 2nd transaction)** WHEN `process_return` succeeds THE SYSTEM SHALL atomically create the return, set `shipments.status=returned`, restock `products.stock`, and write a `payments` refund — all four visible together. — `python -m swarmlimit.smoke --case process-return; echo $?` → 0.
 - WHEN verify-self-audit runs THE SYSTEM SHALL pass all 8 gates incl. Gate 8 bijection. — `grep -m1 STATUS <R>/verify-self-audit.md` → PASS.
 - WHEN verify-harvest runs THE SYSTEM SHALL confirm ≥5 **distinct-`root_cause_id`** pitfalls (≥2 net-new/variant), each bound to a **distinct** BUILD_TRACKING FAILURES row (V1, value gate). — `grep -m1 STATUS <R>/harvest-verification.md` → PASS.
 - WHEN the run completes THE SYSTEM SHALL report the actual agent count (I1, non-gating). — BUILD_TRACKING RUN_METRICS.
@@ -229,10 +230,10 @@ tail-budget floor guarantees the harvest runs).
 - WHEN self-audit claims PIPELINE_PASS with undisposed WARNs or A-grade with unjustified DEFERRED+HIGH THE SYSTEM SHALL fail (Gates 5/7f).
 - WHEN harvest < 5 or findings untraceable THE SYSTEM SHALL report low-value/hollow (V1 fail) + a root-cause note in self-audit.
 - WHEN `docs/reports/<run-id>/` pre-exists at launch THE SYSTEM SHALL abort (run_id-collision guard). — `test ! -d docs/reports/<run-id>` before manifest freeze.
-- **(Path B — state-machine)** WHEN an illegal shipment transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`) THE SYSTEM SHALL return 409 and leave `status` unchanged. — `python swarmlimit/smoke.py --case state-machine-illegal; echo $?` → 0 (asserts 409 + status unchanged).
-- **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return 409 and create no return row. — `python swarmlimit/smoke.py --case uniqueness-collision; echo $?` → 0 (asserts 409 + `count(returns)` unchanged).
-- **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (400/409) and create no order. — `python swarmlimit/smoke.py --case soft-delete-order; echo $?` → 0 (asserts rejection + no partial rows).
-- **(Path B — 2nd transaction)** WHEN `process_return` fails mid-transaction (refund exceeds the original payment) THE SYSTEM SHALL roll back all four writes (no return, no status change, no restock, no refund). — `python swarmlimit/smoke.py --case process-return-rollback; echo $?` → 0 (before/after counts unchanged on all four tables).
+- **(Path B — state-machine)** WHEN an illegal shipment transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`) THE SYSTEM SHALL return 409 and leave `status` unchanged. — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0 (asserts 409 + status unchanged).
+- **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return 409 and create no return row. — `python -m swarmlimit.smoke --case uniqueness-collision; echo $?` → 0 (asserts 409 + `count(returns)` unchanged).
+- **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (400/409) and create no order. — `python -m swarmlimit.smoke --case soft-delete-order; echo $?` → 0 (asserts rejection + no partial rows).
+- **(Path B — 2nd transaction)** WHEN `process_return` fails mid-transaction (refund exceeds the original payment) THE SYSTEM SHALL roll back all four writes (no return, no status change, no restock, no refund). — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0 (before/after counts unchanged on all four tables).
 
 ## Success Metrics
 
@@ -266,9 +267,9 @@ items from the last review are resolved:
   **shared-services**; (c) app-factory / DB core / auth stay on scaffold / database / auth-core. So
   Wave 0 = {scaffold, database, auth-core, shared-services, smoke-author}. No agent carries smoke +
   ext_ref + baseline together. (This nudges the count up slightly — fine for Path B.)
-- **R2 — smoke.py is AUTHORED + import-checked in Wave 0 but EXECUTED post-assembly.** Wave-0 EARS
-  gate is only `python -c "import swarmlimit.smoke"` (or `-m compileall`) against the base — an
-  IMPORT/parse check. Its route/`--case` assertions and the manifest-equality check CANNOT pass until
+- **R2 — smoke.py is AUTHORED + parse-checked in Wave 0 but EXECUTED post-assembly.** Wave-0 EARS
+  gate is `python -m compileall swarmlimit` against the base — a PARSE check (covers `swarmlimit/smoke.py`
+  since it is in-package; avoids the FC8/repo-Bash `python -c` prohibition). Its route/`--case` assertions and the manifest-equality check CANNOT pass until
   Wave 2 merges (routes exist), so they run at the **assembly C2 step**, not in Wave 0. Pinned in the
   spec's §Namespace note and the C2 EARS.
 - **R3 — ownership: smoke-author owns ALL testing; Wave-3 integration layer is CUT.** `smoke.py`
