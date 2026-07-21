@@ -270,14 +270,16 @@ All model functions convert `sqlite3.Row` → plain `dict` before returning.
 ## Model Functions (full signatures — Export Names contract derives from these)
 
 Convention: single-row getters return `dict | None`; listers return `list[dict]`; creators return
-the new `int` id; mutators return `None`. Every writer **commits internally** unless it is one of
-the two class-B atomic units that own a `transaction()` (`create_order`, `process_return`) or an
-in-tx helper that takes a caller `conn` and does NOT commit (`decrement_stock_in_tx`,
-`restock_product_in_tx`, `set_shipment_status_in_tx`, `add_refund_in_tx`) — see §5.
+the new `int` id; mutators return `None`. **Every class-A writer persists immediately via SQLite
+autocommit (`isolation_level=None`) — it does NOT call `conn.commit()` and does NOT open a
+transaction.** The ONLY functions that issue explicit transaction boundaries are the two class-B units
+(`create_order`, `process_return`); the in-tx helpers (`decrement_stock_in_tx`, `restock_product_in_tx`,
+`set_shipment_status_in_tx`, `add_refund_in_tx`) take a caller `conn` and neither commit nor open a
+transaction — see §5.
 
 ### auth_models.py  (auth-core)
 - `create_user(email, password, role, name) -> int` — hashes password (`werkzeug`); raises
-  `ValueError('email exists')` on UNIQUE violation. commits.
+  `ValueError('email exists')` on UNIQUE violation. persists immediately via SQLite autocommit; does not call `conn.commit()`.
 - `get_user(user_id) -> dict | None`
 - `get_user_by_email(email) -> dict | None`
 - `verify_credentials(email, password) -> dict | None` — user dict if password matches, else None.
@@ -334,11 +336,11 @@ fetch-then-compare in Python):
 - `get_product(pid, include_deleted=False) -> dict | None` — **returns `None` for a soft-deleted
   product unless `include_deleted=True`.** Includes `category_ids: list[int]`.
 - `create_product(sku, name, supplier_id, price_cents, stock=0, category_ids=None) -> int` —
-  validates supplier exists; raises `ValueError('sku exists')` on UNIQUE; attaches M2M rows. commits.
-- `update_product(pid, **fields) -> None` — whitelist: name, price_cents, stock, supplier_id. commits.
+  validates supplier exists; raises `ValueError('sku exists')` on UNIQUE; attaches M2M rows. persists immediately via SQLite autocommit; does not call `conn.commit()`.
+- `update_product(pid, **fields) -> None` — whitelist: name, price_cents, stock, supplier_id. persists immediately via SQLite autocommit; does not call `conn.commit()`.
 - `soft_delete_product(pid) -> None` — sets `deleted_at = datetime('now')`; **does NOT touch
-  `order_items`** (history preserved). Idempotent (already-deleted → no-op). commits.
-- `set_product_categories(pid, category_ids) -> None` — replaces M2M rows. commits.
+  `order_items`** (history preserved). Idempotent (already-deleted → no-op). persists immediately via SQLite autocommit; does not call `conn.commit()`.
+- `set_product_categories(pid, category_ids) -> None` — replaces M2M rows. persists immediately via SQLite autocommit; does not call `conn.commit()`.
 - `decrement_stock_in_tx(conn, pid, qty) -> None` — **in-tx helper, caller `conn`, NO commit.** The
   stock guard: `UPDATE products SET stock = stock - :qty WHERE id = :pid AND deleted_at IS NULL AND
   stock >= :qty`; require `conn.total_changes` delta / `cursor.rowcount == 1` else raise
@@ -380,11 +382,11 @@ fetch-then-compare in Python):
 - `get_shipment_for(sid, actor) -> dict | None` — **Ownership-Scoped Getter Contract** (transitive
   via order). `GET /shipments/<sid>` → 404 for non-owner.
 - `create_shipment(order_id, carrier=None, tracking=None) -> int` — validates the order exists;
-  inserts `status='pending'`. commits. (Admin creates a shipment for a placed order.)
+  inserts `status='pending'`. persists immediately via SQLite autocommit; does not call `conn.commit()`. (Admin creates a shipment for a placed order.)
 - `advance_shipment(sid, to_status) -> None` — the ROUTE has already checked `to_status` is one of
   the four stored statuses (else 400); this reads current status and, if `(current, to_status) NOT IN
   LEGAL_TRANSITIONS` → raise `ValueError('illegal transition')` and **leave status unchanged**
-  (route → 409). On legal: `UPDATE shipments SET status=:to, updated_at=datetime('now')`. commits.
+  (route → 409). On legal: `UPDATE shipments SET status=:to, updated_at=datetime('now')`. persists immediately via SQLite autocommit; does not call `conn.commit()`.
   **Never** succeeds for `'returned'` — `(x,'returned') ∉ LEGAL_TRANSITIONS` for every `x`, so a
   client `advance` to `returned` always 409s; only `process_return` sets `'returned'`.
 - `set_shipment_status_in_tx(conn, sid, status) -> None` — **in-tx helper, caller `conn`, NO
@@ -433,7 +435,7 @@ fetch-then-compare in Python):
 
 ### audit_models.py  (shared-services — WRITE-ONLY lib, imported by ALL mutating routes)
 - `record(actor_id, action, entity_type, entity_id=None, detail=None) -> None` — inserts one
-  audit_logs row; commits. Called **post-commit, route-level only** (one of the sanctioned
+  audit_logs row; persists immediately via SQLite autocommit; does not call `conn.commit()`. Called **post-commit, route-level only** (one of the sanctioned
   cross-agent write calls). **NEVER called inside a `transaction()`** and never by a model writer.
 - `list_audit(entity_type=None, limit=200) -> list[dict]` — admin audit view (`GET /audit`, hosted
   by scaffold).
@@ -445,53 +447,53 @@ fetch-then-compare in Python):
 Auth modes: **public** · **auth** (any logged-in) · **role+own** (admin OR resource owner; 404 for
 non-owner) · **admin**. JSON API — success/error bodies per the pinned schema. Full rules in §6.
 
-### auth  (/auth — auth-core)
+### auth  (auth-core — no url_prefix; full paths)
 | Method | Path | View | Auth |
 |--------|------|------|------|
 | POST | /auth/register | register | public |
 | POST | /auth/login | login (response body includes `csrf_token`) | public |
 | POST | /auth/logout | logout | auth |
 
-### suppliers  (/suppliers — supplier route agent)
-| GET | / | list_suppliers | auth |
-| POST | / | create_supplier | admin |
-| GET | /<int:sid> | get_supplier → `... or error('not_found',404)` | auth |
-| PATCH | /<int:sid> | update_supplier | admin |
-| DELETE | /<int:sid> | delete_supplier (409 `conflict` if in use) | admin |
+### suppliers  (supplier route agent — no url_prefix; full paths)
+| GET | /suppliers | list_suppliers | auth |
+| POST | /suppliers | create_supplier | admin |
+| GET | /suppliers/<int:sid> | get_supplier → `... or error('not_found',404)` | auth |
+| PATCH | /suppliers/<int:sid> | update_supplier | admin |
+| DELETE | /suppliers/<int:sid> | delete_supplier (409 `conflict` if in use) | admin |
 
-### categories  (/categories — category route agent)
-| GET | / | list_categories | auth |
-| POST | / | create_category | admin |
-| GET | /<int:cid> | get_category | auth |
-| PATCH | /<int:cid> | update_category | admin |
-| DELETE | /<int:cid> | delete_category (409 `conflict` if in use) | admin |
+### categories  (category route agent — no url_prefix; full paths)
+| GET | /categories | list_categories | auth |
+| POST | /categories | create_category | admin |
+| GET | /categories/<int:cid> | get_category | auth |
+| PATCH | /categories/<int:cid> | update_category | admin |
+| DELETE | /categories/<int:cid> | delete_category (409 `conflict` if in use) | admin |
 
-### products  (/products — product route agent)
-| GET | / | list_products (excludes soft-deleted) | auth |
-| POST | / | create_product | admin |
-| GET | /<int:pid> | get_product → 404 if soft-deleted/absent | auth |
-| PATCH | /<int:pid> | update_product | admin |
-| DELETE | /<int:pid> | soft_delete_product (200; sets deleted_at) | admin |
-| PUT | /<int:pid>/categories | set_product_categories | admin |
+### products  (product route agent — no url_prefix; full paths)
+| GET | /products | list_products (excludes soft-deleted) | auth |
+| POST | /products | create_product | admin |
+| GET | /products/<int:pid> | get_product → 404 if soft-deleted/absent | auth |
+| PATCH | /products/<int:pid> | update_product | admin |
+| DELETE | /products/<int:pid> | soft_delete_product (200; sets deleted_at) | admin |
+| PUT | /products/<int:pid>/categories | set_product_categories | admin |
 
-### orders  (/orders — order route agent)
-| GET | / | `list_orders_for(current_user())` | role+own |
-| POST | / | create_order → 409 on ext_ref/stock. **`user_id` resolution:** omitted → the **current actor's id** (both roles); customer → ALWAYS forced to own id (any supplied `user_id` ignored); admin → may override with an explicit `user_id` | auth |
-| GET | /<int:oid> | `get_order_for(oid, current_user()) or error('not_found',404)` | role+own |
+### orders  (order route agent — no url_prefix; full paths)
+| GET | /orders | `list_orders_for(current_user())` | role+own |
+| POST | /orders | create_order → 409 on ext_ref/stock. **`user_id` resolution:** omitted → the **current actor's id** (both roles); customer → ALWAYS forced to own id (any supplied `user_id` ignored); admin → may override with an explicit `user_id` | auth |
+| GET | /orders/<int:oid> | `get_order_for(oid, current_user()) or error('not_found',404)` | role+own |
 
-### shipments  (/shipments — shipment route agent; creation nested under an order)
+### shipments  (shipment route agent — no url_prefix; full paths; two roots)
 | POST | /orders/<int:oid>/shipments | create_shipment | admin |
 | GET | /shipments/<int:sid> | `get_shipment_for(sid, current_user()) or 404` | role+own |
 | POST | /shipments/<int:sid>/advance | advance_shipment (body `{to_status}`) → **409** illegal | admin |
 
-### returns  (/returns — return route agent)
-| GET | / | `list_returns_for(current_user())` | role+own |
-| POST | / | process_return (body `{order_id, ext_ref, reason?, refund_cents}`) → 409 ext_ref/state/refund | role+own |
-| GET | /<int:rid> | `get_return_for(rid, current_user()) or 404` | role+own |
+### returns  (return route agent — no url_prefix; full paths)
+| GET | /returns | `list_returns_for(current_user())` | role+own |
+| POST | /returns | process_return (body `{order_id, ext_ref, reason?, refund_cents}`) → 409 ext_ref/state/refund | role+own |
+| GET | /returns/<int:rid> | `get_return_for(rid, current_user()) or 404` | role+own |
 
-### payments  (/payments — payment route agent)
-| GET | / | `list_payments_for(current_user())` | role+own |
-| GET | /<int:pid> | `get_payment_for(pid, current_user()) or 404` | role+own |
+### payments  (payment route agent — no url_prefix; full paths)
+| GET | /payments | `list_payments_for(current_user())` | role+own |
+| GET | /payments/<int:pid> | `get_payment_for(pid, current_user()) or 404` | role+own |
 
 ### audit  (/audit — hosted by scaffold in __init__.py)
 | GET | /audit | list_audit | admin |
@@ -523,6 +525,8 @@ so every model function a route calls is a cross-boundary export.
 | `login_user` / `logout_user` | function | swarmlimit/auth.py | auth routes | `login_user(user: dict) -> None` / `logout_user() -> None` |
 | `assert_ext_ref_unique` | function | swarmlimit/refs.py | order_models, return_models (in-tx) | `assert_ext_ref_unique(conn, ext_ref) -> None  # no commit; raises ValueError` |
 | `record` | function | swarmlimit/models/audit_models.py | ALL mutating route agents | `record(actor_id, action, entity_type, entity_id=None, detail=None) -> None` |
+| `order_models._TX_FAULT` | module attr (smoke-only test seam) | order_models.py | swarmlimit/smoke.py (sets/resets) | `_TX_FAULT: Callable[[], None] | None = None` — default `None` (no-op); invoked as `if _TX_FAULT: _TX_FAULT()` at the checkpoint AFTER the first `order_item` insert inside `create_order`'s `transaction()`. Smoke sets it to a raising callable, drives the unit, then resets to `None`. See §5 seam. |
+| `return_models._TX_FAULT` | module attr (smoke-only test seam) | return_models.py | swarmlimit/smoke.py (sets/resets) | `_TX_FAULT: Callable[[], None] | None = None` — default `None` (no-op); invoked as `if _TX_FAULT: _TX_FAULT()` at the checkpoint AFTER `add_refund_in_tx` inside `process_return`'s `transaction()`. Smoke sets a raising callable, drives the unit, then resets to `None`. See §5 seam. |
 
 ### 1b. Model-function exports (complete inventory — reconciled with §2)
 | Function | Defined By | Used By (consumers = §2) |
@@ -540,9 +544,10 @@ so every model function a route calls is a cross-boundary export.
 
 ### 1c. Blueprints & route paths
 Blueprint names = the resource name (`auth`, `suppliers`, `categories`, `products`, `orders`,
-`shipments`, `returns`, `payments`). `/audit` is served by the scaffold in `__init__.py` (no
-blueprint). Registered in `swarmlimit/__init__.py` in the fixed order:
-`auth, suppliers, categories, products, orders, shipments, returns, payments`.
+`shipments`, `returns`, `payments`), each `Blueprint('<name>', __name__)` with **no `url_prefix`**;
+every route declares its FULL absolute path (= the manifest path, no trailing slash) — see §4. `/audit`
+is served by the scaffold in `__init__.py` (no blueprint). Registered in `swarmlimit/__init__.py` in
+the fixed order: `auth, suppliers, categories, products, orders, shipments, returns, payments`.
 
 ### 1d. Orchestration entrypoints (FC50 — every cross-boundary non-getter call, Full Signature required)
 | Name | Type | Defined By | Used By | Full Signature |
@@ -565,6 +570,7 @@ blueprint). Registered in `swarmlimit/__init__.py` in the fixed order:
 |----------|----------|--------|
 | swarmlimit/database.py (`get_db`, `query`) | every model + swarmlimit/auth.py | `from swarmlimit.database import get_db, query` |
 | swarmlimit/database.py (`transaction`) | **order_models.py, return_models.py ONLY** (the two class-B openers — matches §1a + §5) | `from swarmlimit.database import transaction` |
+| swarmlimit/database.py (`init_db`) | swarmlimit/__init__.py (scaffold — called once if the DB file is absent) | `from swarmlimit.database import init_db` |
 | swarmlimit/__init__.py (`error`) | every route | `from swarmlimit import error` |
 | swarmlimit/auth.py | every route | `from swarmlimit.auth import login_required, role_required, current_user` |
 | swarmlimit/refs.py | order_models.py, return_models.py | `from swarmlimit.refs import assert_ext_ref_unique` |
@@ -576,6 +582,7 @@ blueprint). Registered in `swarmlimit/__init__.py` in the fixed order:
 | swarmlimit/models/shipment_models.py | routes/shipments.py, **return_models.py** (set_shipment_status_in_tx) | `from swarmlimit.models.shipment_models import ...` |
 | swarmlimit/models/return_models.py | routes/returns.py | `from swarmlimit.models.return_models import ...` |
 | swarmlimit/models/payment_models.py | routes/payments.py, **return_models.py** (refunded_total + add_refund_in_tx) | `from swarmlimit.models.payment_models import ...` |
+| swarmlimit/models/order_models.py (`_TX_FAULT`) + swarmlimit/models/return_models.py (`_TX_FAULT`) | swarmlimit/smoke.py (fault-injection seam — sets a raising callable at the owner's checkpoint, resets to `None` after) | `import swarmlimit.models.order_models as om; om._TX_FAULT = <raiser>` (and likewise `return_models`); default `None` in production. See §5 seam. |
 
 **Densest coupling (Feed-Forward risk):** `return_models.py` imports FOUR peer models
 (product `restock_product_in_tx`, shipment `set_shipment_status_in_tx`, payment `refunded_total`+
@@ -616,12 +623,20 @@ parsed as JSON; a non-JSON/absent body on a mutating route → 400 `validation`.
 
 ## 4. Coordinated Behaviors (must be consistent across all agents)
 
-- **Blueprint registration:** all blueprints registered in `swarmlimit/__init__.py` in the fixed
-  order `auth, suppliers, categories, products, orders, shipments, returns, payments`. Each route
-  agent exposes `bp = Blueprint('<name>', __name__, url_prefix='/<name>')`. **Exception:** the
-  `shipments` blueprint owns BOTH `/orders/<int:oid>/shipments` (create) AND `/shipments/...` — it is
-  registered with **no `url_prefix`** and declares full paths on each route (so it can serve the
-  nested-under-orders create path). `/audit` is served directly by the scaffold (no blueprint).
+- **Blueprint registration & path convention (pinned — the ONE rule; makes every
+  `request.url_rule.rule` equal its manifest path EXACTLY):** all blueprints registered in
+  `swarmlimit/__init__.py` in the fixed order `auth, suppliers, categories, products, orders,
+  shipments, returns, payments`. **NO blueprint uses `url_prefix`** — each is
+  `bp = Blueprint('<name>', __name__)` and EVERY `@bp.route(...)` declares the **FULL absolute path
+  exactly as written in the Route Table = the manifest** (auth → `@bp.route('/auth/register', ...)`;
+  suppliers → `'/suppliers'` and `'/suppliers/<int:sid>'`). This eliminates BOTH failure modes: no
+  double-prefix (`/auth/auth/register` cannot arise — there is no prefix) and **no collection
+  trailing-slash** (a collection is declared `'/suppliers'`, NEVER `'/suppliers/'`, so its rule has no
+  trailing slash). Leave `strict_slashes` at Flask's default; since no declared path carries a trailing
+  slash, no `/suppliers/` rule is ever registered. `/audit` is served directly by the scaffold (full
+  absolute path, no blueprint). The `shipments` blueprint is **no longer special** — like every other
+  it has no prefix; it simply declares routes under two roots (`/orders/<int:oid>/shipments` and
+  `/shipments/...`).
 - **Response envelope:** success bodies are always a JSON **object** (never a bare list); list
   endpoints wrap under a named key (`{"orders":[...]}`, `{"products":[...]}`, etc.). Error bodies are
   `{"error": <code>, ...}` via the shared `error(...)` helper. HTTP status codes per §1a/§3.
@@ -650,7 +665,7 @@ parsed as JSON; a non-JSON/absent body on a mutating route → 400 `validation`.
 
 Three writer classes — every DB-writing function is in exactly one:
 
-**(A) Commit internally (self-contained single logical write):** `create_user`, `create_supplier`,
+**(A) Persist immediately via SQLite autocommit (self-contained single logical write; no `conn.commit()`, no `transaction()`):** `create_user`, `create_supplier`,
 `update_supplier`, `delete_supplier`, `create_category`, `update_category`, `delete_category`,
 `create_product`, `update_product`, `soft_delete_product`, `set_product_categories`,
 `create_shipment`, `advance_shipment`, `record`. Each executes its single `INSERT/UPDATE/DELETE`
@@ -760,7 +775,7 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - **(Path B — 2nd transaction)** WHEN `process_return` succeeds THE SYSTEM SHALL atomically insert the return, set the delivered shipment `status='returned'`, restock every order_item's product, and insert a `payments` refund — all four visible together. — `python -m swarmlimit.smoke --case process-return; echo $?` → 0.
 
 ### Error Cases
-- **(Path B — state-machine)** WHEN an illegal transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`, or advancing to `returned`) THE SYSTEM SHALL return **409** and leave `status` unchanged. — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0.
+- **(Path B — state-machine)** WHEN an illegal transition is attempted THE SYSTEM SHALL return **409** and leave `status` unchanged — proven for ALL of: (a) `delivered→pending` (status stays `delivered`); (b) `pending→delivered` skipping `shipped` (status stays `pending`); (c) `advance`→`returned` from EVERY source status `∈{pending,shipped,delivered}` (status stays the source). — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0.
 - **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return **409** and create no return row. — `python -m swarmlimit.smoke --case uniqueness-collision; echo $?` → 0 (asserts 409 + `COUNT(returns)` unchanged).
 - **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (**409** `conflict`, product unavailable) and create no order/items/stock change. — `python -m swarmlimit.smoke --case soft-delete-order; echo $?` → 0.
 - **(Path B — 2nd transaction ROLLBACK, real mid-tx)** WHEN a forced exception fires INSIDE `process_return` AFTER `add_refund_in_tx` but before the transaction commits THE SYSTEM SHALL roll back all four writes — `COUNT(returns)`/`COUNT(payments)` unchanged AND the shipment `status` VALUE still `'delivered'` AND every product `stock` VALUE unchanged. — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0.
@@ -788,7 +803,7 @@ returning exit 0 on pass, non-0 on fail. The ten cases (each an independent Path
 | `--case` | Proves | Asserts |
 |----------|--------|---------|
 | `state-machine-legal` | legal advance | pending→shipped→delivered each 200; audit rows written |
-| `state-machine-illegal` | illegal advance guarded | delivered→pending → 409; status still `delivered`; advancing to `returned` → 409 |
+| `state-machine-illegal` | illegal advance guarded (ONE case, three sub-checks — each asserts 409 AND status preserved) | (a) `delivered→pending` → 409 AND status still `delivered`; (b) `pending→delivered` (skip `shipped`) → 409 AND status still `pending`; (c) for EVERY source status `s ∈ {pending,shipped,delivered}`, `advance`→`returned` → 409 AND status still `s`. All via `POST /shipments/<sid>/advance`. |
 | `uniqueness-ok` | ext_ref accepted | distinct ext_ref on order then return → both persist |
 | `uniqueness-collision` | cross-resource uniqueness | return reusing an order's ext_ref → 409; `COUNT(returns)` unchanged |
 | `soft-delete` | soft-delete semantics | delete → `deleted_at` set; absent from `GET /products`; prior order_items still present |
@@ -1000,9 +1015,10 @@ Recorded here so Codex/human can see what was already reconciled (mirrors lesson
 **ZERO P0s.** All load-bearing seams (both class-B transactions, the 7 in-tx helpers, ext_ref
 single-owner ↔ per-table UNIQUE backstops, refund guard, shipment reachability, manifest 31==Route-Table
 31, blueprint no-prefix) verified cross-section consistent. Two P1s found + FIXED here: (a) §4 said
-"six in-tx helpers" but listed seven → corrected to "five write + two read-only"; (b) manifest-equality
-path-normalization was unpinned → added the `rule.rule`-form pin (exercised paths from `app.url_map`,
-not concrete URLs). P2s: `audit_logs.entity_id` marked FC46-exempt (polymorphic, no FK);
+"six in-tx helpers" but listed seven → corrected (final framing: "four write + one read-only uniqueness
+guard + two read-only totals"); (b) manifest-equality path capture was unpinned → pinned to
+**per-request `(request.method, request.url_rule.rule)` captured via `after_request`** (NOT inferred
+from `app.url_map`, and never concrete URLs). P2s: `audit_logs.entity_id` marked FC46-exempt (polymorphic, no FK);
 `order_total`/`refunded_total` `oid`-vs-`order_id` call-site variance left as harmless. **This is a
 Claude-side proxy pass — it does NOT substitute for the real Codex fresh-context review + human P0 pass
 (both still required before `status: active`).**
@@ -1018,3 +1034,14 @@ Claude-side proxy pass — it does NOT substitute for the real Codex fresh-conte
 - **P2-8 (helper count):** re-described the seven in-tx helpers as **four write + one read-only uniqueness guard (`assert_ext_ref_unique`) + two read-only totals**; caller-`conn`/no-commit preserved for all seven (§4 + §5C).
 - **Manifest unchanged:** the 2 new guard cases exercise existing endpoints (POST /returns, POST /shipments/advance), so the endpoint set stays **31 = 31** vs the Route Table.
 - **STILL REQUIRED before `status: active`:** the human zero-P0 structural pass (Codex + human is the convergence criterion).
+
+**CONFIRMING Round-2 Codex pass (2026-07-21) — 3 P0 + 3 P1 + 1 P2, ALL RESOLVED here:**
+- **P0-1 (state-machine-illegal too weak):** the `--case` now proves, in ONE case, three sub-checks each with status preserved: `delivered→pending`→409 (stays `delivered`); `pending→delivered` skip→409 (stays `pending`); `advance`→`returned` from EVERY source `∈{pending,shipped,delivered}`→409 (stays source). EARS tightened to match.
+- **P0-2 (`_TX_FAULT` not in the export/wiring contract):** added `order_models._TX_FAULT` + `return_models._TX_FAULT` to §1a (default `None`, raising-callable, per-owner checkpoint, smoke sets+resets) and a §2 producer→consumer row (owners → `swarmlimit/smoke.py`).
+- **P0-3 (blueprint path ambiguity):** pinned ONE convention — **no `url_prefix` on any blueprint; every route declares the FULL absolute path = the manifest**. Kills `/auth/auth/register` (no prefix) and collection trailing-slash `/suppliers/` (declared `'/suppliers'`, never `'/suppliers/'`). §4 + §1c + all Route-Table sub-tables converted to full paths so `request.url_rule.rule` == manifest exactly.
+- **P1-4 (class-A "commits" wording):** replaced "commits internally"/"commits" with "persists immediately via SQLite autocommit; does not call `conn.commit()`" (umbrella, all 8 class-A functions, §5(A) header). Only `create_order`/`process_return` issue explicit boundaries.
+- **P1-5 (stale self-review "app.url_map"):** corrected the historical note to the current per-request `request.url_rule.rule` via `after_request` mechanism.
+- **P1-6 (missing §2 row):** added `database.init_db → scaffold __init__.py`.
+- **P2-7 (stale helper count in self-review):** corrected "five write + two read-only" → "four write + one read-only uniqueness guard + two read-only totals".
+- **Invariants preserved:** exactly two class-B owners; Path-B cases = 10; manifest = 31 = Route Table (no endpoints added/removed — path notation changed from relative to full, values identical).
+- **STILL REQUIRED before `status: active`:** the human zero-P0 structural pass.
