@@ -93,9 +93,13 @@ inside the temp dir, never `:memory:`.
 - Session cookie: `SESSION_COOKIE_HTTPONLY=True`, `SESSION_COOKIE_SAMESITE='Lax'`,
   `SESSION_COOKIE_SECURE = (FLASK_ENV != development)`.
 - **CSRF (header token, JSON API):** `create_app` registers a `before_request` that, on every
-  `POST/PUT/PATCH/DELETE`, requires request header `X-CSRF-Token` to equal `session['_csrf']`
-  (minted at login) → **400** (`{"error":"csrf"}`) on absence/mismatch. `GET` is exempt. Login/
-  register are exempt (no session yet). Smoke reads the token from the login response body.
+  `POST/PUT/PATCH/DELETE` **carrying an authenticated session**, requires request header
+  `X-CSRF-Token` to equal `session['_csrf']` (minted at login) → **400** (`{"error":"csrf"}`) on
+  absence/mismatch. **Auth precedes CSRF (pinned):** an anonymous request has no session (no
+  `session['_csrf']`), so the CSRF `before_request` does NOT reject it — it falls through to the view's
+  `login_required`, which returns **401 `auth`**. So an anonymous mutating request returns **401**, never
+  400 (CSRF applies ONLY to authenticated mutating requests). `GET` is exempt. Login/register are exempt
+  (no session yet). Smoke reads the token from the login response body.
 - **CSP:** `create_app` sets a static `Content-Security-Policy: default-src 'none'` response header
   on all responses (JSON API serves no HTML/JS, so the strictest policy is correct and free). This
   is the "CSP if any" the run-plan names; it is a fixed constant, not per-route.
@@ -476,7 +480,7 @@ non-owner) · **admin**. JSON API — success/error bodies per the pinned schema
 | POST | /auth/logout | logout | auth |
 
 > **`POST /auth/register` privilege pin (P0 — public route can NEVER mint an admin):** the register
-> view calls `create_user(email, password, role='customer', name)` — it hard-codes `role='customer'`
+> view calls `create_user(email=email, password=password, role='customer', name=name)` — it hard-codes `role='customer'`
 > and ignores any `role` in the request body, so an anonymous caller submitting `role=admin` still
 > receives a `customer` account. The seeded `admin@swarm.test` (inserted by `init_db`) is the sole
 > bootstrap admin; the stale "first user forced admin" rule is removed. `create_user` keeps its
@@ -636,7 +640,7 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 | DELETE /categories/<int:cid> | (path) | category exists | 404; **409 `conflict`** if referenced |
 | POST /products | sku, name, supplier_id, price_cents, stock?, category_ids? | sku+name non-empty; supplier exists; price_cents ≥ 0 int; stock ≥ 0 int; category_ids all exist | 400; 409 on dup sku |
 | PATCH /products/<int:pid> | whitelist name/price_cents/stock/supplier_id | types as above | 400 / 404 |
-| DELETE /products/<int:pid> | (path) | product exists (live) | 404 if absent/already-deleted-and-not-admin-history; else 200 (soft-delete) |
+| DELETE /products/<int:pid> | (path) | product id exists (live OR already soft-deleted) | **404 only if the product id never existed**; an already-soft-deleted product → **200** (idempotent no-op, per `soft_delete_product`'s declared contract); a live product → **200** (sets `deleted_at`) |
 | PUT /products/<int:pid>/categories | category_ids | list of existing category ids | 400 / 404 |
 | POST /orders | ext_ref, items (`[{product_id,qty}]`), user_id? | ext_ref non-empty; items non-empty; each qty > 0 int; each product_id int. **`user_id` resolution:** if omitted → the current actor's id (both roles); a customer is ALWAYS forced to their own id (any supplied `user_id` ignored); only an admin may pass an explicit `user_id` to place on another user's behalf | 400 `validation`; **409 `conflict`** on ext_ref collision OR insufficient stock OR unavailable product (in-tx guards raise) |
 | POST /orders/<int:oid>/shipments | carrier?, tracking? | order exists; order has no shipment yet | 404 if order absent; **409 `conflict`** if the order already has a shipment (`UNIQUE(order_id)` → `ValueError('shipment exists')`); 201 on create |
@@ -644,8 +648,9 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 | POST /returns | order_id, ext_ref, reason?, refund_cents | order_id resolves via `get_order_for` (else 404); ext_ref non-empty; **refund_cents > 0 int** (a return always refunds a positive amount; `≤ 0` → 400) | 400 `validation`; 404 if non-owner/absent order; **409 `conflict`** on ext_ref collision / shipment-not-delivered / refund-exceeds-original |
 | GET/DELETE typed params `<int:...>` | — | Flask 404 on non-int | 404 |
 
-**Global:** every `POST/PUT/PATCH/DELETE` validates `X-CSRF-Token` against the session → **400
-`csrf`** on mismatch (before_request). Unknown row id on any GET detail → 404. Every request body is
+**Global:** every **authenticated** `POST/PUT/PATCH/DELETE` validates `X-CSRF-Token` against the session
+→ **400 `csrf`** on mismatch (before_request); an **anonymous** mutating request returns **401 `auth`**
+first (auth precedes CSRF — see App Configuration). Unknown row id on any GET detail → 404. Every request body is
 parsed as JSON; a non-JSON/absent body on a mutating route → 400 `validation`.
 
 ---
@@ -669,11 +674,14 @@ parsed as JSON; a non-JSON/absent body on a mutating route → 400 `validation`.
 - **Response envelope:** success bodies are always a JSON **object** (never a bare list); list
   endpoints wrap under a named key (`{"orders":[...]}`, `{"products":[...]}`, etc.). Error bodies are
   `{"error": <code>, ...}` via the shared `error(...)` helper. HTTP status codes per §1a/§3.
-- **CSRF:** header `X-CSRF-Token` on every mutating request, minted at login, returned in the login
-  response body as `csrf_token`. One convention repo-wide.
-- **Auth failure codes:** anonymous on a protected route → **401** `auth`; wrong role → **403**
-  `forbidden`; non-owner on a `role+own` READ → **404** `not_found` (existence hidden). One
-  convention repo-wide (see §6).
+- **CSRF:** header `X-CSRF-Token` on every **authenticated** mutating request, minted at login, returned
+  in the login response body as `csrf_token`. CSRF is enforced ONLY for authenticated mutating requests;
+  an anonymous mutating request returns **401 `auth`** (auth precedes CSRF), not 400 `csrf`. One
+  convention repo-wide.
+- **Auth failure codes (precedence pinned):** anonymous on a protected route → **401** `auth` — **even a
+  mutating one** (401 `auth` takes precedence over 400 `csrf`, so a worker never has to choose
+  heuristically); wrong role → **403** `forbidden`; non-owner on a `role+own` READ → **404** `not_found`
+  (existence hidden). One convention repo-wide (see §6).
 - **Money:** integer cents everywhere; never float. Totals computed at read time
   (`SUM(order_items)`), never stored.
 - **Datetime:** ISO-8601 TEXT (UTC) via `datetime('now')`.
@@ -804,7 +812,9 @@ unchanged.
 enforced by the ownership-scoped `*_for(actor,…)` getters returning `None`/`[]` (0 rows) →
 `error('not_found',404)` — NOT a post-fetch conditional. The one `role+own` **write** on a body
 field (`POST /returns`) guards via `get_order_for(order_id, actor)` → 404 before mutating. Admin
-bypasses ownership by role. Anonymous → **401**; wrong role on an admin route → **403**.
+bypasses ownership by role. Anonymous → **401** (even on a mutating route — 401 `auth` precedes 400
+`csrf`); wrong role on an admin route → **403**. CSRF (400) is checked only AFTER a request is
+authenticated.
 
 ---
 
@@ -831,9 +841,9 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - **(Path B — state guard, pre-write)** WHEN `process_return` is called for an order whose shipment is NOT `delivered` THE SYSTEM SHALL return **409** `conflict` and write nothing. — `python -m swarmlimit.smoke --case process-return-guard-shipment; echo $?` → 0.
 - WHEN a customer requests another customer's `GET /orders/<int:oid>` THE SYSTEM SHALL return **404** (not 403).
 - WHEN a customer POSTs to an admin route (e.g. `POST /products`) THE SYSTEM SHALL return **403**.
-- WHEN a public `POST /auth/register` body supplies `role: admin` THE SYSTEM SHALL still create a **customer**, log that user in, and return **403** on an admin-only route (e.g. `POST /products`) — a client can never self-promote. — default-smoke security assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
-- WHEN an anonymous request hits a protected route THE SYSTEM SHALL return **401**.
-- WHEN a mutating request omits/mismatches `X-CSRF-Token` THE SYSTEM SHALL return **400** `csrf`.
+- WHEN a public `POST /auth/register` body supplies `role: admin` THE SYSTEM SHALL create a **customer** and return **201** (registration does NOT establish a session); AND WHEN that user then `POST /auth/login`s with those credentials and, with the login-issued `csrf_token`, `POST`s an admin-only route (e.g. `POST /products`) THE SYSTEM SHALL return **403** — a client can never self-promote. — default-smoke security assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
+- WHEN an anonymous request hits a protected route — **including a mutating one (POST/PUT/PATCH/DELETE)** — THE SYSTEM SHALL return **401** `auth` (auth precedes CSRF; an anonymous mutation is never a 400 `csrf`).
+- WHEN an **authenticated** mutating request omits/mismatches `X-CSRF-Token` THE SYSTEM SHALL return **400** `csrf`.
 - WHEN `SECRET_KEY` is unset and `FLASK_ENV != development` THE SYSTEM SHALL refuse to start. — smoke asserts `create_app()` raises.
 - WHEN `DELETE /suppliers/<int:sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
 - WHEN a second `POST /orders/<int:oid>/shipments` is issued for an order that already has a shipment THE SYSTEM SHALL return **409** `conflict` (`UNIQUE(order_id)`) and create no shipment row — including after the first shipment has been advanced to `returned` (no fresh shipment can be minted to permit a second return). — default-smoke integrity assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
@@ -867,7 +877,9 @@ Plus the non-Path-B core cases (default `python -m swarmlimit.smoke` run): manif
 create_order value assertions, create_order concurrency stock-race, create_order mid-tx rollback (via
 `order_models._TX_FAULT` after the first item write — value-compares stock), IDOR-404, admin-403,
 anon-401, CSRF-400, SECRET_KEY fail-closed, **register-role-ignored** (public `POST /auth/register`
-with `role=admin` → a `customer` account + 403 on an admin route), **shipment-unique** (a 2nd
+with `role=admin` → a `customer` account, **201, no session**; smoke then `POST /auth/login`s with those
+credentials, reads `csrf_token` from the login body, and `POST`s an admin route with it → **403**),
+**shipment-unique** (a 2nd
 `POST /orders/<oid>/shipments` for an order that already has a shipment → 409 `conflict`, no row
 created, including after the first shipment is `returned`). These two are default-smoke security/
 integrity assertions, NOT additions to the ten Path-B `--case`s.
@@ -1181,3 +1193,40 @@ non-gating and never padded) and found four NEW P0s:
   AND human-zero-P0) `status` stays **`draft`**. One more **fresh-context Codex confirmation** on THIS
   post-fix spec (comparing the linked run-plan at the reconciled sections) is required before flipping
   `draft→active`.
+
+**SECOND FINAL confirming Codex pass (2026-07-21) — NOT CLEAN: 5 consistency findings, ALL RESOLVED here.**
+This fresh-context round validated the four prior P0 fixes and surfaced five smaller cross-section
+consistency defects introduced/left by them:
+- **F1 (invalid `create_user` call):** the register-privilege note wrote
+  `create_user(email, password, role='customer', name)` — invalid Python (positional arg after a keyword).
+  FIX: `create_user(email=email, password=password, role='customer', name=name)` (matches the
+  `create_user(email, password, role, name)` signature).
+- **F2 (register-role-ignored overreached):** the EARS + smoke core-case claimed registration itself
+  "logs the user in." Registration does NOT establish a session. FIX: registration creates the customer and
+  returns **201**; smoke then explicitly `POST /auth/login`s with those credentials, reads `csrf_token`
+  from the login body, and `POST`s an admin route with that token → **403**. EARS + default-smoke prose
+  updated together; the "logs in" claim removed.
+- **F3 (auth-vs-CSRF precedence unpinned):** a worker could 400-`csrf` an anonymous mutation instead of
+  401-`auth`. FIX (pinned across App Configuration, §4 CSRF + Auth-failure-codes, §Global, §6, and both
+  EARS): the CSRF `before_request` fires ONLY for a request carrying an authenticated session; an anonymous
+  request has no `session['_csrf']`, so it falls through to `login_required` → **401 `auth`**. CSRF (400)
+  is checked only AFTER a request is authenticated — **401 (anon) precedes 400 (authed, bad CSRF)**; no
+  heuristic choice.
+- **F4 (run-plan launch language):** replaced the "import-check/import-checked" wording with the actual
+  parse-only `python -m compileall swarmlimit` gate (P1 risk row + Feed-Forward); removed the "small
+  integration layer" (Enhancement Summary #2); renamed the `integration/smoke` injection row to the real
+  **`smoke-author` (Wave 0)** owner; replaced the Codex-handoff `model→routes→smoke` phrasing with
+  **Wave 0 smoke authoring/parse-check → Wave 1 models → Wave 2 routes → assembly C2 smoke execution**. No
+  Wave 3 and single ownership of `swarmlimit/smoke.py` preserved.
+- **F5 (repeated product deletion):** §3 said an already-soft-deleted product → 404 while
+  `soft_delete_product` declares idempotent (already-deleted → no-op). FIX (kept the idempotent model
+  contract): §3 now returns **404 only if the product id never existed**; an already-soft-deleted product
+  → **200** (idempotent no-op); a live product → **200**. Route Table already said 200 — now consistent.
+- **Cross-section re-verification (post-fix):** manifest == Route Table == **31** (set-diff clean);
+  spec Path-B cases == run-plan EARS cases == **10** (bijection, name-set diff clean); exactly **two**
+  class-B owners; **seven** in-tx helpers (four write + one uniqueness guard + two readers); registration
+  role/session/CSRF, anonymous auth-vs-CSRF precedence, and the Wave-0-parse-vs-C2-execution split all
+  consistent; shipment uniqueness + once-per-order return unchanged. `git diff --check` clean.
+- **CONVERGENCE STILL NOT MET:** this pass was again NOT clean (5 findings), so `status` stays **`draft`**.
+  A further fresh-context Codex confirmation on THIS post-fix spec (+ run-plan compare) is still required
+  before `draft→active`.

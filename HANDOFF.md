@@ -1,4 +1,4 @@
-# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): FINAL CODEX ROUND #1 APPLIED (4 P0 fixed) — ONE MORE CODEX CONFIRMATION REQUIRED ⬅⬅
+# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): FINAL CODEX ROUNDS #1 (4 P0) + #2 (5 findings) APPLIED — ONE MORE CODEX CONFIRMATION REQUIRED ⬅⬅
 
 **Phase:** Spec convergence for the **manual autopilot-swarm** build (NOT the Workflow engine — that
 path is UNLAUNCHABLE: `docs/solutions/2026-07-21-workflow-engine-cannot-carry-firebreak-identity.md`).
@@ -7,33 +7,35 @@ path is UNLAUNCHABLE: `docs/solutions/2026-07-21-workflow-engine-cannot-carry-fi
 **Artifacts (all on branch `feat/082-swarmlimit-spec`, committed, NOT pushed):**
 - Spec: `docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md` (status: **draft** — STILL draft; convergence not yet met)
 - Run-plan: `docs/plans/2026-07-21-feat-082-max-value-unattended-autopilot-limit-test-plan.md` (reconciled to the spec this session)
-- Commit chain: …→ a85e3c6 → f40b373 → 8527d7f → **this session's FINAL-Codex-fix commit** (spec + run-plan + this handoff).
+- Commit chain: …→ f40b373 → 8527d7f → 2f02f33 (round-1: 4 P0) → **this session's round-2 fix commit** (spec + run-plan + this handoff).
 
-**Convergence state:** Codex round 1 (6P0+1P1+1P2), round 2 (3P0+3P1+1P2), and the human P0 pass
-(ZERO P0s) are all applied. The **FINAL confirming Codex round HAS NOW RUN and was NOT clean — it
-returned 4 P0 cross-section contradictions, ALL FIXED this session** (see the spec's Cross-Section
-Self-Review Log → "FINAL confirming Codex pass"):
-- **P0-1** — public `POST /auth/register` could mint an admin → now ALWAYS creates a `customer` (role
-  ignored/overridden); seeded `admin@swarm.test` is the only bootstrap admin; "first user forced admin"
-  removed; added a default-smoke `register-role-ignored` assertion.
-- **P0-2** — multiple shipments per order broke the single-return story → `UNIQUE(order_id)` on
-  `shipments`; `create_shipment` → 409 on duplicate; `process_return` selects the order's unique
-  shipment; added a default-smoke `shipment-unique` assertion.
-- **P0-3** — the active run-plan contradicted the spec → §Decomposition + §6-Section Spec + EARS
-  reconciled (Wave 0 = 5 owners, Wave 1 = 7 models `swarmlimit/models/<r>_models.py`, Wave 2 = 7 routes
-  `swarmlimit/routes/<r>.py`, Wave 3 removed, Tail ~3; `require_owner`/`add_item_in_tx`/invoice-FKs/
-  `refund ≤ original` all removed; two guard cases added → run-plan EARS ↔ spec ten-case table bijection).
-- **P0-4** — smoke could skip `init_db` with a pre-created tempfile → pinned to a not-yet-existing
-  `TemporaryDirectory` child path (`<tempdir>/swarmlimit.sqlite`); FC49 preserved.
+**Convergence state:** Codex round 1 (6P0+1P1+1P2), round 2 (3P0+3P1+1P2), the human P0 pass (ZERO P0s),
+**FINAL confirming Codex round #1 (4 P0, all fixed in `2f02f33`)**, and now **FINAL confirming Codex round
+#2 (5 consistency findings, ALL FIXED this session)** are applied (see the spec's Cross-Section
+Self-Review Log → "FINAL confirming Codex pass" + "SECOND FINAL confirming Codex pass").
+
+Round-1 P0s (fixed `2f02f33`): P0-1 public register can't mint admin (forced `customer`); P0-2
+`UNIQUE(order_id)` on shipments (409 on dup, unique-shipment return); P0-3 run-plan reconciled to spec
+(Wave 0=5 / Wave 1=7 models / Wave 2=7 routes / no Wave 3 / Tail ~3; bijection to 10 cases); P0-4 smoke
+uses a not-yet-existing `TemporaryDirectory` child path so `init_db` runs.
+
+Round-2 findings (fixed THIS session):
+- **F1** — invalid `create_user(email, password, role='customer', name)` → `create_user(email=email, password=password, role='customer', name=name)`.
+- **F2** — `register-role-ignored` overreached ("logs the user in") → registration returns **201, no session**; smoke then explicitly logs in, reads `csrf_token`, POSTs an admin route → **403**. EARS + smoke prose updated together.
+- **F3** — auth-vs-CSRF precedence pinned: anonymous mutation → **401 `auth`** (CSRF `before_request` only fires for an authenticated session); **401 precedes 400** — reconciled App Config, §4, §6, both EARS.
+- **F4** — run-plan launch language: `import-check(ed)` → the parse-only `python -m compileall swarmlimit` gate; removed "small integration layer"; renamed `integration/smoke` injection row → `smoke-author (Wave 0)`; `model→routes→smoke` → `Wave 0 parse-check → Wave 1 models → Wave 2 routes → assembly C2 smoke execution`.
+- **F5** — DELETE /products idempotent: §3 now returns **404 only if the id never existed**, already-soft-deleted → **200** (matches `soft_delete_product`'s idempotent contract + the Route Table).
 
 **Cross-section re-verified this session:** Route Table set == manifest set == **31** (exact method/path,
 `<int:...>` form; set-diff clean); Path-B cases == **10** (spec EARS ↔ ten-case table ↔ run-plan EARS
-bijection, name-set diff clean); exactly **two** class-B owners; `git diff --check` clean.
+bijection, name-set diff clean); exactly **two** class-B owners; **seven** in-tx helpers; registration
+role/session/CSRF + anonymous auth-vs-CSRF precedence + Wave-0-parse-vs-C2-execution all consistent;
+`git diff --check` clean.
 
-**A confirming fresh-context Codex round on THIS post-fix spec is STILL REQUIRED** before flipping
-`status: draft → active` (criterion = Codex-clean AND human-zero-P0). The fresh Codex prompt (preamble
-`/tmp/codex-082-final-preamble.txt` + the full post-fix spec) was regenerated and copied to the clipboard
-this session; it also directs Codex to compare the linked run-plan at the reconciled sections.
+**A confirming fresh-context Codex round on THIS (round-2) post-fix spec is STILL REQUIRED** before
+flipping `status: draft → active` (criterion = Codex-clean AND human-zero-P0). The fresh Codex prompt
+(preamble `/tmp/codex-082-final-preamble.txt` + the full post-fix spec) was regenerated and copied to the
+clipboard this session; it also directs Codex to compare the linked run-plan at the reconciled sections.
 
 **YOU ARE RESUMING TO PROCESS THE NEXT CODEX RESULTS. Do exactly this:**
 1. **If Codex says CLEAN (zero P0):** convergence met (Codex-clean AND human-zero-P0). Flip the spec

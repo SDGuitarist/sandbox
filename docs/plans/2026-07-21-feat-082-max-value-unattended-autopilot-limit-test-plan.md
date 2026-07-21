@@ -24,7 +24,7 @@ feed_forward:
 
 7 parallel research/review agents (first-party-weighted: solution docs + agent-pitfalls). Key changes vs the first draft:
 1. **Decomposition rescheduled** from infeasible parallel model/routes/tests clusters → **layered merge-barrier waves** (siblings can't see each other; worktrees root on `origin/default`).
-2. **Tests de-padded**: per-resource test clusters CUT (your clean runs — lesson-studio 30, GigSheet 31 — never used them); tests consolidated into a Wave-0-owned `smoke.py` + a small integration layer.
+2. **Tests de-padded**: per-resource test clusters CUT (your clean runs — lesson-studio 30, GigSheet 31 — never used them); tests consolidated into a single Wave-0-owned `smoke.py` (no separate integration layer — its cross-resource exercises live inside the `--case`s and run at assembly C2).
 3. **V1 harvest gate hardened** from a date-stamp grep → an evidence-backed, traceable, anti-circular `verify-harvest` gate (baseline diff + BUILD_TRACKING provenance + ≥2 net-new floor).
 4. **C2 given an owner + teeth**: `smoke.py` is a Wave-0 deliverable; "exercised" defined; asserts on values + atomic rollback + concurrency stock-race.
 5. **run_id collision fixed**: skill computes the id at launch; 082 no longer hardcoded.
@@ -154,7 +154,7 @@ single highest-risk seam; it is also the V2 limit probe (below).
 | Wave-0 shared | FC5 audit format (success AND failure paths), FC50 orchestration-entrypoint signatures, FC48 ghost-file, FC16 idempotent DDL, the SQLite pins |
 | model | FC46 phantom-FK (`REFERENCES` + `ON DELETE` on every `*_id`), FC29+FC6 (no `conn.commit()` in helpers; `BEGIN IMMEDIATE` needs try/except/ROLLBACK), FC35 M24 model-layer ownership scoping, FC63 return-shape pinned, stock-guard SQL (`UPDATE ... WHERE stock>=:qty` + `rowcount==1`) |
 | routes | FC50 entrypoint lookup (read Full Signature, never guess), FC63 assert return shape, FC35 route 403 after 404, audit is post-commit only |
-| integration/smoke | FC63 assert on VALUES (no `{'`/`[object Object]`, integer ids), FC49 tempfile not `:memory:`, forced-failure atomicity + concurrency race, the 10 Path-B `--case`s + the `<R>/c2-smoke-report.md` writer |
+| smoke-author (Wave 0) | FC63 assert on VALUES (no `{'`/`[object Object]`, integer ids), FC49 real on-disk tempfile — a **not-yet-existing `TemporaryDirectory` child path** so `init_db` runs, never `:memory:` and never a pre-created `NamedTemporaryFile`, forced-failure atomicity + concurrency race, the 10 Path-B `--case`s + the `<R>/c2-smoke-report.md` writer |
 
 **Path B constructs** (state-machine, `ext_ref` uniqueness, soft-delete, `process_return`) are pinned in the
 spec and injected into their OWNING clusters — model owns the constraint/guard, routes owns the 409/exclusion;
@@ -287,7 +287,7 @@ never pad to clear it) · **C1** governance ran (all gates fired, zero surviving
 - **P1 — coupling degrades to independent CRUD.** Mitigation: shared symbols Wave-0-owned + imported (Export Names + Wiring rows).
 - **P1 — data corruption masking signal** (unpinned transaction/stock/FK-delete). Mitigation: port lesson-studio §5/§6 + the 4 P0 pins.
 - **P1 — bash rules / pitfalls injection** per brief (validator pre-spawn).
-- **P1 — `smoke.py` is a large single-owner Wave-0 deliverable** (manifest-equality + value + atomicity + race + 10 Path-B `--case`s + the C2 report writer). If it is wrong or incomplete, C2 AND every Path-B proof are unverifiable. Mitigation: frozen + import-checked against the base before Wave 1; its `--case`s are enumerated in the EARS; treat it as a first-class spec'd artifact, not glue.
+- **P1 — `smoke.py` is a large single-owner Wave-0 deliverable** (manifest-equality + value + atomicity + race + 10 Path-B `--case`s + the C2 report writer). If it is wrong or incomplete, C2 AND every Path-B proof are unverifiable. Mitigation: frozen + **parse-checked** (`python -m compileall swarmlimit`, parse-only — a full import can't resolve until routes exist post-assembly) against the base before Wave 1; its `--case`s are enumerated in the EARS; treat it as a first-class spec'd artifact, not glue.
 - **P2 — firebreak teardown residual on hard crash** (SIGKILL/OOM between activate and the `finally`) leaves a stale sentinel. Bounded + safe-closed: over-gates, never fails open; self-heals at the next `activate`. Made explicit (see §Firebreak Teardown), not claimed away.
 - **Wall-clock/cost:** 3–4 sequential barriers + Opus tail = the most expensive run yet; reserved tail budget so harvest always completes. If appetite is limited, prefer path A (drop the 4 added types) over cutting the tail/harvest.
 
@@ -326,7 +326,7 @@ launch — a deliberate decision, out of scope for convergence. Flagged for Alex
 ## Feed-Forward
 - **Hardest decision:** redefining "biggest" as highest-value limit-test — then, at the spec phase, accepting that the honest Path-B roster is ~22 agents (NOT >31) and **retiring the "clears 31" goal entirely** rather than padding to chase a symbolic record. Value = contradiction-type richness + harvest, per the first-party rule that count ≠ value.
 - **Rejected alternatives:** Workflow engine (UNLAUNCHABLE); ~40 uncoupled CRUD agents (hollow); clone-FK resources / per-resource test clusters (padding the sizing).
-- **Least confident:** two coupled uncertainties, both pre-spawn-checkable (which is why they're least-confident, not unmitigated). (1) Whether path-B's added contradiction types (state-machine, uniqueness, second transaction, soft-delete) converge to zero P0s pre-spawn — if not, fall back to path A (drop the 4 added types); a clean ~22 beats a contradictory bigger one. (2) Whether the now-substantial single-owner `smoke.py` (C2 manifest-equality + the C2 report + all ten Path-B `--case` proofs) is itself correct — a bug there makes C2 and every Path-B EARS unverifiable. Gate (1) via the convergence loop; gate (2) via import-check + case enumeration before Wave 1.
+- **Least confident:** two coupled uncertainties, both pre-spawn-checkable (which is why they're least-confident, not unmitigated). (1) Whether path-B's added contradiction types (state-machine, uniqueness, second transaction, soft-delete) converge to zero P0s pre-spawn — if not, fall back to path A (drop the 4 added types); a clean ~22 beats a contradictory bigger one. (2) Whether the now-substantial single-owner `smoke.py` (C2 manifest-equality + the C2 report + all ten Path-B `--case` proofs) is itself correct — a bug there makes C2 and every Path-B EARS unverifiable. Gate (1) via the convergence loop; gate (2) via the parse-only `python -m compileall swarmlimit` gate + case enumeration before Wave 1 (the `--case`s execute at assembly C2, not in Wave 0).
 
 ## Codex Handoff Prompt
 
@@ -340,7 +340,7 @@ gates, lesson-studio + GigSheet solution docs. VALIDATE the fixes; hunt what rem
    anti-circularity) genuinely non-gameable, or still theater? Is C2's "exercised" set capture real?
 2. Sizing: is path B (new contradiction TYPES — state-machine, uniqueness, 2nd transaction, soft-delete) a
    genuine value increase over the honest ~25, or re-padding under a new name?
-3. Decomposition: are the layered merge-barrier waves (model→routes→smoke) correct given worktrees root on
+3. Decomposition: are the layered merge-barrier waves (Wave 0 smoke authoring/parse-check → Wave 1 models → Wave 2 routes → assembly C2 smoke execution) correct given worktrees root on
    origin/default? Is the push-to-origin-before-next-wave step (FC52) sufficient, or is there still a seam
    where wave N+1 can't see wave N?
 4. Coupling: do the Wave-0-owned shared symbols (auth decorator, audit writer, transaction helper, PK
