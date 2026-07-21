@@ -358,7 +358,7 @@ fetch-then-compare in Python):
   (admin→all; customer→`user_id = actor.id`). This is the `GET /orders` source.
 - `get_order(oid) -> dict | None` — includes `items: list[dict]` + `total_cents` (unscoped).
 - `get_order_for(oid, actor) -> dict | None` — **Ownership-Scoped Getter Contract**; includes
-  `items` + `total_cents`. `GET /orders/<oid>` → `... or error('not_found',404)`.
+  `items` + `total_cents`. `GET /orders/<int:oid>` → `... or error('not_found',404)`.
 - `order_total(conn, oid) -> int` — `SUM(qty*unit_price_cents)` on a caller `conn` (used in-tx by
   `process_return`'s refund-guard; also the read-time total). Read-only; no commit.
 - `create_order(user_id, ext_ref, items) -> int` — **OWNS one `transaction()` internally.** `items`
@@ -380,7 +380,7 @@ fetch-then-compare in Python):
 - `list_shipments(order_id=None, status=None) -> list[dict]`
 - `get_shipment(sid) -> dict | None`
 - `get_shipment_for(sid, actor) -> dict | None` — **Ownership-Scoped Getter Contract** (transitive
-  via order). `GET /shipments/<sid>` → 404 for non-owner.
+  via order). `GET /shipments/<int:sid>` → 404 for non-owner.
 - `create_shipment(order_id, carrier=None, tracking=None) -> int` — validates the order exists;
   inserts `status='pending'`. persists immediately via SQLite autocommit; does not call `conn.commit()`. (Admin creates a shipment for a placed order.)
 - `advance_shipment(sid, to_status) -> None` — the ROUTE has already checked `to_status` is one of
@@ -399,7 +399,7 @@ fetch-then-compare in Python):
   order). `GET /returns` source.
 - `get_return(rid) -> dict | None`
 - `get_return_for(rid, actor) -> dict | None` — **Ownership-Scoped Getter Contract**.
-  `GET /returns/<rid>` → 404 for non-owner.
+  `GET /returns/<int:rid>` → 404 for non-owner.
 - `process_return(order_id, ext_ref, reason, refund_cents) -> int` — **OWNS one `transaction()`
   internally.** Inside `with transaction() as conn:` (BEGIN IMMEDIATE): (1)
   `refs.assert_ext_ref_unique(conn, ext_ref)` → `ValueError` (route → 409); (2) re-read the order's
@@ -600,18 +600,18 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 | POST /auth/login | email, password | both non-empty | 401 `auth` (no field leak) |
 | POST /auth/logout | (header only) | `X-CSRF-Token` matches session | 400 `csrf`; else 200 |
 | POST /suppliers | name | name non-empty | 400 `validation` |
-| PATCH /suppliers/<sid> | name?, contact_email?, active? | at least one whitelisted field; active ∈ {0,1} | 400 / 404 if absent |
-| DELETE /suppliers/<sid> | (path) | supplier exists | 404 if absent; **409 `conflict`** if products reference it (FK RESTRICT → ValueError) |
+| PATCH /suppliers/<int:sid> | name?, contact_email?, active? | at least one whitelisted field; active ∈ {0,1} | 400 / 404 if absent |
+| DELETE /suppliers/<int:sid> | (path) | supplier exists | 404 if absent; **409 `conflict`** if products reference it (FK RESTRICT → ValueError) |
 | POST /categories | name | name non-empty | 400; **409 `conflict`** on duplicate name |
-| PATCH /categories/<cid> | name | `name` supplied AND non-empty | 400 `validation` on invalid/empty; 404 if category absent; **409 `conflict`** on duplicate name (UNIQUE) |
-| DELETE /categories/<cid> | (path) | category exists | 404; **409 `conflict`** if referenced |
+| PATCH /categories/<int:cid> | name | `name` supplied AND non-empty | 400 `validation` on invalid/empty; 404 if category absent; **409 `conflict`** on duplicate name (UNIQUE) |
+| DELETE /categories/<int:cid> | (path) | category exists | 404; **409 `conflict`** if referenced |
 | POST /products | sku, name, supplier_id, price_cents, stock?, category_ids? | sku+name non-empty; supplier exists; price_cents ≥ 0 int; stock ≥ 0 int; category_ids all exist | 400; 409 on dup sku |
-| PATCH /products/<pid> | whitelist name/price_cents/stock/supplier_id | types as above | 400 / 404 |
-| DELETE /products/<pid> | (path) | product exists (live) | 404 if absent/already-deleted-and-not-admin-history; else 200 (soft-delete) |
-| PUT /products/<pid>/categories | category_ids | list of existing category ids | 400 / 404 |
+| PATCH /products/<int:pid> | whitelist name/price_cents/stock/supplier_id | types as above | 400 / 404 |
+| DELETE /products/<int:pid> | (path) | product exists (live) | 404 if absent/already-deleted-and-not-admin-history; else 200 (soft-delete) |
+| PUT /products/<int:pid>/categories | category_ids | list of existing category ids | 400 / 404 |
 | POST /orders | ext_ref, items (`[{product_id,qty}]`), user_id? | ext_ref non-empty; items non-empty; each qty > 0 int; each product_id int. **`user_id` resolution:** if omitted → the current actor's id (both roles); a customer is ALWAYS forced to their own id (any supplied `user_id` ignored); only an admin may pass an explicit `user_id` to place on another user's behalf | 400 `validation`; **409 `conflict`** on ext_ref collision OR insufficient stock OR unavailable product (in-tx guards raise) |
-| POST /orders/<oid>/shipments | carrier?, tracking? | order exists | 404 if order absent; 201 on create |
-| POST /shipments/<sid>/advance | to_status | `to_status ∈ {pending,shipped,delivered,returned}` (any STORED status is syntactically valid input; an unknown string → 400). Transition **legality** is decided by `advance_shipment` against `LEGAL_TRANSITIONS`, NOT here. | 400 `validation` on an unknown status; **409 `conflict`** if `(current,to_status) ∉ LEGAL_TRANSITIONS` (incl. every `→returned`, `delivered→pending`, and `pending→delivered` skip), status unchanged |
+| POST /orders/<int:oid>/shipments | carrier?, tracking? | order exists | 404 if order absent; 201 on create |
+| POST /shipments/<int:sid>/advance | to_status | `to_status ∈ {pending,shipped,delivered,returned}` (any STORED status is syntactically valid input; an unknown string → 400). Transition **legality** is decided by `advance_shipment` against `LEGAL_TRANSITIONS`, NOT here. | 400 `validation` on an unknown status; **409 `conflict`** if `(current,to_status) ∉ LEGAL_TRANSITIONS` (incl. every `→returned`, `delivered→pending`, and `pending→delivered` skip), status unchanged |
 | POST /returns | order_id, ext_ref, reason?, refund_cents | order_id resolves via `get_order_for` (else 404); ext_ref non-empty; **refund_cents > 0 int** (a return always refunds a positive amount; `≤ 0` → 400) | 400 `validation`; 404 if non-owner/absent order; **409 `conflict`** on ext_ref collision / shipment-not-delivered / refund-exceeds-original |
 | GET/DELETE typed params `<int:...>` | — | Flask 404 on non-int | 404 |
 
@@ -721,9 +721,22 @@ lower bound is enforced by the route + the `returns.refund_cents > 0` / `payment
 CHECKs (agreeing rules); the upper bound by `process_return`'s in-tx guard. `payments` is refund-only
 (schema CHECK `kind IN ('refund')`).
 
+**Accepted simplification (human P0 pass, 2026-07-21) — restock is full but refund may be partial:**
+`process_return` always restocks the ENTIRE order (every `order_item`) while `refund_cents` may be any
+amount `≤ order_total`, so the "goods returned" and "money refunded" figures are permitted to differ.
+This is intentional for a throwaway stress-test vehicle (no real money/inventory) and is bounded to at
+most ONCE per order — once a return sets the shipment to `returned`, the state machine forbids a second
+return of the same order (no double-restock). Flagged for the human pass; would be tidied (link restock
+to the refunded fraction) only if this app ever became real.
+
 **Invariant (ext_ref cross-resource uniqueness):** no `ext_ref` value appears in `orders` ∪
 `returns`. Enforced by `refs.assert_ext_ref_unique` inside both class-B transactions (BEGIN IMMEDIATE
 serializes concurrent inserters); the per-table `UNIQUE` constraints are intra-table backstops.
+**Retry-safety (idempotency-on-retry) corollary:** because the transaction is all-or-nothing (a crash
+before `COMMIT` leaves nothing persisted) AND `ext_ref` must be globally unique, a client that
+re-submits the SAME `create_order`/`process_return` after an uncertain outcome is safe either way: if
+the first attempt committed, the retry hits the uniqueness guard → **409** (no duplicate); if it did
+not commit, the retry succeeds cleanly. No duplicate row and no lost write can result from a retry.
 
 **Invariant (shipment state machine):** `shipments.status` only ever follows
 `pending→shipped→delivered` (via `advance_shipment`) or `delivered→returned` (via `process_return`
@@ -738,18 +751,18 @@ unchanged.
 |-------|------|------|
 | POST /auth/register, /auth/login | public | anonymous allowed |
 | POST /auth/logout | auth | any logged-in |
-| GET /suppliers, /suppliers/<sid>, /categories(+<cid>), /products(+<pid>) | auth | any logged-in may browse catalog |
+| GET /suppliers, /suppliers/<int:sid>, /categories(+<cid>), /products(+<pid>) | auth | any logged-in may browse catalog |
 | POST/PATCH/DELETE /suppliers, /categories, /products (+ PUT categories) | admin | admin only |
 | GET /orders (list) | role+own | `list_orders_for(actor)` — customer→own, admin→all |
 | POST /orders | auth | `user_id` omitted → current actor's id (both roles); customer ALWAYS forced to self (supplied `user_id` ignored); admin may override with an explicit `user_id` |
-| GET /orders/<oid> | role+own | `get_order_for(oid, actor)` → None → **404** for non-owner |
-| POST /orders/<oid>/shipments | admin | staff create shipments |
-| GET /shipments/<sid> | role+own | `get_shipment_for(sid, actor)` (transitive via order) → **404** for non-owner |
-| POST /shipments/<sid>/advance | admin | staff advance fulfillment (state machine) |
+| GET /orders/<int:oid> | role+own | `get_order_for(oid, actor)` → None → **404** for non-owner |
+| POST /orders/<int:oid>/shipments | admin | staff create shipments |
+| GET /shipments/<int:sid> | role+own | `get_shipment_for(sid, actor)` (transitive via order) → **404** for non-owner |
+| POST /shipments/<int:sid>/advance | admin | staff advance fulfillment (state machine) |
 | GET /returns (list) | role+own | `list_returns_for(actor)` — customer→own, admin→all |
 | POST /returns | role+own | order resolved via `get_order_for(order_id, actor)`; non-owner → **404** BEFORE `process_return` |
-| GET /returns/<rid> | role+own | `get_return_for(rid, actor)` → None → **404** |
-| GET /payments (list), /payments/<pid> | role+own | `list_payments_for` / `get_payment_for` (transitive via order) → **404** |
+| GET /returns/<int:rid> | role+own | `get_return_for(rid, actor)` → None → **404** |
+| GET /payments (list), /payments/<int:pid> | role+own | `list_payments_for` / `get_payment_for` (transitive via order) → **404** |
 | GET /audit | admin | admin-only (scaffold-hosted) |
 
 **404-not-403 rule (run-080 IDOR lesson):** every `role+own` **read** returns 404 for a non-owner,
@@ -781,12 +794,12 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - **(Path B — 2nd transaction ROLLBACK, real mid-tx)** WHEN a forced exception fires INSIDE `process_return` AFTER `add_refund_in_tx` but before the transaction commits THE SYSTEM SHALL roll back all four writes — `COUNT(returns)`/`COUNT(payments)` unchanged AND the shipment `status` VALUE still `'delivered'` AND every product `stock` VALUE unchanged. — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0.
 - **(Path B — refund guard, pre-write)** WHEN `process_return` is called with `refund_cents` exceeding the order's remaining original amount THE SYSTEM SHALL return **409** `conflict` and write nothing (guard fires before any write). — `python -m swarmlimit.smoke --case process-return-guard-refund; echo $?` → 0.
 - **(Path B — state guard, pre-write)** WHEN `process_return` is called for an order whose shipment is NOT `delivered` THE SYSTEM SHALL return **409** `conflict` and write nothing. — `python -m swarmlimit.smoke --case process-return-guard-shipment; echo $?` → 0.
-- WHEN a customer requests another customer's `GET /orders/<oid>` THE SYSTEM SHALL return **404** (not 403).
+- WHEN a customer requests another customer's `GET /orders/<int:oid>` THE SYSTEM SHALL return **404** (not 403).
 - WHEN a customer POSTs to an admin route (e.g. `POST /products`) THE SYSTEM SHALL return **403**.
 - WHEN an anonymous request hits a protected route THE SYSTEM SHALL return **401**.
 - WHEN a mutating request omits/mismatches `X-CSRF-Token` THE SYSTEM SHALL return **400** `csrf`.
 - WHEN `SECRET_KEY` is unset and `FLASK_ENV != development` THE SYSTEM SHALL refuse to start. — smoke asserts `create_app()` raises.
-- WHEN `DELETE /suppliers/<sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
+- WHEN `DELETE /suppliers/<int:sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
 
 ### Verification Commands
 - `python -m swarmlimit.smoke` — full happy-path + all 10 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`. (Assembly C2 step also runs `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json`.)
@@ -803,7 +816,7 @@ returning exit 0 on pass, non-0 on fail. The ten cases (each an independent Path
 | `--case` | Proves | Asserts |
 |----------|--------|---------|
 | `state-machine-legal` | legal advance | pending→shipped→delivered each 200; audit rows written |
-| `state-machine-illegal` | illegal advance guarded (ONE case, three sub-checks — each asserts 409 AND status preserved) | (a) `delivered→pending` → 409 AND status still `delivered`; (b) `pending→delivered` (skip `shipped`) → 409 AND status still `pending`; (c) for EVERY source status `s ∈ {pending,shipped,delivered}`, `advance`→`returned` → 409 AND status still `s`. All via `POST /shipments/<sid>/advance`. |
+| `state-machine-illegal` | illegal advance guarded (ONE case, three sub-checks — each asserts 409 AND status preserved) | (a) `delivered→pending` → 409 AND status still `delivered`; (b) `pending→delivered` (skip `shipped`) → 409 AND status still `pending`; (c) for EVERY source status `s ∈ {pending,shipped,delivered}`, `advance`→`returned` → 409 AND status still `s`. All via `POST /shipments/<int:sid>/advance`. |
 | `uniqueness-ok` | ext_ref accepted | distinct ext_ref on order then return → both persist |
 | `uniqueness-collision` | cross-resource uniqueness | return reusing an order's ext_ref → 409; `COUNT(returns)` unchanged |
 | `soft-delete` | soft-delete semantics | delete → `deleted_at` set; absent from `GET /products`; prior order_items still present |
@@ -1003,7 +1016,7 @@ Recorded here so Codex/human can see what was already reconciled (mirrors lesson
   (`assert_ext_ref_unique`) called in BOTH class-B transactions; per-table UNIQUE = intra-table
   backstops only.
 - **RESOLVED — shipment blueprint prefix:** the shipments blueprint needs both
-  `/orders/<oid>/shipments` and `/shipments/...`, so it registers with NO url_prefix and declares
+  `/orders/<int:oid>/shipments` and `/shipments/...`, so it registers with NO url_prefix and declares
   full paths (a documented exception to the one-prefix-per-blueprint convention).
 - **RESOLVED — soft-delete + restock interaction:** `restock_product_in_tx` restocks regardless of
   `deleted_at` (a returned unit re-enters inventory even if the SKU was retired); `decrement_stock_in_tx`
@@ -1028,7 +1041,7 @@ Claude-side proxy pass — it does NOT substitute for the real Codex fresh-conte
 - **P0-2 (rollback proof was fake):** the refund-exceeds/ shipment-not-delivered failures fire BEFORE any write, so they can't prove rollback. FIX: added a smoke-only **`_TX_FAULT` fault-injection seam** (§5) that raises AFTER `add_refund_in_tx` (and, for create_order, after the first item write); `process-return-rollback` now injects it and asserts INSERT-count + UPDATE-**value** (shipment status still `delivered`, product stock unchanged) equality; the two pre-write guards split into `process-return-guard-refund` / `process-return-guard-shipment` (guard tests, not rollback proofs). Path-B cases 8→**10**.
 - **P0-3 (manifest false-green):** replaced "intersect global driven-methods × url_map rules" with **per-request capture of `(request.method, request.url_rule.rule)`** via `after_request` (skip `url_rule is None`); each of the 31 must appear in the actually-driven set.
 - **P0-4 (omitted `user_id`):** pinned — omitted → current actor's id (both roles); customer ALWAYS forced to self; admin may override. Reconciled Route Table + §3 + §6.
-- **P0-5 (missing §3 row):** added `PATCH /categories/<cid>` — non-empty `name` → else 400; 404 if absent; 409 on duplicate.
+- **P0-5 (missing §3 row):** added `PATCH /categories/<int:cid>` — non-empty `name` → else 400; 404 if absent; 409 on duplicate.
 - **P0-6 (SQLite semantics):** corrected `isolation_level=None` to **AUTOCOMMIT** (not "autocommit off"); class-A single statements persist immediately with NO bare `COMMIT`; only the two class-B owners issue explicit `BEGIN IMMEDIATE`…`COMMIT`/`ROLLBACK`. Reconciled schema intro, Database Connection, §5(A). Exactly two class-B owners preserved.
 - **P1-7 (§2 wiring):** split the infra row — `get_db`/`query` to all consumers; **`transaction` to `order_models.py` + `return_models.py` ONLY** (matches §1a + §5).
 - **P2-8 (helper count):** re-described the seven in-tx helpers as **four write + one read-only uniqueness guard (`assert_ext_ref_unique`) + two read-only totals**; caller-`conn`/no-commit preserved for all seven (§4 + §5C).
@@ -1045,3 +1058,20 @@ Claude-side proxy pass — it does NOT substitute for the real Codex fresh-conte
 - **P2-7 (stale helper count in self-review):** corrected "five write + two read-only" → "four write + one read-only uniqueness guard + two read-only totals".
 - **Invariants preserved:** exactly two class-B owners; Path-B cases = 10; manifest = 31 = Route Table (no endpoints added/removed — path notation changed from relative to full, values identical).
 - **STILL REQUIRED before `status: active`:** the human zero-P0 structural pass.
+
+**HUMAN P0 pass (Alex, guided, 2026-07-21) — ZERO cross-section P0s found.** Walked five plain-English
+rounds: (1) the 404-not-403 ownership rule — consistent across orders/shipments/returns/payments; (2)
+money/refund rules — `>0` lower bound + `≤ order_total` upper bound agree across schema CHECKs, §3, and
+the §5 invariant; recompute-total-from-frozen-items accepted; (3) the two class-B transactions
+(`create_order`, `process_return`) — all-or-nothing story matches the EARS success + rollback + guard
+cases; (4) shipment state machine — one-way path + `returned`-only-via-`process_return` agree between
+§Model Functions, §3, §5, and the illegal `--case`. Two clarifications the human pass surfaced were
+PINNED: (a) **retry-safety corollary** (ext_ref + all-or-nothing ⇒ safe re-submit — no duplicate/no
+lost write; added to the §5 ext_ref invariant); (b) **restock-full/refund-partial accepted
+simplification** (noted in §5, bounded to once-per-order by the state machine). Human judgment calls:
+Call-1 (route-path notation) → **unified to `<int:...>` everywhere** (§3/§6/EARS/prose now match the
+Route Table + manifest exactly); Call-2 (`_TX_FAULT` test-only seam) and Call-3 (non-atomic
+`create_product`, guarded by up-front id validation) → **left as-is** (accepted for a throwaway
+vehicle). **Convergence note:** human = zero P0. A confirming Codex round on THIS post-fix spec (the
+Round-2 fixes + these human-pass edits) has NOT yet run — recommended before flipping `status:
+draft→active`, to satisfy the full criterion (Codex-clean AND human-zero-P0).
