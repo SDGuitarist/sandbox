@@ -114,9 +114,10 @@ rate limiting, HTTPS/HSTS enforcement, email verification, pagination.
 
 Stdlib `sqlite3`. **Per-connection pragmas (pinned — set in `get_db`, every connection):**
 `PRAGMA foreign_keys = ON;` · `PRAGMA journal_mode = WAL;` · `PRAGMA busy_timeout = 5000;`.
-The connection is opened with **`isolation_level=None`** (autocommit off at the driver level →
-the app controls transactions explicitly via `BEGIN IMMEDIATE`; no implicit Python-driver BEGIN).
-All timestamps are ISO-8601 TEXT (UTC). Money is integer **cents** (never float).
+The connection is opened with **`isolation_level=None`** — Python `sqlite3` **AUTOCOMMIT** mode: the
+driver opens NO implicit transaction, so each bare statement commits **immediately**, and a
+multi-statement atomic unit must be opened EXPLICITLY by the app with `BEGIN IMMEDIATE` … `COMMIT`/
+`ROLLBACK` (class-B only). All timestamps are ISO-8601 TEXT (UTC). Money is integer **cents** (never float).
 
 ```sql
 -- ---------- identity ----------
@@ -246,14 +247,21 @@ smoke's Path-B cases). Every seeded row satisfies all NOT NULL / CHECK / UNIQUE 
   calls it only when the DB file does not already exist (FC16 — DDL is `CREATE TABLE`, run once).
 - `query(sql, params=(), one=False) -> list[dict] | dict | None` — thin helper returning plain
   dicts (never leak `sqlite3.Row` across a boundary — FC63/FC2).
+- **Autocommit & class-A writes (`isolation_level=None`):** because no implicit transaction is open,
+  a class-A writer's single `INSERT/UPDATE/DELETE` executed on the request connection commits
+  **immediately** — it does NOT call `conn.commit()` (nothing is pending) and does NOT open
+  `transaction()`. Only the two class-B units (`create_order`, `process_return`) open an explicit
+  transaction.
 - **`transaction()` context manager** — wraps the **single `get_db()` request connection** with an
   explicit **`BEGIN IMMEDIATE`** (takes the write lock up front → two concurrent class-B writers on
   separate requests serialize; the second blocks up to `busy_timeout`, then re-reads current state).
   On clean exit: `COMMIT`. On ANY exception: `ROLLBACK`, then re-raise (`try/except/ROLLBACK/raise`).
   Because it is the SAME connection every model function uses, reads done DURING the transaction see
   its own uncommitted writes (so in-tx guards are consistent). **Nested `transaction()` is
-  forbidden** (a class-B writer never opens another class-B writer). `isolation_level=None` is what
-  makes the explicit `BEGIN IMMEDIATE` authoritative (no driver-managed implicit BEGIN racing it).
+  forbidden** (a class-B writer never opens another class-B writer). Because the connection is in
+  `isolation_level=None` **AUTOCOMMIT** mode, the explicit `BEGIN IMMEDIATE` issued here is the ONLY
+  transaction boundary — there is no driver-managed implicit BEGIN to race it, and the matching
+  `COMMIT`/`ROLLBACK` is likewise explicit.
 
 All model functions convert `sqlite3.Row` → plain `dict` before returning.
 
@@ -373,10 +381,12 @@ fetch-then-compare in Python):
   via order). `GET /shipments/<sid>` → 404 for non-owner.
 - `create_shipment(order_id, carrier=None, tracking=None) -> int` — validates the order exists;
   inserts `status='pending'`. commits. (Admin creates a shipment for a placed order.)
-- `advance_shipment(sid, to_status) -> None` — reads current status; if `(current, to_status) NOT
-  IN LEGAL_TRANSITIONS` → raise `ValueError('illegal transition')` and **leave status unchanged**
+- `advance_shipment(sid, to_status) -> None` — the ROUTE has already checked `to_status` is one of
+  the four stored statuses (else 400); this reads current status and, if `(current, to_status) NOT IN
+  LEGAL_TRANSITIONS` → raise `ValueError('illegal transition')` and **leave status unchanged**
   (route → 409). On legal: `UPDATE shipments SET status=:to, updated_at=datetime('now')`. commits.
-  **Never** sets `'returned'` (not in the table).
+  **Never** succeeds for `'returned'` — `(x,'returned') ∉ LEGAL_TRANSITIONS` for every `x`, so a
+  client `advance` to `returned` always 409s; only `process_return` sets `'returned'`.
 - `set_shipment_status_in_tx(conn, sid, status) -> None` — **in-tx helper, caller `conn`, NO
   commit.** Unconditional `UPDATE ... SET status=:status`. Called ONLY by `process_return` (to set
   `'returned'`); the caller has already validated the shipment is `'delivered'`.
@@ -466,7 +476,7 @@ non-owner) · **admin**. JSON API — success/error bodies per the pinned schema
 
 ### orders  (/orders — order route agent)
 | GET | / | `list_orders_for(current_user())` | role+own |
-| POST | / | create_order (customer places own; admin may pass `user_id`) → 409 on ext_ref/stock | auth |
+| POST | / | create_order → 409 on ext_ref/stock. **`user_id` resolution:** omitted → the **current actor's id** (both roles); customer → ALWAYS forced to own id (any supplied `user_id` ignored); admin → may override with an explicit `user_id` | auth |
 | GET | /<int:oid> | `get_order_for(oid, current_user()) or error('not_found',404)` | role+own |
 
 ### shipments  (/shipments — shipment route agent; creation nested under an order)
@@ -553,7 +563,8 @@ blueprint). Registered in `swarmlimit/__init__.py` in the fixed order:
 
 | Producer | Consumer | Import |
 |----------|----------|--------|
-| swarmlimit/database.py | every model + swarmlimit/auth.py | `from swarmlimit.database import get_db, query, transaction` |
+| swarmlimit/database.py (`get_db`, `query`) | every model + swarmlimit/auth.py | `from swarmlimit.database import get_db, query` |
+| swarmlimit/database.py (`transaction`) | **order_models.py, return_models.py ONLY** (the two class-B openers — matches §1a + §5) | `from swarmlimit.database import transaction` |
 | swarmlimit/__init__.py (`error`) | every route | `from swarmlimit import error` |
 | swarmlimit/auth.py | every route | `from swarmlimit.auth import login_required, role_required, current_user` |
 | swarmlimit/refs.py | order_models.py, return_models.py | `from swarmlimit.refs import assert_ext_ref_unique` |
@@ -585,14 +596,15 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 | PATCH /suppliers/<sid> | name?, contact_email?, active? | at least one whitelisted field; active ∈ {0,1} | 400 / 404 if absent |
 | DELETE /suppliers/<sid> | (path) | supplier exists | 404 if absent; **409 `conflict`** if products reference it (FK RESTRICT → ValueError) |
 | POST /categories | name | name non-empty | 400; **409 `conflict`** on duplicate name |
+| PATCH /categories/<cid> | name | `name` supplied AND non-empty | 400 `validation` on invalid/empty; 404 if category absent; **409 `conflict`** on duplicate name (UNIQUE) |
 | DELETE /categories/<cid> | (path) | category exists | 404; **409 `conflict`** if referenced |
 | POST /products | sku, name, supplier_id, price_cents, stock?, category_ids? | sku+name non-empty; supplier exists; price_cents ≥ 0 int; stock ≥ 0 int; category_ids all exist | 400; 409 on dup sku |
 | PATCH /products/<pid> | whitelist name/price_cents/stock/supplier_id | types as above | 400 / 404 |
 | DELETE /products/<pid> | (path) | product exists (live) | 404 if absent/already-deleted-and-not-admin-history; else 200 (soft-delete) |
 | PUT /products/<pid>/categories | category_ids | list of existing category ids | 400 / 404 |
-| POST /orders | ext_ref, items (`[{product_id,qty}]`), user_id? | ext_ref non-empty; items non-empty; each qty > 0 int; each product_id int; `user_id` only honored for admin (customer forced to own id) | 400 `validation`; **409 `conflict`** on ext_ref collision OR insufficient stock OR unavailable product (in-tx guards raise) |
+| POST /orders | ext_ref, items (`[{product_id,qty}]`), user_id? | ext_ref non-empty; items non-empty; each qty > 0 int; each product_id int. **`user_id` resolution:** if omitted → the current actor's id (both roles); a customer is ALWAYS forced to their own id (any supplied `user_id` ignored); only an admin may pass an explicit `user_id` to place on another user's behalf | 400 `validation`; **409 `conflict`** on ext_ref collision OR insufficient stock OR unavailable product (in-tx guards raise) |
 | POST /orders/<oid>/shipments | carrier?, tracking? | order exists | 404 if order absent; 201 on create |
-| POST /shipments/<sid>/advance | to_status | `to_status ∈ {shipped,delivered}` (never `returned` — not client-advanceable) | 400 on bad enum; **409 `conflict`** if `(current,to_status)` illegal (status unchanged) |
+| POST /shipments/<sid>/advance | to_status | `to_status ∈ {pending,shipped,delivered,returned}` (any STORED status is syntactically valid input; an unknown string → 400). Transition **legality** is decided by `advance_shipment` against `LEGAL_TRANSITIONS`, NOT here. | 400 `validation` on an unknown status; **409 `conflict`** if `(current,to_status) ∉ LEGAL_TRANSITIONS` (incl. every `→returned`, `delivered→pending`, and `pending→delivered` skip), status unchanged |
 | POST /returns | order_id, ext_ref, reason?, refund_cents | order_id resolves via `get_order_for` (else 404); ext_ref non-empty; **refund_cents > 0 int** (a return always refunds a positive amount; `≤ 0` → 400) | 400 `validation`; 404 if non-owner/absent order; **409 `conflict`** on ext_ref collision / shipment-not-delivered / refund-exceeds-original |
 | GET/DELETE typed params `<int:...>` | — | Flask 404 on non-int | 404 |
 
@@ -625,11 +637,12 @@ parsed as JSON; a non-JSON/absent body on a mutating route → 400 `validation`.
   `audit_models.record(...)` exactly once, **AFTER** the model call returns and has committed —
   **never inside a `transaction()`, never from a model writer** (FC5/FC6). This guarantees the audit
   insert cannot commit-nested inside the `create_order`/`process_return` atomic units.
-- **In-tx helper discipline (FC29/FC6):** the seven in-tx helpers — **five write** helpers
-  (`assert_ext_ref_unique`, `decrement_stock_in_tx`, `restock_product_in_tx`,
-  `set_shipment_status_in_tx`, `add_refund_in_tx`) **plus two read-only** (`order_total`,
-  `refunded_total`) — take a caller `conn`, do NOT commit, and are called ONLY from within a class-B
-  `transaction()`. No model writer opens a bare `conn.commit()` inside these.
+- **In-tx helper discipline (FC29/FC6):** the seven in-tx helpers — **four write** helpers
+  (`decrement_stock_in_tx`, `restock_product_in_tx`, `set_shipment_status_in_tx`, `add_refund_in_tx`),
+  **one read-only uniqueness guard** (`assert_ext_ref_unique` — a SELECT that raises on collision,
+  writes nothing), and **two read-only total** helpers (`order_total`, `refunded_total`) — ALL take a
+  caller `conn`, do NOT commit, and are called ONLY from within a class-B `transaction()`. No model
+  writer opens a bare `conn.commit()` inside these.
 
 ---
 
@@ -640,10 +653,13 @@ Three writer classes — every DB-writing function is in exactly one:
 **(A) Commit internally (self-contained single logical write):** `create_user`, `create_supplier`,
 `update_supplier`, `delete_supplier`, `create_category`, `update_category`, `delete_category`,
 `create_product`, `update_product`, `soft_delete_product`, `set_product_categories`,
-`create_shipment`, `advance_shipment`, `record`. Each opens no explicit transaction; the single
-write auto-commits (via `query`/an explicit `conn.execute` + `conn.commit()` — but note
-`isolation_level=None` means these must issue their own `COMMIT`/use the `query` helper which
-commits; the database agent's `query` helper is the sanctioned commit path for class-A writes).
+`create_shipment`, `advance_shipment`, `record`. Each executes its single `INSERT/UPDATE/DELETE`
+directly on the request connection; under `isolation_level=None` **AUTOCOMMIT** that statement
+persists **immediately** — NO explicit `BEGIN`/`COMMIT`/`ROLLBACK` is issued or needed, and a class-A
+writer NEVER opens `transaction()` (that is class-B only). Where a class-A creator writes more than
+one row (`create_product` + its M2M links, `set_product_categories`) each statement autocommits
+independently — these are **NOT** atomicity-critical (only the two class-B units are); the route
+validates referenced ids up front (§3) so a mid-write FK failure is avoided.
 
 **(B) Own ONE explicit `transaction()` internally (BEGIN IMMEDIATE; commit as one atomic unit):**
 exactly TWO — each opens `with transaction() as conn:` itself and threads that SAME `conn` into its
@@ -658,11 +674,24 @@ in-tx helpers; the ROUTE just calls them and never manages a transaction:
   `add_refund_in_tx(conn, oid, refund_cents)`. Touches {returns, shipments.status, products.stock,
   payments}. Rolls back all four on any raise.
 
+**Fault-injection seam (smoke-only — enables the TRUE mid-transaction rollback proofs):** each class-B
+owner module defines a module-level hook `_TX_FAULT = None` and, at a designated checkpoint INSIDE its
+`with transaction() as conn:` block, runs `if _TX_FAULT: _TX_FAULT()`. Checkpoints: `create_order`
+invokes it immediately AFTER the FIRST `order_item` insert (+ that item's stock decrement);
+`process_return` invokes it immediately AFTER `add_refund_in_tx` (the last of the four writes), before
+the block exits. In production `_TX_FAULT is None` → a no-op. Smoke sets `<owner>._TX_FAULT` to a
+raising callable, drives the unit, asserts the exception propagated OUT of the `with` block (→ the
+context manager's `ROLLBACK`), then resets it to `None`. This is the ONLY way to prove rollback of a
+PARTIALLY-written unit; the pre-write guards (refund>original, shipment-not-delivered, ext_ref
+collision) fail BEFORE any write and so prove the guard, not the rollback.
+
 **(C) In-tx helpers — take a caller `conn`, do NOT commit, NEVER called outside a class-(B)
-transaction:** `refs.assert_ext_ref_unique`, `product_models.decrement_stock_in_tx`,
+transaction (SEVEN total):** **four write** helpers — `product_models.decrement_stock_in_tx`,
 `product_models.restock_product_in_tx`, `shipment_models.set_shipment_status_in_tx`,
-`payment_models.add_refund_in_tx`. Plus two **read-only** in-tx helpers (no writes, no commit):
-`order_models.order_total`, `payment_models.refunded_total`.
+`payment_models.add_refund_in_tx`; **one read-only uniqueness guard** — `refs.assert_ext_ref_unique`
+(a SELECT that raises on collision, writes nothing); and **two read-only total** helpers —
+`order_models.order_total`, `payment_models.refunded_total`. All seven take a caller `conn` and never
+commit.
 
 **Audit is NOT a writer class here:** `audit_models.record` (class A) is called only by the ROUTE,
 post-commit — never nested inside a class-(B) transaction.
@@ -697,7 +726,7 @@ unchanged.
 | GET /suppliers, /suppliers/<sid>, /categories(+<cid>), /products(+<pid>) | auth | any logged-in may browse catalog |
 | POST/PATCH/DELETE /suppliers, /categories, /products (+ PUT categories) | admin | admin only |
 | GET /orders (list) | role+own | `list_orders_for(actor)` — customer→own, admin→all |
-| POST /orders | auth | customer places own (`user_id` forced to self); admin may set `user_id` |
+| POST /orders | auth | `user_id` omitted → current actor's id (both roles); customer ALWAYS forced to self (supplied `user_id` ignored); admin may override with an explicit `user_id` |
 | GET /orders/<oid> | role+own | `get_order_for(oid, actor)` → None → **404** for non-owner |
 | POST /orders/<oid>/shipments | admin | staff create shipments |
 | GET /shipments/<sid> | role+own | `get_shipment_for(sid, actor)` (transitive via order) → **404** for non-owner |
@@ -724,7 +753,7 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - WHEN an admin creates a supplier→product THE SYSTEM SHALL persist it and list it at `GET /products` (excluding any soft-deleted).
 - WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+products.stock **atomically** (audit recorded post-commit); the response asserts integer ids and NO `{'`/`[object Object]` in the JSON. — smoke value assertions.
 - WHEN two `create_order` calls race the last unit of stock THE SYSTEM SHALL let exactly one succeed, the other → **409** `conflict` (`insufficient stock`), final stock non-negative and correct. — smoke concurrency case.
-- WHEN a forced failure fires AFTER the first item writes but BEFORE commit THE SYSTEM SHALL leave orders, order_items, and products.stock unchanged. — smoke rollback case (before/after counts).
+- WHEN a forced failure fires (via `order_models._TX_FAULT`) AFTER the first item write but BEFORE commit THE SYSTEM SHALL roll back the whole unit — `COUNT(orders)`/`COUNT(order_items)` unchanged AND every affected product `stock` VALUE unchanged (UPDATE rollback = value compare). — smoke `create_order` mid-tx rollback case.
 - **(Path B — state-machine)** WHEN a shipment is advanced `pending→shipped` then `shipped→delivered` THE SYSTEM SHALL update status and record audit. — `python -m swarmlimit.smoke --case state-machine-legal; echo $?` → 0.
 - **(Path B — uniqueness)** WHEN an `ext_ref` is unique across orders+returns THE SYSTEM SHALL accept and persist it. — `python -m swarmlimit.smoke --case uniqueness-ok; echo $?` → 0.
 - **(Path B — soft-delete)** WHEN a product is soft-deleted THE SYSTEM SHALL set `deleted_at`, exclude it from `GET /products`, and preserve historical `order_items` referencing it. — `python -m swarmlimit.smoke --case soft-delete; echo $?` → 0.
@@ -734,7 +763,9 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - **(Path B — state-machine)** WHEN an illegal transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`, or advancing to `returned`) THE SYSTEM SHALL return **409** and leave `status` unchanged. — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0.
 - **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return **409** and create no return row. — `python -m swarmlimit.smoke --case uniqueness-collision; echo $?` → 0 (asserts 409 + `COUNT(returns)` unchanged).
 - **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (**409** `conflict`, product unavailable) and create no order/items/stock change. — `python -m swarmlimit.smoke --case soft-delete-order; echo $?` → 0.
-- **(Path B — 2nd transaction rollback)** WHEN `process_return` fails mid-transaction (refund exceeds original, or shipment not delivered) THE SYSTEM SHALL roll back all four writes. — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0 (before/after counts unchanged on returns, shipments.status, products.stock, payments).
+- **(Path B — 2nd transaction ROLLBACK, real mid-tx)** WHEN a forced exception fires INSIDE `process_return` AFTER `add_refund_in_tx` but before the transaction commits THE SYSTEM SHALL roll back all four writes — `COUNT(returns)`/`COUNT(payments)` unchanged AND the shipment `status` VALUE still `'delivered'` AND every product `stock` VALUE unchanged. — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0.
+- **(Path B — refund guard, pre-write)** WHEN `process_return` is called with `refund_cents` exceeding the order's remaining original amount THE SYSTEM SHALL return **409** `conflict` and write nothing (guard fires before any write). — `python -m swarmlimit.smoke --case process-return-guard-refund; echo $?` → 0.
+- **(Path B — state guard, pre-write)** WHEN `process_return` is called for an order whose shipment is NOT `delivered` THE SYSTEM SHALL return **409** `conflict` and write nothing. — `python -m swarmlimit.smoke --case process-return-guard-shipment; echo $?` → 0.
 - WHEN a customer requests another customer's `GET /orders/<oid>` THE SYSTEM SHALL return **404** (not 403).
 - WHEN a customer POSTs to an admin route (e.g. `POST /products`) THE SYSTEM SHALL return **403**.
 - WHEN an anonymous request hits a protected route THE SYSTEM SHALL return **401**.
@@ -743,16 +774,16 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - WHEN `DELETE /suppliers/<sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
 
 ### Verification Commands
-- `python -m swarmlimit.smoke` — full happy-path + all 8 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`. (Assembly C2 step also runs `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json`.)
+- `python -m swarmlimit.smoke` — full happy-path + all 10 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`. (Assembly C2 step also runs `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json`.)
 - `python -m compileall swarmlimit` — byte-compile every module INCLUDING `swarmlimit/smoke.py` (parse check; NOT `python3 -c`, per repo Bash rules). This is the **Wave-0 gate** (parse-only, since a full import of `swarmlimit` can't succeed until routes exist post-assembly).
 - Contract check (Step 9w.6) + ownership gate + assembly are enforced by the swarm pipeline.
 
 ---
 
-## The 8 Path-B `--case` harness (`swarmlimit/smoke.py` owns; C2 + Path-B EARS both depend on it)
+## The 10 Path-B `--case` harness (`swarmlimit/smoke.py` owns; C2 + Path-B EARS both depend on it)
 
 `swarmlimit/smoke.py` exposes `--case <name>` (run as `python -m swarmlimit.smoke --case <name>`)
-returning exit 0 on pass, non-0 on fail. The eight cases (each an independent Path-B EARS proof):
+returning exit 0 on pass, non-0 on fail. The ten cases (each an independent Path-B EARS proof):
 
 | `--case` | Proves | Asserts |
 |----------|--------|---------|
@@ -763,11 +794,14 @@ returning exit 0 on pass, non-0 on fail. The eight cases (each an independent Pa
 | `soft-delete` | soft-delete semantics | delete → `deleted_at` set; absent from `GET /products`; prior order_items still present |
 | `soft-delete-order` | create_order rejects deleted | order referencing a deleted product → 409; no order/items/stock delta |
 | `process-return` | 4-table atomic commit | return row + shipment `returned` + stock restocked + refund row all present together |
-| `process-return-rollback` | 4-table atomic rollback | refund>original (and shipment-not-delivered) → 409; before/after counts equal on all four tables |
+| `process-return-rollback` | 4-table atomic ROLLBACK (real mid-tx) | set `return_models._TX_FAULT` to raise AFTER `add_refund_in_tx`; drive a VALID `process_return`; the raise propagates → `ROLLBACK`. Asserts `COUNT(returns)` + `COUNT(payments)` unchanged (INSERT rollback) AND the shipment `status` VALUE still `'delivered'` AND every restocked product `stock` VALUE unchanged (UPDATE rollback — value compare, not count). Resets `_TX_FAULT=None` after. |
+| `process-return-guard-refund` | pre-write refund guard (409, zero writes) | `refund_cents` exceeding the order's remaining original → 409 `conflict` (`refund exceeds original`); `COUNT(returns)`/`COUNT(payments)` unchanged, shipment `status` + product `stock` VALUES unchanged (guard fires BEFORE any write) |
+| `process-return-guard-shipment` | pre-write state guard (409, zero writes) | `process_return` on an order whose shipment is NOT `delivered` → 409 `conflict` (`shipment not delivered`); same zero-write assertions |
 
 Plus the non-Path-B core cases (default `python -m swarmlimit.smoke` run): manifest-equality (planned == exercised),
-create_order value assertions, create_order concurrency stock-race, create_order inject-after-first-
-write rollback, IDOR-404, admin-403, anon-401, CSRF-400, SECRET_KEY fail-closed.
+create_order value assertions, create_order concurrency stock-race, create_order mid-tx rollback (via
+`order_models._TX_FAULT` after the first item write — value-compares stock), IDOR-404, admin-403,
+anon-401, CSRF-400, SECRET_KEY fail-closed.
 
 ---
 
@@ -781,13 +815,17 @@ freezing). The canonical manifest content is below; at launch, Wave-0's smoke-au
 (method,path) set against `endpoints` and fails on any `planned_minus_exercised` or
 `exercised_minus_planned` delta.
 
-> **Path-normalization pin (closes a smoke false-signal):** the **exercised** path string MUST be
-> taken from Flask's URL map — `rule.rule` for each `(method, rule)` in `app.url_map.iter_rules()`
-> (which renders exactly as `/suppliers/<int:sid>`) — NOT the concrete request URL (`/suppliers/5`).
-> The manifest `endpoints[].path` uses that same `rule.rule` converter syntax. Comparing rule-form
-> to rule-form is the ONLY comparison that is well-defined; comparing concrete URLs would false-RED
-> every parametrized route (and a "fix" that strips converters could false-GREEN). smoke-author
-> builds the exercised set by intersecting the methods it actually drove with each rule's `methods`.
+> **Exercised-set capture pin (closes a manifest false-green):** the exercised set MUST be built from
+> what smoke ACTUALLY drove, per request — NOT inferred. After each request the suite issues, record
+> the exact pair `(request.method, request.url_rule.rule)` for the rule Flask matched (register a
+> Flask `after_request` that appends this pair to a module-level set; skip requests where
+> `request.url_rule is None` — e.g. a 404 that matched no rule). `request.url_rule.rule` is the
+> rule-template form (`/suppliers/<int:sid>`) and the manifest `endpoints[].path` uses that same
+> converter syntax, so the comparison is rule-form vs rule-form (well-defined; a concrete URL like
+> `/suppliers/5` is never compared). **Do NOT** infer the exercised set by intersecting a global set
+> of driven HTTP methods with every `app.url_map` rule — that would credit routes the suite never
+> actually hit (a false-green). Each of the 31 manifest endpoints must appear in the per-request set,
+> or C2 fails on the delta.
 
 ```json
 {
@@ -872,7 +910,7 @@ session, out of scope for spec convergence. See the run-plan §Sizing.
 ## Convergence Handoff (this phase — Plan Review)
 
 This spec is a **complete draft, convergence-ready** — all six mandatory contract sections, Model
-Functions, Route Table, EARS, the 8 Path-B `--case`s, and the planned manifest are present. It is
+Functions, Route Table, EARS, the 10 Path-B `--case`s, and the planned manifest are present. It is
 **NOT yet launch-ready.**
 
 **Convergence loop (pre-spawn blocker):** Claude Code (structure) → **Codex (contradictions, FRESH
@@ -907,7 +945,7 @@ clean AND human finds zero P0s.**
 > 7. The shipment state machine: is `→returned` truly unreachable via `advance_shipment` and
 >    reachable ONLY via `process_return` (from `delivered`)? Any transition the LEGAL_TRANSITIONS set
 >    + the process_return path together make illegal-but-reachable or legal-but-unreachable?
-> 8. The 8 `--case`s vs the EARS vs the manifest: is every Path-B EARS backed by exactly one
+> 8. The 10 `--case`s vs the EARS vs the manifest: is every Path-B EARS backed by exactly one
 >    executable `--case`, and does the manifest's endpoint set match §Route Table exactly (so
 >    manifest-equality can't false-green)?
 > Return P0/P1/P2. P0 = a cross-section contradiction that would make a worker invent a heuristic, a
@@ -968,3 +1006,15 @@ not concrete URLs). P2s: `audit_logs.entity_id` marked FC46-exempt (polymorphic,
 `order_total`/`refunded_total` `oid`-vs-`order_id` call-site variance left as harmless. **This is a
 Claude-side proxy pass — it does NOT substitute for the real Codex fresh-context review + human P0 pass
 (both still required before `status: active`).**
+
+**REAL Codex fresh-context pass (2026-07-21) — 6 P0 + 1 P1 + 1 P2, ALL RESOLVED here:**
+- **P0-1 (shipment illegal-transition ↔ §3 enum):** §3 rejected `pending`/`returned` as 400 bad-enum, so the `state-machine-illegal` case's `delivered→pending` and `→returned` could never reach `advance_shipment`/409. FIX: `to_status ∈ {pending,shipped,delivered,returned}` (any STORED status is valid input; unknown → 400); `LEGAL_TRANSITIONS` decides legality → 409, status unchanged. Reconciled §3 + `advance_shipment` note + the illegal EARS/case.
+- **P0-2 (rollback proof was fake):** the refund-exceeds/ shipment-not-delivered failures fire BEFORE any write, so they can't prove rollback. FIX: added a smoke-only **`_TX_FAULT` fault-injection seam** (§5) that raises AFTER `add_refund_in_tx` (and, for create_order, after the first item write); `process-return-rollback` now injects it and asserts INSERT-count + UPDATE-**value** (shipment status still `delivered`, product stock unchanged) equality; the two pre-write guards split into `process-return-guard-refund` / `process-return-guard-shipment` (guard tests, not rollback proofs). Path-B cases 8→**10**.
+- **P0-3 (manifest false-green):** replaced "intersect global driven-methods × url_map rules" with **per-request capture of `(request.method, request.url_rule.rule)`** via `after_request` (skip `url_rule is None`); each of the 31 must appear in the actually-driven set.
+- **P0-4 (omitted `user_id`):** pinned — omitted → current actor's id (both roles); customer ALWAYS forced to self; admin may override. Reconciled Route Table + §3 + §6.
+- **P0-5 (missing §3 row):** added `PATCH /categories/<cid>` — non-empty `name` → else 400; 404 if absent; 409 on duplicate.
+- **P0-6 (SQLite semantics):** corrected `isolation_level=None` to **AUTOCOMMIT** (not "autocommit off"); class-A single statements persist immediately with NO bare `COMMIT`; only the two class-B owners issue explicit `BEGIN IMMEDIATE`…`COMMIT`/`ROLLBACK`. Reconciled schema intro, Database Connection, §5(A). Exactly two class-B owners preserved.
+- **P1-7 (§2 wiring):** split the infra row — `get_db`/`query` to all consumers; **`transaction` to `order_models.py` + `return_models.py` ONLY** (matches §1a + §5).
+- **P2-8 (helper count):** re-described the seven in-tx helpers as **four write + one read-only uniqueness guard (`assert_ext_ref_unique`) + two read-only totals**; caller-`conn`/no-commit preserved for all seven (§4 + §5C).
+- **Manifest unchanged:** the 2 new guard cases exercise existing endpoints (POST /returns, POST /shipments/advance), so the endpoint set stays **31 = 31** vs the Route Table.
+- **STILL REQUIRED before `status: active`:** the human zero-P0 structural pass (Codex + human is the convergence criterion).
