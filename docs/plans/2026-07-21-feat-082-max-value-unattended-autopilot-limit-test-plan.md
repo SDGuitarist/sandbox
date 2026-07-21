@@ -29,7 +29,7 @@ feed_forward:
 4. **C2 given an owner + teeth**: `smoke.py` is a Wave-0 deliverable; "exercised" defined; asserts on values + atomic rollback + concurrency stock-race.
 5. **run_id collision fixed**: skill computes the id at launch; 082 no longer hardcoded.
 6. **Coupling pinned, not prose**: 6-section spec authored pre-spawn by porting lesson-studio §5/§6; SQLite transaction traps pinned; FK on-delete policy per edge; shared symbols Wave-0-owned.
-7. **SIZING resolved → path B** (see §Sizing Decision): honest de-padded size is ~25 agents (below 31); B clears 31 by adding NEW contradiction types (state-machine, uniqueness, soft-delete, 2nd transaction), not clones. A (~25) kept as the fallback if B can't converge to zero P0s.
+7. **SIZING resolved → path B** (see §Sizing Decision): B = add NEW contradiction TYPES (state-machine, uniqueness, soft-delete, 2nd transaction), not clones. **Count-reality correction (2026-07-21, spec phase):** the honest Path-B decomposition is **~22 agents (19 build + 3 tail), BELOW 31** — swarmlimit has too few distinct resources to clear 31 without padding, and I1(>31) is non-gating with a hard "never pad" rule. **Alex's call (A + doc-cleanup):** accept ~22, value-over-count; B is justified on contradiction-type RICHNESS (denser harvest surface per agent) + 3-barrier wave stress, NOT on clearing the record. The "clears 31" framing is retired. A (drop the 4 added types) remains the fallback only if B can't converge to zero P0s.
 8. **Codex round-2 (2026-07-21):** verify-harvest dedupes by `root_cause_id` (one root cause = one credited item) + distinct-FAILURES-row bijection; independent EARS added for all four Path-B types (happy + negative); firebreak teardown residual on hard crash made explicit (safe-closed, self-heals); C2 now disk-verifies `<R>/c2-smoke-report.md` (exercised set + planned/exercised deltas), not the exit code.
 
 ## Goal (corrected framing)
@@ -37,32 +37,42 @@ feed_forward:
 Run the **biggest *high-value* unattended autopilot-swarm build we can**, in a **throwaway app**, where
 "value" = **how hard it stresses the unattended pipeline** (governance, coordination, assembly, tail) and
 **how many durable pitfalls it harvests** (each pitfall makes every future run safer — that is the
-compounding). The app is disposable; **the stress-and-harvest is the deliverable.** Clearing the prior
-record of **31 agents** (GigSheet Run 050) is a *byproduct* of DISTINCT contradiction surface — never a
-target met by padding, because a raw count teaches the pitfalls engine nothing.
+compounding). The app is disposable; **the stress-and-harvest is the deliverable.** **The count is NOT
+the point and this run does NOT attempt to clear the 31-agent record** (GigSheet Run 050): the honest
+Path-B size is ~22 agents, and I1(>31) is non-gating — never padded, because a raw count teaches the
+pitfalls engine nothing. "Biggest" here means highest-VALUE limit-test (governance stress + pitfall
+harvest), consistent with the first-party rule that value ≠ agent count.
 
 This replaces the Workflow-engine execution of Run 082, proven **UNLAUNCHABLE** (the JS engine cannot carry
 the firebreak identity — origin solution doc). The manual autopilot skill runs **all** governance natively,
 so the risk budget goes into limit-testing and harvesting, not gate reconstruction.
 
-## Sizing Decision (CHOSEN: B — Alex, 2026-07-21)
+## Sizing Decision (CHOSEN: B — Alex, 2026-07-21; count-reality corrected at spec phase)
 
 The deepen's simplicity pass, checked against Alex's OWN clean scale runs, found the honest de-padded
-decomposition is **~25 agents — below the 31 record.** The first draft's ~44 was manufactured by a
-per-resource tests cluster (absent from lesson-studio/GigSheet) + four clone-FK resources (invoices/
-payments/shipments/returns re-instantiate `orders→order_items` with no new contradiction type). Per the
-**"first-party data beats generic best-practice"** rule, his own run data won here — so the count is NOT
-padded back; it is EARNED with new contradiction types.
+decomposition is **below the 31 record.** The first draft's ~44 was manufactured by a per-resource tests
+cluster (absent from lesson-studio/GigSheet) + four clone-FK resources (invoices/payments/shipments/
+returns re-instantiate `orders→order_items` with no new contradiction type). Per the **"first-party data
+beats generic best-practice"** rule, his own run data won here — so the count is NOT padded back.
 
-**CHOSEN — B: clear 31 with NEW contradiction TYPES, not clones.** Add distinct stressors: a
-soft-delete/cascade rule, a status **state-machine** with illegal-transition guards, a
-**uniqueness-across-resources** constraint, and a **second, structurally-different** cross-resource
-transaction (`process_return` touching returns+shipments+products.stock+payments-refund). Genuinely bigger
-AND higher value-per-agent; accepted the added convergence risk. The whole plan below is written for B.
+**CHOSEN — B: add NEW contradiction TYPES, not clones.** Distinct stressors: a soft-delete rule, a
+status **state-machine** with illegal-transition guards, a **uniqueness-across-resources** constraint,
+and a **second, structurally-different** cross-resource transaction (`process_return` touching
+returns+shipments+products.stock+payments-refund). Higher value-per-agent; accepted the added convergence
+risk. The whole plan below is written for B.
 
-Rejected: **A** (honest ~25, no record) — the more conservative answer, kept as the fallback if path-B's
-added types can't converge to zero P0s pre-spawn. **C** (layered 3-wave tests-layer to ~38) — the tests
-layer is padding the simplicity pass flagged; semi-earned, not chosen.
+**⚠️ Count-reality correction (spec phase, 2026-07-21).** Authoring the actual spec showed the honest
+Path-B roster is **~22 agents (19 build + 3 tail), NOT >31** — swarmlimit simply has fewer distinct
+resources than lesson-studio's 14, so the 4 new TYPES rode existing resources without lifting the count
+past 31. Rather than pad (forbidden; I1 is non-gating), **Alex chose A + doc-cleanup: accept ~22,
+value-over-count.** B stands on contradiction-type RICHNESS + 3-barrier wave stress, and the "clears 31 /
+biggest by count" framing is **retired**. If clearing 31 is ever wanted, it must be EARNED with more
+*distinct* types (e.g. coupon/discount pricing, purchased-only reviews) as a deliberate future run — not
+bolted on here. See spec §Projected Roster.
+
+Rejected: **A-as-fallback** (drop the 4 added types) — kept only if path-B can't converge to zero P0s
+pre-spawn. **C** (layered 3-wave tests-layer to ~38) — the tests layer is padding the simplicity pass
+flagged; not chosen.
 
 ## App Shape & Coupling (vehicle optimized for stress, not baseline)
 
@@ -200,7 +210,7 @@ tail-budget floor guarantees the harvest runs).
 - WHEN each Wave→Wave transition occurs THE SYSTEM SHALL push the merged layer to `origin/<default>` and re-run 9w.9.5 before the next spawn. — `<R>/assembly-order.log` shows every wave's base contains the prior wave's merge SHA.
 - WHEN 9w.5/9w.6 pass THE SYSTEM SHALL write `STATUS: CLEARED` to `<R>/gate-verification.md` and only then spawn. — `grep -m1 STATUS <R>/gate-verification.md` → CLEARED.
 - WHEN assembly completes THE SYSTEM SHALL run `smoke.py`, which WRITES `<R>/c2-smoke-report.md` recording the exercised (method,path) set + planned-vs-exercised deltas, and the tail SHALL **disk-verify that artifact** (not the exit code alone): C2 passes iff line-1 `STATUS: PASS` AND both deltas are empty AND no non-2xx (C2, gating). — `python swarmlimit/smoke.py --manifest <R>/planned-manifest.json` then `grep -m1 STATUS <R>/c2-smoke-report.md` → `PASS` AND `grep -A2 'planned_minus_exercised' <R>/c2-smoke-report.md` shows both delta sets empty.
-- WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+stock+audit atomically; values assert integer ids and NO `{'`/`[object Object]` in rendered JSON. — smoke value assertions pass.
+- WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+stock atomically **and record audit POST-commit** (audit is class-A, never inside the transaction — FC5/FC6; corrected from an earlier "…+audit atomically" wording that contradicted the injection matrix + Wave-0 spec); values assert integer ids and NO `{'`/`[object Object]` in rendered JSON. — smoke value assertions pass.
 - WHEN two `create_order` calls race the last unit of stock THE SYSTEM SHALL let exactly one succeed, the other raise `insufficient stock`, final stock non-negative and correct. — smoke concurrency case.
 - WHEN a forced failure fires AFTER the first writes but BEFORE commit THE SYSTEM SHALL leave all four tables (orders, order_items, products.stock, audit_logs) unchanged. — smoke rollback case with before/after counts.
 - **(Path B — state-machine)** WHEN a shipment is advanced along a legal transition (`pending→shipped`, then `shipped→delivered`) THE SYSTEM SHALL update `status` and write an audit row. — `python swarmlimit/smoke.py --case state-machine-legal; echo $?` → 0.
@@ -241,12 +251,44 @@ never pad to clear it) · **C1** governance ran (all gates fired, zero surviving
 - **P1 — bash rules / pitfalls injection** per brief (validator pre-spawn).
 - **P1 — `smoke.py` is a large single-owner Wave-0 deliverable** (manifest-equality + value + atomicity + race + 8 Path-B `--case`s + the C2 report writer). If it is wrong or incomplete, C2 AND every Path-B proof are unverifiable. Mitigation: frozen + import-checked against the base before Wave 1; its `--case`s are enumerated in the EARS; treat it as a first-class spec'd artifact, not glue.
 - **P2 — firebreak teardown residual on hard crash** (SIGKILL/OOM between activate and the `finally`) leaves a stale sentinel. Bounded + safe-closed: over-gates, never fails open; self-heals at the next `activate`. Made explicit (see §Firebreak Teardown), not claimed away.
-- **Wall-clock/cost:** 3–4 sequential barriers + Opus tail = the most expensive run yet; reserved tail budget so harvest always completes. If appetite is limited, prefer path A (~25) over cutting the tail/harvest.
+- **Wall-clock/cost:** 3–4 sequential barriers + Opus tail = the most expensive run yet; reserved tail budget so harvest always completes. If appetite is limited, prefer path A (drop the 4 added types) over cutting the tail/harvest.
+
+## Spec-Phase Resolutions (R1–R3 — closed 2026-07-21)
+
+The shared-interface spec is now authored + convergence-ready:
+`docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md` (all 6 mandatory sections,
+Model Functions, Route Table, EARS, 8 Path-B `--case`s, planned manifest). The three open spec-phase
+items from the last review are resolved:
+
+- **R1 — Wave-0 overload → SPLIT into 5 single-owner agents.** The three overloaded concerns are now
+  on distinct owners: (a) `smoke.py` + `<R>/pitfalls-baseline.txt` → **smoke-author**; (b) the
+  `ext_ref` cross-resource uniqueness owner (`refs.py`) + the audit writer (`audit_models.py`) →
+  **shared-services**; (c) app-factory / DB core / auth stay on scaffold / database / auth-core. So
+  Wave 0 = {scaffold, database, auth-core, shared-services, smoke-author}. No agent carries smoke +
+  ext_ref + baseline together. (This nudges the count up slightly — fine for Path B.)
+- **R2 — smoke.py is AUTHORED + import-checked in Wave 0 but EXECUTED post-assembly.** Wave-0 EARS
+  gate is only `python -c "import swarmlimit.smoke"` (or `-m compileall`) against the base — an
+  IMPORT/parse check. Its route/`--case` assertions and the manifest-equality check CANNOT pass until
+  Wave 2 merges (routes exist), so they run at the **assembly C2 step**, not in Wave 0. Pinned in the
+  spec's §Namespace note and the C2 EARS.
+- **R3 — ownership: smoke-author owns ALL testing; Wave-3 integration layer is CUT.** `smoke.py`
+  (smoke-author) solely owns the manifest-equality check, the 8 Path-B `--case` harness, the core
+  cases (value/concurrency/rollback/IDOR/CSRF/SECRET_KEY), AND the cross-resource integration
+  exercise (create_order + process_return span four resources inside the cases). There is **no
+  separate Wave-3 integration agent** — it would double-own the cross-cluster test surface. The
+  simplicity finding wins: one testing owner, no Wave-3. Waves are now 0→1(model)→2(routes)→tail.
+
+**Honest projected count (spec §Projected Roster): ~19 build + ~3 tail ≈ 22 agents — BELOW 31.**
+This is acceptable under this plan's own I1 rule (instrumentation-only, never pad). ⚠️ It does mean
+Path B as-specified does NOT clear 31 at honest granularity; the Path-B-over-A case now rests on
+**contradiction-type richness / harvest surface**, not count. If genuinely clearing 31 is wanted it
+must be EARNED with additional *distinct* types (coupon/discount pricing, purchased-only reviews) at
+launch — a deliberate decision, out of scope for convergence. Flagged for Alex.
 
 ## Feed-Forward
-- **Hardest decision:** redefining "biggest" as highest-value limit-test, then accepting your own data's verdict that the honest size is ~25 — so "clears 31" must be *earned with new contradiction types* (path B), not padded.
+- **Hardest decision:** redefining "biggest" as highest-value limit-test — then, at the spec phase, accepting that the honest Path-B roster is ~22 agents (NOT >31) and **retiring the "clears 31" goal entirely** rather than padding to chase a symbolic record. Value = contradiction-type richness + harvest, per the first-party rule that count ≠ value.
 - **Rejected alternatives:** Workflow engine (UNLAUNCHABLE); ~40 uncoupled CRUD agents (hollow); clone-FK resources / per-resource test clusters (padding the sizing).
-- **Least confident:** two coupled uncertainties, both pre-spawn-checkable (which is why they're least-confident, not unmitigated). (1) Whether path-B's added contradiction types (state-machine, uniqueness, second transaction, soft-delete) converge to zero P0s pre-spawn — if not, fall back to path A; a clean ~25 beats a contradictory ~38. (2) Whether the now-substantial single-owner `smoke.py` (C2 manifest-equality + the C2 report + all eight Path-B `--case` proofs) is itself correct — a bug there makes C2 and every Path-B EARS unverifiable. Gate (1) via the convergence loop; gate (2) via import-check + case enumeration before Wave 1.
+- **Least confident:** two coupled uncertainties, both pre-spawn-checkable (which is why they're least-confident, not unmitigated). (1) Whether path-B's added contradiction types (state-machine, uniqueness, second transaction, soft-delete) converge to zero P0s pre-spawn — if not, fall back to path A (drop the 4 added types); a clean ~22 beats a contradictory bigger one. (2) Whether the now-substantial single-owner `smoke.py` (C2 manifest-equality + the C2 report + all eight Path-B `--case` proofs) is itself correct — a bug there makes C2 and every Path-B EARS unverifiable. Gate (1) via the convergence loop; gate (2) via import-check + case enumeration before Wave 1.
 
 ## Codex Handoff Prompt
 
