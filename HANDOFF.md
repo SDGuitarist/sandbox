@@ -1,8 +1,40 @@
-# ⬅⬅ NEXT SESSION — Amplify content-engine: copy-gen BUILT (P3+P4). Next = REVIEW ⬅⬅
+# ⬅⬅ NEXT SESSION — Run 082 (Dynamic Workflows scale test): PLAN COMPLETE, BLOCKED-pending-spike ⬅⬅
 
-**Status:** the copy-gen step is built and proven end-to-end. On branch
-`feat/content-engine-copy-gen` (NOT yet merged to master, NOT pushed). Plan P3 (copy-gen +
-voice gate) and P4 (weekly glue + review gate) are both delivered by one skill.
+**Phase:** Planning DONE. Brainstorm (2 refinement passes) → 5-agent deepen-plan → TWO Codex
+plan-review rounds, all integrated. **No code yet.** This is a governance/infrastructure test:
+validate the JS `Workflow` engine as a governance-faithful replacement for the manual autopilot
+skill, via a throwaway ~12-resource Flask/SQLite swarm build (the app is disposable; the engine
+validation is the deliverable).
+
+**Artifacts:** plan `docs/plans/2026-07-20-feat-dynamic-workflows-max-scale-swarm-test-plan.md` ·
+brainstorm `docs/brainstorms/2026-07-20-dynamic-workflows-scale-test-brainstorm.md`.
+
+**STATUS: BLOCKED-pending-spike, BY DESIGN.** Governance is IDENTITY-based (firebreak trusts by
+`agent_type`; empty ⇒ orchestrator ⇒ TRUSTED ⇒ ungoverned; `phase` is inert). Launch hinges on an
+unproven engine fact — does a Workflow `agent()` propagate `agent_type` into the PreToolUse hook
+envelope? (§Load-Bearing Unknown.)
+
+**NEXT ACTION — the Phase-0 capability/identity spike (hard launch gate).** Run the hook-wiring
+check first, then a ~40-line throwaway Workflow that captures the real hook envelope and proves:
+**Q1a** worker emits non-empty `agent_type` (fail ⇒ UNLAUNCHABLE); **Q1b** worker CANNOT write an
+absolute main-repo `.claude/` path (fail ⇒ UNLAUNCHABLE); **Q2** `swarm-runner`/`tail-runner`
+identities are emittable + allowed control-plane writes while armed (fail ⇒ outer-wrapper or
+UNLAUNCHABLE); plus `parallel()` join + isolation + model override. Green ⇒ proceed to spec
+convergence (Claude→Codex→NotebookLM→human) then Phase A baseline slice. The full copy-paste
+next-session prompt is in the commit message and was copied to the clipboard this session.
+**A2 (run count) is non-gating, pass iff >31 (~34–38); "≥35" retired.** (The Run 081 prompt block
+lower in this file is superseded.)
+
+<details><summary>Prior — Amplify content-engine: SHIPPED & MERGED (2026-07-19), no WIP blocking</summary>
+
+Copy-gen work DONE — merged via **PR #11** (`a2fcd1e`) + **PR #12** (`77cb50f`, W29–W36 batches +
+Sunday review cron). `master` in sync with `origin/master`. Plan P3 + P4 delivered. Nothing unmerged.
+
+</details>
+
+<details><summary>Prior (now-completed) copy-gen build notes — kept for reference</summary>
+
+Plan P3 (copy-gen + voice gate) and P4 (weekly glue + review gate) are both delivered by one skill.
 
 **Cadence (updated 2026-07-11):** a week = **one theme → 3 angles → 9 posts (3 IG / 3 LI /
 3 FB) + 6 graphics**. Each angle gets ONE card rendered in BOTH a **1:1 square (1080×1080)** for
@@ -48,6 +80,8 @@ Instagram and a **4:5 portrait (1080×1350)** for LinkedIn + Facebook.
 - Dims (all staging + out): `lead-scraper/.venv/bin/python content-engine/tests/check_render.py`
 - Render one card both ways: `... render.py <data.json> <out>-1x1.png 1x1` and `... <out>-4x5.png 4x5`
 - Run a new week: `/content-batch "<a new theme>"`
+
+</details>
 
 ---
 
