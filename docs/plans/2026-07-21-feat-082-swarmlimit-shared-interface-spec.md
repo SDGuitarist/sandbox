@@ -74,7 +74,14 @@ parser accepting `--case <name>` and `--manifest <path>` (absent → the full de
 `create_app()` is defined at **module level** in `swarmlimit/__init__.py` (FC50 orchestration
 entrypoint); `swarmlimit/smoke.py` does `from swarmlimit import create_app`. A module-level
 `app = create_app()` is NOT created at import time (avoids side-effecting the DB on import); smoke
-builds its own app against a throwaway temp DB (FC49 — a real tempfile, never `:memory:`).
+builds its own app against a throwaway temp DB. **Temp-DB pin (P0 — init_db must actually run):** smoke
+creates a `tempfile.TemporaryDirectory()` and configures the DB to a **child path that does NOT yet
+exist** (e.g. `<tempdir>/swarmlimit.sqlite`), then calls `create_app()`. Because the file is absent,
+`create_app()`'s "init_db only if the DB file is absent" check fires and `init_db()` runs **exactly
+once**, creating the schema. Smoke MUST NOT hand `create_app()` a pre-created empty file (a bare
+`tempfile.NamedTemporaryFile`/`mkstemp` path already EXISTS → the absence check is false → `init_db()`
+is skipped → the first query fails with no schema). FC49 still holds: a **real on-disk SQLite file**
+inside the temp dir, never `:memory:`.
 
 ---
 
@@ -101,7 +108,9 @@ builds its own app against a throwaway temp DB (FC49 — a real tempfile, never 
     `"validation"` (400), `"csrf"` (400), `"auth"` (401), `"forbidden"` (403), `"not_found"` (404),
     `"conflict"` (409). Every route uses `error(...)`; no route hand-rolls an error body.
 - **Registration:** registers all blueprints (see Roster/Route Table) in a fixed order. Calls
-  `init_db()` once if the DB file is absent. Hosts the admin **`GET /audit`** view directly
+  `init_db()` once if the DB file is absent (so callers — incl. smoke — MUST point the config at a DB
+  path that does not yet exist for the schema to be created; see the Temp-DB pin above). Hosts the
+  admin **`GET /audit`** view directly
   (reads `audit_models.list_audit`) — the one read the scaffold owns, mirroring lesson-studio's
   scaffold-hosts-/rooms pattern (keeps audit from needing its own route agent).
 
@@ -184,7 +193,7 @@ CREATE TABLE order_items (
 -- ---------- fulfillment (STATE MACHINE) ----------
 CREATE TABLE shipments (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id   INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,        -- child of the order
+    order_id   INTEGER NOT NULL UNIQUE REFERENCES orders(id) ON DELETE CASCADE, -- child of the order; UNIQUE ⇒ exactly one shipment per order (backstops the single-return story)
     status     TEXT NOT NULL DEFAULT 'pending'
                CHECK (status IN ('pending','shipped','delivered','returned')),
     carrier    TEXT,
@@ -245,6 +254,10 @@ smoke's Path-B cases). Every seeded row satisfies all NOT NULL / CHECK / UNIQUE 
   `journal_mode=WAL`, `busy_timeout=5000`). Registered teardown closes it.
 - `init_db() -> None` — executes `schema.sql`, inserts seed rows. Idempotent guard: the app factory
   calls it only when the DB file does not already exist (FC16 — DDL is `CREATE TABLE`, run once).
+  **Corollary (smoke):** because the guard keys on file absence, smoke must configure a DB path that
+  does NOT yet exist (a child of a `TemporaryDirectory`, never a pre-created `NamedTemporaryFile`);
+  otherwise `init_db()` is skipped and the schema is never created. See the Temp-DB pin in the
+  Namespace section. `init_db` itself is NOT redesigned by this contract.
 - `query(sql, params=(), one=False) -> list[dict] | dict | None` — thin helper returning plain
   dicts (never leak `sqlite3.Row` across a boundary — FC63/FC2).
 - **Autocommit & class-A writes (`isolation_level=None`):** because no implicit transaction is open,
@@ -280,6 +293,9 @@ transaction — see §5.
 ### auth_models.py  (auth-core)
 - `create_user(email, password, role, name) -> int` — hashes password (`werkzeug`); raises
   `ValueError('email exists')` on UNIQUE violation. persists immediately via SQLite autocommit; does not call `conn.commit()`.
+  **Privilege pin:** the public `POST /auth/register` route ALWAYS calls this with `role='customer'`
+  (client-supplied role ignored); the `role` parameter is variable ONLY for trusted seed/internal
+  callers (e.g. `init_db` seeding `admin@swarm.test`).
 - `get_user(user_id) -> dict | None`
 - `get_user_by_email(email) -> dict | None`
 - `verify_credentials(email, password) -> dict | None` — user dict if password matches, else None.
@@ -382,7 +398,11 @@ fetch-then-compare in Python):
 - `get_shipment_for(sid, actor) -> dict | None` — **Ownership-Scoped Getter Contract** (transitive
   via order). `GET /shipments/<int:sid>` → 404 for non-owner.
 - `create_shipment(order_id, carrier=None, tracking=None) -> int` — validates the order exists;
-  inserts `status='pending'`. persists immediately via SQLite autocommit; does not call `conn.commit()`. (Admin creates a shipment for a placed order.)
+  inserts `status='pending'`. **Exactly one shipment per order:** raises `ValueError('shipment exists')`
+  if the order already has a shipment (the `UNIQUE(order_id)` constraint fires an `IntegrityError`,
+  caught and re-raised as this named `ValueError`) → route maps to **409 `conflict`**. persists
+  immediately via SQLite autocommit; does not call `conn.commit()`. (Admin creates the single shipment
+  for a placed order.)
 - `advance_shipment(sid, to_status) -> None` — the ROUTE has already checked `to_status` is one of
   the four stored statuses (else 400); this reads current status and, if `(current, to_status) NOT IN
   LEGAL_TRANSITIONS` → raise `ValueError('illegal transition')` and **leave status unchanged**
@@ -402,8 +422,9 @@ fetch-then-compare in Python):
   `GET /returns/<int:rid>` → 404 for non-owner.
 - `process_return(order_id, ext_ref, reason, refund_cents) -> int` — **OWNS one `transaction()`
   internally.** Inside `with transaction() as conn:` (BEGIN IMMEDIATE): (1)
-  `refs.assert_ext_ref_unique(conn, ext_ref)` → `ValueError` (route → 409); (2) re-read the order's
-  shipment on `conn`; require exactly one shipment with `status == 'delivered'`, else
+  `refs.assert_ext_ref_unique(conn, ext_ref)` → `ValueError` (route → 409); (2) select the order's
+  shipment on `conn` (the `UNIQUE(order_id)` constraint guarantees **at most one** — no ambiguity about
+  which `shipment_id` to update); require it EXISTS and `status == 'delivered'`, else
   `ValueError('shipment not delivered')` (route → 409 — illegal state); (3) **refund guard:**
   `refund_cents + (existing refunds for the order) ≤ order_models.order_total(conn, order_id)`, else
   `ValueError('refund exceeds original')` → rollback; (4) insert the return row; (5)
@@ -450,9 +471,17 @@ non-owner) · **admin**. JSON API — success/error bodies per the pinned schema
 ### auth  (auth-core — no url_prefix; full paths)
 | Method | Path | View | Auth |
 |--------|------|------|------|
-| POST | /auth/register | register | public |
+| POST | /auth/register | register (**always creates a `customer`** — supplied `role` ignored/overridden) | public |
 | POST | /auth/login | login (response body includes `csrf_token`) | public |
 | POST | /auth/logout | logout | auth |
+
+> **`POST /auth/register` privilege pin (P0 — public route can NEVER mint an admin):** the register
+> view calls `create_user(email, password, role='customer', name)` — it hard-codes `role='customer'`
+> and ignores any `role` in the request body, so an anonymous caller submitting `role=admin` still
+> receives a `customer` account. The seeded `admin@swarm.test` (inserted by `init_db`) is the sole
+> bootstrap admin; the stale "first user forced admin" rule is removed. `create_user` keeps its
+> `role` parameter for trusted seed/internal use (seeding, tests) — ONLY the public route is pinned
+> to `customer`.
 
 ### suppliers  (supplier route agent — no url_prefix; full paths)
 | GET | /suppliers | list_suppliers | auth |
@@ -482,7 +511,7 @@ non-owner) · **admin**. JSON API — success/error bodies per the pinned schema
 | GET | /orders/<int:oid> | `get_order_for(oid, current_user()) or error('not_found',404)` | role+own |
 
 ### shipments  (shipment route agent — no url_prefix; full paths; two roots)
-| POST | /orders/<int:oid>/shipments | create_shipment | admin |
+| POST | /orders/<int:oid>/shipments | create_shipment (**409 `conflict`** if the order already has a shipment) | admin |
 | GET | /shipments/<int:sid> | `get_shipment_for(sid, current_user()) or 404` | role+own |
 | POST | /shipments/<int:sid>/advance | advance_shipment (body `{to_status}`) → **409** illegal | admin |
 
@@ -596,7 +625,7 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 
 | Route | Input | Validation | Error Response |
 |-------|-------|-----------|----------------|
-| POST /auth/register | email, password, role, name | email non-empty + `@`; password ≥ 8; role ∈ {admin,customer} (first user forced admin) | 400 `validation` |
+| POST /auth/register | email, password, name (role IGNORED) | email non-empty + `@`; password ≥ 8. **Public registration ALWAYS creates a `customer`:** the route ignores/overrides any client-supplied `role` and calls `create_user(..., role='customer', ...)` — a client can NEVER self-register as `admin`. The seeded `admin@swarm.test` (init_db) is the ONLY bootstrap-admin mechanism; there is no "first user forced admin" runtime path. | 400 `validation` |
 | POST /auth/login | email, password | both non-empty | 401 `auth` (no field leak) |
 | POST /auth/logout | (header only) | `X-CSRF-Token` matches session | 400 `csrf`; else 200 |
 | POST /suppliers | name | name non-empty | 400 `validation` |
@@ -610,7 +639,7 @@ return-shape / class-(C) / conn-threading drift bites hardest.
 | DELETE /products/<int:pid> | (path) | product exists (live) | 404 if absent/already-deleted-and-not-admin-history; else 200 (soft-delete) |
 | PUT /products/<int:pid>/categories | category_ids | list of existing category ids | 400 / 404 |
 | POST /orders | ext_ref, items (`[{product_id,qty}]`), user_id? | ext_ref non-empty; items non-empty; each qty > 0 int; each product_id int. **`user_id` resolution:** if omitted → the current actor's id (both roles); a customer is ALWAYS forced to their own id (any supplied `user_id` ignored); only an admin may pass an explicit `user_id` to place on another user's behalf | 400 `validation`; **409 `conflict`** on ext_ref collision OR insufficient stock OR unavailable product (in-tx guards raise) |
-| POST /orders/<int:oid>/shipments | carrier?, tracking? | order exists | 404 if order absent; 201 on create |
+| POST /orders/<int:oid>/shipments | carrier?, tracking? | order exists; order has no shipment yet | 404 if order absent; **409 `conflict`** if the order already has a shipment (`UNIQUE(order_id)` → `ValueError('shipment exists')`); 201 on create |
 | POST /shipments/<int:sid>/advance | to_status | `to_status ∈ {pending,shipped,delivered,returned}` (any STORED status is syntactically valid input; an unknown string → 400). Transition **legality** is decided by `advance_shipment` against `LEGAL_TRANSITIONS`, NOT here. | 400 `validation` on an unknown status; **409 `conflict`** if `(current,to_status) ∉ LEGAL_TRANSITIONS` (incl. every `→returned`, `delivered→pending`, and `pending→delivered` skip), status unchanged |
 | POST /returns | order_id, ext_ref, reason?, refund_cents | order_id resolves via `get_order_for` (else 404); ext_ref non-empty; **refund_cents > 0 int** (a return always refunds a positive amount; `≤ 0` → 400) | 400 `validation`; 404 if non-owner/absent order; **409 `conflict`** on ext_ref collision / shipment-not-delivered / refund-exceeds-original |
 | GET/DELETE typed params `<int:...>` | — | Flask 404 on non-int | 404 |
@@ -683,7 +712,7 @@ in-tx helpers; the ROUTE just calls them and never manages a transaction:
   order → per item: re-read product (live?) + `decrement_stock_in_tx(conn,…)` + insert order_item.
   Touches {orders, order_items, products.stock}. Rolls back the whole unit on any raise.
 - `return_models.process_return(order_id, ext_ref, reason, refund_cents)` —
-  `assert_ext_ref_unique(conn,…)` → require the order's shipment is `delivered` → refund guard
+  `assert_ext_ref_unique(conn,…)` → select the order's UNIQUE shipment (`UNIQUE(order_id)` ⇒ at most one) → require it exists and is `delivered` → refund guard
   (`refunded_total(conn,…) + refund_cents ≤ order_total(conn,…)`) → insert return →
   `set_shipment_status_in_tx(conn, sid, 'returned')` → per item `restock_product_in_tx(conn,…)` →
   `add_refund_in_tx(conn, oid, refund_cents)`. Touches {returns, shipments.status, products.stock,
@@ -738,6 +767,12 @@ re-submits the SAME `create_order`/`process_return` after an uncertain outcome i
 the first attempt committed, the retry hits the uniqueness guard → **409** (no duplicate); if it did
 not commit, the retry succeeds cleanly. No duplicate row and no lost write can result from a retry.
 
+**Invariant (one shipment per order):** `shipments.order_id` is `UNIQUE`, so an order has **at most
+one** shipment for its entire lifetime. `create_shipment` raises `ValueError('shipment exists')` → 409
+on a second attempt (including after the shipment has been advanced to `returned`), so no one can mint a
+fresh shipment to bypass the once-per-order return bound. This is what lets `process_return` speak of
+"the order's shipment" unambiguously and backstops the restock-once guarantee below.
+
 **Invariant (shipment state machine):** `shipments.status` only ever follows
 `pending→shipped→delivered` (via `advance_shipment`) or `delivered→returned` (via `process_return`
 only). No other transition is reachable; illegal `advance_shipment` calls raise and leave status
@@ -749,7 +784,7 @@ unchanged.
 
 | Route | Mode | Rule |
 |-------|------|------|
-| POST /auth/register, /auth/login | public | anonymous allowed |
+| POST /auth/register, /auth/login | public | anonymous allowed. **register ALWAYS creates a `customer`** (supplied `role` ignored → `create_user(role='customer')`); a client can never self-promote to admin — the seeded `admin@swarm.test` is the only bootstrap admin |
 | POST /auth/logout | auth | any logged-in |
 | GET /suppliers, /suppliers/<int:sid>, /categories(+<cid>), /products(+<pid>) | auth | any logged-in may browse catalog |
 | POST/PATCH/DELETE /suppliers, /categories, /products (+ PUT categories) | admin | admin only |
@@ -773,7 +808,7 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 
 ---
 
-## Acceptance Tests (EARS) — verified by `swarmlimit/smoke.py`, run as `python -m swarmlimit.smoke` (imports `from swarmlimit import create_app`, temp DB)
+## Acceptance Tests (EARS) — verified by `swarmlimit/smoke.py`, run as `python -m swarmlimit.smoke` (imports `from swarmlimit import create_app`, temp DB at a not-yet-existing child path of a `TemporaryDirectory` so `init_db()` runs once)
 
 ### Happy Path
 - WHEN a new user registers with a valid email + password (≥8) THE SYSTEM SHALL create the user and return **201**.
@@ -796,10 +831,12 @@ bypasses ownership by role. Anonymous → **401**; wrong role on an admin route 
 - **(Path B — state guard, pre-write)** WHEN `process_return` is called for an order whose shipment is NOT `delivered` THE SYSTEM SHALL return **409** `conflict` and write nothing. — `python -m swarmlimit.smoke --case process-return-guard-shipment; echo $?` → 0.
 - WHEN a customer requests another customer's `GET /orders/<int:oid>` THE SYSTEM SHALL return **404** (not 403).
 - WHEN a customer POSTs to an admin route (e.g. `POST /products`) THE SYSTEM SHALL return **403**.
+- WHEN a public `POST /auth/register` body supplies `role: admin` THE SYSTEM SHALL still create a **customer**, log that user in, and return **403** on an admin-only route (e.g. `POST /products`) — a client can never self-promote. — default-smoke security assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
 - WHEN an anonymous request hits a protected route THE SYSTEM SHALL return **401**.
 - WHEN a mutating request omits/mismatches `X-CSRF-Token` THE SYSTEM SHALL return **400** `csrf`.
 - WHEN `SECRET_KEY` is unset and `FLASK_ENV != development` THE SYSTEM SHALL refuse to start. — smoke asserts `create_app()` raises.
 - WHEN `DELETE /suppliers/<int:sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
+- WHEN a second `POST /orders/<int:oid>/shipments` is issued for an order that already has a shipment THE SYSTEM SHALL return **409** `conflict` (`UNIQUE(order_id)`) and create no shipment row — including after the first shipment has been advanced to `returned` (no fresh shipment can be minted to permit a second return). — default-smoke integrity assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
 
 ### Verification Commands
 - `python -m swarmlimit.smoke` — full happy-path + all 10 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`. (Assembly C2 step also runs `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json`.)
@@ -829,7 +866,11 @@ returning exit 0 on pass, non-0 on fail. The ten cases (each an independent Path
 Plus the non-Path-B core cases (default `python -m swarmlimit.smoke` run): manifest-equality (planned == exercised),
 create_order value assertions, create_order concurrency stock-race, create_order mid-tx rollback (via
 `order_models._TX_FAULT` after the first item write — value-compares stock), IDOR-404, admin-403,
-anon-401, CSRF-400, SECRET_KEY fail-closed.
+anon-401, CSRF-400, SECRET_KEY fail-closed, **register-role-ignored** (public `POST /auth/register`
+with `role=admin` → a `customer` account + 403 on an admin route), **shipment-unique** (a 2nd
+`POST /orders/<oid>/shipments` for an order that already has a shipment → 409 `conflict`, no row
+created, including after the first shipment is `returned`). These two are default-smoke security/
+integrity assertions, NOT additions to the ten Path-B `--case`s.
 
 ---
 
@@ -1075,3 +1116,68 @@ Route Table + manifest exactly); Call-2 (`_TX_FAULT` test-only seam) and Call-3 
 vehicle). **Convergence note:** human = zero P0. A confirming Codex round on THIS post-fix spec (the
 Round-2 fixes + these human-pass edits) has NOT yet run — recommended before flipping `status:
 draft→active`, to satisfy the full criterion (Codex-clean AND human-zero-P0).
+
+**FINAL confirming Codex pass (2026-07-21) — NOT CLEAN: 4 P0 cross-section contradictions, ALL RESOLVED
+here.** This fresh-context Codex round confirmed the previously-good invariants (Route Table = manifest =
+31 exact method/path equality; Path-B `--case` table = 10; exactly two class-B owners `create_order`/
+`process_return`; seven caller-`conn`/no-commit helpers = four writers + one uniqueness guard + two
+readers; manual `/autopilot` the only launch engine, Workflow UNLAUNCHABLE; honest roster ~22, I1>31
+non-gating and never padded) and found four NEW P0s:
+- **P0-1 (public registration can create an admin):** the Route Table made `POST /auth/register` public
+  while §3 accepted `role ∈ {admin,customer}` with a stale "first user forced admin" rule — but `init_db`
+  already seeds `admin@swarm.test`, so the bootstrap branch is never the runtime path and an anonymous
+  caller could POST `role=admin` and pass every admin route (hollowing the customer-403 proof). FIX:
+  public registration ALWAYS creates a `customer` (the route ignores/overrides any supplied role →
+  `create_user(..., role='customer', ...)`); removed the "first user forced admin" rule; seeded admin is
+  the sole bootstrap-admin; `create_user`'s `role` param retained for trusted seed/internal use only.
+  Added a **default-smoke** security assertion (`register-role-ignored`, NOT a new Path-B `--case`) that a
+  `role:admin` registration still yields a customer + 403 on an admin route. Reconciled Route Table + note,
+  §3, §6, `create_user` prose, EARS, and the smoke core-cases list.
+- **P0-2 (multiple shipments break the single-return story):** `shipments.order_id` was not unique and
+  `create_shipment` could be called repeatedly, so `process_return`'s "the order's shipment" was
+  ambiguous and an admin could mint a second shipment to permit a second return (double-restock). FIX:
+  `UNIQUE(order_id)` on `shipments` (DB backstop); `create_shipment` raises `ValueError('shipment exists')`
+  → **409 `conflict`**; `process_return` selects the order's UNIQUE shipment (at most one) and requires it
+  exists + is `delivered`. Added a **default-smoke** integrity assertion (`shipment-unique`, NOT a new
+  Path-B `--case`) that a second `POST /orders/<oid>/shipments` → 409 with no row, incl. after the first is
+  `returned`. Reconciled schema, `create_shipment` model + Route Table + §3, `process_return` steps + §5,
+  a new §5 one-shipment-per-order invariant, EARS, and the smoke core-cases list. No second class-B owner;
+  state machine + exactly-once return preserved.
+- **P0-3 (active run-plan contradicted the authoritative spec):** the run-plan's §Decomposition + §6-Section
+  Spec + EARS still carried the pre-spec-phase decomposition (Wave-0 ~2 agents, `@require_owner`, obsolete
+  `audit_logs.record` signature, `add_item_in_tx`, `invoices.order_id`/`payments.invoice_id`,
+  `<resource>/model.py`+`/routes.py`, a Wave-3 integration owner, Tail ~6, `refund ≤ original payment`,
+  `soft-delete-order` "400/409", a two-subproof `state-machine-illegal`, and a `create_order` rollback that
+  wrongly included `audit_logs`). FIX (in the linked run-plan): Wave 0 = five single-owner agents
+  {scaffold, database, auth-core, shared-services, smoke-author}; Wave 1 = seven model agents owning
+  `swarmlimit/models/<resource>_models.py`; Wave 2 = seven route agents owning
+  `swarmlimit/routes/<resource>.py`; Wave 3 removed (smoke.py is Wave-0-owned, executed at assembly C2);
+  Tail ~3 (disconfirmer/self-audit/verify-harvest; verify-self-audit + terminal disk-verify are native
+  gates); three merge barriers + push/provenance re-verify preserved. Shared contracts corrected to the
+  actor-based `*_for(actor)` getters, the full `record(actor_id, action, entity_type, entity_id=None,
+  detail=None)` signature, direct order-item inserts (no `add_item_in_tx`), the real swarmlimit FK edges,
+  and the exact refund rule `refunded_total + refund_cents ≤ order_total` (payments refund-only; create_order
+  writes no charge). Run-plan EARS: `state-machine-illegal` now carries all three subproofs;
+  `soft-delete-order` requires exactly 409; `process-return-rollback` uses the `_TX_FAULT` seam; the two
+  pre-write guard cases (`process-return-guard-refund`, `process-return-guard-shipment`) were added so the
+  run-plan EARS ↔ spec ten-case table is a **bijection of exactly ten**; `create_order` rollback drops
+  `audit_logs` from the tx tables (audit is post-commit). Post-edit grep confirms no live occurrence of any
+  stale token.
+- **P0-4 (smoke could skip schema init with a pre-created tempfile):** `create_app()` runs `init_db()` only
+  if the DB file is absent, but a bare `NamedTemporaryFile`/`mkstemp` path already EXISTS, so a smoke run
+  handing that path to `create_app()` skips `init_db()` and the first query hits no schema. FIX: pinned
+  smoke to a `tempfile.TemporaryDirectory()` **child path that does NOT yet exist** (e.g.
+  `<tempdir>/swarmlimit.sqlite`), so the absence check fires and `init_db()` runs exactly once; FC49 (real
+  on-disk SQLite, never `:memory:`) preserved; `init_db` not redesigned. Pinned in the Namespace Temp-DB
+  note, App Configuration, Database Connection, and the Acceptance-Tests header.
+- **Cross-section re-verification (post-fix):** Route Table set == manifest set == 31 (exact method/path
+  equality, `<int:...>` form) — verified by set diff; Path-B EARS ↔ ten-case table ↔ run-plan EARS =
+  bijection of ten (verified by name-set diff); exactly two class-B owners; `process_return` signature
+  unchanged and consistent; unique-shipment rule consistent across schema/model/route/§5/state-machine/
+  smoke; public registration can never mint an admin while the seeded admin still exercises admin routes;
+  Wave owners single-owner and matching the namespace layout with smoke.py single-owned; `run_id` remains
+  skill-computed and `docs/reports/<run-id>/` must be absent before freeze. `git diff --check` clean.
+- **CONVERGENCE NOT YET MET:** this pass was **NOT clean** (four P0s found), so per the criterion (Codex-clean
+  AND human-zero-P0) `status` stays **`draft`**. One more **fresh-context Codex confirmation** on THIS
+  post-fix spec (comparing the linked run-plan at the reconciled sections) is required before flipping
+  `draft→active`.

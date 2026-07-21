@@ -100,25 +100,46 @@ the FKs/auth degrade to independent CRUD and surface no cross-section contradict
 Parallel siblings can't import each other (worktrees root on `origin/<default>`). The ONLY visibility
 mechanism is merge-to-base-then-next-wave. So:
 
-- **Wave 0 — shared surface (single-owner, ~2 agents):** app-factory + DB core (`get_db()` with
-  `isolation_level=None`, `PRAGMA foreign_keys=ON`/`journal_mode=WAL`/`busy_timeout` per-connection),
-  `transaction()` context manager (`BEGIN IMMEDIATE` + try/except/ROLLBACK), blueprint registry, shared
-  error/response schema, auth core (`@require_owner(field=...)`), `audit_logs.record(actor_id, action,
-  entity_type, entity_id)` (frozen signature, class-A, post-commit only), and **`smoke.py`** (the
-  manifest-equality + value + atomicity + race + Path-B `--case` harness; it WRITES `<R>/c2-smoke-report.md`
-  — line-1 `STATUS: PASS|FAIL`, recording the exercised (method,path) set, the `planned_minus_exercised` and
-  `exercised_minus_planned` deltas, and any non-2xx — so C2 is disk-verifiable, not exit-code-only). Build → ownership-gate → **merge to base → push to
-  `origin/<default>` → provenance re-verify (9w.9.5)**. Hard barrier. EARS gate: `swarmlimit/smoke.py`
-  **compiles cleanly** (`python -m compileall swarmlimit`, parse check) against the base before any
-  Wave-1 spawn; else abort + tear down firebreak.
-- **Wave 1 — MODEL layer (all resources parallel):** each owns `swarmlimit/<resource>/model.py`. Cross-resource
-  model imports minimal; tightly-coupled pairs co-assigned to one agent. Ownership-gate → merge → push →
-  re-verify. Barrier.
-- **Wave 2 — ROUTES layer (all resources parallel):** each owns `<resource>/routes.py`; model layer is now at
-  the base so `routes→model` and cross-resource `orders→users/products` resolve at spawn. Barrier.
-- **Wave 3 — integration/smoke tests (small):** cross-resource integration tests (exercise `create_order` /
-  `process_return` across four resources) — a real cross-cluster consumer, NOT per-resource unit tests.
-- **Tail (~6):** disconfirmer (Opus) → self-audit (Sonnet) → verify-self-audit (8 gates) → **verify-harvest**.
+- **Wave 0 — shared surface (5 single-owner agents; matches spec §Projected Roster):** {scaffold,
+  database, auth-core, shared-services, smoke-author}.
+  - **scaffold** — app-factory (`create_app`, module-level), blueprint registry, shared error/response
+    schema, CSRF/CSP, and the scaffold-hosted `GET /audit` view.
+  - **database** — DB core (`get_db()` with `isolation_level=None` AUTOCOMMIT,
+    `PRAGMA foreign_keys=ON`/`journal_mode=WAL`/`busy_timeout` per-connection), `init_db`, `schema.sql`,
+    and the `transaction()` context manager (`BEGIN IMMEDIATE` + try/except/ROLLBACK).
+  - **auth-core** — `auth_models.py` + `auth.py`: `create_user`/`verify_credentials`,
+    `login_required`/`role_required` decorators, session helpers, and it **pins the uniform
+    actor-based Ownership-Scoped Getter Contract** (`get_<x>_for(id, actor)` / `list_<x>_for(actor)` —
+    a SQL WHERE predicate, 404-not-403; there is **no** `@require_owner` decorator). Each such getter is
+    IMPLEMENTED per-resource in its Wave-1 model file (e.g. `order_models.get_order_for`), following this
+    contract — auth-core owns the decorators + contract, not the individual getters.
+  - **shared-services** — `refs.py` (`assert_ext_ref_unique` cross-resource ext_ref owner) +
+    `audit_models.py` (`record(actor_id, action, entity_type, entity_id=None, detail=None)` — full
+    signature, class-A, called post-commit at the route only).
+  - **smoke-author** — **`swarmlimit/smoke.py`** (the manifest-equality + value + atomicity + race +
+    the ten Path-B `--case` harness; it WRITES `<R>/c2-smoke-report.md` — line-1 `STATUS: PASS|FAIL`,
+    recording the exercised (method,path) set, the `planned_minus_exercised` and
+    `exercised_minus_planned` deltas, and any non-2xx — so C2 is disk-verifiable, not exit-code-only)
+    + freezes `<R>/pitfalls-baseline.txt`.
+
+  Build → ownership-gate → **merge to base → push to `origin/<default>` → provenance re-verify
+  (9w.9.5)**. Hard barrier. EARS gate: `swarmlimit/smoke.py` **compiles cleanly**
+  (`python -m compileall swarmlimit`, parse check) against the base before any Wave-1 spawn; else abort
+  + tear down firebreak.
+- **Wave 1 — MODEL layer (7 parallel agents):** supplier · category · product · order(+order_items) ·
+  shipment · return · payment — each owns `swarmlimit/models/<resource>_models.py`. Cross-resource
+  in-tx helper imports are pinned by the spec §1d/§2. Ownership-gate → merge → push → re-verify. Barrier.
+- **Wave 2 — ROUTES layer (7 parallel agents):** suppliers · categories · products · orders · shipments ·
+  returns · payments — each owns `swarmlimit/routes/<resource>.py`; the model layer is now at the base so
+  `routes→models` and cross-resource `orders→users/products` resolve at spawn. (`/audit` is
+  scaffold-hosted — no route agent.) Barrier.
+- **(No Wave 3.)** There is **no separate integration/smoke agent** — `swarmlimit/smoke.py` is
+  Wave-0 smoke-author-owned and its cross-resource integration exercises (`create_order` /
+  `process_return` spanning four resources) run at the **assembly C2 step** once routes exist (see
+  R3 below). A second owner of the test surface would double-own it.
+- **Tail (~3):** disconfirmer (Opus) → self-audit (Sonnet) → **verify-harvest**. (`verify-self-audit`
+  — 8 gates incl. Gate 8 bijection — and the terminal disk-verify run as **native pipeline gates**, not
+  as separately-manufactured agents; see §Governance.)
 
 **Each Wave→Wave transition MUST push the merged layer to `origin/<default>` and re-run 9w.9.5 before the
 next spawn** (FC52-BASEREF-FRESH-071 — the next wave roots on origin, not the local branch). This is the
@@ -164,20 +185,34 @@ or a manual `deactivate` clears it — over-gating in the interim, never under-g
 
 Port **lesson-studio's §5 Transaction Contracts + §6 Authorization Matrix** as the template (proven to
 converge clean on this exact coupling). Pin, minimum:
-- **Transaction taxonomy (3-class):** `create_order`/`process_return` OWN one `transaction()`; in-tx helpers
-  (`add_item_in_tx(conn,...)`, `decrement_stock_in_tx(conn,...)`) take caller `conn`, do NOT commit; audit
-  is the route's post-commit call, never inside a transaction.
+- **Transaction taxonomy (3-class):** `create_order`/`process_return` OWN one `transaction()` each (the
+  exactly-two class-B owners); `create_order` does its **order-item inserts directly** (there is no
+  `add_item_in_tx` helper) and calls the pinned in-tx helpers. The **seven** in-tx helpers —
+  `decrement_stock_in_tx`, `restock_product_in_tx`, `set_shipment_status_in_tx`, `add_refund_in_tx`
+  (four writers), `assert_ext_ref_unique` (uniqueness guard), `order_total`, `refunded_total` (two
+  read-only totals) — each take the caller `conn` and do NOT commit; audit (`record(...)`) is the
+  route's post-commit call, never inside a transaction.
 - **Stock guard:** `UPDATE products SET stock=stock-:qty WHERE id=:pid AND stock>=:qty` + require
   `rowcount==1` else raise → rollback; `CHECK(stock>=0)` DB backstop. Re-read inside the transaction (TOCTOU-safe).
-- **FK on-delete per edge:** CASCADE for parts (`order_items.order_id`), RESTRICT for financial/fulfillment
-  (`invoices.order_id`, `payments.invoice_id`) and referenced parents (`products.supplier_id`).
-- **Auth matrix:** 404-not-403 for `role+own` reads via ownership-scoped getters; transitive ownership
-  (invoice owned via `orders.user_id`) stated per derived resource; route/validation/auth bijection.
+- **FK on-delete per edge (actual swarmlimit edges — no `invoices` table exists):** CASCADE for parts
+  (`order_items.order_id`, `shipments.order_id`, `product_categories.product_id`); RESTRICT for
+  financial/fulfillment records and referenced parents (`payments.order_id`, `returns.order_id`,
+  `orders.user_id`, `order_items.product_id`, `products.supplier_id`, `product_categories.category_id`);
+  SET NULL for `audit_logs.actor_id`.
+- **Auth matrix:** 404-not-403 for `role+own` reads via the actor-based ownership-scoped getters
+  (`get_<x>_for(id, actor)` — a SQL WHERE predicate returning `None`/`[]` for a non-owner, never a
+  post-fetch 403); transitive ownership stated per derived resource (a **shipment / return / payment**
+  is owned via its order's `orders.user_id`); route/validation/auth bijection.
 - **Path B pins:** the `shipments` legal-transition table (allowed `from→to` set; all others → 409);
   `ext_ref` UNIQUE across orders+returns (enforced by a Wave-0-owned uniqueness check, since no single
   resource owns it); `products.deleted_at` soft-delete semantics (exclusion filter in EVERY read getter;
-  `create_order` rejects deleted products; history preserved); `process_return`'s 3-class transaction
-  contract (owner + in-tx helpers, `refund ≤ original payment` guard → rollback).
+  `create_order` rejects deleted products; history preserved); **one shipment per order**
+  (`UNIQUE(order_id)` on `shipments`; `create_shipment` → 409 on a duplicate) so `process_return`
+  addresses the order's single shipment unambiguously; `process_return`'s 3-class transaction contract
+  (owner + in-tx helpers) with the exact **refund guard** `refunded_total(conn,oid) + refund_cents ≤
+  order_total(conn,oid)` — `payments` is **refund-only** and `create_order` writes **no charge row**, so
+  the "original" is `order_total` (SUM of order_items). The guard fires **pre-write → 409** (writes
+  nothing); true mid-transaction ROLLBACK is proven separately via the smoke-only `_TX_FAULT` seam.
 
 **Convergence loop (pre-spawn blocker):** Claude Code (structure) → Codex (contradictions) → NotebookLM
 (data) → fix → Codex clean → **human structural verification** (P0s survive all 3 AI passes — non-optional).
@@ -213,7 +248,7 @@ tail-budget floor guarantees the harvest runs).
 - WHEN assembly completes THE SYSTEM SHALL run `smoke.py`, which WRITES `<R>/c2-smoke-report.md` recording the exercised (method,path) set + planned-vs-exercised deltas, and the tail SHALL **disk-verify that artifact** (not the exit code alone): C2 passes iff line-1 `STATUS: PASS` AND both deltas are empty AND no non-2xx (C2, gating). — `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json` then `grep -m1 STATUS <R>/c2-smoke-report.md` → `PASS` AND `grep -A2 'planned_minus_exercised' <R>/c2-smoke-report.md` shows both delta sets empty.
 - WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+stock atomically **and record audit POST-commit** (audit is class-A, never inside the transaction — FC5/FC6; corrected from an earlier "…+audit atomically" wording that contradicted the injection matrix + Wave-0 spec); values assert integer ids and NO `{'`/`[object Object]` in rendered JSON. — smoke value assertions pass.
 - WHEN two `create_order` calls race the last unit of stock THE SYSTEM SHALL let exactly one succeed, the other raise `insufficient stock`, final stock non-negative and correct. — smoke concurrency case.
-- WHEN a forced failure fires AFTER the first writes but BEFORE commit THE SYSTEM SHALL leave all four tables (orders, order_items, products.stock, audit_logs) unchanged. — smoke rollback case with before/after counts.
+- WHEN a forced failure fires (via `order_models._TX_FAULT`) AFTER the first `order_item` write but BEFORE commit THE SYSTEM SHALL roll back the whole `create_order` unit — the three tables it touches (`orders`, `order_items`, `products.stock`) unchanged: `COUNT(orders)`/`COUNT(order_items)` equal and every affected product `stock` **VALUE** unchanged (UPDATE rollback = value compare). `audit_logs` is NOT in the transaction (it is a post-commit route call, so a failed unit writes no audit row — FC5/FC6). — smoke `create_order` mid-tx rollback case.
 - **(Path B — state-machine)** WHEN a shipment is advanced along a legal transition (`pending→shipped`, then `shipped→delivered`) THE SYSTEM SHALL update `status` and write an audit row. — `python -m swarmlimit.smoke --case state-machine-legal; echo $?` → 0.
 - **(Path B — uniqueness)** WHEN an `ext_ref` is unique across orders+returns THE SYSTEM SHALL accept the create and persist it. — `python -m swarmlimit.smoke --case uniqueness-ok; echo $?` → 0.
 - **(Path B — soft-delete)** WHEN a product is soft-deleted THE SYSTEM SHALL set `deleted_at`, exclude it from `GET /products`, and preserve historical `order_items` referencing it. — `python -m swarmlimit.smoke --case soft-delete; echo $?` → 0.
@@ -230,10 +265,12 @@ tail-budget floor guarantees the harvest runs).
 - WHEN self-audit claims PIPELINE_PASS with undisposed WARNs or A-grade with unjustified DEFERRED+HIGH THE SYSTEM SHALL fail (Gates 5/7f).
 - WHEN harvest < 5 or findings untraceable THE SYSTEM SHALL report low-value/hollow (V1 fail) + a root-cause note in self-audit.
 - WHEN `docs/reports/<run-id>/` pre-exists at launch THE SYSTEM SHALL abort (run_id-collision guard). — `test ! -d docs/reports/<run-id>` before manifest freeze.
-- **(Path B — state-machine)** WHEN an illegal shipment transition is attempted (`delivered→pending`, or `pending→delivered` skipping `shipped`) THE SYSTEM SHALL return 409 and leave `status` unchanged. — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0 (asserts 409 + status unchanged).
+- **(Path B — state-machine)** WHEN an illegal shipment transition is attempted THE SYSTEM SHALL return 409 and leave `status` unchanged — proven for ALL three sub-checks: (a) `delivered→pending` (stays `delivered`); (b) `pending→delivered` skipping `shipped` (stays `pending`); (c) `advance`→`returned` from EVERY source status `s ∈ {pending,shipped,delivered}` (stays `s`; `→returned` is reachable only via `process_return`). — `python -m swarmlimit.smoke --case state-machine-illegal; echo $?` → 0 (asserts 409 + status preserved for each sub-check).
 - **(Path B — uniqueness)** WHEN a return reuses an existing order's `ext_ref` THE SYSTEM SHALL return 409 and create no return row. — `python -m swarmlimit.smoke --case uniqueness-collision; echo $?` → 0 (asserts 409 + `count(returns)` unchanged).
-- **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL reject (400/409) and create no order. — `python -m swarmlimit.smoke --case soft-delete-order; echo $?` → 0 (asserts rejection + no partial rows).
-- **(Path B — 2nd transaction)** WHEN `process_return` fails mid-transaction (refund exceeds the original payment) THE SYSTEM SHALL roll back all four writes (no return, no status change, no restock, no refund). — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0 (before/after counts unchanged on all four tables).
+- **(Path B — soft-delete)** WHEN `create_order` references a soft-deleted product THE SYSTEM SHALL return **409 `conflict`** (`product unavailable`, in-tx guard) and create no order/items/stock change. — `python -m swarmlimit.smoke --case soft-delete-order; echo $?` → 0 (asserts 409 + no partial rows).
+- **(Path B — 2nd transaction ROLLBACK, real mid-tx)** WHEN a forced exception fires INSIDE `process_return` (via `return_models._TX_FAULT`) AFTER `add_refund_in_tx` but before commit THE SYSTEM SHALL roll back all four writes — `COUNT(returns)`/`COUNT(payments)` unchanged AND the shipment `status` **VALUE** still `delivered` AND every product `stock` **VALUE** unchanged. — `python -m swarmlimit.smoke --case process-return-rollback; echo $?` → 0.
+- **(Path B — refund guard, pre-write)** WHEN `process_return` is called with `refund_cents` exceeding the order's remaining original amount (`refunded_total + refund_cents > order_total`) THE SYSTEM SHALL return **409 `conflict`** and write nothing (guard fires before any write, NOT a rollback). — `python -m swarmlimit.smoke --case process-return-guard-refund; echo $?` → 0.
+- **(Path B — state guard, pre-write)** WHEN `process_return` is called for an order whose shipment is NOT `delivered` THE SYSTEM SHALL return **409 `conflict`** and write nothing. — `python -m swarmlimit.smoke --case process-return-guard-shipment; echo $?` → 0.
 
 ## Success Metrics
 
