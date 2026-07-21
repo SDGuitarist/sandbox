@@ -248,7 +248,7 @@ Cumulative failure pattern registry. Must be updated after every reviewed build.
 2. Read the solution doc's review findings
 3. For each review finding:
    - **If it matches an existing failure class:** Add the build to that class's "Builds hit" list.
-   - **If it is a NEW pattern:** Add a new failure class:
+   - **If it is a NEW pattern:** First allocate the ID — run `~/.claude/scripts/next-fc.sh` (full path, its own Bash call per the CLAUDE.md Bash rules). Use the `FCnn` it prints as N; do NOT eyeball or guess the number. Heed its checks (no gaps / duplicate numbers / duplicate slugs / corpus in sync with remote) — guessing risks colliding with a concurrent Claude or Codex run that grabbed the same number. Then add a new failure class:
      ```
      ## Failure Class N: [Name]
 
@@ -265,6 +265,8 @@ Cumulative failure pattern registry. Must be updated after every reviewed build.
 
 ### Rules
 - Do NOT duplicate existing failure classes
+- Never guess a new failure-class number — allocate it with `~/.claude/scripts/next-fc.sh` (the single source of truth is the agent-pitfalls Reference Table; sandbox autopilot is the highest-volume producer, so this guards the Claude/Codex allocation race)
+- A refinement/variant/disconfirmation of an existing class takes NO new number — append to that class (the "matches an existing failure class" branch), do not mint a new FC
 - New failure classes must have a concrete "Agent rule" block
 - Keep Update Log entries to one line
 - If zero novel findings, still update "Builds hit" and add Update Log entry
