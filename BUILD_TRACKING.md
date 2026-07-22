@@ -65,8 +65,18 @@ Spec never pinned singular success-envelope key spelling; smoke (Wave 0) inferre
 **root_cause_id:** RC-firebreak-orchestrator-gate-python · **Failure class:** FC58 (new variant — allowlist misses per-wave gate python)
 `python -m compileall` / `python -m <pkg>.smoke` are NOT on the 4-script allowlist and `-m` mode never qualifies → DEFERRED even for the trusted orchestrator. Multi-wave runs must toggle the firebreak off for each orchestrator assembly/parse/smoke window. **Resolution:** documented toggle protocol (deactivate for orchestrator-only assembly window, reactivate before each worker spawn); firebreak-log records every toggle.
 
-### [advisory] H1 RC-config-db-key-unpinned (converged 3/3, FC5 near-miss) · H2 RC-package-init-unowned (deferred to C2 arbiter)
-See docs/reports/083/harvest-findings.md — H1 converged (not a failure), H2 deferred (namespace-package semantics may cover it; C2 decides).
+### [2026-07-22 Wave2-assembly] suppliers+categories+products routes — DELETE-success body diverged (H8)
+**Phase:** Wave 2 · **Severity:** LOW (benign for C2; real for a generic client) · **Location:** routes/categories.py `{"ok":true}` vs routes/suppliers.py `{"deleted":sid}` vs routes/products.py `{"product":{"id":pid}}`
+**root_cause_id:** RC-delete-envelope-divergence · **Failure class:** FC5 (coordinated-behavior gap; live reproduction at swarm scale)
+H4 pinned create/list/detail envelopes but not the delete-success body → 3 blind agents produced 3 shapes. **Resolution:** documented (C2 asserts delete STATUS only); pin every response branch in future specs.
+
+### [2026-07-22 C2-smoke] smoke+scaffold — SECRET_KEY read from env before config applied (H9)
+**Phase:** C2 assembly smoke · **Severity:** HIGH (C2-blocking) · **Location:** swarmlimit/smoke.py:81 build_app → swarmlimit/__init__.py:48-63 (before l.71 config.update)
+**root_cause_id:** RC-secretkey-env-vs-config-seam · **Failure class:** net-new (order-of-operations config seam)
+build_app passed SECRET_KEY-less config; create_app validates SECRET_KEY from os.environ BEFORE applying the config dict → RuntimeError, the whole suite could not build. Evidence: C2 smoke traceback (real runtime failure). **Resolution:** assembly-fix smoke build_app `os.environ.setdefault("SECRET_KEY", ...)`. C2 re-run → STATUS: PASS.
+
+### [advisory] H1 RC-config-db-key-unpinned (converged 3/3, FC5 near-miss) · H2 RC-package-init-unowned (RESOLVED-BENIGN — namespace packages worked at import)
+See docs/reports/083/harvest-findings.md — H1 converged (not a failure), H2 benign (import check PASSED without package __init__.py).
 
 ---
 

@@ -20,8 +20,17 @@
 | return | ab10c73543a26882e | worktree-agent-ab10c73543a26882e | swarmlimit/models/return_models.py |
 | payment | ac62202d4d67d13e8 | worktree-agent-ac62202d4d67d13e8 | swarmlimit/models/payment_models.py |
 
-## Wave 2 — routes (NOT yet spawned): suppliers, categories, products, orders, shipments, returns, payments → swarmlimit/routes/<r>.py
+## Wave 2 — ROUTES layer (spawned 2026-07-22, background worktree opus; base origin/master 6a8b711; H4 envelope-key contract injected)
+| Role | Agent ID | Branch | Owned file |
+|------|----------|--------|------------|
+| suppliers | a32bc5763216ab69d | worktree-agent-a32bc5763216ab69d | swarmlimit/routes/suppliers.py |
+| categories | a015dbab24434ba2b | worktree-agent-a015dbab24434ba2b | swarmlimit/routes/categories.py |
+| products | aa68106d74acaca4b | worktree-agent-aa68106d74acaca4b | swarmlimit/routes/products.py |
+| orders | abf00f38fb6290776 | worktree-agent-abf00f38fb6290776 | swarmlimit/routes/orders.py |
+| shipments | a43601ceba047cb35 | worktree-agent-a43601ceba047cb35 | swarmlimit/routes/shipments.py |
+| returns | a114e1c7be5379cf0 | worktree-agent-a114e1c7be5379cf0 | swarmlimit/routes/returns.py |
+| payments | ab82affaad6e6ca8b | worktree-agent-ab82affaad6e6ca8b | swarmlimit/routes/payments.py |
 
-## Wave 0 status: MERGED + pushed to origin/master (c0c87ba). 5 worker worktrees lingering (cleanup deferred to teardown). Assembly-fixes: H3, H6.
+## Status: Wave 0 MERGED+pushed (c0c87ba, fixes H3/H6). Wave 1 MERGED+pushed (6a8b711, parse+import PASS, H2 benign). Wave 2 in flight. Worker worktrees lingering (cleanup at teardown). Firebreak cwd-drift (H7) mitigated by cd-to-root before each activate.
 
 Firebreak ACTIVE (run=083, phase=build). Workers root on origin/master (76b63ac). Wave mechanic: merge wave→feat, FF push feat→origin/master, re-verify provenance, then next wave.

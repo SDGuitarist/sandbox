@@ -78,6 +78,11 @@ def build_app():
     db_path = os.path.join(tmpdir.name, "swarmlimit.sqlite")
     assert not os.path.exists(db_path), "temp DB path must NOT pre-exist (init_db must run)"
 
+    # assembly-fix 083 [H9, cross-agent config seam]: create_app reads SECRET_KEY from ENV and
+    # runs its fail-closed check BEFORE applying the config dict, so passing SECRET_KEY in config
+    # is ineffective -> the working-app suite could not build (RuntimeError). Ensure a key is in
+    # env. The SECRET_KEY-fail-closed case pops+restores SECRET_KEY itself, so this does not weaken it.
+    os.environ.setdefault("SECRET_KEY", "smoke-083-secret-key")
     app = create_app({"DATABASE": db_path, "TESTING": True})
 
     @app.after_request
