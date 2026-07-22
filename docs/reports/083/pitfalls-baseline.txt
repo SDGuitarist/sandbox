@@ -1,0 +1,15 @@
+# agent-pitfalls.md baseline — frozen at Run 083 launch (Wave 0, smoke-author)
+#
+# Source: ~/.claude/docs/agent-pitfalls.md
+# Frozen: 2026-07-22
+# Purpose: pin the start-of-run failure-class registry so the compound/harvest
+#          tail can diff new failure classes discovered during Run 083 against
+#          this baseline (append-only registry; a post-run FC count > baseline
+#          means Run 083 harvested new classes).
+
+line_count: 1274
+failure_class_count: 67
+
+# Failure-class-ID set (frozen — contiguous FC1..FC67, no gaps).
+# The Reference Table orders FC24-FC27 after FC32, but every numeric id 1..67 is present.
+failure_class_ids: FC1, FC2, FC3, FC4, FC5, FC6, FC7, FC8, FC9, FC10, FC11, FC12, FC13, FC14, FC15, FC16, FC17, FC18, FC19, FC20, FC21, FC22, FC23, FC24, FC25, FC26, FC27, FC28, FC29, FC30, FC31, FC32, FC33, FC34, FC35, FC36, FC37, FC38, FC39, FC40, FC41, FC42, FC43, FC44, FC45, FC46, FC47, FC48, FC49, FC50, FC51, FC52, FC53, FC54, FC55, FC56, FC57, FC58, FC59, FC60, FC61, FC62, FC63, FC64, FC65, FC66, FC67
