@@ -1,7 +1,7 @@
 ---
 title: "swarmlimit — Shared Interface Spec (Run 082 Path-B autopilot-swarm)"
 type: feat
-status: draft            # → active only after Codex-clean AND human zero-P0 (see Convergence Handoff)
+status: active           # CONVERGED 2026-07-21: Codex-clean (4th confirming pass, P0/P1/P2=0) AND human zero-P0 (see Convergence Handoff / Self-Review Log tail)
 date: 2026-07-21
 last_revised: 2026-07-21
 swarm: true
@@ -1298,3 +1298,30 @@ as the smallest internally-consistent DOCUMENTATION edit (no app code):
 - **CONVERGENCE STILL NOT MET:** this pass was NOT clean (four P0s), so `status` stays **`draft`**. One more
   fresh-context Codex confirmation on THIS post-fix spec (+ run-plan compare at the reconciled sections) is
   required before flipping `draft→active` (criterion = Codex-clean AND human-zero-P0).
+
+**FOURTH / FINAL confirming Codex pass (2026-07-21) — CLEAN: P0=0, P1=0, P2=0. CONVERGENCE MET →
+`status: draft → active`.** This fresh-context round found ZERO cross-section contradictions and reconfirmed
+the four third-round fixes across the spec AND the reconciled run-plan:
+- **C2 expected-status-aware** in all three places (run-plan smoke-author contract, run-plan C2 EARS, spec
+  Verification Commands): asserted 400/401/403/404/409 outcomes pass; an unexpected/unasserted mismatch
+  fails; line-1 `STATUS` + both endpoint-set deltas remain gating.
+- **`role_required` pinned** None/anonymous → **401**, authenticated wrong-role → **403**, with every
+  `role+own` view running `login_required` before any ownership getter (no getter ever receives a `None`
+  actor); the 401→400→403 precedence is consistent across §auth.py, the getter contract, §4, §6, and EARS.
+- **`<R>` report-dir source** is derived ONLY by the `--manifest <R>/planned-manifest.json` invocation
+  (manifest parent), which also runs manifest-equality and writes `<R>/c2-smoke-report.md`; the plain no-arg
+  run does none of those.
+- **Sizing:** Path B remains selected; A is only the convergence-failure fallback; honest roster ~22; I1>31
+  non-gating; padding forbidden.
+- **Mechanical re-verification (this session, set/bijection diffs — not eyeball):** Route Table set ==
+  immutable manifest set == **31** exact method/path pairs (`<int:...>` converters); spec Path-B EARS ==
+  ten-case table == run-plan Path-B EARS = **bijection of exactly 10**; exactly **two** class-B owners
+  (`create_order`, `process_return`); exactly **seven** caller-`conn`/no-commit in-tx helpers (four writers,
+  one uniqueness guard, two readers); `UNIQUE(shipments.order_id)` + once-per-order return; customer-only
+  public registration (201, no session); manual `/autopilot`-only launch (Workflow UNLAUNCHABLE). `git diff
+  --check` clean; only tracked doc changes.
+- **CONVERGENCE CRITERION SATISFIED — Codex-clean AND human-zero-P0.** Spec flipped to **`status: active`**.
+  This spec is now **launch-ready**; the run-plan remains `status: active`. **Launch is intentionally
+  deferred to a separate later session** (`/autopilot` on this branch): the skill computes `run_id` at
+  launch (`count(docs/solutions)+1`, currently 083) and MUST assert `docs/reports/<run-id>/` is ABSENT
+  before any manifest freeze. No app code, report dir, or manifest exists yet — by design.

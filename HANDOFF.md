@@ -1,11 +1,11 @@
-# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): CODEX ROUNDS #1 (4 P0) + #2 (5 findings) + #3 (4 P0) APPLIED — ONE MORE CODEX CONFIRMATION REQUIRED ⬅⬅
+# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): ✅ CONVERGED — spec `status: active`, LAUNCH-READY. Next session runs `/autopilot` (launch intentionally deferred) ⬅⬅
 
 **Phase:** Spec convergence for the **manual autopilot-swarm** build (NOT the Workflow engine — that
 path is UNLAUNCHABLE: `docs/solutions/2026-07-21-workflow-engine-cannot-carry-firebreak-identity.md`).
 **No app code yet.** The deliverable is a converged 6-section shared-interface spec.
 
 **Artifacts (all on branch `feat/082-swarmlimit-spec`, committed, NOT pushed):**
-- Spec: `docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md` (status: **draft** — STILL draft; convergence not yet met)
+- Spec: `docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md` (status: **active** — ✅ CONVERGED 2026-07-21; launch-ready)
 - Run-plan: `docs/plans/2026-07-21-feat-082-max-value-unattended-autopilot-limit-test-plan.md` (reconciled to the spec this session)
 - Commit chain: …→ f40b373 → 8527d7f → 2f02f33 (round-1: 4 P0) → **this session's round-2 fix commit** (spec + run-plan + this handoff).
 
@@ -14,8 +14,10 @@ FINAL confirming Codex round #1 (4 P0, fixed in `2f02f33`), SECOND FINAL confirm
 consistency findings, fixed in `c05bc2d`), and now **THIRD FINAL confirming Codex round #3 (4 P0
 cross-section findings, ALL FIXED this session — see below)** are applied (see the spec's Cross-Section
 Self-Review Log → "FINAL confirming Codex pass" + "SECOND FINAL confirming Codex pass" + "THIRD FINAL
-confirming Codex pass"). **Still NOT clean → `status` stays `draft`; one more fresh-context Codex
-confirmation required before `draft→active`.**
+confirming Codex pass"), and finally the **FOURTH / FINAL confirming Codex pass (P0=P1=P2=0, CLEAN)**.
+**✅ CONVERGENCE MET — Codex-clean AND human-zero-P0. Spec flipped `draft → active` this session** (see the
+spec's Self-Review Log tail "FOURTH / FINAL confirming Codex pass"). The run-plan remains `status: active`.
+No further Codex round is needed. **Launch is intentionally deferred to a separate later session.**
 
 **Round-3 findings (fixed THIS session, doc-only, no app code):**
 - **P0-1** — C2's raw "any/no non-2xx" rule forbade its own asserted negatives → replaced with an
@@ -52,21 +54,23 @@ bijection, name-set diff clean); exactly **two** class-B owners; **seven** in-tx
 role/session/CSRF + anonymous auth-vs-CSRF precedence + Wave-0-parse-vs-C2-execution all consistent;
 `git diff --check` clean.
 
-**A confirming fresh-context Codex round on THIS (round-2) post-fix spec is STILL REQUIRED** before
-flipping `status: draft → active` (criterion = Codex-clean AND human-zero-P0). The fresh Codex prompt
-(preamble `/tmp/codex-082-final-preamble.txt` + the full post-fix spec) was regenerated and copied to the
-clipboard this session; it also directs Codex to compare the linked run-plan at the reconciled sections.
+**CONVERGENCE COMPLETE — the convergence loop is CLOSED.** Four Codex rounds + the human structural pass
+have run; the fourth Codex pass was CLEAN (P0=P1=P2=0). No further Codex confirmation is required. The spec
+is `status: active` and launch-ready.
 
-**YOU ARE RESUMING TO PROCESS THE NEXT CODEX RESULTS. Do exactly this:**
-1. **If Codex says CLEAN (zero P0):** convergence met (Codex-clean AND human-zero-P0). Flip the spec
-   frontmatter `status: draft → active`; add a one-line convergence note to the spec's Cross-Section
-   Self-Review Log; commit on the branch. **STOP — do NOT launch.** Report that a later session can
-   launch `/autopilot`.
-2. **If Codex returns findings:** apply them as the SMALLEST internally-consistent doc edits (no scope
-   creep). Re-verify cross-section — Route Table ↔ §3 ↔ §6 ↔ manifest agree; manifest = 31 endpoints
-   = Route Table (SET-EQUAL, `<int:...>` form); Path-B cases = exactly 10 (EARS ↔ table bijection);
-   exactly TWO class-B owners (create_order, process_return). Commit on the branch; regenerate a fresh
-   confirming Codex prompt (paste the FULL spec). Keep `status: draft`. **Do NOT launch.**
+**YOU ARE RESUMING TO LAUNCH (a fresh, separate session). Do exactly this:**
+1. Verify branch `feat/082-swarmlimit-spec` + a clean tracked tree (only the 4 untracked items below).
+2. Assert **`docs/reports/<run-id>/` is ABSENT** before any manifest freeze. `run_id` is skill-computed at
+   launch = `count(docs/solutions)+1` (currently **083** — do NOT hardcode 082; `docs/reports/082/` already
+   exists from the identity spike).
+3. Launch the **manual `/autopilot`** on this branch (Workflow engine is UNLAUNCHABLE). Do NOT switch the
+   engine, the sizing (Path B, honest ~22, I1>31 non-gating, never pad), or the merge-barrier wave structure
+   unless a P0 forces it.
+4. Requires `dangerouslySkipPermissions: true` in `.claude/settings.local.json` (autopilot-swarm prereq).
+5. Never pay usage credits — Max subscription only.
+
+**No app code, report dir, or manifest exists yet — by design; the smoke-author (Wave 0) freezes the
+manifest at launch.**
 
 **GUARDRAILS:**
 - Do NOT launch `/autopilot` this session — launch is a SEPARATE later session after `status: active`.
