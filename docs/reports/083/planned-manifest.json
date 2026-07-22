@@ -1,0 +1,73 @@
+{
+  "run": "swarmlimit",
+  "resources": [
+    "users",
+    "suppliers",
+    "categories",
+    "products",
+    "product_categories",
+    "orders",
+    "order_items",
+    "shipments",
+    "returns",
+    "payments",
+    "audit_logs"
+  ],
+  "endpoints": [
+    {"method": "POST", "path": "/auth/register"},
+    {"method": "POST", "path": "/auth/login"},
+    {"method": "POST", "path": "/auth/logout"},
+    {"method": "GET", "path": "/suppliers"},
+    {"method": "POST", "path": "/suppliers"},
+    {"method": "GET", "path": "/suppliers/<int:sid>"},
+    {"method": "PATCH", "path": "/suppliers/<int:sid>"},
+    {"method": "DELETE", "path": "/suppliers/<int:sid>"},
+    {"method": "GET", "path": "/categories"},
+    {"method": "POST", "path": "/categories"},
+    {"method": "GET", "path": "/categories/<int:cid>"},
+    {"method": "PATCH", "path": "/categories/<int:cid>"},
+    {"method": "DELETE", "path": "/categories/<int:cid>"},
+    {"method": "GET", "path": "/products"},
+    {"method": "POST", "path": "/products"},
+    {"method": "GET", "path": "/products/<int:pid>"},
+    {"method": "PATCH", "path": "/products/<int:pid>"},
+    {"method": "DELETE", "path": "/products/<int:pid>"},
+    {"method": "PUT", "path": "/products/<int:pid>/categories"},
+    {"method": "GET", "path": "/orders"},
+    {"method": "POST", "path": "/orders"},
+    {"method": "GET", "path": "/orders/<int:oid>"},
+    {"method": "POST", "path": "/orders/<int:oid>/shipments"},
+    {"method": "GET", "path": "/shipments/<int:sid>"},
+    {"method": "POST", "path": "/shipments/<int:sid>/advance"},
+    {"method": "GET", "path": "/returns"},
+    {"method": "POST", "path": "/returns"},
+    {"method": "GET", "path": "/returns/<int:rid>"},
+    {"method": "GET", "path": "/payments"},
+    {"method": "GET", "path": "/payments/<int:pid>"},
+    {"method": "GET", "path": "/audit"}
+  ],
+  "transactions": [
+    {
+      "name": "create_order",
+      "owner": "order_models",
+      "tables": ["orders", "order_items", "products.stock"],
+      "in_tx_calls": ["refs.assert_ext_ref_unique", "product_models.decrement_stock_in_tx"],
+      "guards": ["ext_ref_unique_across_orders_returns", "product_live_not_soft_deleted", "stock>=qty"]
+    },
+    {
+      "name": "process_return",
+      "owner": "return_models",
+      "tables": ["returns", "shipments.status", "products.stock", "payments"],
+      "in_tx_calls": [
+        "refs.assert_ext_ref_unique",
+        "order_models.order_total",
+        "payment_models.refunded_total",
+        "shipment_models.set_shipment_status_in_tx",
+        "product_models.restock_product_in_tx",
+        "payment_models.add_refund_in_tx"
+      ],
+      "guards": ["ext_ref_unique_across_orders_returns", "shipment_status==delivered", "refunded_total+refund<=order_total"]
+    }
+  ],
+  "content_hash": "d6aa29d1a78ea91fe490ca315187dac6f801a2b8ccc41515a3c5dfac6567d340"
+}
