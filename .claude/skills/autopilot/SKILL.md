@@ -727,7 +727,12 @@ fail-OPEN and MUST abort.
    transition). Save its output as the literal `<MAIN>` and reuse that SAME string
    for EVERY `firebreak-activate.py` call and every `rm .../firebreak-active.json`
    teardown for the rest of the run. Never recompute it after workers exist -- a
-   fresh `git rev-parse` from a drifted cwd is the FC68 trap.
+   fresh `git rev-parse` from a drifted cwd is the FC68 trap. You do NOT have to
+   trust this capture blind: the activator independently re-validates `<MAIN>` with
+   git metadata on every call (it must be the MAIN worktree top-level -- `--git-dir`
+   == `--git-common-dir` -- not a linked worktree, symlink alias, or case variant)
+   and FAILS CLOSED (exit 3) otherwise; the step-1b read-back exercises exactly that
+   check.
 
 1. **Write the sentinel + ensure the queue dir exists** (two single Bash calls):
    - `python3 .claude/hooks/firebreak-activate.py activate <run-id> --root <MAIN>`
@@ -742,14 +747,19 @@ fail-OPEN and MUST abort.
      missing dir would hide the failure.)
 
 1b. **Read-back gate (FC68 -- structural replacement for the manual cat-verify).**
-   Immediately after `activate`, run a single Bash call and assert the sentinel
-   landed at `<MAIN>`:
-   `python3 .claude/hooks/firebreak-activate.py status --root <MAIN>` -- confirm it
-   prints `ACTIVE ... root=<MAIN>`. If `status` reports INACTIVE, or the `root=`
-   value is not `<MAIN>` (e.g. it names a `.claude/worktrees/...` path), ABORT the
-   spawn with `"FIREBREAK WRONG ROOT: sentinel not at main root. Aborting (fail-open risk)."`
-   Because `activate` now fails closed on a worktree root, a mismatch here means the
-   captured `<MAIN>` itself is wrong -- fix it before spawning, never spawn on mismatch.
+   Immediately after `activate`, run a single Bash call:
+   `python3 .claude/hooks/firebreak-activate.py status --root <MAIN>`. This is an
+   INDEPENDENT machine check, not a same-source comparison: `status` re-runs the
+   activator's git-metadata resolver on `<MAIN>`, so it re-proves `<MAIN>` is the MAIN
+   worktree top-level (not a linked worktree / symlink alias / case variant) BEFORE
+   reading the sentinel. Branch on the result:
+   - **Exit 3** -> `<MAIN>` failed the independent main-worktree validation (the
+     captured value is wrong -- e.g. a drifted or aliased path). ABORT the spawn with
+     `"FIREBREAK WRONG ROOT: <MAIN> is not the main worktree. Aborting (fail-open risk)."`
+     Fix the capture; never spawn.
+   - **Exit 0 + `INACTIVE`** -> `<MAIN>` is valid but the sentinel is missing (activate
+     did not land it). ABORT with `"FIREBREAK NOT ACTIVE after activate. Aborting."`
+   - **Exit 0 + `ACTIVE ... root=<MAIN>`** -> validated and live. Proceed.
    **Multi-wave runs (Path B): re-run this read-back before EACH wave spawn**, and any
    time the firebreak was toggled (see the orchestrator-gate-window protocol below) --
    the FC68 incident occurred at a wave transition, AFTER the initial probe, so the

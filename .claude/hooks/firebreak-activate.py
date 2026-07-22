@@ -25,48 +25,101 @@ was ABSENT and the next wave spawned UNGOVERNED -- a silent fail-open of the pri
 safety control. Resolution order instead:
   1. --root <abs> (PREFERRED): the orchestrator passes the known main-repo path.
      Immune to cwd drift AND to which on-disk copy of this script executed (worktrees
-     carry their own tracked copy).
+     carry their own tracked copy). Must be ABSOLUTE -- a relative value is rejected
+     (it would re-introduce cwd coupling).
   2. __file__ anchor: this file lives at <repo>/.claude/hooks/, so the repo root is
      two directory levels up from the hooks dir.
-The resolved root is VALIDATED and the tool FAILS CLOSED (loud stderr + non-zero
-exit, NO sentinel written) when the root is inside a worktree or is not a real
-firebreak repo -- converting the old silent wrong-root write into a hard refuse.
+The candidate is realpath-canonicalized (defeating symlink aliases + case variants)
+and then VALIDATED with GIT METADATA, pathname-independently: it must be a git
+worktree TOP-LEVEL whose `--git-dir` == `--git-common-dir` (i.e. the MAIN worktree,
+not a linked one -- a linked worktree placed ANYWHERE, not just under
+.claude/worktrees/, is rejected) and must carry .claude/hooks/firebreak-classify.py.
+The tool FAILS CLOSED (loud stderr + non-zero exit, NO sentinel written) on any
+validation failure -- converting the old silent wrong-root write into a hard refuse.
 
 Exit 0 on success; 2 usage error; 3 fail-closed root refusal; 1 operational error.
 """
 import json
 import os
+import subprocess
 import sys
 
 SENTINEL_REL = os.path.join(".claude", "firebreak-active.json")
 DEFAULT_TEST_ALLOWLIST = {"pytest": True}
 
 
+def _git(root, *args):
+    """`git -C root <args>` -> stripped stdout, or None on any failure (fail closed:
+    a broken/absent git yields None, which the caller treats as a refusal)."""
+    try:
+        out = subprocess.run(["git", "-C", root, *args],
+                             capture_output=True, text=True, timeout=10)
+    except Exception:
+        return None
+    return out.stdout.strip() if out.returncode == 0 else None
+
+
+def _resolve_git_path(root, p):
+    """Canonicalize a git-reported path (which may be relative to `root`)."""
+    if p is None:
+        return None
+    return os.path.realpath(p if os.path.isabs(p) else os.path.join(root, p))
+
+
 def anchored_root(explicit_root=None):
-    """Resolve + validate the MAIN repo root. Returns (root, None) on success or
-    (None, error_message) on a fail-closed refusal. See module docstring (FC68)."""
-    if explicit_root:
-        root = os.path.abspath(os.path.expanduser(explicit_root))
+    """Resolve + validate the MAIN worktree root. Returns (root, None) on success or
+    (None, error_message) on a fail-closed refusal. See module docstring (FC68).
+
+    Validation is pathname-INDEPENDENT. After canonicalizing the candidate with
+    realpath (defeating symlink aliases and, on case-insensitive filesystems,
+    case-variant spellings), Git itself decides whether it is the MAIN worktree:
+      - `rev-parse --show-toplevel` must equal the candidate (it is a worktree ROOT,
+        not a subdirectory), and
+      - `--git-dir` must equal `--git-common-dir` (a LINKED worktree's per-worktree
+        git-dir <main>/.git/worktrees/<name> differs from the shared common dir;
+        the main worktree's are identical).
+    So a linked worktree placed ANYWHERE -- not only under `.claude/worktrees/`,
+    and reached via a symlink or a case variant -- is still rejected. An explicit
+    --root MUST be absolute (a relative value would re-introduce the cwd coupling
+    this whole fix removes)."""
+    if explicit_root is not None:
+        expanded = os.path.expanduser(explicit_root)
+        if not os.path.isabs(expanded):
+            return None, (f"--root must be an absolute path, got {explicit_root!r}")
+        candidate = expanded
     else:
         # <repo>/.claude/hooks/firebreak-activate.py -> dirname x3 == <repo>
-        root = os.path.dirname(os.path.dirname(os.path.dirname(
+        candidate = os.path.dirname(os.path.dirname(os.path.dirname(
             os.path.abspath(__file__))))
-    norm = root.replace("\\", "/").rstrip("/") + "/"
-    # (1) Refuse a root inside a worktree -- the sentinel must live at the MAIN root.
-    # A worktree-local sentinel is invisible to SIBLING-wave workers (they walk up
-    # from their OWN worktree and never traverse a sibling's), i.e. fail-open. This
-    # is the load-bearing guard against the worktree's own tracked copy of this
-    # script resolving __file__ to a worktree root.
-    if "/.claude/worktrees/" in norm:
-        return None, (f"resolved root is inside a worktree ({root}); "
-                      "pass --root <main-repo-abs-path>")
-    # (2) Refuse a root that is not a real firebreak repo (defends a bad --root and
-    # a mis-anchored __file__).
+    # Canonicalize BEFORE validation, sentinel placement, and repo_root storage.
+    root = os.path.realpath(candidate)
+
+    # (1) Must be a real firebreak repo. NECESSARY but not sufficient -- a linked
+    # worktree also carries a tracked firebreak-classify.py; the git checks are the
+    # teeth.
     classifier = os.path.join(root, ".claude", "hooks", "firebreak-classify.py")
     if not os.path.isfile(classifier):
         return None, (f"resolved root {root} has no "
-                      ".claude/hooks/firebreak-classify.py (not a firebreak repo); "
-                      "pass --root <main-repo-abs-path>")
+                      ".claude/hooks/firebreak-classify.py (not a firebreak repo)")
+
+    # (2) Must be a git working tree whose TOP-LEVEL is `root` itself, not a subdir
+    # (a subdir would put the sentinel below the level workers walk up to).
+    toplevel = _git(root, "rev-parse", "--show-toplevel")
+    if toplevel is None:
+        return None, (f"resolved root {root} is not a git working tree")
+    if os.path.realpath(toplevel) != root:
+        return None, (f"resolved root {root} is not a worktree top-level "
+                      f"(git top-level is {os.path.realpath(toplevel)})")
+
+    # (3) Must be the MAIN worktree, not a linked one -- pathname-independent.
+    git_dir = _resolve_git_path(root, _git(root, "rev-parse", "--git-dir"))
+    common_dir = _resolve_git_path(root, _git(root, "rev-parse", "--git-common-dir"))
+    if git_dir is None or common_dir is None:
+        return None, (f"resolved root {root}: could not read git metadata")
+    if git_dir != common_dir:
+        return None, (f"resolved root {root} is a LINKED worktree "
+                      f"(git-dir {git_dir} != common-dir {common_dir}); the firebreak "
+                      "sentinel must live at the MAIN worktree root")
     return root, None
 
 
