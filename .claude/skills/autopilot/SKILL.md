@@ -721,13 +721,39 @@ so worker tool calls are governed: outward/irreversible actions defer to
 fires for the real worktree+bypass worker path; if it does not, the run is
 fail-OPEN and MUST abort.
 
+0. **Capture `<MAIN>` once (FC68 anchor).** Run a single Bash call
+   `git rev-parse --show-toplevel` NOW -- at this step cwd is still the main repo
+   root (no worker worktree has spawned yet; the FC68 drift happens later, at a wave
+   transition). Save its output as the literal `<MAIN>` and reuse that SAME string
+   for EVERY `firebreak-activate.py` call and every `rm .../firebreak-active.json`
+   teardown for the rest of the run. Never recompute it after workers exist -- a
+   fresh `git rev-parse` from a drifted cwd is the FC68 trap.
+
 1. **Write the sentinel + ensure the queue dir exists** (two single Bash calls):
-   - `python3 .claude/hooks/firebreak-activate.py activate <run-id>`
+   - `python3 .claude/hooks/firebreak-activate.py activate <run-id> --root <MAIN>`
      (`activate` clears any stale sentinel from a crashed prior run first; defaults
      are the auto-memory project key, phase `build`, `test_allowlist {"pytest": true}`.)
+     `<MAIN>` is the literal captured in step 0 above
+     (e.g. `/Users/alejandroguillen/Projects/sandbox`). The activator FAILS CLOSED
+     (exit 3, no sentinel) if `<MAIN>` is inside a worktree or is not a firebreak repo,
+     turning the old silent wrong-root write (FC68 / 083-W6) into a hard refuse.
    - `mkdir -p todos/approvals`
      (so a fail-OPEN probe's Bash redirect actually CREATES its canary -- otherwise a
      missing dir would hide the failure.)
+
+1b. **Read-back gate (FC68 -- structural replacement for the manual cat-verify).**
+   Immediately after `activate`, run a single Bash call and assert the sentinel
+   landed at `<MAIN>`:
+   `python3 .claude/hooks/firebreak-activate.py status --root <MAIN>` -- confirm it
+   prints `ACTIVE ... root=<MAIN>`. If `status` reports INACTIVE, or the `root=`
+   value is not `<MAIN>` (e.g. it names a `.claude/worktrees/...` path), ABORT the
+   spawn with `"FIREBREAK WRONG ROOT: sentinel not at main root. Aborting (fail-open risk)."`
+   Because `activate` now fails closed on a worktree root, a mismatch here means the
+   captured `<MAIN>` itself is wrong -- fix it before spawning, never spawn on mismatch.
+   **Multi-wave runs (Path B): re-run this read-back before EACH wave spawn**, and any
+   time the firebreak was toggled (see the orchestrator-gate-window protocol below) --
+   the FC68 incident occurred at a wave transition, AFTER the initial probe, so the
+   one-time probe in step 2 does not protect later waves.
 
 2. **Positive-control probe (R1/F1 -- the load-bearing check).** Spawn ONE real
    worker-shaped Agent and confirm the firebreak blocks it:
@@ -743,7 +769,7 @@ fail-OPEN and MUST abort.
      returns, run a single Bash call:
      `ls todos/approvals/__fb_probe_write__ todos/approvals/__fb_probe_bash__ 2>/dev/null`
      - **Any output (a canary exists)** -> the firebreak did NOT block the worker ->
-       FAIL-OPEN. Run `python3 .claude/hooks/firebreak-activate.py deactivate`, then
+       FAIL-OPEN. Run `python3 .claude/hooks/firebreak-activate.py deactivate --root <MAIN>`, then
        `rm -f todos/approvals/__fb_probe_write__ todos/approvals/__fb_probe_bash__`,
        and ABORT the run with:
        `"FIREBREAK NOT LIVE: positive-control probe wrote the control plane. Aborting (fail-open)."`
@@ -758,10 +784,24 @@ fail-OPEN and MUST abort.
 success (and the fail paths there / the 11w-16w abort handler also deactivate). If
 the orchestrator dies between activation and teardown, a stale sentinel remains --
 the NEXT run's `activate` clears it, and a human can clear it meanwhile with
-`python3 .claude/hooks/firebreak-activate.py deactivate` (declared residual: until
-then, manual sessions IN THIS REPO are governed too). The brief sentinel-write ->
-probe slice is a setup window (no governed worker yet); the governed worker window
-is the parallel spawn (Step 10w) -> run end.
+`python3 .claude/hooks/firebreak-activate.py deactivate --root <MAIN>` (or simply
+`rm <MAIN>/.claude/firebreak-active.json`) (declared residual: until then, manual
+sessions IN THIS REPO are governed too). The brief sentinel-write -> probe slice is
+a setup window (no governed worker yet); the governed worker window is the parallel
+spawn (Step 10w) -> run end.
+
+**Orchestrator-gate-window toggle protocol (H5 / FC58 variant -- multi-wave runs).**
+Between waves the orchestrator runs its own parse/smoke gates (e.g. `python -m
+compileall`, `python -m <pkg>.smoke`). Module mode (`-m`) has NO script FILE to
+path-pin, so it NEVER qualifies for the `TRUSTED_PIPELINE_SCRIPT_PATHS` carve-out
+(by design -- do NOT add a name-based `-m` carve-out; module resolution honors
+`sys.path`, which is weaker than path-pinning). Instead, because a between-waves
+window is a BARRIER where NO workers are spawned, the orchestrator MAY bound its
+gate window with an explicit toggle: `deactivate --root <MAIN>` immediately before
+the gate calls, run the gate(s), then `activate <run-id> --root <MAIN>` and re-run
+the **1b read-back gate** before the next wave spawn. The toggle MUST be strictly
+bounded (deactivate -> gate -> reactivate+read-back) and MUST complete before any
+worker of the next wave is spawned. Never leave the firebreak off across a spawn.
 
 ### Step 10w: Parallel Swarm Work
 
@@ -961,9 +1001,10 @@ but was cut off before echoing its STATUS does not fail a genuinely good run.
   BUILD_TRACKING.md Run State. Do NOT proceed to Step 17w, and do NOT disk-verify
   (these blocking classes abort BEFORE writing `assembly-summary.md`, and a stale
   prior-run summary must not mask the abort). **Tear down the firebreak before
-  ending** (`rm .claude/firebreak-active.json` -- the same independent teardown as
-  Step 18w; an abort path is exactly where teardown must not depend on the FC58
-  carve-out). The run ends.
+  ending** (`rm <MAIN>/.claude/firebreak-active.json` -- the same independent teardown
+  as Step 18w; an abort path is exactly where teardown must not depend on the FC58
+  carve-out. Use the captured absolute `<MAIN>`, not a bare relative path, so a
+  drifted cwd cannot leave the main sentinel stale-active -- FC68). The run ends.
   (These are the two blocking failure classes — see CLAUDE.md Escalation Rules.)
 - **Otherwise — for EVERY other outcome — DO NOT abort on the wire. Disk-verify first.**
   The blocking classes above are the ONLY wire-driven aborts in this handler. All of
@@ -1001,7 +1042,8 @@ handing off, so it is the one that reveals whether the orchestrator nearly
 saturated. Non-blocking — record the WARN if tripped, then proceed.
 
 **Flip the firebreak phase to `tail` (G1/F5)** -- single Bash call before spawning:
-`python3 .claude/hooks/firebreak-activate.py set-phase tail`. This grants the
+`python3 .claude/hooks/firebreak-activate.py set-phase tail --root <MAIN>` (the same
+captured main-repo path used at activation, FC68). This grants the
 tail-runner (a trusted identity) the learnings-write carve-out for compound-phase
 propagation; no worker runs past this point. (FC58: this runs GREEN under the active
 firebreak via the trusted-pipeline-script carve-out -- `firebreak-activate.py` is on
@@ -1074,11 +1116,13 @@ python3 tools/verify_delegated_status.py \
 ```
 
 **First, tear down the firebreak (G1)** -- the governed window is over regardless of
-verdict. Single Bash call: `rm .claude/firebreak-active.json` (the sentinel file IS
-the firebreak; removing it deactivates -- this is exactly what `deactivate` does). FC58:
-`rm` by the trusted orchestrator is an INDEPENDENT teardown path -- it does not rely on
-the python-indirection carve-out that governs the disk-verify gates above, so the
-firebreak can always tear itself down even if that carve-out ever regresses. Then:
+verdict. Single Bash call: `rm <MAIN>/.claude/firebreak-active.json` (the sentinel file
+IS the firebreak; removing it deactivates -- this is exactly what `deactivate` does).
+Use the captured absolute `<MAIN>` (not a bare relative path) so a drifted cwd cannot
+leave the main sentinel stale-active (FC68). FC58: `rm` by the trusted orchestrator is
+an INDEPENDENT teardown path -- it does not rely on the python-indirection carve-out
+that governs the disk-verify gates above, so the firebreak can always tear itself down
+even if that carve-out ever regresses. Then:
 
 - **Exit 0:** the tail genuinely completed → output `<promise>DONE</promise>` and stop.
 - **Any non-zero exit:** the run fails. The script prints the specific reason
