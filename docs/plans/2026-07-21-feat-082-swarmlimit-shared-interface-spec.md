@@ -308,8 +308,13 @@ transaction — see §5.
 - `login_user(user: dict) -> None` / `logout_user() -> None` — set/clear session (mints `_csrf`).
 - `current_user() -> dict | None` — logged-in user row (cached on `g`).
 - `login_required(view)` — **401** (`error('auth',401)`) when anonymous (JSON API — no redirect).
-- `role_required(*roles)` — decorator; **403** (`error('forbidden',403)`) when `current_user()` role
-  not in roles.
+- `role_required(*roles)` — decorator with a **pinned two-branch contract (does NOT rely on decorator
+  stacking order):** if `current_user()` is `None` (anonymous) → **401** (`error('auth',401)`); ONLY if
+  authenticated AND `current_user()['role']` not in `roles` → **403** (`error('forbidden',403)`). So an
+  anonymous request to an admin/role-gated route ALWAYS returns **401** (never 403, and never a
+  `None['role']` crash), whether or not `login_required` is also stacked. This makes the anonymous-401 /
+  authenticated-wrong-role-403 outcome deterministic at the decorator layer, guaranteeing 401 precedes
+  403 without a worker having to reason about stack order.
 
 **Ownership-Scoped Getter Contract (UNIFORM across all owning agents — order, shipment, return,
 payment; run-080 IDOR lesson, ported from lesson-studio).** Every ownership-scoped getter obeys the
@@ -325,6 +330,12 @@ fetch-then-compare in Python):
   o.id = <x>.order_id AND o.user_id = :actor_id)`.
 - A non-owner therefore gets **0 rows → `None`/`[]`**; the route does `row = get_<x>_for(...) or
   error('not_found',404)`. **No 403, no existence leak** on reads.
+- **Anonymous guard precedes the getter (pinned):** every `role+own` view is wrapped with
+  `login_required` (so an anonymous request returns **401 `auth`** BEFORE any `*_for(actor,…)` getter is
+  reached) and every ownership getter is called with `current_user()` — which is therefore GUARANTEED
+  non-`None` inside the view body. A getter is NEVER passed a `None` actor, so `actor['role']` /
+  `actor['id']` cannot fail on an anonymous request. (Admin-only routes likewise reach `role_required`,
+  whose pinned two-branch contract already 401s a `None` actor — see §auth.py.)
 
 ### refs.py  (shared-services — cross-resource ext_ref uniqueness owner)
 - `assert_ext_ref_unique(conn, ext_ref) -> None` — on the **caller-supplied** `conn` (in-tx, no
@@ -681,7 +692,11 @@ parsed as JSON; a non-JSON/absent body on a mutating route → 400 `validation`.
 - **Auth failure codes (precedence pinned):** anonymous on a protected route → **401** `auth` — **even a
   mutating one** (401 `auth` takes precedence over 400 `csrf`, so a worker never has to choose
   heuristically); wrong role → **403** `forbidden`; non-owner on a `role+own` READ → **404** `not_found`
-  (existence hidden). One convention repo-wide (see §6).
+  (existence hidden). One convention repo-wide (see §6). **Guaranteed at the decorator layer:**
+  `role_required` itself returns **401** for a `None` (anonymous) actor and **403** only for an
+  authenticated wrong-role user (its pinned two-branch contract — see §auth.py), so `role_required` alone
+  yields 401-before-403 even without `login_required` stacked; every `role+own` view additionally runs
+  `login_required` first, so no ownership getter is ever handed a `None` actor.
 - **Money:** integer cents everywhere; never float. Totals computed at read time
   (`SUM(order_items)`), never stored.
 - **Datetime:** ISO-8601 TEXT (UTC) via `datetime('now')`.
@@ -814,7 +829,11 @@ enforced by the ownership-scoped `*_for(actor,…)` getters returning `None`/`[]
 field (`POST /returns`) guards via `get_order_for(order_id, actor)` → 404 before mutating. Admin
 bypasses ownership by role. Anonymous → **401** (even on a mutating route — 401 `auth` precedes 400
 `csrf`); wrong role on an admin route → **403**. CSRF (400) is checked only AFTER a request is
-authenticated.
+authenticated. **The anonymous-401 outcome does not depend on decorator stacking order:** `role_required`
+returns **401** for a `None` actor and **403** only for an authenticated wrong-role user (pinned
+two-branch contract, §auth.py), and every `role+own` view runs `login_required` before its ownership
+getter — so an anonymous request to ANY protected route (admin, role-gated, or `role+own`) returns 401,
+never 403 and never a `None`-actor crash.
 
 ---
 
@@ -842,14 +861,15 @@ authenticated.
 - WHEN a customer requests another customer's `GET /orders/<int:oid>` THE SYSTEM SHALL return **404** (not 403).
 - WHEN a customer POSTs to an admin route (e.g. `POST /products`) THE SYSTEM SHALL return **403**.
 - WHEN a public `POST /auth/register` body supplies `role: admin` THE SYSTEM SHALL create a **customer** and return **201** (registration does NOT establish a session); AND WHEN that user then `POST /auth/login`s with those credentials and, with the login-issued `csrf_token`, `POST`s an admin-only route (e.g. `POST /products`) THE SYSTEM SHALL return **403** — a client can never self-promote. — default-smoke security assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
-- WHEN an anonymous request hits a protected route — **including a mutating one (POST/PUT/PATCH/DELETE)** — THE SYSTEM SHALL return **401** `auth` (auth precedes CSRF; an anonymous mutation is never a 400 `csrf`).
+- WHEN an anonymous request hits a protected route — **including a mutating one (POST/PUT/PATCH/DELETE) AND an admin/role-gated one** — THE SYSTEM SHALL return **401** `auth` (auth precedes CSRF; an anonymous request is never a 400 `csrf` and never a 403 — `role_required` returns 401 for a `None` actor, and every `role+own` view guards with `login_required` before its ownership getter, so no getter sees a `None` actor).
 - WHEN an **authenticated** mutating request omits/mismatches `X-CSRF-Token` THE SYSTEM SHALL return **400** `csrf`.
 - WHEN `SECRET_KEY` is unset and `FLASK_ENV != development` THE SYSTEM SHALL refuse to start. — smoke asserts `create_app()` raises.
 - WHEN `DELETE /suppliers/<int:sid>` targets a supplier with products THE SYSTEM SHALL return **409** `conflict` (FK RESTRICT) and delete nothing.
 - WHEN a second `POST /orders/<int:oid>/shipments` is issued for an order that already has a shipment THE SYSTEM SHALL return **409** `conflict` (`UNIQUE(order_id)`) and create no shipment row — including after the first shipment has been advanced to `returned` (no fresh shipment can be minted to permit a second return). — default-smoke integrity assertion (a core smoke case, NOT one of the ten Path-B `--case`s).
 
 ### Verification Commands
-- `python -m swarmlimit.smoke` — full happy-path + all 10 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite. Writes `<R>/c2-smoke-report.md`. (Assembly C2 step also runs `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json`.)
+- `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json` (**the assembly C2 invocation**) — runs the full happy-path + all 10 Path-B `--case`s + IDOR-404 + atomicity + concurrency + CSRF + SECRET_KEY suite **plus the manifest-equality check**, and **writes the report to the manifest's parent directory as `<R>/c2-smoke-report.md`** (the `<R>` report dir is DERIVED from the `--manifest` path — no run-id guessing, no "latest report dir" heuristic). **Expected-status-aware C2 pass rule (the ONE contract, matching the run-plan):** C2 passes iff line-1 `STATUS: PASS` AND both endpoint-set deltas (`planned_minus_exercised`, `exercised_minus_planned`) are empty AND **every request's observed status matches the status its own test case asserted** — the suite's asserted negatives (400/401/403/404/409) are EXPECTED and pass; only an unexpected/unasserted status mismatch fails C2.
+- `python -m swarmlimit.smoke` (plain, no args) — runs the full suite and prints/returns its pass/fail result (local/dev use). It has **no `<R>` source**, so it does NOT write `<R>/c2-smoke-report.md` and does NOT run manifest-equality (no manifest supplied); only the `--manifest` invocation above produces the disk-verifiable C2 report.
 - `python -m compileall swarmlimit` — byte-compile every module INCLUDING `swarmlimit/smoke.py` (parse check; NOT `python3 -c`, per repo Bash rules). This is the **Wave-0 gate** (parse-only, since a full import of `swarmlimit` can't succeed until routes exist post-assembly).
 - Contract check (Step 9w.6) + ownership gate + assembly are enforced by the swarm pipeline.
 
@@ -873,7 +893,7 @@ returning exit 0 on pass, non-0 on fail. The ten cases (each an independent Path
 | `process-return-guard-refund` | pre-write refund guard (409, zero writes) | `refund_cents` exceeding the order's remaining original → 409 `conflict` (`refund exceeds original`); `COUNT(returns)`/`COUNT(payments)` unchanged, shipment `status` + product `stock` VALUES unchanged (guard fires BEFORE any write) |
 | `process-return-guard-shipment` | pre-write state guard (409, zero writes) | `process_return` on an order whose shipment is NOT `delivered` → 409 `conflict` (`shipment not delivered`); same zero-write assertions |
 
-Plus the non-Path-B core cases (default `python -m swarmlimit.smoke` run): manifest-equality (planned == exercised),
+Plus the non-Path-B core cases (part of the full `python -m swarmlimit.smoke` suite): manifest-equality (planned == exercised — **runs ONLY under `--manifest <R>/planned-manifest.json`, which also sets the `<R>` report dir**; the plain no-arg run skips it),
 create_order value assertions, create_order concurrency stock-race, create_order mid-tx rollback (via
 `order_models._TX_FAULT` after the first item write — value-compares stock), IDOR-404, admin-403,
 anon-401, CSRF-400, SECRET_KEY fail-closed, **register-role-ignored** (public `POST /auth/register`
@@ -1230,3 +1250,51 @@ consistency defects introduced/left by them:
 - **CONVERGENCE STILL NOT MET:** this pass was again NOT clean (5 findings), so `status` stays **`draft`**.
   A further fresh-context Codex confirmation on THIS post-fix spec (+ run-plan compare) is still required
   before `draft→active`.
+
+**THIRD FINAL confirming Codex pass (2026-07-21) — NOT CLEAN: 4 P0 cross-section consistency findings, ALL
+RESOLVED here.** This fresh-context round re-confirmed every prior invariant (Route Table set == manifest
+set == 31 exact method/path `<int:...>`; Path-B EARS ↔ ten-case table ↔ run-plan EARS = bijection of ten;
+exactly two class-B owners; seven caller-`conn`/no-commit helpers = four writers + one uniqueness guard +
+two readers; unique-shipment/once-return; registration→customer/201/no-session; manual `/autopilot` only,
+Workflow UNLAUNCHABLE; honest ~22, I1>31 non-gating and never padded) and surfaced four NEW P0s, each fixed
+as the smallest internally-consistent DOCUMENTATION edit (no app code):
+- **P0-1 (C2 rule forbade its own asserted negatives):** the run-plan smoke-author contract + C2 EARS said
+  the report records "any non-2xx" and C2 passes only with "no non-2xx" — but the Path-B/core negative
+  proofs intentionally drive asserted 400/401/403/404/409, so a correct full run would FAIL C2 (or force a
+  worker to silently exempt failures). FIX: replaced the raw non-2xx rule with an **exact
+  expected-status-aware rule** — every request must match the status its own test case asserts; the
+  asserted negatives (400/401/403/404/409) are EXPECTED and pass; only an **unexpected/unasserted status
+  mismatch** fails C2. Endpoint-set deltas + line-1 `STATUS` gate unchanged. Reconciled BOTH run-plan
+  occurrences (smoke-author bullet + C2 EARS) and the spec Verification-Commands C2 wording so ONE contract
+  exists.
+- **P0-2 (anonymous-401 not guaranteed by the decorator contract):** `login_required`→401 but
+  `role_required(*roles)`→403 "when role not in roles" — for an anonymous admin route `current_user()` is
+  `None`, so without a pinned rule a worker could return 403 (or crash on `None['role']`) instead of the
+  required 401. FIX: pinned `role_required` to a **two-branch contract** — `None`/anonymous actor → **401
+  `auth`**; authenticated wrong-role → **403 `forbidden`** — independent of decorator stacking; and pinned
+  that every `role+own` view runs `login_required` before passing `current_user()` to an ownership getter
+  (getter never sees a `None` actor). Reconciled §auth.py decorator prose, the Ownership-Scoped Getter
+  Contract, §4 Auth-failure-codes, §6 404-not-403 rule, the anonymous EARS, and the run-plan auth-core
+  bullet. Precedence preserved: 401 (anon) → 400 (authed bad-CSRF) → 403 (authed wrong-role).
+- **P0-3 (plain full smoke promised `<R>/c2-smoke-report.md` with no `<R>` source):** the canonical parser
+  accepts only `--case`/`--manifest`, yet Verification Commands said the no-arg run writes `<R>/…`. FIX:
+  pinned the smallest deterministic contract — the **`--manifest <R>/planned-manifest.json` invocation
+  writes the report to the manifest's parent dir (`<R>/c2-smoke-report.md`) and runs manifest-equality**;
+  the plain no-arg run executes the suite and prints/returns its result but does NOT discover `<R>`, write
+  the report, or run manifest-equality (no run-id guessing / "latest report dir" heuristic). Reconciled the
+  spec Verification Commands + the core-cases "default run" note + both run-plan smoke-author/C2 lines.
+- **P0-4 (run-plan sizing drift):** Enhancement-Summary #7 and the Sizing Decision said "Alex's call (A +
+  doc-cleanup)" / "chose A" even though B is the chosen path and A is the fallback that drops the four
+  Path-B types; the Codex-Handoff-Prompt still said "honest ~25". FIX: removed the ambiguous "A +" labels —
+  stated plainly that Alex chose **accept-~22 / value-over-count + doc-cleanup while RETAINING Path B** (A
+  kept only as the converge-failure fallback); changed the stale **~25 → ~22**. Path B, the four distinct
+  contradiction types, honest ~22, I1>31 non-gating, and the never-pad rule all preserved.
+- **Cross-section re-verification (post-fix, mechanical set/bijection diffs — not eyeball):** Route Table
+  set == manifest set == **31** (`<int:...>` form); spec Path-B cases == spec EARS == run-plan EARS == **10**
+  (bijection); exactly **two** class-B owners; **seven** in-tx helpers; UNIQUE-shipment/once-return intact;
+  registration→customer/201/no-session + anonymous auth-vs-CSRF-vs-role precedence consistent across
+  App-Config/§4/§6/§auth.py/EARS; Wave-0 `compileall` parse gate vs `--manifest`-driven C2 execution split
+  consistent; `git diff --check` clean; only the two tracked docs changed.
+- **CONVERGENCE STILL NOT MET:** this pass was NOT clean (four P0s), so `status` stays **`draft`**. One more
+  fresh-context Codex confirmation on THIS post-fix spec (+ run-plan compare at the reconciled sections) is
+  required before flipping `draft→active` (criterion = Codex-clean AND human-zero-P0).

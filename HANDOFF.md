@@ -1,4 +1,4 @@
-# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): FINAL CODEX ROUNDS #1 (4 P0) + #2 (5 findings) APPLIED — ONE MORE CODEX CONFIRMATION REQUIRED ⬅⬅
+# ⬅⬅ NEXT SESSION — Run 082 (swarmlimit spec): CODEX ROUNDS #1 (4 P0) + #2 (5 findings) + #3 (4 P0) APPLIED — ONE MORE CODEX CONFIRMATION REQUIRED ⬅⬅
 
 **Phase:** Spec convergence for the **manual autopilot-swarm** build (NOT the Workflow engine — that
 path is UNLAUNCHABLE: `docs/solutions/2026-07-21-workflow-engine-cannot-carry-firebreak-identity.md`).
@@ -10,9 +10,29 @@ path is UNLAUNCHABLE: `docs/solutions/2026-07-21-workflow-engine-cannot-carry-fi
 - Commit chain: …→ f40b373 → 8527d7f → 2f02f33 (round-1: 4 P0) → **this session's round-2 fix commit** (spec + run-plan + this handoff).
 
 **Convergence state:** Codex round 1 (6P0+1P1+1P2), round 2 (3P0+3P1+1P2), the human P0 pass (ZERO P0s),
-**FINAL confirming Codex round #1 (4 P0, all fixed in `2f02f33`)**, and now **FINAL confirming Codex round
-#2 (5 consistency findings, ALL FIXED this session)** are applied (see the spec's Cross-Section
-Self-Review Log → "FINAL confirming Codex pass" + "SECOND FINAL confirming Codex pass").
+FINAL confirming Codex round #1 (4 P0, fixed in `2f02f33`), SECOND FINAL confirming Codex round #2 (5
+consistency findings, fixed in `c05bc2d`), and now **THIRD FINAL confirming Codex round #3 (4 P0
+cross-section findings, ALL FIXED this session — see below)** are applied (see the spec's Cross-Section
+Self-Review Log → "FINAL confirming Codex pass" + "SECOND FINAL confirming Codex pass" + "THIRD FINAL
+confirming Codex pass"). **Still NOT clean → `status` stays `draft`; one more fresh-context Codex
+confirmation required before `draft→active`.**
+
+**Round-3 findings (fixed THIS session, doc-only, no app code):**
+- **P0-1** — C2's raw "any/no non-2xx" rule forbade its own asserted negatives → replaced with an
+  **expected-status-aware** rule (every request must match the status its test asserts; asserted
+  400/401/403/404/409 pass; only an unexpected/unasserted mismatch fails C2). Reconciled both run-plan
+  occurrences (smoke-author bullet + C2 EARS) + the spec Verification-Commands C2 wording → ONE contract.
+- **P0-2** — anonymous-401 was not guaranteed by the decorator contract (`role_required` could 403 or crash
+  on a `None` actor) → pinned `role_required` **two-branch** (None→401, authed-wrong-role→403) + every
+  `role+own` view runs `login_required` before its ownership getter (getter never sees `None`). Reconciled
+  §auth.py, Ownership-Scoped Getter Contract, §4, §6, EARS, run-plan auth-core. Precedence 401→400→403 kept.
+- **P0-3** — plain `python -m swarmlimit.smoke` promised `<R>/c2-smoke-report.md` with no `<R>` source →
+  pinned: the **`--manifest <R>/planned-manifest.json` invocation** derives `<R>` from the manifest parent,
+  writes the report, runs manifest-equality; the plain no-arg run prints/returns its result only (no run-id
+  guessing). Reconciled spec Verification Commands + core-cases note + both run-plan lines.
+- **P0-4** — run-plan sizing drift (`"Alex's call (A + doc-cleanup)"`/`"chose A"`, stale `~25`) → removed
+  the ambiguous "A +" labels (Alex chose accept-~22/value-over-count + doc-cleanup, **Path B RETAINED**; A
+  is the fallback only), `~25 → ~22`. Path B / four types / honest ~22 / I1>31 non-gating / never-pad kept.
 
 Round-1 P0s (fixed `2f02f33`): P0-1 public register can't mint admin (forced `customer`); P0-2
 `UNIQUE(order_id)` on shipments (409 on dup, unique-shipment return); P0-3 run-plan reconciled to spec

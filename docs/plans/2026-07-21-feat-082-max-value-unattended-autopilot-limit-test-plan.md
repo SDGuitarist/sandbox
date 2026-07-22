@@ -29,7 +29,7 @@ feed_forward:
 4. **C2 given an owner + teeth**: `smoke.py` is a Wave-0 deliverable; "exercised" defined; asserts on values + atomic rollback + concurrency stock-race.
 5. **run_id collision fixed**: skill computes the id at launch; 082 no longer hardcoded.
 6. **Coupling pinned, not prose**: 6-section spec authored pre-spawn by porting lesson-studio §5/§6; SQLite transaction traps pinned; FK on-delete policy per edge; shared symbols Wave-0-owned.
-7. **SIZING resolved → path B** (see §Sizing Decision): B = add NEW contradiction TYPES (state-machine, uniqueness, soft-delete, 2nd transaction), not clones. **Count-reality correction (2026-07-21, spec phase):** the honest Path-B decomposition is **~22 agents (19 build + 3 tail), BELOW 31** — swarmlimit has too few distinct resources to clear 31 without padding, and I1(>31) is non-gating with a hard "never pad" rule. **Alex's call (A + doc-cleanup):** accept ~22, value-over-count; B is justified on contradiction-type RICHNESS (denser harvest surface per agent) + 3-barrier wave stress, NOT on clearing the record. The "clears 31" framing is retired. A (drop the 4 added types) remains the fallback only if B can't converge to zero P0s.
+7. **SIZING resolved → path B** (see §Sizing Decision): B = add NEW contradiction TYPES (state-machine, uniqueness, soft-delete, 2nd transaction), not clones. **Count-reality correction (2026-07-21, spec phase):** the honest Path-B decomposition is **~22 agents (19 build + 3 tail), BELOW 31** — swarmlimit has too few distinct resources to clear 31 without padding, and I1(>31) is non-gating with a hard "never pad" rule. **Alex's call (accept ~22 / value-over-count + doc-cleanup — Path B RETAINED, NOT switched to A):** B is justified on contradiction-type RICHNESS (denser harvest surface per agent) + 3-barrier wave stress, NOT on clearing the record. The "clears 31" framing is retired. A (drop the 4 added types) is retained ONLY as the fallback if B can't converge to zero P0s.
 8. **Codex round-2 (2026-07-21):** verify-harvest dedupes by `root_cause_id` (one root cause = one credited item) + distinct-FAILURES-row bijection; independent EARS added for all four Path-B types (happy + negative); firebreak teardown residual on hard crash made explicit (safe-closed, self-heals); C2 now disk-verifies `<R>/c2-smoke-report.md` (exercised set + planned/exercised deltas), not the exit code.
 
 ## Goal (corrected framing)
@@ -64,9 +64,9 @@ risk. The whole plan below is written for B.
 **⚠️ Count-reality correction (spec phase, 2026-07-21).** Authoring the actual spec showed the honest
 Path-B roster is **~22 agents (19 build + 3 tail), NOT >31** — swarmlimit simply has fewer distinct
 resources than lesson-studio's 14, so the 4 new TYPES rode existing resources without lifting the count
-past 31. Rather than pad (forbidden; I1 is non-gating), **Alex chose A + doc-cleanup: accept ~22,
-value-over-count.** B stands on contradiction-type RICHNESS + 3-barrier wave stress, and the "clears 31 /
-biggest by count" framing is **retired**. If clearing 31 is ever wanted, it must be EARNED with more
+past 31. Rather than pad (forbidden; I1 is non-gating), **Alex chose to accept ~22 (value-over-count) +
+doc-cleanup, RETAINING Path B** (NOT switching to A). B stands on contradiction-type RICHNESS + 3-barrier
+wave stress, and the "clears 31 / biggest by count" framing is **retired**. If clearing 31 is ever wanted, it must be EARNED with more
 *distinct* types (e.g. coupon/discount pricing, purchased-only reviews) as a deliberate future run — not
 bolted on here. See spec §Projected Roster.
 
@@ -108,7 +108,9 @@ mechanism is merge-to-base-then-next-wave. So:
     `PRAGMA foreign_keys=ON`/`journal_mode=WAL`/`busy_timeout` per-connection), `init_db`, `schema.sql`,
     and the `transaction()` context manager (`BEGIN IMMEDIATE` + try/except/ROLLBACK).
   - **auth-core** — `auth_models.py` + `auth.py`: `create_user`/`verify_credentials`,
-    `login_required`/`role_required` decorators, session helpers, and it **pins the uniform
+    `login_required`/`role_required` decorators (`role_required` pinned two-branch: `None`/anonymous
+    actor → **401 `auth`**, authenticated wrong-role → **403 `forbidden`** — so anonymous-401 precedes
+    wrong-role-403 regardless of decorator stacking), session helpers, and it **pins the uniform
     actor-based Ownership-Scoped Getter Contract** (`get_<x>_for(id, actor)` / `list_<x>_for(actor)` —
     a SQL WHERE predicate, 404-not-403; there is **no** `@require_owner` decorator). Each such getter is
     IMPLEMENTED per-resource in its Wave-1 model file (e.g. `order_models.get_order_for`), following this
@@ -117,9 +119,15 @@ mechanism is merge-to-base-then-next-wave. So:
     `audit_models.py` (`record(actor_id, action, entity_type, entity_id=None, detail=None)` — full
     signature, class-A, called post-commit at the route only).
   - **smoke-author** — **`swarmlimit/smoke.py`** (the manifest-equality + value + atomicity + race +
-    the ten Path-B `--case` harness; it WRITES `<R>/c2-smoke-report.md` — line-1 `STATUS: PASS|FAIL`,
-    recording the exercised (method,path) set, the `planned_minus_exercised` and
-    `exercised_minus_planned` deltas, and any non-2xx — so C2 is disk-verifiable, not exit-code-only)
+    the ten Path-B `--case` harness; under `--manifest <R>/planned-manifest.json` (the assembly C2
+    invocation) it WRITES the report to the manifest's parent directory as `<R>/c2-smoke-report.md`
+    — line-1 `STATUS: PASS|FAIL`, recording the exercised (method,path) set, the `planned_minus_exercised`
+    and `exercised_minus_planned` deltas, and **every request whose observed status does NOT match the
+    status its own test case asserted** (the suite's asserted negatives — 400/401/403/404/409 — are
+    EXPECTED and are NOT recorded as failures; only an unexpected/unasserted status mismatch is) — so C2
+    is disk-verifiable, not exit-code-only. The `<R>` report dir is derived from the `--manifest` path;
+    the plain no-arg `python -m swarmlimit.smoke` run has no `<R>` source and does NOT write the report
+    (no run-id guessing / "latest report dir" heuristics))
     + freezes `<R>/pitfalls-baseline.txt`.
 
   Build → ownership-gate → **merge to base → push to `origin/<default>` → provenance re-verify
@@ -245,7 +253,7 @@ tail-budget floor guarantees the harvest runs).
 - WHEN Wave 0 completes THE SYSTEM SHALL verify its artifacts are merged+pushed to `origin/<default>` AND `swarmlimit/smoke.py` **compiles cleanly** (parse check) against the base before any Wave-1 spawn; on failure abort + tear down firebreak. — `python -m compileall swarmlimit` against base → exit 0. (Parse-only, not a full import: `swarmlimit/smoke.py` is in-package so `compileall` covers it, and it avoids the FC8/repo-Bash `python -c` prohibition; a full import that executes `create_app`→route registration can't resolve until routes exist post-assembly.)
 - WHEN each Wave→Wave transition occurs THE SYSTEM SHALL push the merged layer to `origin/<default>` and re-run 9w.9.5 before the next spawn. — `<R>/assembly-order.log` shows every wave's base contains the prior wave's merge SHA.
 - WHEN 9w.5/9w.6 pass THE SYSTEM SHALL write `STATUS: CLEARED` to `<R>/gate-verification.md` and only then spawn. — `grep -m1 STATUS <R>/gate-verification.md` → CLEARED.
-- WHEN assembly completes THE SYSTEM SHALL run `smoke.py`, which WRITES `<R>/c2-smoke-report.md` recording the exercised (method,path) set + planned-vs-exercised deltas, and the tail SHALL **disk-verify that artifact** (not the exit code alone): C2 passes iff line-1 `STATUS: PASS` AND both deltas are empty AND no non-2xx (C2, gating). — `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json` then `grep -m1 STATUS <R>/c2-smoke-report.md` → `PASS` AND `grep -A2 'planned_minus_exercised' <R>/c2-smoke-report.md` shows both delta sets empty.
+- WHEN assembly completes THE SYSTEM SHALL run `smoke.py` **with `--manifest <R>/planned-manifest.json`** (which both sets the `<R>` report dir = the manifest's parent and enables manifest-equality), which WRITES `<R>/c2-smoke-report.md` recording the exercised (method,path) set + planned-vs-exercised deltas, and the tail SHALL **disk-verify that artifact** (not the exit code alone): C2 passes iff line-1 `STATUS: PASS` AND both deltas are empty AND **every request's observed status matches the status its own test case asserted** — the suite's asserted negatives (400/401/403/404/409) are EXPECTED and pass; only an unexpected/unasserted status mismatch fails C2 (C2, gating). — `python -m swarmlimit.smoke --manifest <R>/planned-manifest.json` then `grep -m1 STATUS <R>/c2-smoke-report.md` → `PASS` AND `grep -A2 'planned_minus_exercised' <R>/c2-smoke-report.md` shows both delta sets empty.
 - WHEN `create_order` succeeds THE SYSTEM SHALL commit orders+order_items+stock atomically **and record audit POST-commit** (audit is class-A, never inside the transaction — FC5/FC6; corrected from an earlier "…+audit atomically" wording that contradicted the injection matrix + Wave-0 spec); values assert integer ids and NO `{'`/`[object Object]` in rendered JSON. — smoke value assertions pass.
 - WHEN two `create_order` calls race the last unit of stock THE SYSTEM SHALL let exactly one succeed, the other raise `insufficient stock`, final stock non-negative and correct. — smoke concurrency case.
 - WHEN a forced failure fires (via `order_models._TX_FAULT`) AFTER the first `order_item` write but BEFORE commit THE SYSTEM SHALL roll back the whole `create_order` unit — the three tables it touches (`orders`, `order_items`, `products.stock`) unchanged: `COUNT(orders)`/`COUNT(order_items)` equal and every affected product `stock` **VALUE** unchanged (UPDATE rollback = value compare). `audit_logs` is NOT in the transaction (it is a post-commit route call, so a failed unit writes no audit row — FC5/FC6). — smoke `create_order` mid-tx rollback case.
@@ -339,7 +347,7 @@ gates, lesson-studio + GigSheet solution docs. VALIDATE the fixes; hunt what rem
 1. Value-not-count: is V1 (verify-harvest: ≥5 traced, ≥2 net-new, evidence resolves to FAILURES rows,
    anti-circularity) genuinely non-gameable, or still theater? Is C2's "exercised" set capture real?
 2. Sizing: is path B (new contradiction TYPES — state-machine, uniqueness, 2nd transaction, soft-delete) a
-   genuine value increase over the honest ~25, or re-padding under a new name?
+   genuine value increase over the honest ~22, or re-padding under a new name?
 3. Decomposition: are the layered merge-barrier waves (Wave 0 smoke authoring/parse-check → Wave 1 models → Wave 2 routes → assembly C2 smoke execution) correct given worktrees root on
    origin/default? Is the push-to-origin-before-next-wave step (FC52) sufficient, or is there still a seam
    where wave N+1 can't see wave N?
