@@ -74,11 +74,20 @@ def create_app(config=None):
     # --- One-time schema init: only when the DB file is absent ---
     # Imported here (not at module top) so the package can be byte-compiled and
     # partially imported before the database agent's module resolves at assembly.
-    from swarmlimit.database import init_db
+    from swarmlimit.database import init_db, close_db
+
+    # assembly-fix 083 [H3, FC3/FC22]: database.close_db was defined but never
+    # registered by any agent -> per-request connection leak. Register it here.
+    app.teardown_appcontext(close_db)
 
     db_path = app.config.get("DATABASE")
     if db_path is None or not os.path.exists(db_path):
-        init_db()
+        # assembly-fix 083 [H6, cross-agent context seam]: init_db resolves the DB
+        # path via current_app.config, so it REQUIRES an active app context. It was
+        # called bare here -> "working outside application context" at create_app
+        # time (would break every create_app incl. C2). Wrap in an app context.
+        with app.app_context():
+            init_db()
 
     # --- CSRF header-token guard (authenticated mutating requests only) ---
     @app.before_request
