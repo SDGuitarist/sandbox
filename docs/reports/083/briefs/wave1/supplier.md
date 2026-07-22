@@ -1,0 +1,61 @@
+# Worker Brief — WAVE 1 — supplier model agent (Run 083 swarmlimit)
+
+You are a swarm worker rooted on a worktree that CONTAINS the converged spec at
+`docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md`. **READ THAT SPEC FIRST — it is
+authoritative.** This brief points you at your file and sections; it does not restate the spec.
+
+## Your assignment
+You own EXACTLY ONE file: **`swarmlimit/models/supplier_models.py`**.
+
+Read "### supplier_models.py (supplier model agent)" in §Model Functions, plus the `suppliers` schema
+table, §1b/§2 wiring, and §5 (all class-A).
+
+## Exact function signatures (copy verbatim)
+- `list_suppliers(active_only=False) -> list[dict]`
+- `get_supplier(sid) -> dict | None`
+- `create_supplier(name, contact_email=None) -> int`
+- `update_supplier(sid, **fields) -> None` — whitelist: name, contact_email, active.
+- `delete_supplier(sid) -> None` — hard delete; relies on FK RESTRICT → raises
+  `ValueError('supplier in use')` (caught from `IntegrityError`) if any product references it.
+
+All are class-A (persist immediately via SQLite autocommit; NO `conn.commit()`, NO `transaction()`).
+Getters convert `sqlite3.Row` → plain dict.
+
+```
+## Known Pitfalls (from prior builds — MUST follow)
+- FC1 (naming): Use EXACT names from the spec §1 Export Names Table / §1d Orchestration Entrypoints. Never invent a name crossing a file boundary.
+- FC2 (wrong usage): Match the spec RETURN TYPE. int return → name var <x>_id; transaction() → always `with`; INTEGER → ints not strings.
+- FC3 (dead wiring): Every export you create must have a consumer in §2 Cross-Boundary Wiring; don't leave a prescribed call unwired.
+- FC4 (validation gap): Validate ALL inputs in YOUR handler for EVERY method per §3 — never assume another layer validates.
+- FC5 (swarm consistency): Match cross-cutting patterns EXACTLY (error(...) envelope, response objects, audit record(...) signature) per §4.
+- FC6 (non-transactional): Class-B units use the ONE transaction(); class-C in-tx helpers take caller conn and NEVER commit; class-A autocommit (no conn.commit(), no transaction()).
+- FC7 (route paths): NO url_prefix on any blueprint; every @bp.route declares the FULL absolute path EXACTLY = the manifest (no trailing slash on collections).
+- FC8 (bash): One command per Bash call. No &&/;/cd/loops/echo >/python3 -c. Use git -C and the Write tool.
+- FC9 (mock/data): Read EXACT field/param names from the spec; never guess.
+- FC10 (fail-closed): guards fail CLOSED on error; every route except returns an error status; never fall through without a return.
+
+## Bash rules (MANDATORY)
+One command per Bash call. (1) no `cd x && y` — use `git -C`; (2) no `source venv/activate` — full path; (3) no for-loops; (4) no `python3 -c` — Write a file; (5) no `echo` for content — Write tool; (6) no `&&`/`;` chaining.
+```
+
+## Per-role pitfalls (model cluster)
+- FC46 phantom-FK (every `*_id` has REFERENCES + ON DELETE per spec — read the schema table).
+- FC29+FC6 (no `conn.commit()` in in-tx helpers; BEGIN IMMEDIATE needs try/except/ROLLBACK — but the
+  `transaction()` manager owns that; a class-B fn just uses `with transaction() as conn`).
+- FC35 model-layer ownership scoping via SQL WHERE predicate (get_<x>_for returns None/[] for
+  non-owner, never post-fetch 403).
+- FC63 return-shape pinned (single-row getter→dict|None, lister→list[dict], creator→int id,
+  mutator→None; convert `sqlite3.Row`→plain dict).
+- stock guard = `UPDATE ... WHERE ... AND stock>=:qty` then require rowcount==1 (N/A for supplier; the
+  rule applies to product — noted for cluster consistency).
+
+## Strict rules
+1. Create ONLY your assigned file(s). No other files. (smoke-author also writes its two docs/reports/083 artifacts.)
+2. Use EXACT names from the spec for all functions, routes, classes, variables.
+3. Do not make design decisions — the spec at docs/plans/2026-07-21-feat-082-swarmlimit-shared-interface-spec.md decides everything. READ IT FIRST.
+4. Do not import from other agents' files except as §2 Cross-Boundary Wiring defines.
+5. Follow the spec's directory structure exactly (swarmlimit/ namespace).
+6. If the spec is ambiguous, pick the simplest interpretation.
+7. No TODOs, no placeholders — production-quality code.
+8. Create any directories your files need.
+9. When done, commit ALL your files with a descriptive message (one Bash call: git -C <worktree> add -A ; then a separate git -C <worktree> commit -m "...").
