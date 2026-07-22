@@ -1340,6 +1340,45 @@ and prints a STATUS line. **OBSERVABILITY-ONLY -- it always exits 0 and NEVER bl
   analysis only`) and proceed. The Disconfirmer and Self-Audit below both read the reports
   dir; the on-disk `compounded-darkness.md` gives the self-audit a WARN to dispose.
 
+### Verify Harvest (Path-B swarm value gate -- runs BEFORE the Disconfirmer) [083-W5 / FC-harvest]
+
+A Path-B swarm run justifies its cost by HARVESTING pitfalls, not by a green build.
+When the run produced a harvest (`docs/reports/<run-id>/harvest-findings.md` exists),
+this deterministic gate replaces the old self-certification: run 083 self-certified its
+harvest, the disconfirmer (D4) flagged it, and the self-audit accepted it only as a
+throwaway-vehicle tradeoff (083-W5). Run as a single Bash call. Pass the MAIN repo root
+explicitly with `--root` (FC68: never let the tool self-locate via a possibly-drifted
+cwd). The script is FC58-pinned, so it runs under the active tail firebreak:
+
+`python3 tools/verify_harvest.py --reports-dir docs/reports/<run-id> --root <main-repo-root>`
+
+It checks the REAL findings for breadth (>=5 distinct root_cause_id), bijection (each
+binds to its own BUILD_TRACKING `## FAILURES` row), evidence (each cites a file that
+resolves on disk), and net-new (>=2 classes verified against the frozen
+`pitfalls-baseline.txt`). It writes `docs/reports/<run-id>/harvest-verification.md` and
+prints a STATUS line.
+
+- No `harvest-findings.md` (solo / non-harvest run): SKIP -- this gate applies only to
+  Path-B harvest runs. Note the skip in BUILD_TRACKING and proceed.
+- `STATUS: PASS` (exit 0): proceed.
+- `STATUS: FAIL -- <check>` (exit 1): append a HIGH WARN row to BUILD_TRACKING
+  `## FAILURES` keyed `<run-id>-WHARVEST` (`verify-harvest FAIL: <check> -- harvest not
+  credited as genuine`) and proceed. The Self-Audit below MUST dispose it; do NOT claim a
+  genuine pitfall harvest while it stands.
+- exit 2 (INPUT_ERROR): a required input (frozen baseline / BUILD_TRACKING `## FAILURES`)
+  is missing or unreadable -- fix the input and re-run. Do NOT skip silently.
+
+**Harvest data contract** (the harvest-authoring step MUST satisfy this so the gate can
+read it deterministically): `harvest-findings.md` is a pipe table whose header includes
+columns `root_cause_id`, `fc_id`, `status`, `evidence` (order-free, matched by name);
+`status` begins with `REAL` for every counted failure (benign / near-miss / infra notes
+must NOT); `fc_id` records the FINAL registered class -- a new class uses its new id
+(e.g. `FC68`), a variant uses the existing id (e.g. `FC58`), which is what makes the
+net-new check verifiable against the baseline instead of by the author's say-so; every
+REAL finding's `evidence` cites a resolvable file path or `file:line`, and binds to its
+own `**root_cause_id:**` row in BUILD_TRACKING `## FAILURES`. Full contract in the tool's
+module docstring.
+
 ### Disconfirmer (MANDATORY -- DO NOT SKIP -- runs BEFORE the Self-Audit)
 
 **WARNING: This is the orthogonal lens that breaks the verification monoculture.

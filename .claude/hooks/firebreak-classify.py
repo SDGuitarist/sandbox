@@ -77,6 +77,7 @@ TRUSTED_PIPELINE_SCRIPT_PATHS = {
     "tools/verify_delegated_status.py",     # Steps 11w-18w disk-verify gate (no non-py fallback)
     "tools/check_spec_provenance.py",       # pre-swarm spec provenance gate
     "tools/check_compounded_darkness.py",   # tail compounded-darkness gate (080-W5); runs under active firebreak
+    "tools/verify_harvest.py",              # tail FC-harvest gate (083-W5); runs under active firebreak
     ".claude/hooks/firebreak-activate.py",  # the firebreak's own set-phase / deactivate lifecycle
 }
 

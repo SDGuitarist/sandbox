@@ -223,6 +223,11 @@ def main():
         bash("python3 tools/check_compounded_darkness.py --reports-dir docs/reports/080", TAIL), s)
     check("FC58 tail-runner check_compounded_darkness.py allowed", d, False)
 
+    # 083-W5 verify-harvest gate runs in the tail under an active firebreak:
+    d, _, _ = run(
+        bash("python3 tools/verify_harvest.py --reports-dir docs/reports/083 --root .", TAIL), s)
+    check("FC58 tail-runner verify_harvest.py allowed", d, False)
+
     # Confirmed non-python teardown fallback (rm is not an interpreter):
     d, _, _ = run(
         bash(f"rm {repo}/.claude/firebreak-active.json", ORCH), s)
