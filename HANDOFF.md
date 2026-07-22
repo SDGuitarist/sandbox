@@ -57,7 +57,7 @@ Net-new failure classes: FC68 (governance-tool cwd self-location) + FC69 (app fa
 | P2-03: DELETE-success envelope divergence (H8) | P2 | Pin all response branches in future specs |
 | H5 FC58: firebreak allowlist doesn't cover python -m compileall | P2 | Toggle protocol works; extend allowlist in future |
 | [083-W6] H7 FC68: firebreak-activate.py needs explicit --root arg — HIGH severity (firebreak fail-open during wave transition, caught by manual cat-verify only; no structural fix applied) | HIGH | Use __file__-relative anchor instead of cwd; add sentinel location gate before each wave spawn; see self-audit 083-W6 |
-| [083-W2] --case suite (10 Path-B EARS cases incl. atomicity rollbacks) was run but no on-disk artifact captured; atomicity rollback claim is unbacked by artifact | HIGH | Re-run `python -m swarmlimit.smoke --case process-return-rollback` and `--case core_create_order_mid_tx_rollback` on feat/082-swarmlimit-spec and capture output to docs/reports/083/case-suite-output.txt; see self-audit 083-W2 |
+| ~~[083-W2]~~ **CLOSED 2026-07-22 (same session, post-teardown)** — all 10 Path-B `--case` proofs + plain full suite run LIVE: 10/10 PASS incl. `process-return-rollback` (4-table atomic rollback via `_TX_FAULT`). Feed-forward risk now ARTIFACT-BACKED. | DONE | Evidence: docs/reports/083/case-suite-output.txt + w2-closure.md. self-audit.md NOT rewritten (point-in-time record). |
 | Feed-forward seam verification: process_return passed completely | info | Spec §5 Transaction Contracts was sufficient |
 | Merge/push decision (feat/082-swarmlimit-spec → master) | awaits Alex | Manual approval required |
 
@@ -84,7 +84,7 @@ Pitfall harvest: H1-H9, 9 distinct root_cause_ids, 2 net-new: FC68 (cwd-drift) +
 Self-audit at docs/reports/083/self-audit.md (written at tail end).
 
 HIGH-PRIORITY DEFERRED:
-- [083-W2] Capture --case atomicity rollback proof: run `python -m swarmlimit.smoke --case process-return-rollback` and capture to docs/reports/083/case-suite-output.txt
+- ~~[083-W2]~~ **DONE 2026-07-22** — 10/10 `--case` PASS incl. `process-return-rollback`; captured to docs/reports/083/case-suite-output.txt (see w2-closure.md)
 - [083-W6] Fix FC68 structurally: modify firebreak-activate.py to use --root argument or __file__-relative anchoring; add sentinel location gate before wave spawn
 
 NEXT — pick one:

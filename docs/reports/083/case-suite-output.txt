@@ -1,0 +1,16 @@
+Run 083 — Path-B --case suite (live, post-teardown; closes 083-W2)
+
+--case state-machine-legal: exit 0 PASS | CASE PASS state-machine-legal | 
+--case state-machine-illegal: exit 0 PASS | CASE PASS state-machine-illegal | 
+--case uniqueness-ok: exit 0 PASS | CASE PASS uniqueness-ok | 
+--case uniqueness-collision: exit 0 PASS | CASE PASS uniqueness-collision | 
+--case soft-delete: exit 0 PASS | CASE PASS soft-delete | 
+--case soft-delete-order: exit 0 PASS | CASE PASS soft-delete-order | 
+--case process-return: exit 0 PASS | CASE PASS process-return | 
+--case process-return-rollback: exit 0 PASS | CASE PASS process-return-rollback | 
+--case process-return-guard-refund: exit 0 PASS | CASE PASS process-return-guard-refund | 
+--case process-return-guard-shipment: exit 0 PASS | CASE PASS process-return-guard-shipment | 
+
+plain full suite: exit 0 PASS |   10 path-b cases + 11 core cases passed
+
+OVERALL: ALL PASS (10/10 cases + full suite)
