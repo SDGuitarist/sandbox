@@ -1,9 +1,19 @@
-# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 4) — awaiting Codex plan re-review
+# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §0 spikes DONE, awaiting Codex §0 re-review
 
 **Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-22
 **Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff) — pushed to origin
-**Phase:** P1/P2 PLAN revision 4 — resolves the SECOND Codex plan re-review NO-GO. PLAN DOCUMENTATION ONLY; no SKILL/tool code written. **Next actor: Alex → send Codex the rev4 plan re-review handoff (below).** Do NOT begin implementation until Codex returns GO.
+**Phase:** P1/P2 plan **revision 5** — resolves the Codex §0 spike-review NO-GO (4 findings). All three §0 verify-first spikes now PASS (0a strengthened to boot create_app() + catch the app-context/teardown class; 0b; 0c reshaped to the real ancestry shape + RUN swarm-runner ×2). **Next actor: Alex → send Codex the fresh §0 re-review handoff** (`docs/reports/p1p2-spikes/codex-0-rereview-handoff.md`, also inlined below). Do NOT begin §1 implementation until Codex returns GO. No SKILL/tool DELIVERABLE code written (only §0 spike harnesses).
+
+## Codex §0 spike-review resolution (rev5 — this session)
+
+Codex returned NO-GO on the §0 verify-first spike review with 4 findings; all resolved:
+1. **0a strengthened** (not narrowed) — the integrated gate now BOOTS `create_app()` and catches the app-context/teardown lifecycle class (H3/H6/H9): a minimal-Flask fixture whose broken assembly FAILS with the genuine `RuntimeError: Working outside of application context`, then the assembly-fix PASSES. §0.0a/§3.4 claims narrowed to exactly what 0a proves. Re-run: **PASS** (`docs/reports/p1p2-spikes/0a-result.md`).
+2. **§3.1 orphaned-detached-child policy** — OUT of scope for prove-zero-live (declared F6 residual) + a `terminal_head_sha` post-terminal-commit containment check wired through §5/§6 and the §7 `verify_wave` reject-set.
+3. **"typecheck" purged** — the gate is an integrated import-smoke + create_app() boot, NOT static type checking (no checker configured); surviving tokens are only prohibition/rejection lists.
+4. **0c reshaped + RUN** — real `origin/<default>`-vs-`original_branch` ancestry (spike-default behind + local bare `spikeorigin` ref; spike-feat ahead; workers rooted on default tip). swarm-runner spawned ×2 (fresh context), both PASS; adjudicator's 10 checks all PASS incl. every cherry-pick base == spike-default tip. **PASS** (`docs/reports/p1p2-spikes/0c-result.md`).
+
+Fresh Codex §0 re-review handoff: **`docs/reports/p1p2-spikes/codex-0-rereview-handoff.md`** (leads with repo/branch/HEAD/ask). §0 rollup: `docs/reports/p1p2-spikes/0-summary.md` (STATUS: COMPLETE).
 
 ## Current State
 
@@ -164,19 +174,19 @@ feat/p1p2-unattended-swarm-wave-barrier (off origin/master @ 4da3eff).
 
 ACTIVE: P1/P2 plan — encode the unattended multi-wave swarm barrier loop into the
 autopilot SKILL. Plan doc: docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md
-(revision 4, resolves the SECOND Codex plan re-review NO-GO — 10 blockers). PLAN ONLY — no
-implementation yet.
+(revision 5, resolves the Codex §0 spike-review NO-GO — 4 findings). The §0 BLOCKING
+verify-first spikes are ALL DONE and PASS (0a strengthened + boots create_app, 0b, 0c
+reshaped + run). PLAN + §0 SPIKES ONLY — no §1 deliverable code yet.
 
-IMMEDIATE (needs Alex): send Codex the rev4 plan re-review handoff (below in this HANDOFF).
-Do NOT begin implementation until Codex returns GO. When GO:
-  - Work phase starts with the §0 BLOCKING verify-first spikes: 0a (genuine end-to-end
-    two-wave: author-with-prior-absent THEN assemble-both + integrated compile/import gate),
-    0b (TaskStop observability), 0c (spike_per_wave_swarm_runner — two sequential invocations,
-    no run-level state leak). A 0a/0c FAILURE that invalidates dependent waves = STOP for plan
-    revision + Codex review; NOT a silent scope cut and NOT a work-phase judgment call.
-  - Then build tools/wave_artifact.py + tools/verify_wave.py (+tests), the SKILL loop
-    section, the swarm-planner/swarm-runner/tail-resume edits, 2 file-path allowlist adds,
-    and the narrowed default-branch policy.
+IMMEDIATE (needs Alex): send Codex the fresh §0 RE-REVIEW handoff —
+docs/reports/p1p2-spikes/codex-0-rereview-handoff.md (also inlined near the top of this HANDOFF).
+Do NOT begin §1 until Codex returns GO. When GO (§0 already satisfied):
+  - Go straight to the §1 deliverables: build tools/wave_artifact.py + tools/verify_wave.py
+    (+tests), the SKILL loop section (§5 sequence + write-ahead resume machine), the
+    swarm-planner/swarm-runner/tail-resume edits, the 2 file-path allowlist adds
+    (tools/wave_artifact.py, tools/verify_wave.py — TRUSTED-only, still worker-denied), and
+    the narrowed default-branch policy. New §1 obligation from rev5: record `terminal_head_sha`
+    at each worker's terminal instant and enforce the §7 post-terminal-commit containment equality.
 
 DESIGN X (load-bearing): unattended runs push NO code to origin/<default>; workers
 write+commit only (rule 11 prohibits cross-module execution); integration + all
