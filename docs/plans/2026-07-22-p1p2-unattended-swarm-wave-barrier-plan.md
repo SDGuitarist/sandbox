@@ -3,7 +3,7 @@ title: "P1/P2 — Encode the unattended multi-wave swarm barrier loop"
 date: 2026-07-22
 status: draft
 phase: plan
-revision: 4  # resolves Codex re-review #2 NO-GO: falsifiable end-to-end 2-wave spike, per-wave-swarm-runner blocking spike, single executable gate architecture (firebreak stays ACTIVE — no toggle), write-ahead resume phases, assembly-base proof with --no-ff accounting, self-authoritative verify_wave, wave schema matched to swarm-planner reality, valid EARS commands, honest scope
+revision: 5  # resolves Codex §0 spike-review NO-GO (4 findings): (1) 0a strengthened — the integrated gate now BOOTS create_app() and catches the app-context/teardown lifecycle class (H3/H6/H9), with §0.0a/§3.4 claims narrowed to exactly what it proves; (2) §3.1 explicit orphaned-detached-child policy (out of scope for prove-zero-live; declared residual) + a worker_head_sha post-terminal containment check added to §7; (3) "typecheck" language purged — the gate is an integrated import-smoke, NOT static type checking (no checker configured); (4) 0c reshaped to the real origin/<default>-vs-original_branch ancestry shape (default behind, feature ahead, workers rooted on default tip). rev4 base: falsifiable end-to-end 2-wave spike, per-wave-swarm-runner blocking spike, single executable gate architecture (firebreak stays ACTIVE — no toggle), write-ahead resume phases, assembly-base proof with --no-ff accounting, self-authoritative verify_wave, wave schema matched to swarm-planner reality, valid EARS commands, honest scope
 branch: feat/p1p2-unattended-swarm-wave-barrier
 relates_to:
   - unattended-big-run-trust-gate (MEMORY)
@@ -52,6 +52,15 @@ verifier, resume machine, or wave schema exists.
 | EARS commands invalid | §8 — `python3 tools/test_*.py --case <name>` (matches the repo's plain-stdlib test convention); every listed crash-boundary/forgery/reconcile/parse case has a named test or live spike; classifier baseline 282→284 (verified 282 current). |
 | scope dishonest | §1 — swarm-planner.md, swarm-runner.md, tail-resume/SKILL.md all added with the exact change each needs. |
 
+## Codex §0 spike-review resolution map (revision 5)
+
+| Codex §0 finding | Resolution |
+|---|---|
+| 1. 0a proves only the narrow import-resolution premise; it does not exercise the §3.4 create_app()/app-context/teardown lifecycle seam, so the recorded "Design X premise holds" conclusion is too broad. | **Strengthened the gate + spike (not narrowed).** §0.0a now builds a minimal Flask app (`pkgspike/database.py` with app-context-requiring `init_db`/`close_db`; `pkgspike/factory.py` `create_app()`; `pkgspike/routes.py` blueprint). The Wave-2 worker authors a `create_app()` that calls `init_db()` BARE (realistic — with Wave 1 absent it cannot boot to find the bug). The integrated gate BOOTS `create_app()`: the broken assembly FAILS with the genuine `RuntimeError: Working outside of application context` (the H6/H3 class), then the assembly-fix (`with app.app_context(): init_db()`) makes it PASS. §3.4 now states the gate boots `create_app()` + exercises app-context/teardown. §0.0a's over-broad conclusion is replaced by the precise claim: write+commit-only authoring is sound AND the integrated gate catches import + lifecycle failures at assembly. Re-run: PASS (`docs/reports/p1p2-spikes/0a-result.md`). |
+| 2. §3.1 does not say whether orphaned detached child shells are in scope; 0b shows they can happen. | **Explicit policy added to §3.1 + a containment check in §7.** Orphaned detached child shells are OUT of scope for the prove-zero-live gate (which proves the Agent TASK is terminal), declared as a residual keyed to the pre-existing firebreak F6 residual (this plan neither expands nor fixes F6). The one assembly-corrupting case (a post-terminal detached writer that makes a git COMMIT) is contained: `worker_head_sha` is recorded when each worker is declared terminal and re-read before assembly AND before wave-mode cleanup; a mismatch ⇒ ABORT. This equality check is added to §7's `verify_wave --wave K` reject-set. |
+| 3. "typecheck" is only an import-smoke substitution; the plan should not imply a real type-checker exists. | **Substitution only — "typecheck" language purged.** No type-checker is installed or pinned (out of scope here). §0.0a/§3.4/reports now call the gate exactly an "integrated import-smoke (import-time cross-module name resolution + `create_app()` boot — NOT static type checking; no type-checker is configured)". The report records `typecheck: N/A` explicitly and never as a passed gate. |
+| 4. 0c is a synthetic `spike-0c-base` cut from current HEAD; it does not exercise the real `origin/<default>` / `original_branch` ancestry shape. | **0c reshaped to the real baseRef=fresh shape.** New fixture: a local DEFAULT branch `spike-default` (workers root here; pushed to a local bare `spikeorigin` so `spikeorigin/spike-default` is a real remote-tracking ref) and a FEATURE branch `spike-feat` AHEAD of `spike-default` by ≥1 commit (the `original_branch`). Worker branches root on `spike-default` tip — so `merge-base(spike-feat, worker) == spike-default tip ≠ spike-feat HEAD`, genuinely exercising swarm-runner's base-divergence cherry-pick (Step 3). swarm-runner is invoked twice with `original_branch=spike-feat`. The check additionally asserts every recorded cherry-pick base == `spike-default` tip. Run: see §0.0c / `docs/reports/p1p2-spikes/0c-result.md`. |
+
 ## 0. Verify-first spikes (BLOCKING — gate 0, before ANY SKILL/tool code)
 
 All spikes below run in the work-phase branch; their outcomes are recorded BEFORE the first
@@ -60,66 +69,81 @@ and NOT a silent scope cut.** If any spike fails in a way that invalidates depen
 halt the work phase, record the outcome in `docs/reports/p1p2-spikes/`, and return to plan +
 Codex review.
 
-### 0a — Falsify the spec-only premise with a genuine END-TO-END two-wave spike
+### 0a — Falsify the spec-only premise with a genuine END-TO-END two-wave spike, AND prove the integrated gate catches the app-context/teardown lifecycle class
+
+**What 0a proves (precise scope — rev5).** Two facts, no broader claim:
+(A) a dependent Wave-2 worker can WRITE+COMMIT against a producer's export NAMES with the
+producer's FILE ABSENT (import-resolution premise), and (B) the per-wave integrated gate,
+run at assembly, catches BOTH the cross-module import class AND the app-context/teardown
+lifecycle class (Run 083 H3/H6/H9) — because it BOOTS `create_app()`, not merely imports
+modules. This is NOT a blanket "Design X holds"; it is exactly (A)+(B).
 
 **Fixture (temp git repo, built by a pinned setup script `tools/spike_two_wave_setup.py`):**
 - A throwaway repo at `$(mktemp -d)/twowave` with a branch `main` (the "default branch") and a
   feature branch `feat-spike` forked from `main`.
-- Package `pkgspike/` with `__init__.py` (empty) committed to BOTH branches at fork.
-- Export Names contract (spec fragment committed to `main`): `pkgspike.database.query() -> list`
-  produced by Wave-1 agent `database`; consumed by Wave-2 agent `routes` in
-  `pkgspike/routes.py` via `from pkgspike.database import query`.
+- Package `pkgspike/` with `__init__.py` (empty) + `SPEC.md` (Export Names) committed to `main`
+  at fork. The package is a **minimal Flask app** whose accessors require an app context, so the
+  fixture can exercise the same lifecycle seams that broke Run 083's integrated tree:
+  - `pkgspike/database.py` *(Wave-1 agent `database`)* — `get_db()/query()/init_db()/close_db()`,
+    all of which touch `flask.g` / `current_app` and therefore REQUIRE an app context (mirrors
+    H6/FC39 and the H3/FC3 teardown seam).
+  - `pkgspike/routes.py` *(Wave-2 agent `app`)* — a blueprint importing `query` (keeps the
+    original cross-wave import-resolution premise: `from pkgspike.database import query`).
+  - `pkgspike/factory.py` *(Wave-2 agent `app`)* — `create_app()` importing the Wave-1 symbols,
+    registering the blueprint, calling `init_db()`, and registering `teardown_appcontext(close_db)`.
 - **Wave-1 file `pkgspike/database.py` is ABSENT from the Wave-2 worktree** (this is the whole
   point): the Wave-2 worker is rooted on `origin/main`, which carries only the spec + empty
-  `__init__.py`.
+  `__init__.py`. Because the worker cannot boot the app (Wave 1 absent), it authors a
+  `create_app()` that calls `init_db()` **bare** (no app context) — a realistic latent bug it has
+  no way to discover, exactly the Design-X condition.
 
 **Environment (pinned, exact):**
 - Interpreter: `/Users/alejandroguillen/Projects/sandbox/.venv/bin/python` (Python 3.14.6).
-- Test runner: `/Users/alejandroguillen/Projects/sandbox/.venv/bin/pytest`.
-- Static type-checker: **none is installed** (`.venv` has no `mypy`/`pyright`). The "typecheck"
-  gate is therefore PINNED as the import-smoke below (which performs real cross-module name
-  resolution at import time — a strict superset of `compileall` syntax checking). The spike
-  records `typecheck: N/A (no checker configured; substituted by import-smoke)` explicitly; it
-  does NOT silently skip a gate.
+- Test runner: `/Users/alejandroguillen/Projects/sandbox/.venv/bin/pytest`; `flask` 3.1.3 present.
+- **No static type-checker is configured** (`.venv` has no `mypy`/`pyright`). The gate is an
+  **integrated import-smoke** (import-time cross-module name resolution + a `create_app()` boot) —
+  it is a strict superset of `compileall` but it is **NOT static type checking**. The report
+  records `typecheck: N/A (no checker configured)` explicitly; nothing is labelled "typecheck" as
+  a passed gate.
 
 **Step 1 — Wave-2 authoring with Wave-1 ABSENT.** In the Wave-2 worktree (Wave-1 file absent),
-have the Wave-2 worker write `pkgspike/routes.py` (importing `query` from the spec's Export
-Names table) and `git add -A && git commit`. Then, in that SAME worktree, run and RECORD the
-outcome of each, one Bash call each:
+the Wave-2 worker writes `pkgspike/routes.py` + `pkgspike/factory.py` (against the spec's export
+NAMES) and `git add -A && git commit`. Then, in that SAME worktree, record one Bash call each:
 - author+commit: expected SUCCEED.
-- `.venv/bin/python -m compileall pkgspike/routes.py` — expected FAIL/undetermined only if it
-  imports; `compileall` compiles syntax without importing, so it should SUCCEED even absent →
-  record actual.
-- import: `.venv/bin/python -c "import pkgspike.routes"` — expected **FAIL** (ModuleNotFoundError:
-  pkgspike.database) with Wave-1 absent.
-- typecheck (== import-smoke): same as import above; record N/A-substituted result.
+- `.venv/bin/python -m compileall pkgspike/factory.py` — `compileall` compiles syntax without
+  importing, so it SUCCEEDS even with Wave-1 absent → record actual.
+- import: `.venv/bin/python -c "import pkgspike.factory"` — expected **FAIL** (ModuleNotFoundError:
+  pkgspike.database) with Wave-1 absent. (This is the deferred-self-verification signal, not a
+  "typecheck".)
 
-**Step 2 — Assemble BOTH waves and gate the integrated tree.** On `feat-spike`, cherry-pick the
-Wave-1 delta (author `pkgspike/database.py`) THEN the Wave-2 delta (`pkgspike/routes.py`) onto an
-assembly branch cut from `feat-spike` HEAD (both files now present). Then run the PINNED
-integrated gate on the assembled tree, one Bash call each:
-- `.venv/bin/python -m compileall pkgspike` → must exit 0.
-- `.venv/bin/pytest tools/spike_two_wave_importsmoke.py` — a pytest test that `importlib`-imports
-  every module under `pkgspike/` (incl. `pkgspike.routes`, which now resolves `pkgspike.database`)
-  → must exit 0.
+**Step 2 — Assemble BOTH waves, then run the integrated gate that BOOTS create_app().** On an
+assembly branch cut from `feat-spike` HEAD, cherry-pick the Wave-1 delta THEN the Wave-2 delta
+(both files now present). Run the PINNED integrated gate on the assembled tree, one Bash call each:
+- `.venv/bin/python -m compileall pkgspike` → exit 0 (syntax).
+- `.venv/bin/pytest tools/spike_two_wave_importsmoke.py` — imports every `pkgspike/` module AND
+  **boots `pkgspike.factory.create_app()`**, asserts a `teardown_appcontext` handler is registered
+  (H3), and runs an app-context cycle so `init_db()`/teardown actually fire (H6).
+- **Broken assembly (as authored):** the gate BOOTS `create_app()` → `init_db()` runs bare →
+  `RuntimeError: Working outside of application context` → gate **FAILS** (this is the proof that
+  the gate catches the lifecycle class, not just imports; a bare import-smoke would PASS here).
+- **Assembly-fix (the one inline fix swarm-runner would apply):** wrap `with app.app_context():
+  init_db()` → re-run the gate → **PASSES**. This mirrors the Run 083 H6 assembly-fix exactly.
 
-**PASS criterion (BOTH required):**
-1. Step-1 author+commit SUCCEEDS with Wave-1 absent (a worker can WRITE `from pkgspike.database
-   import query` from the spec's export NAMES without the file present), AND
-2. Step-2 INTEGRATED tree passes `compileall` + import-smoke.
-If Step-1's import/typecheck of a cross-wave symbol FAILS with Wave-1 absent, that is EXPECTED
-and CONFIRMS the design constraint (workers must be write+commit-only; self-verification deferred
-to assembly). Proceed with Design X + the §4 enforcement that worker briefs contain no
-cross-module execution step.
+**PASS criterion (ALL four required):**
+1. Step-1 author+commit SUCCEEDS with Wave-1 absent (write from export NAMES), AND
+2. Step-1 cross-wave import FAILS with Wave-1 absent (confirms self-verification must be deferred), AND
+3. The integrated gate on the BROKEN assembly FAILS by booting `create_app()` and hitting the
+   app-context/teardown seam (proves the gate catches the H3/H6/H9 class), AND
+4. The integrated gate on the assembly-FIXED tree PASSES.
 
-**FAIL criterion (either ⇒ STOP for plan revision + Codex review; do NOT auto-scope-cut):**
-- (a) Step-1 author+commit cannot be produced correctly without the prior files present, OR
-- (b) Step-2's integrated tree cannot be made to pass the compile+import gate (i.e. per-wave
-  assembly cannot integrate a dependent wave at all).
-Either outcome means dependent unattended waves are not merely "reduced in scope" — the design's
-core mechanic is broken. Record the failure and STOP. The §4 static validator's
-runtime-dependent-edge rejection is a PRE-SPAWN guard for well-formed plans; it is NOT the
-recovery path for a 0a spike failure.
+**FAIL criterion (any ⇒ STOP for plan revision + Codex review; do NOT auto-scope-cut):**
+- (a) Step-1 author+commit cannot be produced without the prior files present, OR
+- (b) the integrated tree cannot be made to pass the gate at all, OR
+- (c) the gate does NOT catch the lifecycle break (the broken assembly PASSES) — meaning the gate
+  is not sufficient for Design X and needs redesign before §1.
+Any outcome means the design's core mechanic (write+commit-only + a sufficient assembly gate) is
+broken. Record and STOP. The §4 static validator's runtime-dependent-edge rejection is a
+PRE-SPAWN guard for well-formed plans; it is NOT the recovery path for a 0a spike failure.
 
 ### 0b — TaskStop observability
 Spawn one long-running background worker; `TaskStop` it; confirm `TaskList`/`TaskGet` reports it
@@ -131,25 +155,48 @@ no design change, but recorded before proceeding.
 swarm-runner was authored for ONE whole-run assembly. Per-wave reuse must be proven side-effect
 clean BEFORE the SKILL loop is written.
 
-**Fixture:** a temp git repo with two independent, single-wave assemblies (`w1`, `w2`), each with
-its own disjoint COMPLETED worker branch set, built by `tools/spike_per_wave_runner_setup.py`.
+**Fixture (rev5 — the REAL baseRef=fresh ancestry shape, built by
+`tools/spike_per_wave_runner_setup.py`).** The prior fixture cut a synthetic `spike-0c-base` from
+current HEAD and set `original_branch=spike-0c-base`, so `merge-base(original_branch, worker) ==
+original_branch HEAD` — the base-divergence that swarm-runner Step 3 exists to handle was NOT
+exercised. rev5 reshapes it to match a real run:
+- A local **DEFAULT** branch `spike-default` (the `origin/<default>` analog). It is pushed to a
+  local bare repo added as remote **`spikeorigin`** (NOT `origin` — the real GitHub `origin` is
+  never touched), so `spikeorigin/spike-default` is a real remote-tracking ref (baseRef=fresh).
+- A **FEATURE** branch `spike-feat` (the `original_branch`) that is **AHEAD of `spike-default` by
+  ≥1 commit** (a namespaced feature file) — exactly the real relationship (feature branch carries
+  the spec-provenance/prior-wave output; default is behind).
+- Two DISJOINT COMPLETED worker sets, each **rooted on `spike-default` tip** (NOT on `spike-feat`
+  HEAD), each one commit on a uniquely-namespaced file:
+  - wave 1: `swarm-SPIKE-w1-alpha`, `swarm-SPIKE-w1-beta`
+  - wave 2: `swarm-SPIKE-w2-gamma`, `swarm-SPIKE-w2-delta`
+  So `merge-base(spike-feat, worker) == spike-default tip ≠ spike-feat HEAD` — the cherry-pick
+  base is the default tip, genuinely exercising base-divergence, and the feature commit is NOT in
+  any worker's cherry-pick range (never replayed).
 
 **Commands / procedure:**
-1. Spawn the `swarm-runner` agent (mode `bypassPermissions`) for wave 1 with
+1. Build the fixture: `python3 tools/spike_per_wave_runner_setup.py`.
+2. Spawn the `swarm-runner` agent (mode `bypassPermissions`) for wave 1 with
    `reports_dir=docs/reports/SPIKE/w1/`, `assembly_branch=swarm-SPIKE-w1-assembly`,
-   `original_branch=feat-spike`, and w1's worker branches. Wait for its terminal STATUS.
-2. Spawn the `swarm-runner` agent AGAIN (fresh context) for wave 2 with
-   `reports_dir=docs/reports/SPIKE/w2/`, `assembly_branch=swarm-SPIKE-w2-assembly`, and w2's
-   worker branches.
+   **`original_branch=spike-feat`**, and w1's worker branches. Wait for its terminal STATUS line
+   (do NOT `TaskOutput` a local_agent — it dumps the full transcript and floods context).
+3. Spawn the `swarm-runner` agent AGAIN (fresh context) for wave 2 with
+   `reports_dir=docs/reports/SPIKE/w2/`, `assembly_branch=swarm-SPIKE-w2-assembly`,
+   `original_branch=spike-feat`, and w2's worker branches.
+4. Run `python3 tools/spike_per_wave_runner_check.py` to adjudicate PASS/FAIL; then
+   `python3 tools/spike_per_wave_runner_setup.py --teardown`.
 
 **PASS criteria (ALL):**
 - Each invocation writes its OWN `w<k>/assembly-summary.md` with line-1 `STATUS: PASS`; w2 does
   NOT overwrite any w1 report (report isolation proven by distinct `reports_dir`).
-- After w2: `git branch --list 'swarm-SPIKE-*'` is EMPTY (both assembly branches deleted) and
-  `git worktree list --porcelain` shows no leftover spike worktrees (cleanup complete).
+- After w2: `git branch --list 'swarm-SPIKE-*'` is EMPTY (both assembly branches + worker branches
+  deleted) and `git worktree list --porcelain` shows no leftover spike worktrees (cleanup complete).
 - No run-level state leak: w2's `assembly-summary.md` references ONLY w2 branches/bases; the two
   summaries share no assembly-branch name, no temp file, and w2's cherry-pick bases are computed
   from w2 branches alone (grep the two summaries — zero cross-references).
+- **Base-divergence faithfulness:** every recorded cherry-pick base in BOTH summaries equals the
+  `spike-default` tip (== `spikeorigin/spike-default`), NOT `spike-feat` HEAD — proving swarm-runner
+  computes the fork-point base correctly under the real ancestry shape across sequential reuse.
 
 **Firebreak expectations:** the firebreak is ACTIVE throughout the spike. swarm-runner runs as
 the TRUSTED `swarm-runner` identity, so its pinned-tool and `pytest` calls are GREEN; its
@@ -241,6 +288,30 @@ spawn); write transition-state `abort` + `wave.md` STATUS `ABORT` (§6). On resu
 recorded `task_id`s AND any tasks matching the run's name prefix are queried/stopped and
 zero-live is re-proven BEFORE any respawn/assembly.
 
+**Scope of "prove zero live" — orphaned detached child shells (explicit policy, rev5).** This gate
+proves the **Agent TASK** is terminal (COMPLETED/FAILED/TIMED_OUT_STOPPED). Spike 0b showed an
+Agent can self-COMPLETE while leaving an **orphaned detached child shell** it backgrounded (the
+firebreak blocks foreground `sleep`, so a worker may background it and return before the child
+dies). Such orphaned children are **OUT of scope** for this gate, for two reasons made explicit
+here:
+- (i) **They cannot corrupt the assembled INPUT unless they make a git COMMIT.** Assembly
+  cherry-picks from each worker's COMMITTED branch head (§3.3), never from a live worktree. A
+  post-terminal detached writer that only reads/writes files but does not `git commit` on the
+  worker's named branch cannot change what is assembled.
+- (ii) **A detached child executing code is invisible to the PreToolUse firebreak** — this is the
+  pre-existing declared **F6 residual** in `.claude/hooks/firebreak-classify.py` (PreToolUse sees
+  the worker's tool calls, not a raw backgrounded shell spawned inside a worktree). This plan
+  **neither expands nor fixes F6**; it inherits it unchanged.
+
+**Containment for the ONE assembly-corrupting case (cheap, deterministic).** The only way an
+orphaned detached child could poison assembly is a **post-terminal git commit** advancing a
+worker's branch head after we declared it terminal. That is contained by an equality check, not by
+tracking shells: when a worker is declared terminal, record `worker_head_sha` (the branch head at
+that instant) in `transition-state.json`; **before assembly AND before wave-mode cleanup**, re-read
+the live branch head — any mismatch ⇒ **ABORT** (a post-terminal writer moved the branch). This
+check is added to §7's `verify_wave --wave K` reject-set (verify_wave already reads live worker
+heads), so it is enforced by the authoritative verifier, not only inline.
+
 ### 3.2 P1 — the spec-only premise (Design X), stated as a gated hypothesis
 Design X: workers WRITE+COMMIT only (SKILL Step 10w rules 1-11; rule 11 explicitly PROHIBITS
 running tests, executing cross-module imports, or running package-wide `compileall`/typechecks —
@@ -285,12 +356,19 @@ The multi-wave loop performs **zero** `firebreak-activate.py deactivate` calls. 
 inside the TRUSTED swarm-runner during assembly and consists of:
 1. **Contract check** (grep for prescribed names/routes/imports) — blocking, as today.
 2. **Integrated import-smoke** *(new, blocking in wave mode)* — a `pytest` invocation
-   (`.venv/bin/pytest <reports-or-gitignored import-smoke test>`) that `importlib`-imports every
-   module present in the assembled package and boots `create_app()` once. This is what proves the
-   integrated tree actually resolves cross-wave imports — contract grep alone is NOT sufficient
-   for Design X (Run 083 H6/H9: the integrated tree did not boot until an assembly-fix). On the
-   first failure swarm-runner applies its one inline fix and re-runs; a second failure aborts the
-   wave (`STATUS: FAIL -- integrated-import:`), which `verify_wave --wave K` also enforces.
+   (`.venv/bin/pytest <reports-or-gitignored import-smoke test>`) that (a) `importlib`-imports
+   every module present in the assembled package AND (b) **boots `create_app()` once, then
+   exercises the app-context/teardown lifecycle** — it asserts a `teardown_appcontext` handler is
+   registered (H3/FC3) and runs an app-context cycle so `init_db()` and the teardown actually fire
+   (H6/FC39). It is an **import-smoke + app-boot check — NOT static type checking** (no type-checker
+   is configured). This is what proves the integrated tree resolves cross-wave imports **and boots**
+   — contract grep alone, and even a bare import-smoke, are NOT sufficient for Design X: Run 083's
+   integration failures (H3/H6/H9) were lifecycle seams that only surface when `create_app()` is
+   actually booted (the integrated tree did not boot until an assembly-fix). Spike 0a proves
+   empirically that a bare import passes the broken tree while the `create_app()` boot catches it
+   (`docs/reports/p1p2-spikes/0a-result.md`). On the first failure swarm-runner applies its one
+   inline fix and re-runs; a second failure aborts the wave (`STATUS: FAIL -- integrated-import:`),
+   which `verify_wave --wave K` also enforces.
 3. Smoke (route curls) and the full test suite remain as today (non-blocking, recorded).
 
 **Why this is firebreak-legal with the firebreak ACTIVE and needs no toggle:** every gate call is
@@ -391,7 +469,7 @@ guards):**
 |---|-------|----------------|---------|
 | 1 | `roster_prepared` | spawning any worker | wave roster placeholders, `expected_base_sha`, `worker_base_sha` |
 | 2 | `spawn_in_progress` | the parallel spawn call | partial roster (updated with task/agent/branch ids AS they return) |
-| 3 | `workers_terminal` | leaving the wait loop | per-worker terminal `status` + `terminal_evidence` |
+| 3 | `workers_terminal` | leaving the wait loop | per-worker terminal `status` + `terminal_evidence` + `terminal_head_sha` (branch head at terminal instant, §3.1 containment) |
 | 4 | `assembly_started` | spawning swarm-runner | `assembly_branch` |
 | 5 | `merge_completed` | (written AFTER swarm-runner returns PASS) | `assembled_output_sha` = new `original_branch` HEAD, Worker-Deltas table |
 | 6 | `provenance_reverified` | emitting the artifact | provenance STATUS |
@@ -410,9 +488,13 @@ guards):**
    each `task_id`/`agent_id`/`branch` and update transition-state (atomic) AS they return —
    BEFORE waiting. Write `w<k>/worker-roster.md`.
 6. Wait for terminal results (Step 10w wait). Handle terminals per §3.1/§4; write phase
-   `workers_terminal` with per-worker status.
+   `workers_terminal` with per-worker `status` + `terminal_evidence` + `terminal_head_sha`
+   (`git rev-parse <worker branch>` at the terminal instant, §3.1 containment).
 7. **Prove zero live workers (§3.1)** before authoring wave k+1; unprovable ⇒ abort.
 8. Ownership gate (Step 10.5w) against `original_branch`.
+8b. **Post-terminal containment re-read (§3.1):** for each COMPLETED worker, re-read the live
+   branch head; if it ≠ the recorded `terminal_head_sha`, a post-terminal detached writer moved
+   the branch ⇒ **ABORT** (do not assemble a tampered input).
 9. Write phase `assembly_started`; assemble wave k via swarm-runner
    (`reports_dir=w<k>/`, `assembly_branch=swarm-<run-id>-w<k>-assembly`). swarm-runner runs
    contract + the blocking integrated import-smoke (§3.4), merges `--no-ff` to `original_branch`,
@@ -471,9 +553,12 @@ deterministic (safe to re-run); artifact overwrite prevented by atomic emit keye
 `wave_artifact.py emit` via temp + `os.rename` (same-dir, atomic on POSIX). Fields: `run_id`,
 `wave_count`, `wave_index`, `run_start_ts`, `emit_ts`, `expected_base_sha`, `worker_base_sha`
 (=`origin/<default>` tip, pinned §3.3), `roster` (list of `{task_id, agent_id, role, branch,
-required, status, terminal_evidence}` where `terminal_evidence` ∈ {completion-notified,
-TaskStop-verified}), `worker_deltas` (list of `{role, worker_head_sha, merge_base_sha,
-delta_count}` — captured before cleanup, §3.3), `ownership_gate` (PASS/FAIL + path),
+required, status, terminal_evidence, terminal_head_sha}` where `terminal_evidence` ∈
+{completion-notified, TaskStop-verified} and `terminal_head_sha` is the worker branch head
+captured at the instant the worker was declared terminal — the §3.1 post-terminal-commit
+containment anchor), `worker_deltas` (list of `{role, worker_head_sha, merge_base_sha,
+delta_count}` — captured by swarm-runner before cleanup, §3.3; `worker_head_sha` MUST equal the
+roster `terminal_head_sha` for the same worker, else a post-terminal writer moved the branch), `ownership_gate` (PASS/FAIL + path),
 `assembled_output_sha`, `gate_results` (`contract` verdict+path [blocking];
 `integrated_import` verdict+path [blocking]; `smoke`,`test` verdict+path [non-blocking]),
 `firebreak_readback` (ACTIVE + ts), `provenance` (STATUS + path), `prev_wave_output_sha`
@@ -528,6 +613,11 @@ are git ref strings; `reports-dir` a repo-relative path ending `/w<K>/`.
   `worker_base_sha` (a worker forked from a stale/older default commit). If a recorded
   `worker_head_sha` is unresolvable AND its `delta_count > 0` ⇒ FAIL (evidence destroyed before
   verification — must not happen because wave-mode cleanup is deferred).
+- **post-terminal-commit containment (§3.1):** for each COMPLETED worker, the roster
+  `terminal_head_sha`, the `worker_deltas` `worker_head_sha`, and the LIVE branch head
+  (`git rev-parse <worker branch>`, still resolvable because wave-mode cleanup is deferred) must
+  all be EQUAL. Any inequality ⇒ FAIL (a post-terminal detached writer advanced the branch, or the
+  recorded evidence was tampered).
 - commit count `git rev-list --count expected_base_sha..assembled_output_sha` ≠
   `Σ(delta_count over COMPLETED non-empty workers) + 1` (the single `--no-ff` merge commit).
 - **HEAD check (mode-sensitive):** for `--wave K`, `assembled_output_sha` ≠ live

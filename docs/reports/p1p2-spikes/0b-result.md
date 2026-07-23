@@ -35,3 +35,18 @@ observable near-immediately as `killed`. The §3.1 "prove zero live workers" gat
 The plan's fail-closed rule ("always abort on timeout when termination cannot be proven") remains
 correct; 0b shows termination CAN be proven for a live agent, so the common path is not
 always-abort — it aborts only when a `TaskStop` cannot confirm a `killed`/terminal transition.
+
+## §3.1 orphaned-detached-child policy alignment (rev5, Codex Finding 2)
+Nuance (2) above (a completed Agent can leave an orphaned detached background child) is now given
+an EXPLICIT policy in plan §3.1 rather than left as an observation:
+- Orphaned detached child shells are OUT of scope for the "prove zero live" gate (which proves the
+  Agent TASK is terminal). Rationale: (i) assembly cherry-picks from each worker's COMMITTED
+  branch head, never a live worktree, so a post-terminal writer cannot change the assembled INPUT
+  unless it makes a git COMMIT; (ii) a detached child's tool calls are invisible to the PreToolUse
+  firebreak — the pre-existing declared F6 residual, which this plan neither expands nor fixes.
+- CONTAINMENT for the one assembly-corrupting case (a post-terminal COMMIT advancing a worker
+  branch): §3.1 records `terminal_head_sha` at the terminal instant and re-reads the live branch
+  head before assembly AND before cleanup; a mismatch ⇒ ABORT. The same equality is enforced by
+  the authoritative verifier (plan §7 `verify_wave --wave K` reject-set).
+This is a documented residual + a cheap deterministic containment, not a design change — 0b's
+recorded evidence is fully consistent with the §3.1 policy.
