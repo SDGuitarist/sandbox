@@ -322,7 +322,10 @@ assembly (swarm-runner runs contract + a blocking integrated import-smoke on the
 - **runtime-dependent** — the consumer's assignment/brief requires *executing* code that imports
   a prior-wave module at author time. NOT supported unattended; rejected pre-spawn (§4).
 The SPEC (not code) must be at every worktree base — served by the ONE-TIME pre-Wave-0 provenance
-repair (§3.3); static across waves, so no per-wave push. Spike 0a proves the premise end-to-end.
+repair (§3.3); static across waves, so no per-wave push. Spike 0a proves BOTH facts it is scoped to
+(§0.0a): write+commit-only authoring is sound AND the integrated assembly gate catches the import
+class AND the app-context/teardown lifecycle class (by booting `create_app()`) — not a broader
+"Design X holds" claim.
 
 ### 3.3 P1 — assembly base: ancestry repair BEFORE the base is finalized, then no replay
 **Ordering fix (rev4):** the ancestry repair happens ONCE at run start, BEFORE `expected_base_sha`
