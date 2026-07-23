@@ -1,17 +1,17 @@
-# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §1 CODE review NO-GO (2 verifier gaps), fix handed to a new session
+# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §1 CODE-review NO-GO gaps FIXED, awaiting Codex re-review
 
 **Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-22
-**Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff) — pushed to origin
-**Phase:** P1/P2 §1 implemented; **Codex §1 CODE review returned NO-GO** on 2 legitimate authoritative-verifier gaps (8/10 items RESOLVED). Review was well-formed via the hardened template (`docs/codex-review-request-template.md`). Result: `docs/reports/p1p2-spikes/codex-1-code-review-result.md`. **The fix is handed to a NEW Claude Code (cloud) session** via `docs/reports/p1p2-spikes/codex-1-fix-handoff.md`. Do NOT launch any autopilot run (P4 stays gated).
+**Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff). Tip `c0c1adf` — fix commits NOT yet pushed (local; push is Alex's call).
+**Phase:** P1/P2 §1 implemented; the Codex §1 CODE-review NO-GO (2 authoritative-verifier gaps) is now **FIXED** in `tools/verify_wave.py` (+ regression tests, 32→36). **Awaiting a Codex §1 re-review** — handoff ready at `docs/reports/p1p2-spikes/codex-1-rereview-handoff.md`. Do NOT launch any autopilot run (P4 stays gated).
 
-## §1 CODE review — NO-GO (2 gaps to fix in tools/verify_wave.py)
+## §1 CODE-review NO-GO — FIXED (2 gaps closed in tools/verify_wave.py)
 
-Both are under-implemented plan §7 rejects (single-wave + firebreak + constraints all confirmed OK):
-1. **verify_wave not authoritative on artifact status/count** — `verify_wave()` never checks `status == PASS-EMITTED` (a forged `ABORT` artifact passes `--wave K`), and `wave_count` is never compared to the plan's declared `waves`.
-2. **prev_wave_artifact_sha never recomputed** — the §7 tamper-evidence check (recompute sha256 of `w<k-1>/wave.md` and compare) is missing in both `--wave K` (k>1) and `--reconcile` (the `prev_artifact_path` var is unused).
+Both were under-implemented plan §7 rejects; both now enforced in BOTH `--wave K` and `--reconcile` (fix commits `c7c4da5` tool + `c0c1adf` tests). Full write-up: `docs/reports/p1p2-spikes/codex-1-fix-result.md`.
+1. **Authoritative status/count** — `verify_wave()` now FAILs unless `status == PASS-EMITTED` (a forged `ABORT` artifact no longer passes `--wave K`) AND `int(wave_count)` equals the plan's declared `waves` (threaded in via a `declared_waves` param; `cmd_wave` parses it, `cmd_reconcile` passes `N`).
+2. **prev_wave_artifact_sha tamper-evidence** — for `k>1`, `verify_wave()` recomputes `sha256(w<k-1>/wave.md)` and FAILs on mismatch/missing. `--wave K` derives the sibling `w<K-1>/` of `--reports-dir`; `--reconcile` now USES the previously-dead `prev_artifact_path`. New `sha256_file()` mirrors `wave_artifact.py._sha256_file` (share-not-import).
 
-Fix scope: `tools/verify_wave.py` (both modes) + `tools/test_verify_wave.py` regression cases (ABORT status, wrong wave_count, forged prev_wave_artifact_sha). Preserve single-wave + the fixed constraints; keep classifier 284/284 and wave_artifact 15/15; grow verify_wave beyond 32. Full instructions: `docs/reports/p1p2-spikes/codex-1-fix-handoff.md`.
+**Verify:** `python3 tools/test_verify_wave.py | tail -1` → `36/36`; classifier `284/284`; wave_artifact `15/15`. Diff `2773000..HEAD` touches ONLY the two tools files; single-wave paths + firebreak logic untouched; no new caller-trusting input. Residual risks in `codex-1-fix-result.md` (declared_waves=None permissive branch; forged-sha fixture appends after the fence; multi-wave `--reconcile` cases still live-spike-covered).
 
 ## §1 Implementation (Session 1) — DONE (5 checkpoints, all pushed)
 
@@ -201,20 +201,22 @@ Net-new failure classes: FC68 (governance-tool cwd self-location) + FC69 (app fa
 Read HANDOFF.md for context. This is sandbox, on branch
 feat/p1p2-unattended-swarm-wave-barrier (off origin/master @ 4da3eff).
 
-ACTIVE: P1/P2 §1 is IMPLEMENTED (Session 1) — the unattended multi-wave swarm barrier loop
-is encoded in the autopilot SKILL + agents + two tools. Plan doc:
-docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md (revision 5). §0 spikes PASS;
-§1 deliverables done + pushed (see the "§1 Implementation (Session 1) — DONE" table above).
-Suites: classifier 284/284, wave_artifact 15/15, verify_wave 32/32.
+ACTIVE: P1/P2 §1 is IMPLEMENTED — the unattended multi-wave swarm barrier loop is encoded
+in the autopilot SKILL + agents + two tools. Plan doc:
+docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md (revision 5). §0 spikes PASS.
+The Codex §1 CODE-review NO-GO (2 verifier gaps) is now FIXED (see the "§1 CODE-review NO-GO —
+FIXED" section above; commits c7c4da5 + c0c1adf, NOT yet pushed).
+Suites: classifier 284/284, wave_artifact 15/15, verify_wave 36/36.
 
-IMMEDIATE (needs Alex): commission a Codex CODE review of the §1 diff on this branch vs
-the plan (esp. the honest gaps listed above: light --reconcile unit coverage, the pinned
-spec table formats the §4 parser reads, and that single-wave behavior is byte-for-byte
-unchanged). Do NOT launch any autopilot run — P4 (the ≥20-agent unattended baseline) stays
-gated on the trust gate + explicit human go. After the CODE review:
-  - Apply fixes, re-review, report residual risks.
-  - Consider adding the deferred --reconcile multi-wave unit cases (chain-break / earlier-wave-
-    ancestor / final-wave-is-head / count-mismatch) if the reviewer wants them before P4.
+IMMEDIATE (needs Alex): send the Codex §1 RE-REVIEW — handoff is ready at
+docs/reports/p1p2-spikes/codex-1-rereview-handoff.md (leads with "Work in …", references the
+branch tip by name). It asks Codex to confirm ONLY that the two fixes are correct/complete,
+single-wave is untouched, and no new caller-trusting input was added. Also decide whether to
+push commits c7c4da5+c0c1adf to origin. Do NOT launch any autopilot run — P4 (the ≥20-agent
+unattended baseline) stays gated on the trust gate + explicit human go. After the re-review:
+  - If GO: consider adding the deferred --reconcile multi-wave unit cases (chain-break /
+    earlier-wave-ancestor / final-wave-is-head / count-mismatch) before P4.
+  - If NO-GO: apply the returned fix handoff, re-review, report residual risks.
 NOTE: §1 was implemented under Alex's explicit direction; there is no recorded in-session
 Codex §0 GO — if that GO matters for the audit trail, capture it before P4.
 
