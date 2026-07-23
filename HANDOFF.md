@@ -3,7 +3,7 @@
 **Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-22
 **Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff). Tip `c0c1adf` — fix commits NOT yet pushed (local; push is Alex's call).
-**Phase:** P1/P2 §1 implemented; the Codex §1 CODE-review NO-GO (2 authoritative-verifier gaps) is now **FIXED** in `tools/verify_wave.py` (+ regression tests, 32→36). **Awaiting a Codex §1 re-review** — handoff ready at `docs/reports/p1p2-spikes/codex-1-rereview-handoff.md`. Do NOT launch any autopilot run (P4 stays gated).
+**Phase:** P1/P2 §1 implemented; the Codex §1 CODE-review NO-GO (2 authoritative-verifier gaps) is now **FIXED** in `tools/verify_wave.py` (+ regression tests, 32→36). **Codex §1 re-review round 1 returned NO-GO on a scope-PROOF wording flaw only** (items 1/2/4/5 RESOLVED, residuals none-block): my DoD said `git diff 2773000..HEAD` should be "only two files", but the diff correctly also contains the MANDATORY `HANDOFF.md` + report docs; the code-scoped diff (`-- . ':!docs/**' ':!HANDOFF.md'`) is exactly the two tools files. Codex's requested fix (rewrite history to drop the docs) would violate the sandbox contract, so instead the re-review handoff was **corrected to a code-scoped scope proof** and re-sent. **Awaiting Codex §1 re-review round 2** — handoff at `docs/reports/p1p2-spikes/codex-1-rereview-handoff.md`. Do NOT launch any autopilot run (P4 stays gated).
 
 ## §1 CODE-review NO-GO — FIXED (2 gaps closed in tools/verify_wave.py)
 

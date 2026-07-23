@@ -42,10 +42,13 @@ REVIEW THIS FOR (numbered, specific — not "is it good"):
      w<k-1>/wave.md and FAILs on mismatch/missing, in BOTH modes. Confirm cmd_wave derives
      the sibling w<K-1>/ of --reports-dir correctly, and cmd_reconcile now USES the
      previously-dead prev_artifact_path (no longer unused).
-  3. Scope / must-not-change: git diff 2773000..TIP touches ONLY tools/verify_wave.py +
-     tools/test_verify_wave.py. Single-wave behavior byte-for-byte unchanged; firebreak
-     classifier logic untouched; NO new caller-trusting input (no --expected-roster etc.);
-     truth still derived from --plan/--spec/live git/re-read evidence.
+  3. Scope / must-not-change: the ONLY code/config files changed are tools/verify_wave.py +
+     tools/test_verify_wave.py (prove with the CODE-scoped diff in DoD-4 below). HANDOFF.md and
+     docs/reports/p1p2-spikes/*.md are MANDATORY session artifacts required by CLAUDE.md
+     ("Required Artifacts": HANDOFF.md must be updated; run reports must not be deleted) — they
+     are expected and permitted, NOT scope creep. Single-wave behavior byte-for-byte unchanged;
+     firebreak classifier logic untouched; NO new caller-trusting input (no --expected-roster
+     etc.); truth still derived from --plan/--spec/live git/re-read evidence.
   4. Least-confident (mine): the declared_waves=None permissive branch (plan with no
      `waves:` key skips the wave_count check) — is that an exploitable hole in wave mode,
      or safe because wave mode always declares `waves` and --reconcile always passes N?
@@ -69,7 +72,11 @@ DEFINITION OF DONE — you MUST complete every item and show its result inline:
   [ ] 1. Ran `python3 tools/test_verify_wave.py | tail -1` — paste the last line (expect 36/36).
   [ ] 2. Ran `python3 .claude/hooks/test_firebreak_classify.py | tail -1` — paste it (expect 284/284).
   [ ] 3. Ran `python3 tools/test_wave_artifact.py | tail -1` — paste it (expect 15/15).
-  [ ] 4. Ran `git diff --name-only 2773000..HEAD` — paste it; confirm ONLY the two tools files.
+  [ ] 4. Ran `git diff --name-only 2773000..HEAD -- . ':!docs/**' ':!HANDOFF.md'` — paste it;
+         confirm the ONLY code/config files changed are exactly tools/verify_wave.py +
+         tools/test_verify_wave.py. (The unscoped diff also lists HANDOFF.md + docs/reports/
+         p1p2-spikes/*.md — those are mandatory session artifacts per CLAUDE.md, not code; do
+         NOT treat their presence as scope creep or a NO-GO reason.)
   [ ] 5. Confirmed single-wave path byte-for-byte unchanged — cite that SKILL.md /
          swarm-runner.md / swarm-planner.md are absent from the diff, and that verify_wave
          is only reached in wave mode.

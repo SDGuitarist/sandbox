@@ -49,6 +49,17 @@ For every wave `k > 1`, `verify_wave()` recomputes `sha256` over the raw bytes o
   firebreak-classify.py logic untouched; no new caller-trusting inputs (truth still
   derived from `--plan`/`--spec-path`/live git/re-read evidence).
 
+## Codex re-review round 1 — NO-GO on scope-proof wording only (not a code defect)
+Codex re-reviewed and returned RESOLVED on items 1, 2, 4, 5 (`RESIDUALS: none block`), with a
+single ISSUE on item 3: the unscoped `git diff --name-only 2773000..HEAD` lists `HANDOFF.md` +
+the two `docs/reports/p1p2-spikes/*.md` alongside the two tools files, which my DoD had (wrongly)
+worded as "only the two tools files". Those docs are MANDATORY session artifacts per CLAUDE.md
+(HANDOFF.md must be updated; run reports must not be deleted), so Codex's proposed fix (rewrite
+history so HEAD's diff is exactly two files) would itself violate the contract. Resolution: no
+code change — the re-review handoff's scope proof was corrected to be code-scoped
+(`git diff --name-only 2773000..HEAD -- . ':!docs/**' ':!HANDOFF.md'` → exactly
+`tools/verify_wave.py` + `tools/test_verify_wave.py`) and re-sent for round 2.
+
 ## Residual risks (self-review of my own diff)
 - `declared_waves` is `None` when a plan has no `waves:` key; the `wave_count` equality
   check is then skipped (permissive). This cannot regress single-wave (verify_wave is
