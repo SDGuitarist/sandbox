@@ -1,9 +1,17 @@
-# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §0 spikes PASS, §1 IMPLEMENTED (needs Codex CODE review)
+# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §1 CODE review NO-GO (2 verifier gaps), fix handed to a new session
 
 **Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-22
 **Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff) — pushed to origin
-**Phase:** P1/P2 **§1 implementation (Session 1) DONE**. All three §0 verify-first spikes PASS (0a strengthened, 0b, 0c reshaped+run). **§1 was implemented this session under Alex's explicit direction** (he twice re-issued the §1 kickoff after I flagged the §0-GO gate; I do NOT have a recorded Codex §0 GO in-session — the §0 re-review handoff `docs/reports/p1p2-spikes/codex-0-rereview-handoff.md` was the last external state). **Next actor: Alex → send Codex a §1 CODE review** (branch diff vs plan); do NOT launch any autopilot run (P4 stays gated on the trust gate).
+**Phase:** P1/P2 §1 implemented; **Codex §1 CODE review returned NO-GO** on 2 legitimate authoritative-verifier gaps (8/10 items RESOLVED). Review was well-formed via the hardened template (`docs/codex-review-request-template.md`). Result: `docs/reports/p1p2-spikes/codex-1-code-review-result.md`. **The fix is handed to a NEW Claude Code (cloud) session** via `docs/reports/p1p2-spikes/codex-1-fix-handoff.md`. Do NOT launch any autopilot run (P4 stays gated).
+
+## §1 CODE review — NO-GO (2 gaps to fix in tools/verify_wave.py)
+
+Both are under-implemented plan §7 rejects (single-wave + firebreak + constraints all confirmed OK):
+1. **verify_wave not authoritative on artifact status/count** — `verify_wave()` never checks `status == PASS-EMITTED` (a forged `ABORT` artifact passes `--wave K`), and `wave_count` is never compared to the plan's declared `waves`.
+2. **prev_wave_artifact_sha never recomputed** — the §7 tamper-evidence check (recompute sha256 of `w<k-1>/wave.md` and compare) is missing in both `--wave K` (k>1) and `--reconcile` (the `prev_artifact_path` var is unused).
+
+Fix scope: `tools/verify_wave.py` (both modes) + `tools/test_verify_wave.py` regression cases (ABORT status, wrong wave_count, forged prev_wave_artifact_sha). Preserve single-wave + the fixed constraints; keep classifier 284/284 and wave_artifact 15/15; grow verify_wave beyond 32. Full instructions: `docs/reports/p1p2-spikes/codex-1-fix-handoff.md`.
 
 ## §1 Implementation (Session 1) — DONE (5 checkpoints, all pushed)
 
