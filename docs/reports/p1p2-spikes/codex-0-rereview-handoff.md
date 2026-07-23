@@ -1,14 +1,17 @@
+Work in /Users/alejandroguillen/Projects/sandbox
+Branch: feat/p1p2-unattended-swarm-wave-barrier
+HEAD: the current tip of that branch — run `git rev-parse feat/p1p2-unattended-swarm-wave-barrier`
+and review THAT exact commit. This handoff doc is committed ON the tip, so the tip is the single
+authoritative HEAD; there is no earlier/intermediate commit to review. All four resolutions + all
+§0 spike artifacts are on the tip.
+Ask: §0 spike-review RE-REVIEW — GO / NO-GO on whether the 4 prior findings are genuinely resolved
+and whether the work phase may proceed to §1 (details below).
+
 Read these files first for project context:
   - HANDOFF.md
   - CLAUDE.md
   - AGENTS.md (if it exists)
   - docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md
-
-REVIEW TARGET (unambiguous): the current tip of branch
-feat/p1p2-unattended-swarm-wave-barrier in /Users/alejandroguillen/Projects/sandbox.
-Confirm the exact commit with `git rev-parse feat/p1p2-unattended-swarm-wave-barrier`
-and review THAT HEAD — everything from this session (all four resolutions + these
-handoff docs) is on the branch tip. Do not review any earlier/intermediate commit.
 
 THE ASK: this is a §0 spike-review RE-REVIEW. Your prior §0 review returned NO-GO with 4 findings.
 Decide GO / NO-GO on whether the 4 findings are genuinely resolved (not merely reworded) and
