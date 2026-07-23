@@ -78,6 +78,8 @@ TRUSTED_PIPELINE_SCRIPT_PATHS = {
     "tools/check_spec_provenance.py",       # pre-swarm spec provenance gate
     "tools/check_compounded_darkness.py",   # tail compounded-darkness gate (080-W5); runs under active firebreak
     ".claude/hooks/firebreak-activate.py",  # the firebreak's own set-phase / deactivate lifecycle
+    "tools/wave_artifact.py",               # P1/P2 multi-wave: atomic wave.md / transition-state emit (TRUSTED-only)
+    "tools/verify_wave.py",                 # P1/P2 multi-wave: --validate-schema / --wave K / --reconcile gate (TRUSTED-only)
 }
 
 # python interpreter flags that consume a SEPARATE value token, so the value is not

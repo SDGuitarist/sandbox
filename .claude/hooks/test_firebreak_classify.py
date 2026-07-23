@@ -283,6 +283,27 @@ def main():
         bash("python3 -W ignore tools/verify_delegated_status.py 079", ORCH), s)
     check("FC58 orch -W ignore + pinned target still allowed (074)", d, False)
 
+    # ---------------- P1/P2 multi-wave: two new pinned tool paths (282 -> 284) -----
+    # rev5 adds tools/wave_artifact.py + tools/verify_wave.py to
+    # TRUSTED_PIPELINE_SCRIPT_PATHS. They ride the SAME FC58 carve-out code path as
+    # the other pinned tools, so the boundary invariants are ALREADY proven by the
+    # generic FC58 negatives above and need no per-tool duplication:
+    #   - worker-denied  <- "FC58 worker verify_delegated_status.py STILL denied"
+    #     (workers are not TRUSTED; identity gate is path-agnostic).
+    #   - no new -m allow-case <- "FC58 orch python3 -c inline code STILL denied"
+    #     (-m/-c carry no path-pinnable script FILE, so the carve-out never applies).
+    # The two NEW cases are the file-path ALLOW-cases for TRUSTED identities:
+    d, _, _ = run(
+        bash("python3 tools/wave_artifact.py emit --run-id 085 --wave 1 "
+             "--reports-dir docs/reports/085/w1/", ORCH), s)
+    check("P1P2 orch wave_artifact.py allowed", d, False)
+
+    d, _, _ = run(
+        bash("python3 tools/verify_wave.py --wave 1 --plan p.md --spec-path s.md "
+             "--reports-dir docs/reports/085/w1/ --root . --run-id 085 "
+             "--run-start-ts 1 --original-branch feat --default-branch master", SWARM), s)
+    check("P1P2 swarm-runner verify_wave.py allowed", d, False)
+
     # ---------------- control-plane writes (F1 + F5 + F9) ----------------
     d, _, _ = run(write(f"{HOME}/.claude/settings.json", WORKER), s)
     check("worker Write control-plane settings", d, True)
