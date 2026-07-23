@@ -1,14 +1,21 @@
-# HANDOFF — Sandbox · FC68 / 083-W6 RESOLVED (firebreak cwd-root anchor); merge-to-master decision pending
+# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 3) — awaiting Codex plan re-review
 
+**Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-22
-**Active branch:** fix/fc68-firebreak-cwd-anchor @ 61dbbfb (+ a Compound commit this session) — pushed to origin; branched off origin/master @ a5cde9d
-**Phase:** FC68 fix COMPLETE (Codex NO-GO→fix→GO, P0/P1/P2=0), Compound DONE. PENDING: Alex's fast-forward-merge-to-master decision (A vs B — see Deferred Items). Do NOT push origin/master without explicit approval.
+**Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff) — pushed to origin
+**Phase:** P1/P2 PLAN revision 3 — resolves the Codex plan re-review NO-GO. PLAN DOCUMENTATION ONLY; no SKILL/tool code written. **Next actor: Alex → send Codex the rev3 plan re-review handoff (on clipboard).** Do NOT begin implementation until Codex returns GO.
 
 ## Current State
 
-The active work is the **FC68 / 083-W6** structural fix — the last HIGH-severity deferred item from Run 083 (a silent firebreak fail-open when the orchestrator's cwd drifts into a worker worktree). COMPLETE on branch `fix/fc68-firebreak-cwd-anchor`: absolute `--root` + `realpath` canonicalization + **git-metadata main-worktree validation** (`git-dir == git-common-dir`), fail-closed exit 3; an exit-code-driven per-wave **read-back gate** in SKILL 9w.9.6; and the H5 gate-window toggle protocol (rejected a name-based `-m` carve-out). Codex re-review: **GO** (P0/P1/P2 = 0). 18 real-git-worktree tests; existing firebreak suites (classify 282 / gate 26 / soundness 448 / superset 297) unaffected. Solution: `docs/solutions/2026-07-22-fc68-firebreak-cwd-root-anchor.md`. **Both remaining Run-083 HIGH deferreds (083-W2, 083-W6) are now CLOSED.**
+Active work is the **P1/P2 trust-gate item**: encode the unattended **multi-wave swarm barrier loop** into the autopilot SKILL so a ≥20-agent swarm is launchable fully hands-off (trust criteria (2) no manual firebreak toggling + (3) wave-barrier/push mechanic from the SKILL, not live judgment). Plan: `docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md` (revision 3).
 
-**Run 083 (swarmlimit 19-agent Max-Value Wave-Barrier Swarm) is COMPLETE** (record retained below): 19 build agents / 3 waves, C2 smoke 31/31, 0 P1 / 3 P2 deferred, PIPELINE_PASS_WITH_DEFERRED_RISK grade B. `origin/master` @ a5cde9d carries the full build + tail artifacts.
+**rev3 resolves the Codex re-review NO-GO** across: P0 resume/liveness (durable per-wave transition-state + prove-zero-live-before-deactivate, TaskStop fail-closed); a **falsifiable spike 0a** (Design X = workers write+commit only, no per-wave CODE push; the spec-only premise is GATED, not asserted — reconciled against Run 083's per-wave code push); assembly-base **ancestry proof** (no replay, via the existing Run-070 pre-flight merge); an **authoritative `verify_wave.py`** (full pinned CLI, live-history checks); idempotent crash recovery incl. the after-assembly-before-emit boundary; a **total wave schema** (`Wave`/`Required` columns, forward-ref detection, runtime-dependent-edge rejection); and **executable EARS** (unit fixtures + orchestration spikes; classifier baseline corrected 282→284). Deliverables (work phase, after §0 spike passes): `tools/wave_artifact.py`, `tools/verify_wave.py` (+tests), SKILL loop section, 2 file-path allowlist adds, narrowed default-branch policy.
+
+**Parallel in-flight (this session):**
+- **FC68 / 083-W6** structural fix: MERGED to `origin/master` @ 4da3eff (fast-forward, Alex-approved). Both Run-083 HIGH deferreds (083-W2, 083-W6) CLOSED. Solution: `docs/solutions/2026-07-22-fc68-firebreak-cwd-root-anchor.md`.
+- **P3** (trust-gate): `tools/verify_harvest.py` + `check_compounded_darkness.py` fix on branch `feat/p3-harvest-and-darkness-tools` (pushed) — **awaiting Codex CODE review** (handoff already delivered).
+
+**Run 083 (swarmlimit 19-agent Max-Value Wave-Barrier Swarm) is COMPLETE** (record retained below): 19 build agents / 3 waves, C2 smoke 31/31, 0 P1 / 3 P2 deferred, grade B. `origin/master` now @ 4da3eff (FC68 + P3-independent docs).
 
 ## Key Artifacts
 
@@ -74,31 +81,36 @@ Net-new failure classes: FC68 (governance-tool cwd self-location) + FC69 (app fa
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is sandbox, on branch fix/fc68-firebreak-cwd-anchor
-(NOT feat/082 — that branch's Run-083 work is done and on origin/master @ a5cde9d).
+Read HANDOFF.md for context. This is sandbox, on branch
+feat/p1p2-unattended-swarm-wave-barrier (off origin/master @ 4da3eff).
 
-FC68 / 083-W6 (firebreak cwd-root-drift fail-open) is RESOLVED: absolute --root +
-realpath + git-metadata main-worktree validation (fail-closed exit 3), exit-code
-per-wave read-back gate in SKILL 9w.9.6, H5 toggle protocol. Codex NO-GO→fix→GO
-(P0/P1/P2=0). 18 real-worktree tests; existing firebreak suites unaffected.
-Solution: docs/solutions/2026-07-22-fc68-firebreak-cwd-root-anchor.md.
-agent-pitfalls FC68 Agent rule updated + Update Log row (2026-07-22 FC68 fix).
+ACTIVE: P1/P2 plan — encode the unattended multi-wave swarm barrier loop into the
+autopilot SKILL. Plan doc: docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md
+(revision 3, resolves the Codex plan re-review NO-GO). PLAN ONLY — no implementation yet.
 
-IMMEDIATE — the one open decision (needs Alex, do NOT execute unasked):
-- Merge fix/fc68-firebreak-cwd-anchor → origin/master. Clean fast-forward from a5cde9d.
-  A = full FF (includes unrelated docs-only c6a0d84 trust-gate readiness doc).
-  B = FC68-only integration (a new branch off a5cde9d cherry-picking the FC68 + compound
-      commits, excluding c6a0d84), then FF master to it.
-  FF-push to master requires Alex's explicit approval.
+IMMEDIATE (needs Alex): send Codex the rev3 plan re-review handoff (on clipboard).
+Do NOT begin implementation until Codex returns GO. When GO:
+  - Work phase starts with the §0 BLOCKING verify-first spikes (0a spec-only premise,
+    0b TaskStop observability, + spike_per_wave_swarm_runner). A pinned failure outcome
+    for 0a = dependent-runtime waves INFEASIBLE (validator rejects them); NOT a judgment call.
+  - Then build tools/wave_artifact.py + tools/verify_wave.py (+tests), the SKILL loop
+    section, 2 file-path allowlist adds, and the narrowed default-branch policy.
 
-STANDING (trust-gate for big UNATTENDED runs — see MEMORY unattended-big-run-trust-gate):
-- P1 remainder: FC58 gate-python (H5) — toggle protocol now documented; allowlist still narrow.
-- P3: build tools/verify_harvest.py (harvest gate is self-certified); fix check_compounded_darkness.py.
-- P4: one ≥20-agent fully-unattended SKILL-driven run at 0 interventions → trusted baseline.
-- Also: master declutter (FC59) needs Alex sign-off; G2/G4/G5 governance gaps.
+DESIGN X (load-bearing): unattended runs push NO code to origin/<default>; workers
+write+commit only; integration + all self-verification deferred to per-wave assembly on
+the local feature branch. The spec (not code) reaches worktrees via the ONE-TIME pre-Wave-0
+provenance repair. Firm constraint: no unattended CODE push to master.
 
-INVARIANTS: firebreak deny-known-bad; Gate-8 fail-closed; builds namespace under own top-level dir (FC59);
-self-audit-reviewer stays Sonnet; disconfirmer stays Opus; NEVER pay usage credits — Max subscription only.
+PARALLEL in-flight:
+- FC68/083-W6: MERGED to origin/master @ 4da3eff (Alex-approved FF).
+- P3 (feat/p3-harvest-and-darkness-tools, pushed): verify_harvest.py + darkness fix —
+  awaiting Codex CODE review.
+- P4 (≥20-agent unattended baseline run): BLOCKED on P1/P2 + P3 merged. Do NOT launch.
+- FC59 master declutter: needs Alex sign-off.
+
+INVARIANTS: firebreak deny-known-bad; TRUSTED_PIPELINE_SCRIPT_PATHS file-only, no -m carve-out;
+Gate-8 fail-closed; builds namespace under own top-level dir (FC59); self-audit-reviewer stays
+Sonnet; disconfirmer stays Opus; NEVER pay usage credits — Max subscription only.
 Do NOT push to origin/master without Alex's explicit approval.
 ```
 
