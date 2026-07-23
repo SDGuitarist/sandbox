@@ -21,6 +21,16 @@ These apply to all autonomy classes:
 - No edits to files outside `~/Projects/sandbox/` except during learnings propagation (see below).
 - No deleting solution docs, prior run reports, or BUILD_TRACKING files.
 
+## Unattended Default-Branch Push Policy (P1/P2, plan §3.5)
+
+During an unattended autopilot run, **no phase pushes CODE to `origin/<default>`**.
+Build code accumulates on the local feature branch; the master merge is deferred to a
+human post-review (a HANDOFF deferred item). The SOLE sanctioned `origin/<default>`
+write is the pre-existing spec-provenance repair (SKILL 9w.9.5), a spec-file-only
+commit made ONCE before Wave 0. This governs only unattended autopilot run modes; it
+does not touch manual sessions. Single-wave behavior is unchanged (it already performs
+no unattended code push). The multi-wave loop performs ZERO remote-ref writes.
+
 **Allowed out-of-repo writes (learnings propagation only):**
 These files are written by `/update-learnings-noninteractive` (autopilot) or `/update-learnings` (manual) during the compound phase tail:
 - `~/.claude/docs/agent-pitfalls.md` -- cross-project failure registry (append-only)

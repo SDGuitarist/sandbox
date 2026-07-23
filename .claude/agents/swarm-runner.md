@@ -39,6 +39,15 @@ You receive these parameters in the prompt from the orchestrator:
 | agent_assignments | `{ role, branch, files }` per worker | (inline list) |
 | worker_status | `{ role, branch, status }` per worker; status is COMPLETED, TIMED_OUT, or FAILED | (inline list) |
 | agent_pitfalls | Pitfalls text (context only; you spawn no sub-agents) | (inline text) |
+| wave_index | *(wave mode only, P1/P2)* the 1-based wave number this assembly is for; ABSENT ⇒ single-wave mode (all wave-mode rules below are no-ops) | 2 |
+| import_smoke_test | *(wave mode only)* path to the blocking integrated import-smoke pytest test to run in Step 4.5 | "tests/wave_import_smoke.py" |
+
+**Mode rule (P1/P2, plan §3.4 / §1 item 3):** if `wave_index` is ABSENT, behave
+EXACTLY as today (single-wave path — Steps 1-11 unchanged, inline cleanup in Step 8).
+If `wave_index` is present you are in **wave mode**: additionally run the blocking
+integrated import-smoke (Step 4.5), record the Worker-Deltas table before any cleanup
+(Step 9), and **DEFER** all worktree/branch cleanup (Step 8 is skipped — the
+orchestrator cleans up only after its `verify_wave --wave K` passes).
 
 **Skip rule:** Only merge branches whose `worker_status` is COMPLETED. Skip
 (do NOT merge) any branch marked TIMED_OUT or FAILED. Note skipped branches in
@@ -151,6 +160,29 @@ line 1).
   (CLAUDE.md Escalation Rule: "If the spec contract check fails after one retry,
   abort the pipeline.")
 
+### Step 4.5: Integrated import-smoke (WAVE MODE ONLY — BLOCKING)
+
+**Skip this step entirely in single-wave mode** (`wave_index` absent). In wave mode
+this is the blocking integrated dependency gate (plan §3.4): a `pytest` invocation
+that `importlib`-imports every module in the assembled package AND boots
+`create_app()` (asserting a `teardown_appcontext` handler is registered and running
+an app-context cycle), so it catches cross-wave import failures AND the
+app-context/teardown lifecycle class (Run 083 H3/H6/H9) — a bare contract grep does
+NOT. Run it as ONE Bash call with the pinned framework interpreter (identity-agnostic
+GREEN under the active firebreak — no toggle):
+
+`.venv/bin/pytest <import_smoke_test>`
+
+Write results to `<reports_dir>/integrated-import.md` (STATUS on line 1).
+
+- On PASS: proceed to Step 5.
+- On FAIL: apply ONE inline fix (the assembly-fix, e.g. wrap `init_db()` in
+  `with app.app_context():`, register a missing `teardown_appcontext`), then re-run
+  ONCE. On a second FAIL: **abort** — do NOT merge to main, do NOT clean up. Set
+  `final_status: "FAIL -- integrated-import: <reason>"` in BUILD_TRACKING.md Run
+  State and return `STATUS: FAIL -- integrated-import: <reason>`. (The orchestrator's
+  `verify_wave --wave K` also enforces the `integrated_import` PASS verdict.)
+
 ### Step 5: Smoke test (non-blocking)
 
 Start the app via Bash and curl each prescribed route, recording status codes.
@@ -178,7 +210,14 @@ Run `git checkout <original_branch>`, then `git merge --no-ff <assembly_branch>`
 
 ### Step 8: Cleanup
 
-Run each as a SEPARATE Bash call (one per worktree/branch, no for-loop):
+**WAVE MODE (`wave_index` present): SKIP this step entirely — DEFER all cleanup.**
+The orchestrator preserves every worker branch/worktree and each `w<k>/*.md` report
+as LIVE evidence until its `verify_wave --wave K` passes, then does the cleanup
+itself (plan §3.3 item 3 / §5 forward-step 14). Record `cleanup_status: deferred
+(wave mode)` in the Step 9 summary and proceed to Step 9. Deleting anything here
+would destroy the evidence the verifier re-reads (worker heads, merge-bases).
+
+Single-wave mode — run each as a SEPARATE Bash call (one per worktree/branch, no for-loop):
 1. `git worktree remove <path>` (one call per worktree).
 2. `git branch -D <branch>` (one call per merged worker branch).
 3. `git branch -D <assembly_branch>`.
@@ -210,6 +249,24 @@ STATUS: PASS
 |---|---|---|---|
 | <role> | <desc> | <base sha> | <commit sha(s)> |
 ```
+
+**WAVE MODE ONLY — also add a Worker-Deltas table BEFORE any cleanup** (single-wave
+mode omits it). For each COMPLETED worker capture `worker_head_sha =
+git rev-parse <branch>`, `merge_base_sha = git merge-base <original_branch> <branch>`,
+and `delta_count = git rev-list --count <merge_base_sha>..<branch>`. These feed the
+orchestrator's `wave_artifact.py emit` payload and the `verify_wave --wave K`
+fork-point / commit-count / post-terminal-commit-containment checks (plan §3.3 / §7):
+
+```markdown
+## Worker Deltas (wave mode)
+
+| Role | worker_head_sha | merge_base_sha | delta_count |
+|---|---|---|---|
+| <role> | <sha> | <sha> | <n> |
+```
+
+Also add `integrated_import: <PASS> (<reports_dir>/integrated-import.md)` and, in wave
+mode, `cleanup_status: deferred (wave mode)` to the summary bullets above.
 
 ### Step 10: Write the Phase Status row
 

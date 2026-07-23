@@ -813,6 +813,92 @@ the **1b read-back gate** before the next wave spawn. The toggle MUST be strictl
 bounded (deactivate -> gate -> reactivate+read-back) and MUST complete before any
 worker of the next wave is spawned. Never leave the firebreak off across a spawn.
 
+**P1/P2 (rev5) supersedes the toggle for the encoded loop.** The Multi-Wave Barrier
+Loop (Path B) below does **NOT** exercise this toggle: the firebreak stays ACTIVE for
+the ENTIRE run (no deactivation), and the per-wave integrated dependency gate lives
+INSIDE the TRUSTED swarm-runner (its Step 4.5 `pytest` import-smoke), which is
+firebreak-legal with the firebreak active. The orchestrator runs NO `python -m
+compileall` / `python -m <pkg>.smoke` between waves, so the toggle is never needed.
+The block above remains a documented general capability only.
+
+## Multi-Wave Barrier Loop (Path B — P1/P2, plan §5)
+
+**Trigger.** Read `waves: N` from the plan frontmatter. If `waves` is ABSENT or `1`,
+IGNORE this entire section — run the single-wave path exactly as today (ONE Step 10w
+spawn, ONE Step 10.5w gate, ONE swarm-runner assembly with inline cleanup, NO wave
+artifacts, NO `verify_wave`). If `N > 1`, Step 10w through the assembly is executed
+as the deterministic per-wave loop below. The firebreak was activated once at 9w.9.6
+and stays ACTIVE throughout — there is **no toggle anywhere in this loop**.
+
+All durable state is written **write-ahead** (BEFORE the action it guards) via
+`python3 tools/wave_artifact.py state --file docs/reports/<run-id>/w<k>/transition-state.json
+--phase <phase> [--payload <json>]` (a TRUSTED pinned tool). Phases, reject-sets, and
+recovery are specified in plan §5/§6/§7 — this section encodes the executable order.
+
+**Pre-loop (once, k=0):**
+1. Run the pre-Wave-0 provenance gate (9w.9.5) — it may push a spec-file-only commit
+   to `origin/<default>` (the SOLE sanctioned remote write, CLAUDE.md policy).
+2. **Ancestry repair BEFORE pinning the base (§3.3):** `git merge origin/<default>`
+   into `original_branch`, then assert
+   `git merge-base --is-ancestor origin/<default> original_branch`; on failure ABORT
+   (do not spawn).
+3. Pin the durable base: `worker_base_sha = git rev-parse origin/<default>`,
+   `expected_base_sha = <original_branch> HEAD`. These are INVARIANT across waves
+   (no per-wave push moves `origin/<default>`).
+4. Pre-spawn schema gate (Step 9w.7): `python3 tools/verify_wave.py --validate-schema
+   --plan <plan> --spec-path <spec> --root <MAIN>` must exit `STATUS: CLEARED`; else ABORT.
+
+**Per wave k = 1..N (forward sequence, plan §5):**
+1. (k=1) use the pinned base from pre-loop; (k>1) `expected_base_sha = current
+   <original_branch> HEAD` (it advanced by exactly wave k-1's assembled output).
+2. **1b firebreak read-back** ACTIVE at `<MAIN>` (`firebreak-activate.py status
+   --root <MAIN>`); else ABORT.
+3. `state --phase roster_prepared` (records roster placeholders + `expected_base_sha`
+   + `worker_base_sha`).
+4. `state --phase spawn_in_progress`; spawn ONLY wave k's roster (the Step 10w
+   mechanics below), capturing each `task_id`/`agent_id`/`branch` and updating
+   transition-state AS they return; write `w<k>/worker-roster.md`.
+5. Wait for terminal results (Step 10w wait). Handle terminals per §3.1/§4;
+   `state --phase workers_terminal` with each worker's `status`, `terminal_evidence`,
+   and `terminal_head_sha` (`git rev-parse <branch>` at the terminal instant).
+6. **Prove zero live workers (§3.1)** — every wave-k worker terminal, TIMED_OUT ones
+   `TaskStop`+confirmed; unprovable ⇒ ABORT (`state --phase abort` + emit ABORT
+   artifact). A REQUIRED FAILED/TIMED_OUT worker ⇒ the wave verifier will FAIL.
+7. Ownership gate (Step 10.5w) against `original_branch`.
+8. **Post-terminal containment re-read (§3.1):** for each COMPLETED worker, re-read
+   the live branch head; if it ≠ the recorded `terminal_head_sha`, ABORT.
+9. `state --phase assembly_started`; spawn the **swarm-runner in WAVE MODE**
+   (`wave_index=k`, `reports_dir=docs/reports/<run-id>/w<k>/`,
+   `assembly_branch=swarm-<run-id>-w<k>-assembly`, `import_smoke_test=<path>`). It
+   runs contract + the BLOCKING Step 4.5 import-smoke, merges `--no-ff` to
+   `original_branch`, records the Worker-Deltas table, and DEFERS cleanup.
+10. Disk-verify swarm-runner's summary (`verify_delegated_status.py`); on PASS
+    `state --phase merge_completed` with `assembled_output_sha = new <original_branch>
+    HEAD`.
+11. Re-run provenance (invariant base, fail-closed insurance):
+    `check_spec_provenance.py --repo <MAIN> --default-branch <default>
+    --original-branch <feature> --spec-path <spec>`; `state --phase provenance_reverified`.
+12. Emit the artifact atomically: `python3 tools/wave_artifact.py emit --out
+    docs/reports/<run-id>/w<k>/wave.md --payload <json built from recorded values>
+    [--prev-artifact docs/reports/<run-id>/w<k-1>/wave.md]`; `state --phase
+    artifact_emitted`.
+13. **Blocking gate:** `python3 tools/verify_wave.py --wave <k> --plan <plan>
+    --spec-path <spec> --reports-dir docs/reports/<run-id>/w<k>/ --root <MAIN>
+    --run-id <id> --run-start-ts <epoch> --original-branch <feature>
+    --default-branch <default>`. On `STATUS: PASS`, `state --phase wave_verified`;
+    on FAIL, ABORT.
+14. Clean up wave k's DEFERRED worktrees/branches (orchestrator local `git worktree
+    remove` + `git branch -D` per branch — firebreak-legal for the orchestrator).
+15. Re-assert 1b read-back ACTIVE; `state --phase readback_ok`; spawn wave k+1.
+
+After the final wave, proceed to **Step 17w (Shared Tail delegation)**; the tail runs
+`verify_wave.py --reconcile` fail-closed (tail-resume/SKILL.md). There is NO firebreak
+toggle anywhere in this sequence. **Resume after context death** is specified in
+`.claude/skills/tail-resume/SKILL.md` (Wave-Resume) and plan §5: on resume, FIRST
+re-assert the firebreak ACTIVE, THEN stop ALL run-scoped tasks by name prefix
+(`swarm-<run-id>-*`, incl. pre-persist spawns), prove zero live, and route per each
+`w<k>/transition-state.json` phase.
+
 ### Step 10w: Parallel Swarm Work
 
 **PRECONDITION:** Before reading the agent assignment table, verify:

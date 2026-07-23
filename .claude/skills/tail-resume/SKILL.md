@@ -40,6 +40,30 @@ Execute steps in order. The only valid `next_step` value is "Verify BUILD_TRACKI
 (post-learnings, post-fill). Compound, Update Learnings, Verify Learnings, and
 BUILD_TRACKING fill have all completed before the checkpoint fires.
 
+### Step 0: Wave-Resume (MULTI-WAVE runs — MANDATORY FIRST; plan §5)
+
+Applies only when the run is multi-wave (`waves: N`, N > 1 in the plan, or
+`<reports_dir>/w*/transition-state.json` files exist). Single-wave runs SKIP this step.
+
+- **R0 (ALWAYS FIRST): re-assert the firebreak ACTIVE.** Run
+  `python3 .claude/hooks/firebreak-activate.py status --root <MAIN>`. Exit 3 ⇒ ABORT
+  (wrong root). `INACTIVE` ⇒ `activate <run-id> --root <MAIN>` then re-read; still not
+  `ACTIVE` ⇒ ABORT. Only proceed once ACTIVE.
+- **R1: stop ALL run-scoped tasks — including pre-persist spawns.** Query `TaskList`
+  for every task whose name matches `swarm-<run-id>-*` (NOT only the ids recorded in
+  transition-state — a crash during `spawn_in_progress` may have spawned workers whose
+  ids were never written). `TaskStop` + confirm each; prove zero live before anything
+  else. Unprovable ⇒ ABORT.
+- **Route per wave:** for each `w<k>/transition-state.json`, follow the plan §5
+  resume machine (absent ⇒ start wave; `roster_prepared`/`spawn_in_progress`/
+  `workers_terminal` ⇒ prove-zero-live then resume; `assembly_started` ⇒
+  ambiguous-assembly recovery, never re-assemble onto an advanced branch;
+  `merge_completed` ⇒ resume at provenance; `artifact_emitted` ⇒ compare-and-reuse
+  vs conflicting-abort; `wave_verified`/`readback_ok` ⇒ wave complete; `abort` ⇒ stay
+  aborted). If waves remain incomplete, hand control back to the autopilot SKILL's
+  Multi-Wave Barrier Loop at the resolved wave; only once ALL N waves are
+  `wave_verified` do you continue to the tail steps below.
+
 ### Step 1: Validate Resume Point (MANDATORY)
 
 Read `next_step` from CHECKPOINT.md.
@@ -56,6 +80,19 @@ Read BUILD_TRACKING.md. Verify:
 
 If any section is missing or empty, FAIL with:
 `"BUILD_TRACKING INCOMPLETE: [section name] is missing or empty."`
+
+### Step 2b: Wave Reconcile (MULTI-WAVE runs — MANDATORY GATE, fail-closed; plan §7)
+
+Multi-wave runs only (single-wave SKIP). Run the tail reconcile gate:
+
+`python3 tools/verify_wave.py --reconcile --plan <plan_path> --spec-path <spec_path>
+--reports-dir <reports_dir> --root <MAIN> --run-id <run_id> --run-start-ts <epoch>
+--original-branch <feature> --default-branch <default>`
+
+It re-verifies every wave (waves `1..N-1` `assembled_output_sha` must be ANCESTORS of
+`<original_branch>` HEAD, only wave N EQUALS HEAD) and the end-to-end SHA chain.
+**Fail-closed:** if it is not `STATUS: PASS`, FAIL the run with
+`"WAVE RECONCILE FAILED: [reason]"` — do NOT proceed to self-audit with a passing claim.
 
 ### Step 3: Self-Audit (MANDATORY -- DO NOT SKIP)
 
