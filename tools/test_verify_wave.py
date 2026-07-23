@@ -345,11 +345,119 @@ def build_wave_repo():
     return ctx
 
 
-def _emit_wave(ctx, payload, out=None):
+def build_two_wave_repo():
+    """A 2-wave fixture (plan declares waves:2). Wave 1 assembles a models worker
+    off master into feat; wave 2 assembles a routes worker off the wave-1 output
+    into feat. Emits BOTH w1/wave.md and w2/wave.md (w2 chained to w1 via
+    --prev-artifact so wave_artifact.py records prev_wave_artifact_sha =
+    sha256(w1/wave.md)). Returns ctx with plan/spec paths + shas."""
+    root = _mkdir("vw-2w-")
+    _git(root, "init", "-b", "master")
+    _write(os.path.join(root, ".claude/hooks/firebreak-classify.py"),
+           "# placeholder so firebreak-activate recognizes this as a firebreak repo\n")
+    _write(os.path.join(root, "pkg/__init__.py"), "")
+    plan = build_plan(2, [("models", 1, "yes", ["pkg/models.py"]),
+                          ("routes", 2, "yes", ["pkg/routes.py"])])
+    spec = build_spec([("query", "pkg/models.py", "pkg/routes.py", False)])
+    _write(os.path.join(root, "plan.md"), plan)
+    _write(os.path.join(root, "spec.md"), spec)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-m", "base")
+    base = _rev(root, "HEAD")
+    _git(root, "branch", "feat", "master")
+
+    # ---- wave 1: models worker off master -> assemble into feat ----
+    wt1 = os.path.join(root, ".wt-models")
+    _git(root, "worktree", "add", "-b", "swarm-085-w1-models", wt1, "master")
+    _write(os.path.join(wt1, "pkg/models.py"), "def query():\n    return []\n")
+    _git(wt1, "add", "-A")
+    _git(wt1, "commit", "-m", "models")
+    w1_head = _rev(root, "swarm-085-w1-models")
+    _git(root, "checkout", "feat")
+    _git(root, "checkout", "-b", "swarm-085-w1-assembly")
+    mb1 = _git(root, "merge-base", "feat", "swarm-085-w1-models").stdout.strip()
+    _git(root, "cherry-pick", f"{mb1}..swarm-085-w1-models")
+    _git(root, "checkout", "feat")
+    _git(root, "merge", "--no-ff", "-m", "assemble w1", "swarm-085-w1-assembly")
+    assembled1 = _rev(root, "feat")
+
+    # ---- wave 2: routes worker off the wave-1 output (feat@assembled1) ----
+    wt2 = os.path.join(root, ".wt-routes")
+    _git(root, "worktree", "add", "-b", "swarm-085-w2-routes", wt2, "feat")
+    _write(os.path.join(wt2, "pkg/routes.py"), "from pkg.models import query\n")
+    _git(wt2, "add", "-A")
+    _git(wt2, "commit", "-m", "routes")
+    w2_head = _rev(root, "swarm-085-w2-routes")
+    _git(root, "checkout", "feat")
+    _git(root, "checkout", "-b", "swarm-085-w2-assembly")
+    mb2 = _git(root, "merge-base", "feat", "swarm-085-w2-routes").stdout.strip()
+    _git(root, "cherry-pick", f"{mb2}..swarm-085-w2-routes")
+    _git(root, "checkout", "feat")
+    _git(root, "merge", "--no-ff", "-m", "assemble w2", "swarm-085-w2-assembly")
+    assembled2 = _rev(root, "feat")
+
+    reports1 = os.path.join(root, "reports", "w1")
+    reports2 = os.path.join(root, "reports", "w2")
+    _evidence(reports1)
+    _evidence(reports2)
+    _activate_firebreak(root)
+
+    ctx = {"root": root, "plan": os.path.join(root, "plan.md"),
+           "spec": os.path.join(root, "spec.md"), "reports": reports1}
+
+    def _roster(role, branch, head):
+        return [{"task_id": "t", "agent_id": "a", "role": role, "branch": branch,
+                 "required": "yes", "status": "COMPLETED",
+                 "terminal_evidence": "completion-notified", "terminal_head_sha": head}]
+
+    def _gates(wdir):
+        return {"contract": {"verdict": "PASS", "path": f"reports/{wdir}/contract-check.md"},
+                "integrated_import": {"verdict": "PASS",
+                                      "path": f"reports/{wdir}/integrated-import.md"},
+                "smoke": {"verdict": "PASS", "path": f"reports/{wdir}/smoke-test.md"},
+                "test": {"verdict": "PASS", "path": f"reports/{wdir}/test-results.md"}}
+
+    p1 = {
+        "status": "PASS-EMITTED", "run_id": "085", "wave_count": 2, "wave_index": 1,
+        "run_start_ts": 1000, "expected_base_sha": base, "worker_base_sha": base,
+        "roster": _roster("models", "swarm-085-w1-models", w1_head),
+        "worker_deltas": [{"role": "models", "worker_head_sha": w1_head,
+                           "merge_base_sha": mb1, "delta_count": 1}],
+        "ownership_gate": {"verdict": "PASS", "path": "reports/w1/ownership-gate.md"},
+        "assembled_output_sha": assembled1, "gate_results": _gates("w1"),
+        "firebreak_readback": {"status": "ACTIVE", "ts": 1001},
+        "provenance": {"status": "PROVENANCE_OK", "path": "reports/w1/spec-provenance.md"},
+        "prev_wave_output_sha": None,
+    }
+    p2 = {
+        "status": "PASS-EMITTED", "run_id": "085", "wave_count": 2, "wave_index": 2,
+        "run_start_ts": 1000, "expected_base_sha": assembled1,
+        "worker_base_sha": assembled1,
+        "roster": _roster("routes", "swarm-085-w2-routes", w2_head),
+        "worker_deltas": [{"role": "routes", "worker_head_sha": w2_head,
+                           "merge_base_sha": mb2, "delta_count": 1}],
+        "ownership_gate": {"verdict": "PASS", "path": "reports/w2/ownership-gate.md"},
+        "assembled_output_sha": assembled2, "gate_results": _gates("w2"),
+        "firebreak_readback": {"status": "ACTIVE", "ts": 1002},
+        "provenance": {"status": "PROVENANCE_OK", "path": "reports/w2/spec-provenance.md"},
+        "prev_wave_output_sha": assembled1,
+    }
+    ctx["p1"], ctx["p2"] = p1, p2
+    w1_md = _emit_wave(ctx, p1, out=os.path.join(reports1, "wave.md"))
+    _emit_wave(ctx, p2, out=os.path.join(reports2, "wave.md"), prev_artifact=w1_md)
+    return ctx
+
+
+def _emit_wave(ctx, payload, out=None, prev_artifact=None):
     out = out or os.path.join(ctx["reports"], "wave.md")
-    pf = _write(os.path.join(ctx["root"], "payload.json"), json.dumps(payload))
-    r = subprocess.run([sys.executable, ARTIFACT, "emit", "--out", out, "--payload", pf,
-                        "--emit-ts", "1234567890"], capture_output=True, text=True)
+    # unique payload filename so back-to-back emits (2-wave fixtures) don't clobber
+    pf = _write(os.path.join(ctx["root"], f"payload-w{payload['wave_index']}.json"),
+                json.dumps(payload))
+    cmd = [sys.executable, ARTIFACT, "emit", "--out", out, "--payload", pf,
+           "--emit-ts", "1234567890"]
+    if prev_artifact:
+        cmd += ["--prev-artifact", prev_artifact]
+    r = subprocess.run(cmd, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
     return out
 
@@ -488,6 +596,58 @@ def test_wave_firebreak_inactive_fails():
     _emit_wave(ctx, ctx["payload"]())
     first, rc = _run_wave(ctx)
     _assert_fail(first, rc, "firebreak not ACTIVE")
+
+
+@case
+def test_wave_status_abort_rejected():
+    # a forged/ABORT artifact with otherwise-valid fields must NOT pass --wave.
+    ctx = build_wave_repo()
+    _emit_wave(ctx, ctx["payload"](status="ABORT", abort_reason="worker died"))
+    first, rc = _run_wave(ctx)
+    _assert_fail(first, rc, "!= PASS-EMITTED")
+
+
+@case
+def test_wave_wrong_wave_count_rejected():
+    # artifact wave_count (2) != the plan's declared waves (1) -> FAIL.
+    ctx = build_wave_repo()
+    _emit_wave(ctx, ctx["payload"](wave_count=2))
+    first, rc = _run_wave(ctx)
+    _assert_fail(first, rc, "wave_count 2 != plan declared waves 1")
+
+
+@case
+def test_wave_forged_prev_artifact_sha_rejected():
+    # 2-wave fixture: after both waves emit correctly, tamper w1/wave.md so its
+    # recomputed sha256 no longer matches w2's recorded prev_wave_artifact_sha.
+    ctx = build_two_wave_repo()
+    w1_md = os.path.join(ctx["root"], "reports", "w1", "wave.md")
+    with open(w1_md, "a", encoding="utf-8") as f:
+        f.write("\n<!-- post-hoc tamper -->\n")
+    # --wave 2 must FAIL on the prev-artifact-sha mismatch.
+    first, rc = _run_wave(ctx, wave=2, reports=os.path.join(ctx["root"], "reports", "w2"))
+    _assert_fail(first, rc, "prev_wave_artifact_sha mismatch")
+    # --reconcile must FAIL on the same mismatch (at wave 2).
+    cmd = [sys.executable, VERIFY, "--reconcile", "--plan", ctx["plan"],
+           "--spec-path", ctx["spec"], "--reports-dir", os.path.join(ctx["root"], "reports"),
+           "--root", ctx["root"], "--run-id", "085", "--run-start-ts", "1000",
+           "--original-branch", "feat", "--default-branch", "master"]
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    first = (p.stdout.splitlines() or [""])[0]
+    _assert_fail(first, p.returncode, "prev_wave_artifact_sha mismatch")
+
+
+@case
+def test_reconcile_prev_artifact_sha_enforced():
+    # the happy 2-wave chain PASSes -- prev_artifact_path is now recomputed + matches.
+    ctx = build_two_wave_repo()
+    cmd = [sys.executable, VERIFY, "--reconcile", "--plan", ctx["plan"],
+           "--spec-path", ctx["spec"], "--reports-dir", os.path.join(ctx["root"], "reports"),
+           "--root", ctx["root"], "--run-id", "085", "--run-start-ts", "1000",
+           "--original-branch", "feat", "--default-branch", "master"]
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    first = (p.stdout.splitlines() or [""])[0]
+    assert p.returncode == 0 and first.startswith("STATUS: PASS"), first + "\n" + p.stdout
 
 
 @case
