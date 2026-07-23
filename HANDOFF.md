@@ -1,9 +1,30 @@
-# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §0 spikes DONE, awaiting Codex §0 re-review
+# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §0 spikes PASS, §1 IMPLEMENTED (needs Codex CODE review)
 
 **Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-22
 **Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff) — pushed to origin
-**Phase:** P1/P2 plan **revision 5** — resolves the Codex §0 spike-review NO-GO (4 findings). All three §0 verify-first spikes now PASS (0a strengthened to boot create_app() + catch the app-context/teardown class; 0b; 0c reshaped to the real ancestry shape + RUN swarm-runner ×2). **Next actor: Alex → send Codex the fresh §0 re-review handoff** (`docs/reports/p1p2-spikes/codex-0-rereview-handoff.md`, also inlined below). Do NOT begin §1 implementation until Codex returns GO. No SKILL/tool DELIVERABLE code written (only §0 spike harnesses).
+**Phase:** P1/P2 **§1 implementation (Session 1) DONE**. All three §0 verify-first spikes PASS (0a strengthened, 0b, 0c reshaped+run). **§1 was implemented this session under Alex's explicit direction** (he twice re-issued the §1 kickoff after I flagged the §0-GO gate; I do NOT have a recorded Codex §0 GO in-session — the §0 re-review handoff `docs/reports/p1p2-spikes/codex-0-rereview-handoff.md` was the last external state). **Next actor: Alex → send Codex a §1 CODE review** (branch diff vs plan); do NOT launch any autopilot run (P4 stays gated on the trust gate).
+
+## §1 Implementation (Session 1) — DONE (5 checkpoints, all pushed)
+
+All wave-mode logic gates on `waves > 1` / `wave_index`; **single-wave behavior is byte-for-byte unchanged**. Firebreak classifier LOGIC untouched (data-only allowlist adds); worker base ref unchanged; only the two approved tool-path allowlist adds.
+
+| # | Deliverable | Evidence |
+|---|-------------|----------|
+| 1 | `.claude/hooks/firebreak-classify.py` — add `tools/wave_artifact.py` + `tools/verify_wave.py` to `TRUSTED_PIPELINE_SCRIPT_PATHS` (TRUSTED-only, PATH-pinned, worker-denied; NO logic/`-m` change) | classifier suite **282→284** |
+| 2 | `tools/wave_artifact.py` (+ `test_wave_artifact.py`) — `emit` (atomic wave.md, §6 schema, prev-artifact sha) + `state` (atomic transition-state) | **15/15**, `--case` selector |
+| 3 | `tools/verify_wave.py` (+ `test_verify_wave.py`) — `--validate-schema` (§4) / `--wave K` (§7) / `--reconcile` (§7); truth derived from `--plan`+`--spec-path`+live git+re-read evidence | **32/32**, `--case` selector |
+| 4 | `.claude/skills/autopilot/SKILL.md` — "Multi-Wave Barrier Loop (Path B)" section (§5 sequence + write-ahead state + resume pointer; firebreak ACTIVE all run, no toggle) | committed |
+| 5 | `.claude/agents/swarm-planner.md` (Wave/Required emit), `.claude/agents/swarm-runner.md` (Step 4.5 blocking import-smoke + Worker-Deltas + deferred cleanup), `.claude/skills/tail-resume/SKILL.md` (Step 0 Wave-Resume + Step 2b `--reconcile` fail-closed), `CLAUDE.md` (§3.5 push policy) | committed |
+
+**Verify:** `python3 .claude/hooks/test_firebreak_classify.py | tail -1` → `284/284`; `python3 tools/test_wave_artifact.py` → `15/15`; `python3 tools/test_verify_wave.py` → `32/32`.
+
+### §1 remaining risks / honest gaps (for the CODE review to scrutinize)
+- **verify_wave `--reconcile` unit coverage is light** (1 degenerate 1-wave reconcile test). The multi-wave chain/ancestor reject cases (`test_reconcile_chain_break`, `_earlier_wave_ancestor`, `_final_wave_is_head`, `_count_mismatch` from §8) are NOT yet unit-tested — they are exercised by the live multi-wave run (plan §8's live-spike posture). `--wave K` is covered by 17 git-fixture cases incl. forged-verdict, required-worker, HEAD-mismatch, firebreak-inactive, post-terminal containment.
+- **The §4 schema parser pins concrete spec formats** it reads: the Cross-Boundary Wiring Table (`Symbol | Producer File | Consumer File | Build-Order-Sensitive | Import Path`), Coordinated Behaviors `**Members of <token>:** a, b`, and Export Names `Defined By` (for out-of-roster). Real wave-mode specs MUST emit these; documented in swarm-planner.md. `out-of-roster` is a distinct check via Export Names `Defined By`; file-level unmapped refs surface as `missing`/`unresolved`.
+- **`ambiguous`** is implemented as "same symbol produced by two different agents" (duplicate-file is caught earlier as `duplicate`).
+- **No live governed run yet** — the loop is encoded but unproven end-to-end; the tools were unit-tested against temp repos + an activated firebreak sentinel, not a real autopilot session. This is P4's job and stays gated.
+- **SKILL Path B is orchestration prose**, not executable code — the CODE review should check the encoded step order matches plan §5 and that single-wave paths are untouched.
 
 ## Codex §0 spike-review resolution (rev5 — this session)
 
@@ -172,21 +193,22 @@ Net-new failure classes: FC68 (governance-tool cwd self-location) + FC69 (app fa
 Read HANDOFF.md for context. This is sandbox, on branch
 feat/p1p2-unattended-swarm-wave-barrier (off origin/master @ 4da3eff).
 
-ACTIVE: P1/P2 plan — encode the unattended multi-wave swarm barrier loop into the
-autopilot SKILL. Plan doc: docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md
-(revision 5, resolves the Codex §0 spike-review NO-GO — 4 findings). The §0 BLOCKING
-verify-first spikes are ALL DONE and PASS (0a strengthened + boots create_app, 0b, 0c
-reshaped + run). PLAN + §0 SPIKES ONLY — no §1 deliverable code yet.
+ACTIVE: P1/P2 §1 is IMPLEMENTED (Session 1) — the unattended multi-wave swarm barrier loop
+is encoded in the autopilot SKILL + agents + two tools. Plan doc:
+docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md (revision 5). §0 spikes PASS;
+§1 deliverables done + pushed (see the "§1 Implementation (Session 1) — DONE" table above).
+Suites: classifier 284/284, wave_artifact 15/15, verify_wave 32/32.
 
-IMMEDIATE (needs Alex): send Codex the fresh §0 RE-REVIEW handoff —
-docs/reports/p1p2-spikes/codex-0-rereview-handoff.md (also inlined near the top of this HANDOFF).
-Do NOT begin §1 until Codex returns GO. When GO (§0 already satisfied):
-  - Go straight to the §1 deliverables: build tools/wave_artifact.py + tools/verify_wave.py
-    (+tests), the SKILL loop section (§5 sequence + write-ahead resume machine), the
-    swarm-planner/swarm-runner/tail-resume edits, the 2 file-path allowlist adds
-    (tools/wave_artifact.py, tools/verify_wave.py — TRUSTED-only, still worker-denied), and
-    the narrowed default-branch policy. New §1 obligation from rev5: record `terminal_head_sha`
-    at each worker's terminal instant and enforce the §7 post-terminal-commit containment equality.
+IMMEDIATE (needs Alex): commission a Codex CODE review of the §1 diff on this branch vs
+the plan (esp. the honest gaps listed above: light --reconcile unit coverage, the pinned
+spec table formats the §4 parser reads, and that single-wave behavior is byte-for-byte
+unchanged). Do NOT launch any autopilot run — P4 (the ≥20-agent unattended baseline) stays
+gated on the trust gate + explicit human go. After the CODE review:
+  - Apply fixes, re-review, report residual risks.
+  - Consider adding the deferred --reconcile multi-wave unit cases (chain-break / earlier-wave-
+    ancestor / final-wave-is-head / count-mismatch) if the reviewer wants them before P4.
+NOTE: §1 was implemented under Alex's explicit direction; there is no recorded in-session
+Codex §0 GO — if that GO matters for the audit trail, capture it before P4.
 
 DESIGN X (load-bearing): unattended runs push NO code to origin/<default>; workers
 write+commit only (rule 11 prohibits cross-module execution); integration + all
