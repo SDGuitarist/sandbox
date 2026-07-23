@@ -31,6 +31,7 @@ Exit 0 with `STATUS: CLEARED|PASS`; non-zero with `STATUS: FAIL -- <reason>`.
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import re
@@ -75,6 +76,14 @@ def _fail(reason):
 def _read(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+def sha256_file(path):
+    """sha256 of a file's raw bytes -- mirrors wave_artifact.py's `_sha256_file`
+    (the tamper-evidence chain must recompute the SAME way it was recorded; we
+    mirror rather than import so the verifier stays a standalone trusted script)."""
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
 
 # --------------------------------------------------------------------------- #
@@ -411,8 +420,12 @@ TERMINAL_ALL = {"COMPLETED", "FAILED", "TIMED_OUT", "TIMED_OUT_STOPPED"}
 
 
 def verify_wave(art, plan_text, spec_text, root, reports_dir, run_id, run_start_ts,
-                original_branch, default_branch, wave_index, head_mode):
+                original_branch, default_branch, wave_index, head_mode,
+                declared_waves, prev_artifact_path=None):
     """Shared §7 reject-set for one wave artifact. head_mode in {'equal','ancestor'}.
+    `declared_waves` is the plan's `waves:` frontmatter as an int (the artifact's
+    `wave_count` must equal it). `prev_artifact_path` is w<k-1>/wave.md for k>1 (its
+    recomputed sha256 must equal the artifact's `prev_wave_artifact_sha`).
     Returns (ok, reason)."""
     # run identity (exact equality)
     if str(art.get("run_id")) != str(run_id):
@@ -421,6 +434,33 @@ def verify_wave(art, plan_text, spec_text, root, reports_dir, run_id, run_start_
         return False, f"run_start_ts mismatch: {art.get('run_start_ts')!r} != {run_start_ts!r}"
     if int(art.get("wave_index", -1)) != wave_index:
         return False, f"wave_index mismatch: {art.get('wave_index')!r} != {wave_index}"
+
+    # artifact must represent a PASS-EMITTED wave -- a forged/ABORT artifact with
+    # otherwise-valid fields must NOT pass (plan §7: the artifact represents a
+    # PASS-EMITTED wave).
+    if art.get("status") != "PASS-EMITTED":
+        return False, f"artifact status {art.get('status')!r} != PASS-EMITTED"
+
+    # wave_count must equal the plan's declared `waves` (plan §7: "a wave-count
+    # mismatch" is a reject).
+    try:
+        wave_count = int(art.get("wave_count"))
+    except (TypeError, ValueError):
+        return False, f"wave_count not an integer: {art.get('wave_count')!r}"
+    if declared_waves is not None and wave_count != declared_waves:
+        return False, f"wave_count {wave_count} != plan declared waves {declared_waves}"
+
+    # prev_wave_artifact_sha tamper-evidence (plan §7): for k>1 recompute sha256 of
+    # w<k-1>/wave.md and require it equals the recorded prev_wave_artifact_sha.
+    if wave_index > 1:
+        if not prev_artifact_path or not os.path.exists(prev_artifact_path):
+            return False, (f"prior wave artifact missing for wave {wave_index}: "
+                           f"{prev_artifact_path!r}")
+        recomputed = sha256_file(prev_artifact_path)
+        if art.get("prev_wave_artifact_sha") != recomputed:
+            return False, (f"prev_wave_artifact_sha mismatch: recorded "
+                           f"{art.get('prev_wave_artifact_sha')!r} != recomputed sha256 "
+                           f"of w{wave_index - 1}/wave.md {recomputed!r}")
 
     # roster derived from --plan == artifact roster
     derived = derive_roster_roles(plan_text, wave_index)
@@ -560,13 +600,24 @@ def cmd_wave(args):
     art, err = load_artifact(args.reports_dir, args.wave)
     if err:
         return _fail(err)
-    # continuity vs prior wave (prev_wave_output_sha == expected_base_sha)
+    # declared wave-count from the plan frontmatter (artifact wave_count must match)
+    waves_raw = parse_waves_frontmatter(plan_text)
+    declared_waves = int(waves_raw) if waves_raw and re.fullmatch(r"\d+", waves_raw) \
+        else None
+    # continuity vs prior wave (prev_wave_output_sha == expected_base_sha) + the
+    # sibling w<k-1>/wave.md for the prev_wave_artifact_sha recompute (reports-dir
+    # ends /w<K>/, so the prior dir is its sibling w<K-1>/).
+    prev_artifact_path = None
     if args.wave > 1:
         if art.get("prev_wave_output_sha") != art.get("expected_base_sha"):
             return _fail("continuity break: expected_base_sha != prev_wave_output_sha")
+        parent = os.path.dirname(os.path.normpath(args.reports_dir))
+        prev_artifact_path = os.path.join(parent, f"w{args.wave - 1}", "wave.md")
     ok, reason = verify_wave(art, plan_text, spec_text, args.root, args.reports_dir,
                              args.run_id, args.run_start_ts, args.original_branch,
-                             args.default_branch, args.wave, head_mode="equal")
+                             args.default_branch, args.wave, head_mode="equal",
+                             declared_waves=declared_waves,
+                             prev_artifact_path=prev_artifact_path)
     return _ok(f"PASS -- wave {args.wave} verified") if ok else _fail(reason)
 
 
@@ -599,7 +650,8 @@ def cmd_reconcile(args):
         head_mode = "equal" if k == N else "ancestor"
         ok, reason = verify_wave(art, plan_text, spec_text, args.root, wdir,
                                  args.run_id, args.run_start_ts, args.original_branch,
-                                 args.default_branch, k, head_mode=head_mode)
+                                 args.default_branch, k, head_mode=head_mode,
+                                 declared_waves=N, prev_artifact_path=prev_artifact_path)
         if not ok:
             return _fail(f"reconcile wave {k}: {reason}")
         prev_assembled = art.get("assembled_output_sha")
