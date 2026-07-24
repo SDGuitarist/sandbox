@@ -1362,8 +1362,14 @@ prints a STATUS line.
   Path-B harvest runs. Note the skip in BUILD_TRACKING and proceed.
 - `STATUS: PASS` (exit 0): proceed.
 - `STATUS: FAIL -- <check>` (exit 1): append a HIGH WARN row to BUILD_TRACKING
-  `## FAILURES` keyed `<run-id>-WHARVEST` (`verify-harvest FAIL: <check> -- harvest not
-  credited as genuine`) and proceed. The Self-Audit below MUST dispose it; do NOT claim a
+  `## FAILURES` keyed `<run-id>-W<N>` (description: `verify-harvest FAIL: <check> --
+  harvest not credited as genuine`) and proceed. **Choosing `<N>`:** the key MUST be
+  `<run-id>-W<N>` where `<N>` is the next unused sequential WARN index for THIS run --
+  scan the WARN rows already recorded in BUILD_TRACKING `## FAILURES` (and the gate reports)
+  for existing `<run-id>-W<k>` keys, take the highest `<k>`, and use `<k>+1` (the run's
+  first WARN is `<run-id>-W1`). No zero-padding, no gaps, integer only -- this is the
+  EXACT shape `verify-self-audit` Gate 2 enforces (`<run-id>-WHARVEST` and any non-
+  sequential key FAIL that gate). The Self-Audit below MUST dispose it; do NOT claim a
   genuine pitfall harvest while it stands.
 - exit 2 (INPUT_ERROR): a required input (frozen baseline / BUILD_TRACKING `## FAILURES`)
   is missing or unreadable -- fix the input and re-run. Do NOT skip silently.
