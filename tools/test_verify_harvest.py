@@ -81,8 +81,9 @@ def _baseline():
     return f"failure_class_count: 67\nfailure_class_ids: {ids}\n"
 
 
-def _make(real=_REAL, benign=_BENIGN, bt_real=None, with_baseline=True):
-    """Materialize a run dir. Returns (reports_dir, root). bt_real defaults to `real`."""
+def _make(real=_REAL, benign=_BENIGN, bt_real=None, with_baseline=True, bt_text=None):
+    """Materialize a run dir. Returns (reports_dir, root). bt_real defaults to `real`;
+    bt_text (when given) is written to BUILD_TRACKING.md verbatim (for row-scope tests)."""
     root = tempfile.mkdtemp(prefix="vh-root-")
     reports_dir = os.path.join(root, "reports")
     os.makedirs(reports_dir, exist_ok=True)
@@ -93,7 +94,8 @@ def _make(real=_REAL, benign=_BENIGN, bt_real=None, with_baseline=True):
     _write(os.path.join(reports_dir, "harvest-findings.md"),
            "# harvest\n\n" + _table(list(real) + list(benign)))
     _write(os.path.join(root, "BUILD_TRACKING.md"),
-           _build_tracking(bt_real if bt_real is not None else real))
+           bt_text if bt_text is not None
+           else _build_tracking(bt_real if bt_real is not None else real))
     if with_baseline:
         _write(os.path.join(reports_dir, "pitfalls-baseline.txt"), _baseline())
     return reports_dir, root
@@ -159,6 +161,36 @@ def main():
     line, rc = _run(rd, rt)
     check("missing baseline -> exit 2 (INPUT_ERROR)", rc == 2)
     check("missing baseline -> STATUS: FAIL line", line.startswith("STATUS: FAIL"))
+
+    # ---- BIJECTION row-scope: ONE FAILURES block lists two REAL rcs -> FAIL BIJECTION ----
+    # A global findall would PASS (each rc appears once); row-scoping must reject a single
+    # tracked row standing in for two findings. RC-1..RC-4 get their own blocks; RC-5+RC-6
+    # share one -> the shared-row check fires.
+    merged_bt = (
+        "## FAILURES\n\n"
+        "### block RC-1\n**root_cause_id:** RC-1 · **Failure class:** FC3\n\n"
+        "### block RC-2\n**root_cause_id:** RC-2 · **Failure class:** FC39\n\n"
+        "### block RC-3\n**root_cause_id:** RC-3 · **Failure class:** FC58\n\n"
+        "### block RC-4\n**root_cause_id:** RC-4 · **Failure class:** FC5\n\n"
+        "### shared row\n**root_cause_id:** RC-5 · **Failure class:** FC68\n"
+        "**root_cause_id:** RC-6 · **Failure class:** FC69\n\n"
+        "## RUN_METRICS\n")
+    rd, rt = _make(bt_text=merged_bt)
+    line, rc = _run(rd, rt)
+    check("one FAILURES row with two REAL rcs -> FAIL BIJECTION",
+          line.startswith("STATUS: FAIL") and "BIJECTION" in line)
+
+    # ---- THRESHOLDS: non-positive --min-real / --min-netnew -> EXIT_BAD_ARGS (fail closed) ----
+    # A zero/negative floor makes breadth/net-new vacuously true -> a hollow harvest would
+    # PASS; reject it at the arg layer instead.
+    rd, rt = _make()
+    line, rc = _run(rd, rt, min_real=0)
+    check("--min-real 0 -> exit 5 (BAD_ARGS)", rc == 5)
+    check("--min-real 0 -> STATUS: FAIL line", line.startswith("STATUS: FAIL"))
+    line, rc = _run(rd, rt, min_netnew=0)
+    check("--min-netnew 0 -> exit 5 (BAD_ARGS)", rc == 5)
+    line, rc = _run(rd, rt, min_real=-3)
+    check("--min-real negative -> exit 5 (BAD_ARGS)", rc == 5)
 
     passed = sum(1 for _n, ok in _results if ok)
     total = len(_results)

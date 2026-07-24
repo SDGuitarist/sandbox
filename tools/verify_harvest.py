@@ -140,6 +140,24 @@ def _failures_section(bt_text):
     return rest[: nxt.start()] if nxt else rest
 
 
+def _failure_rows(failures_text):
+    """Split the ## FAILURES section into per-failure blocks on `###`(+) headings and
+    return, for each block that pins any, the SET of root_cause_ids it declares.
+
+    Row-SCOPED on purpose: BIJECTION must be 1:1, so the id extraction has to prove one
+    tracked failure ROW per finding. A global `findall` over the whole section would let a
+    single row that lists two `**root_cause_id:**` labels satisfy two different REAL
+    findings (and would miss "one finding spread across rows"). Splitting per block closes
+    that. Blocks with no `**root_cause_id:**` (advisory / WARN notes) contribute no row.
+    """
+    rows = []
+    for block in re.split(r"(?m)^#{3,}\s", failures_text):
+        rcs = set(_BT_RC_RE.findall(block))
+        if rcs:
+            rows.append(rcs)
+    return rows
+
+
 def _evidence_resolves(evidence, root, reports_dir):
     """True iff the evidence cell cites a file that exists under root or reports_dir."""
     candidates = set()
@@ -191,7 +209,7 @@ def _check(reports_dir, root, bt_path, baseline_path, min_real, min_netnew):
         return None, f"INPUT_ERROR: cannot read {bt_path} ({exc})", detail
     if failures is None:
         return None, f"INPUT_ERROR: no ## FAILURES section in {bt_path}", detail
-    bt_rcs = _BT_RC_RE.findall(failures)
+    bt_rows = _failure_rows(failures)               # list of sets, one per ### failure block
 
     real = _real_rows(rows)
     detail.append(f"parsed {len(rows)} finding rows; {len(real)} REAL "
@@ -211,18 +229,29 @@ def _check(reports_dir, root, bt_path, baseline_path, min_real, min_netnew):
         return False, (f"BREADTH -- only {len(distinct)} distinct REAL root_cause_id "
                        f"(< {min_real})"), detail
 
-    # ---- (b) BIJECTION: each REAL rc has its own BUILD_TRACKING FAILURES row ----
-    missing = [rc for rc in distinct if rc not in bt_rcs]
-    detail.append(f"(b) BIJECTION: {len(bt_rcs)} root_cause_id rows in ## FAILURES; "
+    # ---- (b) BIJECTION: each REAL rc has its OWN dedicated FAILURES row (1:1) ----
+    # Row-scoped (see _failure_rows): a finding must map to exactly one block, and no block
+    # may be shared by two findings.
+    rc_to_rows = {}
+    for idx, row_rcs in enumerate(bt_rows):
+        for rc in row_rcs:
+            rc_to_rows.setdefault(rc, set()).add(idx)
+    missing = [rc for rc in distinct if rc not in rc_to_rows]
+    detail.append(f"(b) BIJECTION: {len(bt_rows)} failure rows in ## FAILURES; "
                   f"{len(missing)} REAL findings unmatched")
     if missing:
         return False, (f"BIJECTION -- REAL root_cause_id(s) with no ## FAILURES row: "
                        f"{missing}"), detail
-    bt_counts = {rc: bt_rcs.count(rc) for rc in distinct}
-    multi = sorted(rc for rc, n in bt_counts.items() if n > 1)
+    multi = sorted(rc for rc in distinct if len(rc_to_rows[rc]) > 1)
     if multi:
-        return False, (f"BIJECTION -- root_cause_id(s) appear in multiple ## FAILURES "
-                       f"rows (not 1:1): {multi}"), detail
+        return False, (f"BIJECTION -- root_cause_id(s) span multiple ## FAILURES rows "
+                       f"(not 1:1): {multi}"), detail
+    distinct_set = set(distinct)
+    shared = sorted(tuple(sorted(row_rcs & distinct_set)) for row_rcs in bt_rows
+                    if len(row_rcs & distinct_set) > 1)
+    if shared:
+        return False, (f"BIJECTION -- a single ## FAILURES row satisfies multiple REAL "
+                       f"findings (not 1:1): {shared}"), detail
 
     # ---- (c) EVIDENCE: each REAL finding cites a resolvable on-disk artifact ----
     unresolved = []
@@ -284,6 +313,14 @@ def main(argv=None):
     p.add_argument("--min-real", type=int, default=5)
     p.add_argument("--min-netnew", type=int, default=2)
     args = p.parse_args(argv)
+
+    # Thresholds MUST be positive: a zero/negative floor makes every breadth/net-new
+    # comparison vacuously true, so a hollow harvest would return PASS. Fail closed at the
+    # arg layer (EXIT_BAD_ARGS via _Parser.error) rather than silently accepting it.
+    if args.min_real < 1:
+        p.error(f"--min-real must be a positive integer, got {args.min_real}")
+    if args.min_netnew < 1:
+        p.error(f"--min-netnew must be a positive integer, got {args.min_netnew}")
 
     reports_dir = args.reports_dir
     run_id = os.path.basename(os.path.normpath(reports_dir)) or "unknown"
