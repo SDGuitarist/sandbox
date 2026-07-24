@@ -1,9 +1,13 @@
-# HANDOFF — Sandbox · P1/P2 unattended multi-wave wave-barrier plan (rev 5) — §1 verifier CODE-review **GO**
+# HANDOFF — Sandbox · master @ P1/P2 wave-barrier verifier + P3 FC-harvest gate MERGED (both Codex GO)
 
 **Repo:** /Users/alejandroguillen/Projects/sandbox
 **Date:** 2026-07-23
-**Active branch:** feat/p1p2-unattended-swarm-wave-barrier (branched off origin/master @ 4da3eff). Local tip `5a9c4fa` (deferred `--reconcile` cases added); origin is at `38d3976` — the newer commits (re-review GO record + reconcile tests) are NOT yet pushed and NOT merged to master (push/merge to `origin/<default>` is Alex's call per §3.5).
-**Phase:** P1/P2 §1 (the authoritative wave verifier) is **CODE-review GO**. The Codex §1 CODE-review NO-GO (2 authoritative-verifier gaps) was FIXED in `tools/verify_wave.py` (+ regression tests, 32→36); **Codex §1 re-review round 2 returned GO** — items 1–5 RESOLVED, residuals none-block. Result: `docs/reports/p1p2-spikes/codex-1-rereview-result.md`. (Round 1 was a NO-GO on a scope-PROOF wording flaw only — the code-scoped diff was always exactly the two tools files; the re-review handoff was corrected to a code-scoped proof and re-sent, no verifier code changed.) Do NOT launch any autopilot run (P4 stays gated on P1/P2 + P3).
+**Active branch:** master — **both feature branches are now merged here.** `feat/p1p2-unattended-swarm-wave-barrier` (`fe07332`) fast-forwarded master; `feat/p3-harvest-and-darkness-tools` (`9ca21c1`) merged on top via `--no-ff` (this commit). Merge base for both was `4da3eff` (FC68). This reconciles the previously-fragmented HANDOFF (todo 075 — now resolved).
+**Phase:** BOTH review gates are **Codex CODE-review GO** and merged:
+  - **P1/P2 §1** (authoritative multi-wave wave verifier, `tools/verify_wave.py`): NO-GO (2 gaps) → fixed → re-review **GO**. Result: `docs/reports/p1p2-spikes/codex-1-rereview-result.md`. Suites: verify_wave 40/40, wave_artifact 15/15.
+  - **P3** (FC-harvest value gate `tools/verify_harvest.py` + compounded-darkness fix): NO-GO (3 findings) → fixed → re-review **GO**. Result: `docs/reports/p3/codex-rereview-result.md`. Suites: verify_harvest 17/17, compounded_darkness 13/13.
+  - Merged firebreak classifier suite: **285/285** (282 base + 2 wave tools + 1 verify_harvest); TRUSTED_PIPELINE_SCRIPT_PATHS now pins all of verify_wave/wave_artifact/verify_harvest/check_compounded_darkness/check_spec_provenance/verify_delegated_status/firebreak-activate.
+Do NOT launch any autopilot run — **P4 (≥20-agent unattended baseline) stays gated** on the trust gate + explicit human go. P1/P2 + P3 (its tooling prerequisites) are now MERGED; the remaining gate items are a live run's criteria, not more tooling.
 
 ## §1 CODE-review NO-GO — FIXED (2 gaps closed in tools/verify_wave.py)
 

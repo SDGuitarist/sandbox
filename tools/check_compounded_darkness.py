@@ -28,8 +28,9 @@ the caller folds a WARN into the tail when STATUS is COMPOUNDED_DARKNESS.
                         with status PASS|FAIL exists (nested under spec-eval-*/ or flat)
     spec-provenance  -- spec-provenance.md STATUS is PROVENANCE_OK (a real equivalence
                         proof) and NOT a *_FALLBACK
-    dynamic tests    -- smoke-test.md (or smoke-rerun-postteardown.md) STATUS is PASS|FAIL
-                        (the tests actually executed against the run's code)
+    dynamic tests    -- any recognized smoke report (smoke-test.md,
+                        smoke-rerun-postteardown.md, or c2-smoke-report.md) STATUS is
+                        PASS|FAIL (the tests actually executed against the run's code)
   Everything else (fallback / deferred / no-verdict / absent) is DARK -- the safe
   default: a false WARN is cheap, a missed compounded-darkness is the risk we close.
 
@@ -126,7 +127,11 @@ def classify_dynamic(reports_dir, override):
     if override is not None:
         tok = _first_token(override)
         return ("LIT" if tok in _EXECUTED_VERDICTS else "DARK", f"override STATUS: {override}")
-    for name in ("smoke-test.md", "smoke-rerun-postteardown.md"):
+    # Recognize every smoke-report name a run may emit. Run 083's multi-wave
+    # orchestrator wrote a manifest smoke as c2-smoke-report.md (31/31 PASS);
+    # the original two-name allowlist missed it and mislabeled the surface DARK
+    # (083 disconfirmer D2 -- a silent governance false-negative).
+    for name in ("smoke-test.md", "smoke-rerun-postteardown.md", "c2-smoke-report.md"):
         status = _read_status_line(os.path.join(reports_dir, name))
         if status and _first_token(status) in _EXECUTED_VERDICTS:
             return ("LIT", f"{name} STATUS: {status}")

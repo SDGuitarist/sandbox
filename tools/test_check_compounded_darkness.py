@@ -131,6 +131,15 @@ def main():
     tok, _, _ = _run(d)
     check("smoke-rerun PASS lights dynamic -> OK", tok, "OK")
 
+    # ---- dynamic LIT via c2-smoke-report.md (083 D2 regression) -> OK ----
+    d = _mkdir()
+    _dark_provenance(d)
+    _dark_smoke(d)                            # smoke-test.md deferred
+    _write(os.path.join(d, "c2-smoke-report.md"),
+           "STATUS: PASS\n\n# swarmlimit C2 smoke report\n- exercised endpoints: 31\n")
+    tok, _, _ = _run(d)
+    check("c2-smoke-report PASS lights dynamic (083 D2 regression) -> OK", tok, "OK")
+
     # ---- overrides win over disk (orchestrator can pass authoritative status) ----
     d = _mkdir()
     _dark_provenance(d)

@@ -1,5 +1,5 @@
 ---
-status: pending
+status: resolved
 priority: p3
 issue_id: "075"
 tags: [handoff, docs, branch-hygiene, p1p2, p3]
@@ -7,6 +7,11 @@ dependencies: []
 unblocks: []
 sub_priority: 1
 ---
+
+> **RESOLVED 2026-07-23** at the master-merge (as recommended). Both feature branches
+> merged to `master` (p1p2 fast-forward, then p3 `--no-ff`); the HANDOFF.md conflict was
+> resolved by taking the authoritative p1p2 HANDOFF and folding in P3's GO/merged state.
+> `master`'s HANDOFF now carries a single current project state covering BOTH P1/P2 and P3.
 
 # HANDOFF.md is fragmented across feature branches (p1p2 vs p3)
 
