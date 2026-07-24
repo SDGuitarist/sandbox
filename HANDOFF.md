@@ -202,30 +202,22 @@ Net-new failure classes: FC68 (governance-tool cwd self-location) + FC69 (app fa
 ## Prompt for Next Session
 
 ```
-Read HANDOFF.md for context. This is sandbox, on branch
-feat/p1p2-unattended-swarm-wave-barrier (off origin/master @ 4da3eff).
+Read HANDOFF.md for context. This is sandbox, on master @ cc3dc11.
 
-ACTIVE: P1/P2 §1 is IMPLEMENTED and **CODE-review GO** — the unattended multi-wave swarm
-barrier loop is encoded in the autopilot SKILL + agents + two tools. Plan doc:
-docs/plans/2026-07-22-p1p2-unattended-swarm-wave-barrier-plan.md (revision 5). §0 spikes PASS.
-The Codex §1 CODE-review NO-GO (2 verifier gaps) was FIXED (commits c7c4da5 + c0c1adf) and
-**Codex §1 re-review round 2 returned GO** (result: docs/reports/p1p2-spikes/codex-1-rereview-result.md).
-The deferred --reconcile multi-wave unit cases are now ADDED (commit 5a9c4fa, test-only —
-no verifier code changed; all four reject paths already behaved correctly), closing the last
-disclosed §8 gap. Suites at local tip 5a9c4fa: classifier 284/284, wave_artifact 15/15,
-verify_wave **40/40**.
+STATE: P1/P2 (multi-wave wave-barrier verifier) + P3 (FC-harvest gate + darkness fix) are
+BOTH Codex CODE-review GO and MERGED to master. The unattended multi-wave barrier loop is
+fully encoded in the autopilot SKILL + agents + tools (verify_wave 40/40, verify_harvest
+17/17, classifier 285/285). What has NOT happened: the loop has never run end-to-end fully
+unattended (Run 083 hand-ran the barriers).
 
-IMMEDIATE (needs Alex): two open decisions —
-  1. Whether to PUSH the local commits (38d3976..5a9c4fa: re-review GO record + reconcile
-     tests) to origin. Feature branch only — no master write.
-  2. Whether/when to merge feat/p1p2-unattended-swarm-wave-barrier → origin/master (deferred
-     to human post-review per §3.5 unattended default-branch push policy).
-Also independent-and-ready: send P3 (feat/p3-harvest-and-darkness-tools) to Codex CODE
-review — it is on the P4 critical path.
-Do NOT launch any autopilot run — P4 (the ≥20-agent unattended baseline) stays gated on
-P1/P2 + P3 merged + the trust gate + explicit human go.
-NOTE: §1 was implemented under Alex's explicit direction; there is no recorded in-session
-Codex §0 GO — if that GO matters for the audit trail, capture it before P4.
+YOUR FIRST TASK: run the P4 DRESS REHEARSAL. Read the full launch brief at
+docs/plans/2026-07-23-p4-dress-rehearsal-launch-brief.md and execute it — a scaled-down
+(waves:2, ~6-8 agents) throwaway autopilot-swarm build ("PlantPal") whose ONLY goal is to
+prove the SKILL wave-barrier loop runs hands-off with 0 interventions, BEFORE the full
+≥20-agent P4 baseline. The brief has the pre-launch checklist (BLOCKING), the exact
+/autopilot command, the 0-intervention success criteria, and the go-wrong / after steps.
+Do the §3 pre-launch checklist FIRST; if any BLOCKING item fails, STOP and report — do not
+launch. Do NOT jump straight to the ≥20-agent P4; that is the NEXT run only if this passes.
 
 DESIGN X (load-bearing): unattended runs push NO code to origin/<default>; workers
 write+commit only (rule 11 prohibits cross-module execution); integration + all
