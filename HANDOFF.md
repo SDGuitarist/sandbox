@@ -1,3 +1,17 @@
+# HANDOFF — Sandbox · feat/p3-harvest-and-darkness-tools
+
+> **P3 status (this branch), 2026-07-23:** the FC-harvest value gate + compounded-darkness fix
+> are **Codex CODE-review GO** (round-2, tip `99e27f3`). Result: `docs/reports/p3/codex-rereview-result.md`
+> (fixes in `codex-fix-result.md`). Suites: verify_harvest 17/17, compounded_darkness 13/13,
+> classifier 283/283. NOT merged to master (Alex's call per §3.5); P4 stays gated.
+> The body below is the **pre-P3 FC68-era snapshot** — the authoritative current project HANDOFF
+> lives on `feat/p1p2-unattended-swarm-wave-barrier`; these are reconciled at master-merge
+> (todo `075-pending-p3-handoff-branch-fragmentation`), not here.
+
+---
+
+## (Prior — FC68 / 083-W6 snapshot; retained point-in-time)
+
 # HANDOFF — Sandbox · FC68 / 083-W6 RESOLVED (firebreak cwd-root anchor); merge-to-master decision pending
 
 **Date:** 2026-07-22
