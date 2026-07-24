@@ -670,7 +670,9 @@ def test_reconcile_count_mismatch():
     ctx = build_two_wave_repo()
     os.remove(os.path.join(ctx["reports2"], "wave.md"))
     first, rc = _run_reconcile(ctx)
-    _assert_fail(first, rc, "artifact missing")
+    # tight needle: the load-missing path ("reconcile: artifact missing ..."), NOT the
+    # prev-sha "prior wave artifact missing" branch.
+    _assert_fail(first, rc, "reconcile: artifact missing")
 
 
 @case
