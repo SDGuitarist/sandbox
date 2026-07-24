@@ -403,7 +403,9 @@ def build_two_wave_repo():
     _activate_firebreak(root)
 
     ctx = {"root": root, "plan": os.path.join(root, "plan.md"),
-           "spec": os.path.join(root, "spec.md"), "reports": reports1}
+           "spec": os.path.join(root, "spec.md"), "reports": reports1,
+           "reports1": reports1, "reports2": reports2,
+           "reports_root": os.path.join(root, "reports")}
 
     def _roster(role, branch, head):
         return [{"task_id": "t", "agent_id": "a", "role": role, "branch": branch,
@@ -445,6 +447,7 @@ def build_two_wave_repo():
     ctx["p1"], ctx["p2"] = p1, p2
     w1_md = _emit_wave(ctx, p1, out=os.path.join(reports1, "wave.md"))
     _emit_wave(ctx, p2, out=os.path.join(reports2, "wave.md"), prev_artifact=w1_md)
+    ctx["w1_md"] = w1_md
     return ctx
 
 
@@ -465,6 +468,17 @@ def _emit_wave(ctx, payload, out=None, prev_artifact=None):
 def _run_wave(ctx, wave=1, reports=None):
     cmd = [sys.executable, VERIFY, "--wave", str(wave), "--plan", ctx["plan"],
            "--spec-path", ctx["spec"], "--reports-dir", reports or ctx["reports"],
+           "--root", ctx["root"], "--run-id", "085", "--run-start-ts", "1000",
+           "--original-branch", "feat", "--default-branch", "master"]
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    return (p.stdout.splitlines() or [""])[0], p.returncode
+
+
+def _run_reconcile(ctx, reports_root=None):
+    cmd = [sys.executable, VERIFY, "--reconcile", "--plan", ctx["plan"],
+           "--spec-path", ctx["spec"],
+           "--reports-dir", reports_root or ctx.get("reports_root",
+                                                    os.path.join(ctx["root"], "reports")),
            "--root", ctx["root"], "--run-id", "085", "--run-start-ts", "1000",
            "--original-branch", "feat", "--default-branch", "master"]
     p = subprocess.run(cmd, capture_output=True, text=True)
@@ -648,6 +662,48 @@ def test_reconcile_prev_artifact_sha_enforced():
     p = subprocess.run(cmd, capture_output=True, text=True)
     first = (p.stdout.splitlines() or [""])[0]
     assert p.returncode == 0 and first.startswith("STATUS: PASS"), first + "\n" + p.stdout
+
+
+@case
+def test_reconcile_count_mismatch():
+    # fewer artifacts than the plan's declared waves (w2 deleted) -> --reconcile FAILs.
+    ctx = build_two_wave_repo()
+    os.remove(os.path.join(ctx["reports2"], "wave.md"))
+    first, rc = _run_reconcile(ctx)
+    _assert_fail(first, rc, "artifact missing")
+
+
+@case
+def test_reconcile_chain_break():
+    # w2's prev_wave_output_sha no longer equals w1's assembled_output_sha -> chain break.
+    ctx = build_two_wave_repo()
+    p2 = dict(ctx["p2"], prev_wave_output_sha="d" * 40)
+    _emit_wave(ctx, p2, out=os.path.join(ctx["reports2"], "wave.md"),
+               prev_artifact=ctx["w1_md"])
+    first, rc = _run_reconcile(ctx)
+    _assert_fail(first, rc, "chain break")
+
+
+@case
+def test_reconcile_earlier_wave_ancestor():
+    # wave 1's assembled_output_sha is NOT an ancestor of HEAD (synthetic sha isolates the
+    # ancestor branch: the commit-count check is skipped for an unresolvable sha).
+    ctx = build_two_wave_repo()
+    p1 = dict(ctx["p1"], assembled_output_sha="c" * 40)
+    _emit_wave(ctx, p1, out=os.path.join(ctx["reports1"], "wave.md"))
+    first, rc = _run_reconcile(ctx)
+    _assert_fail(first, rc, "not an ancestor of HEAD")
+
+
+@case
+def test_reconcile_final_wave_is_head():
+    # the terminal wave (N) must EQUAL HEAD; w2's assembled != live feat HEAD -> FAIL.
+    ctx = build_two_wave_repo()
+    p2 = dict(ctx["p2"], assembled_output_sha="e" * 40)
+    _emit_wave(ctx, p2, out=os.path.join(ctx["reports2"], "wave.md"),
+               prev_artifact=ctx["w1_md"])
+    first, rc = _run_reconcile(ctx)
+    _assert_fail(first, rc, "!= live HEAD")
 
 
 @case
